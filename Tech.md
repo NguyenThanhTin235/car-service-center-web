@@ -19,3 +19,4 @@ Database
 Infrastructure
 ├── Redis
 └── Socket.IO
+|__ Cloudinary
