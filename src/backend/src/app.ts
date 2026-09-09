@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -12,7 +12,7 @@ app.use(morgan('dev'));
 app.use(express.json());
 
 // Routes
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
   res.json({ message: 'Car Service Center API is running' });
 });
 
