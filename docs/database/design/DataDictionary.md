@@ -74,7 +74,6 @@
 | 4 | password_hash | VARCHAR(255) | Không rỗng | Mật khẩu đã băm | bcrypt/argon2 |
 | 5 | full_name | VARCHAR(150) | Không rỗng | Họ và tên | |
 | 6 | address | TEXT | Cho phép rỗng | Địa chỉ | Dùng cho Customer profile |
-| 7 | user_type | ENUM | 'CUSTOMER', 'STAFF' | Loại tài khoản | Phân biệt khách hàng và nhân viên |
 | 8 | is_active | BOOLEAN | Mặc định TRUE | Trạng thái hoạt động | Khóa/mở khóa tài khoản |
 | 9 | otp_code | VARCHAR(10) | Cho phép rỗng | Mã OTP đặt lại mật khẩu | |
 | 10 | otp_expires_at | DATETIME | Cho phép rỗng | Thời điểm OTP hết hạn | Hiệu lực 5 phút |

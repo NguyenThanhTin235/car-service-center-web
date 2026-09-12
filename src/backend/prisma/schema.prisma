@@ -14,11 +14,6 @@ datasource db {
 // ENUMS
 // ==========================================
 
-enum UserType {
-  CUSTOMER
-  STAFF
-}
-
 enum EmployeePosition {
   TECHNICIAN
   DETAILER
@@ -216,11 +211,6 @@ enum AdjustmentStatus {
   REJECTED
 }
 
-enum BillingRequestStatus {
-  PENDING
-  PROCESSED
-}
-
 enum InvoiceStatus {
   DRAFT
   ISSUED
@@ -279,7 +269,6 @@ model User {
   password_hash    String    @db.VarChar(255)
   full_name        String    @db.VarChar(150)
   address          String?   @db.Text
-  user_type        UserType
   is_active        Boolean   @default(true)
   otp_hash         String?   @db.VarChar(255)
   otp_attempts     Int       @default(0)
@@ -310,7 +299,6 @@ model User {
   movements              StockMovement[]
   adjustments_requested  StockAdjustment[] @relation("RequestedAdjustment")
   adjustments_approved   StockAdjustment[] @relation("ApprovedAdjustment")
-  billing_requests       BillingRequest[]
   invoices               Invoice[]
   payments               Payment[]
   released_vehicles      VehicleRelease[]  @relation("ReleasedBy")
@@ -322,9 +310,8 @@ model User {
 }
 
 model Role {
-  id          Int     @id @default(autoincrement())
-  name        String  @unique @db.VarChar(50)
-  description String? @db.VarChar(255)
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(50)
 
   users UserRole[]
 
@@ -612,13 +599,12 @@ model WorkOrder {
   appointment   Appointment?  @relation(fields: [appointment_id], references: [id])
   intake_record IntakeRecord? @relation(fields: [intake_record_id], references: [id])
 
-  check_in        CheckIn?
-  services        WoService[]
-  inspections     Inspection[]
-  quotations      Quotation[]
-  billing_request BillingRequest?
-  invoice         Invoice?
-  release         VehicleRelease?
+  check_in    CheckIn?
+  services    WoService[]
+  inspections Inspection[]
+  quotations  Quotation[]
+  invoice     Invoice?
+  release     VehicleRelease?
 
   @@map("work_orders")
 }
@@ -1038,19 +1024,6 @@ model StockAdjustment {
 // ==========================================
 // MODELS: BILLING & PAYMENT
 // ==========================================
-
-model BillingRequest {
-  id              Int                  @id @default(autoincrement())
-  work_order_id   Int                  @unique
-  status          BillingRequestStatus @default(PENDING)
-  requested_by_id Int
-  created_at      DateTime             @default(now())
-
-  work_order   WorkOrder @relation(fields: [work_order_id], references: [id])
-  requested_by User      @relation(fields: [requested_by_id], references: [id])
-
-  @@map("billing_requests")
-}
 
 model Invoice {
   id              Int           @id @default(autoincrement())

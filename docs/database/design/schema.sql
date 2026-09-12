@@ -6,7 +6,6 @@ CREATE TABLE `users` (
     `password_hash` VARCHAR(255) NOT NULL,
     `full_name` VARCHAR(150) NOT NULL,
     `address` TEXT NULL,
-    `user_type` ENUM('CUSTOMER', 'STAFF') NOT NULL,
     `is_active` BOOLEAN NOT NULL DEFAULT true,
     `otp_hash` VARCHAR(255) NULL,
     `otp_attempts` INTEGER NOT NULL DEFAULT 0,
@@ -24,7 +23,6 @@ CREATE TABLE `users` (
 CREATE TABLE `roles` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(50) NOT NULL,
-    `description` VARCHAR(255) NULL,
 
     UNIQUE INDEX `roles_name_key`(`name`),
     PRIMARY KEY (`id`)
@@ -563,18 +561,6 @@ CREATE TABLE `stock_adjustments` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `billing_requests` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `work_order_id` INTEGER NOT NULL,
-    `status` ENUM('PENDING', 'PROCESSED') NOT NULL DEFAULT 'PENDING',
-    `requested_by_id` INTEGER NOT NULL,
-    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-
-    UNIQUE INDEX `billing_requests_work_order_id_key`(`work_order_id`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
 CREATE TABLE `invoices` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `work_order_id` INTEGER NOT NULL,
@@ -931,12 +917,6 @@ ALTER TABLE `stock_adjustments` ADD CONSTRAINT `stock_adjustments_requested_by_i
 
 -- AddForeignKey
 ALTER TABLE `stock_adjustments` ADD CONSTRAINT `stock_adjustments_approved_by_id_fkey` FOREIGN KEY (`approved_by_id`) REFERENCES `users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `billing_requests` ADD CONSTRAINT `billing_requests_work_order_id_fkey` FOREIGN KEY (`work_order_id`) REFERENCES `work_orders`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `billing_requests` ADD CONSTRAINT `billing_requests_requested_by_id_fkey` FOREIGN KEY (`requested_by_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `invoices` ADD CONSTRAINT `invoices_work_order_id_fkey` FOREIGN KEY (`work_order_id`) REFERENCES `work_orders`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

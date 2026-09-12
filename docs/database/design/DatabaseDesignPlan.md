@@ -55,7 +55,6 @@
 | password_hash | VARCHAR(255) NOT NULL | bcrypt/argon2 |
 | full_name | VARCHAR(150) NOT NULL | |
 | address | TEXT NULL | Customer profile |
-| user_type | ENUM('CUSTOMER','STAFF') NOT NULL | Phân loại tài khoản |
 | is_active | BOOLEAN DEFAULT TRUE | Khóa/mở khóa |
 | otp_hash | VARCHAR(255) NULL | Hash của OTP reset password |
 | otp_attempts | INT DEFAULT 0 | Đếm số lần nhập sai |
@@ -123,7 +122,6 @@
 | status | ENUM('ACTIVE','INACTIVE') DEFAULT 'ACTIVE' | Không xóa khi đã có WO |
 | created_at, updated_at | DATETIME | |
 
-> **Ownership Validation:** Application layer phải đảm bảo `vehicles.customer_id` trỏ đến `users.id` có `user_type = 'CUSTOMER'`.
 
 ---
 
@@ -574,15 +572,6 @@
 
 > UC-19 Process Invoice · UC-20 Process Payment · UC-31 Request Payment · UC-32 Release Vehicle · UC-38 Close WO · CT-BILL01..02
 
-#### `billing_requests` (Billing Request — UC-31)
-| Cột | Kiểu | Ghi chú |
-|-----|------|---------|
-| id | INT AI PK | |
-| work_order_id | INT FK(work_orders) UNIQUE NOT NULL | 1 WO → 1 Billing Request |
-| status | ENUM('PENDING','PROCESSED') DEFAULT 'PENDING' | |
-| requested_by_id | INT FK(users) NOT NULL | Service Advisor |
-| created_at | DATETIME | |
-
 #### `invoices`
 | Cột | Kiểu | Ghi chú |
 |-----|------|---------|
@@ -722,7 +711,6 @@ erDiagram
     work_orders ||--o{ quotations : has
     work_orders ||--o{ invoices : billed_via
     work_orders ||--o| vehicle_releases : released_via
-    work_orders ||--o| billing_requests : triggers
 
     wo_services ||--o{ jobs : contains
     wo_services ||--o{ qc_records : verified_by
@@ -850,6 +838,6 @@ python database-schema-designer/scripts/schema_validator.py schema.sql --strict
 | Quotation | 2 | quotations, quotation_lines |
 | QC & Rework | 2 | qc_records, qc_items |
 | Inventory | 5 | suppliers, inventory_items, goods_receipts, goods_receipt_items, stock_movements, stock_adjustments |
-| Billing & Payment | 5 | billing_requests, invoices, invoice_lines, payments, vehicle_releases |
+| Billing & Payment | 5 | invoices, invoice_lines, payments, vehicle_releases |
 | System & Support | 3 | system_catalogs, notifications, audit_logs |
 | **Tổng** | **~43 bảng** | |

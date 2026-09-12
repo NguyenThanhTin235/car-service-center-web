@@ -1,4 +1,4 @@
-import { PrismaClient, UserType, EmployeePosition, VehicleSize, VehicleStatus, PricingType, AppointmentStatus, IntakeType, IntakeStatus, WorkOrderSourceType, WorkOrderStatus, FuelLevel, CheckInStatus, ServiceStatus, InspectionStatus, InspectionResultValue, Severity, MarkerType, JobStatus, QuotationStatus, QuotationType, LineType, ItemType, ReceiptType, MovementType, ReferenceType, AdjustmentStatus, BillingRequestStatus, InvoiceStatus, PaymentMethod, PaymentStatus, QcResult, NotificationType, AuditAction, CatalogType, InspectionTemplateType, PartAllocationStatus, FindingStatus } from '@prisma/client';
+import { PrismaClient, EmployeePosition, VehicleSize, VehicleStatus, PricingType, AppointmentStatus, IntakeType, IntakeStatus, WorkOrderSourceType, WorkOrderStatus, FuelLevel, CheckInStatus, ServiceStatus, InspectionStatus, InspectionResultValue, Severity, MarkerType, JobStatus, QuotationStatus, QuotationType, LineType, ItemType, ReceiptType, MovementType, ReferenceType, AdjustmentStatus, InvoiceStatus, PaymentMethod, PaymentStatus, QcResult, NotificationType, AuditAction, CatalogType, InspectionTemplateType, PartAllocationStatus, FindingStatus } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -21,7 +21,7 @@ async function main() {
   // 2. CREATE ROLES
   const rolesData = ['ADMIN', 'MANAGER', 'DESK STAFF', 'QC', 'CUSTOMER'];
   const createdRoles = [];
-  for (const r of rolesData) createdRoles.push(await prisma.role.create({ data: { name: r, description: `Vai trò ${r}` } }));
+  for (const r of rolesData) createdRoles.push(await prisma.role.create({ data: { name: r } }));
   const [roleAdmin, roleManager, roleDeskStaff, roleQC, roleCustomer] = createdRoles;
 
   // 3. CREATE SYSTEM CATALOGS
@@ -36,7 +36,7 @@ async function main() {
     customers.push(await prisma.user.create({
       data: {
         email: `customer${i}@carservice.com`, phone: `091111110${i}`, password_hash: passwordHash,
-        full_name: `Khách Hàng ${i}`, user_type: UserType.CUSTOMER,
+        full_name: `Khách Hàng ${i}`,
         roles: { create: { role_id: roleCustomer.id } }
       }
     }));
@@ -49,7 +49,7 @@ async function main() {
     staffs.push(await prisma.user.create({
       data: {
         email: `staff${i}@carservice.com`, phone: `08111111${i.toString().padStart(2, '0')}`,
-        password_hash: passwordHash, full_name: `Nhân Viên ${i}`, user_type: UserType.STAFF,
+        password_hash: passwordHash, full_name: `Nhân Viên ${i}`,
         roles: { create: { role_id: staffRoles[i % staffRoles.length].id } },
         employee: { create: { full_name: `Nhân Viên ${i}`, position: positions[i % positions.length] } }
       },
@@ -241,8 +241,7 @@ async function main() {
       data: { qc_record_id: qcr.id, item_name: 'Kiểm tra cơ bản', result: (i === 3 ? QcResult.FAIL : QcResult.PASS) }
     });
 
-    // Billing & Invoicing
-    await prisma.billingRequest.create({ data: { work_order_id: wo.id, status: BillingRequestStatus.PROCESSED, requested_by_id: adv.id } });
+    // Invoicing
 
     if (i >= 2) {
       const quo = await prisma.quotation.create({
