@@ -103,3 +103,10 @@ Dưới đây là một số công cụ rất hữu ích trong quá trình phát
   npx prisma migrate dev --name <ten_thay_doi>
   npx prisma generate
   ```
+
+- **Xóa trắng và Reset lại toàn bộ Database (khi gặp lỗi xung đột):**
+  Nếu `migrate dev` báo lỗi do dữ liệu cũ không tương thích với schema mới, hãy dùng lệnh ép buộc đồng bộ (lưu ý: thao tác này sẽ xóa toàn bộ dữ liệu):
+  ```bash
+  npx prisma db push --force-reset
+  npx tsx prisma/seed.ts
+  ```

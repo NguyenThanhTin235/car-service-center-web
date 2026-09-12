@@ -54,6 +54,7 @@ enum InspectionTemplateType {
 enum AppointmentStatus {
   REQUESTED
   CONFIRMED
+  RESCHEDULED
   ARRIVED
   CANCELLED
 }
@@ -76,11 +77,16 @@ enum WorkOrderSourceType {
 }
 
 enum WorkOrderStatus {
-  OPEN
+  DRAFT
+  IN_PLANNING
+  PENDING_APPROVAL
+  APPROVED
   IN_PROGRESS
-  PENDING_PAYMENT
+  BILLING_REQUESTED
+  FINANCIAL_CLEARED
   RELEASED
   CLOSED
+  CANCELLED
 }
 
 enum FuelLevel {
@@ -122,6 +128,12 @@ enum Severity {
   CRITICAL
 }
 
+enum FindingStatus {
+  NEW
+  LINKED_TO_JOB
+  RESOLVED
+}
+
 enum MarkerType {
   DAMAGE
   RUST
@@ -135,6 +147,16 @@ enum JobStatus {
   PLANNED
   IN_PROGRESS
   COMPLETED
+  REWORK
+  PASSED
+}
+
+enum PartAllocationStatus {
+  PLANNED
+  RESERVED
+  ISSUED
+  USED
+  RETURNED
 }
 
 enum QuotationType {
@@ -203,6 +225,7 @@ enum InvoiceStatus {
   DRAFT
   ISSUED
   PAID
+  CANCELLED
 }
 
 enum PaymentMethod {
@@ -577,7 +600,7 @@ model WorkOrder {
   source_type      WorkOrderSourceType
   appointment_id   Int?                @unique
   intake_record_id Int?                @unique
-  status           WorkOrderStatus     @default(OPEN)
+  status           WorkOrderStatus     @default(DRAFT)
   created_by_id    Int
   created_at       DateTime            @default(now())
   updated_at       DateTime            @default(now()) @updatedAt
@@ -681,19 +704,20 @@ model InspectionResult {
 }
 
 model Finding {
-  id                     Int         @id @default(autoincrement())
+  id                     Int           @id @default(autoincrement())
   inspection_id          Int
-  description            String      @db.Text
-  severity               Severity    @default(MEDIUM)
-  recommendation         String?     @db.Text
+  status                 FindingStatus @default(NEW)
+  description            String        @db.Text
+  severity               Severity      @default(MEDIUM)
+  recommendation         String?       @db.Text
   evidence_urls          Json?
-  is_visible_to_customer Boolean     @default(true)
+  is_visible_to_customer Boolean       @default(true)
   marker_type            MarkerType?
-  part_name              String?     @db.VarChar(255)
+  part_name              String?       @db.VarChar(255)
   coordinates            Json?
   created_by_id          Int
-  created_at             DateTime    @default(now())
-  updated_at             DateTime    @default(now()) @updatedAt
+  created_at             DateTime      @default(now())
+  updated_at             DateTime      @default(now()) @updatedAt
 
   inspection   Inspection   @relation(fields: [inspection_id], references: [id])
   created_by   User         @relation(fields: [created_by_id], references: [id])
@@ -776,15 +800,16 @@ model JobLabour {
 }
 
 model JobPart {
-  id                Int      @id @default(autoincrement())
+  id                Int                  @id @default(autoincrement())
   job_id            Int
   item_id           Int
-  planned_quantity  Decimal  @db.Decimal(10, 2)
-  issued_quantity   Decimal  @default(0) @db.Decimal(10, 2)
-  returned_quantity Decimal  @default(0) @db.Decimal(10, 2)
-  unit_price        Decimal  @db.Decimal(12, 2)
-  created_at        DateTime @default(now())
-  updated_at        DateTime @default(now()) @updatedAt
+  status            PartAllocationStatus @default(PLANNED)
+  planned_quantity  Decimal              @db.Decimal(10, 2)
+  issued_quantity   Decimal              @default(0) @db.Decimal(10, 2)
+  returned_quantity Decimal              @default(0) @db.Decimal(10, 2)
+  unit_price        Decimal              @db.Decimal(12, 2)
+  created_at        DateTime             @default(now())
+  updated_at        DateTime             @default(now()) @updatedAt
 
   job             Job             @relation(fields: [job_id], references: [id])
   item            InventoryItem   @relation(fields: [item_id], references: [id])

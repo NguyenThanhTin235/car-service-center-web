@@ -342,7 +342,7 @@
 | 3 | vehicle_id | INT | Khóa ngoại → vehicles(id), không rỗng | Mã phương tiện | |
 | 4 | scheduled_date | DATE | Không rỗng | Ngày hẹn | |
 | 5 | scheduled_time | TIME | Không rỗng | Giờ hẹn | |
-| 6 | status | ENUM | 'REQUESTED', 'CONFIRMED', 'ARRIVED', 'CANCELLED'; mặc định 'REQUESTED' | Trạng thái lịch hẹn | State machine |
+| 6 | status | ENUM | 'REQUESTED', 'CONFIRMED', 'RESCHEDULED', 'ARRIVED', 'CANCELLED'; mặc định 'REQUESTED' | Trạng thái lịch hẹn | State machine |
 | 7 | cancel_reason | TEXT | Cho phép rỗng | Lý do hủy | Bắt buộc khi status = CANCELLED |
 | 8 | notes | TEXT | Cho phép rỗng | Ghi chú | |
 | 9 | created_by_id | INT | Khóa ngoại → users(id), cho phép rỗng | Người tạo | Customer hoặc Front Desk Staff |
@@ -404,7 +404,7 @@
 | 5 | advisor_id | INT | Khóa ngoại → users(id), không rỗng | Mã cố vấn dịch vụ phụ trách | |
 | 6 | appointment_id | INT | Khóa ngoại → appointments(id), cho phép rỗng | Mã lịch hẹn | NULL nếu Walk-in/Tow-in |
 | 7 | intake_record_id | INT | Khóa ngoại → intake_records(id), cho phép rỗng | Mã phiếu tiếp nhận | NULL nếu từ Appointment |
-| 8 | status | ENUM | 'OPEN', 'IN_PROGRESS', 'PENDING_PAYMENT', 'RELEASED', 'CLOSED'; mặc định 'OPEN' | Trạng thái phiếu | |
+| 8 | status | ENUM | 'DRAFT', 'IN_PLANNING', 'PENDING_APPROVAL', 'APPROVED', 'IN_PROGRESS', 'BILLING_REQUESTED', 'FINANCIAL_CLEARED', 'RELEASED', 'CLOSED', 'CANCELLED'; mặc định 'DRAFT' | Trạng thái phiếu | |
 | 9 | created_by_id | INT | Khóa ngoại → users(id), không rỗng | Người tạo | |
 | 10 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 11 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
@@ -848,7 +848,7 @@
 | 1 | id | INT | Khóa chính, tự tăng | Mã hóa đơn | |
 | 2 | work_order_id | INT | Khóa ngoại → work_orders(id), không rỗng | Mã phiếu công việc | |
 | 3 | invoice_number | VARCHAR(30) | Duy nhất, không rỗng | Số hóa đơn | |
-| 4 | status | ENUM | 'DRAFT', 'ISSUED', 'PAID'; mặc định 'DRAFT' | Trạng thái | |
+| 4 | status | ENUM | 'DRAFT', 'ISSUED', 'PAID', 'CANCELLED'; mặc định 'DRAFT' | Trạng thái | |
 | 5 | subtotal | DECIMAL(12,2) | Không rỗng | Tổng phụ | |
 | 6 | discount_amount | DECIMAL(12,2) | Mặc định 0 | Số tiền giảm giá | |
 | 7 | tax_amount | DECIMAL(12,2) | Mặc định 0 | Số tiền thuế | |

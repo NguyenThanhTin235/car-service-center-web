@@ -32,7 +32,8 @@ docs/
 │       └── schema.prisma            # File Prisma Schema gốc (để backup/tham chiếu).
 ├── requirements/
 │   ├── Requirement.md               # Tài liệu đặc tả yêu cầu, FR/NFR, quy tắc nghiệp vụ.
-│   └── UseCase.md                   # Mô tả các luồng Use Case chi tiết (Actor, Flow, Alt-flow).
+│   ├── UseCasev2.md                 # Mô tả các luồng Use Case chi tiết (phiên bản 2.0).
+│   └── ObjectStatus.md              # Tài liệu định nghĩa chi tiết vòng đời và trạng thái các đối tượng.
 └── DirectoryStructure.md            # (Là file này) Cấu trúc thư mục.
 ```
 
