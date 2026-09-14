@@ -72,182 +72,7 @@ _Hình 1-1: Quy trình E2E của Tiểu luận chuyên ngành_
 
 #### 1.2.1.1. Yêu cầu chức năng nghiệp vụ
 
-Yêu cầu chức năng nghiệp vụ được mô tả theo actor trực tiếp sử dụng hệ thống. Mỗi actor có bảng công việc và bảng quy định/công thức làm căn cứ cho thiết kế API, giao diện, kiểm thử và nghiệm thu.
-
-### Khách vãng lai (Guest) – GST
-
-_Bảng 1-0: Yêu cầu chức năng nghiệp vụ – Khách vãng lai (Guest)_
-
-| **Mã** | **Công việc** | **Loại** | **Rule** | **Mô tả** |
-| --- | --- | --- | --- | --- |
-| GST-B01 | Xem thông tin công khai | Tra cứu | QĐ-GST01 | Xem trang chủ, danh mục dịch vụ, bảng giá tham khảo và FAQ mà không cần đăng nhập. |
-| GST-B02 | Đăng ký tài khoản | Lưu trữ | QĐ-GST02 | Tạo tài khoản Khách hàng mới bằng email và mật khẩu. |
-| GST-B03 | Đăng nhập | Xác thực | QĐ-GST03 | Đăng nhập bằng email và mật khẩu để truy cập hệ thống. |
-
-_Bảng 1-0b: Quy định/công thức – Khách vãng lai (Guest)_
-
-| **Mã** | **Tên quy định** | **Mô tả chi tiết** | **Ghi chú** |
-| --- | --- | --- | --- |
-| QĐ-GST01 | Thông tin công khai | Trang thông tin công khai không yêu cầu tài khoản; chỉ hiển thị Service Template Active và giá tham khảo. |  |
-| QĐ-GST02 | Đăng ký | Email và số điện thoại phải duy nhất; sau khi đăng ký, hệ thống tự đăng nhập và chuyển về trang chủ Customer. |  |
-| QĐ-GST03 | Đăng nhập | Sau khi xác thực thành công, hệ thống mở phiên và điều hướng đến trang chủ tương ứng vai trò. |  |
-
-### Khách hàng (Customer) – CUS
-
-_Bảng 1-1: Yêu cầu chức năng nghiệp vụ – Khách hàng (Customer)_
-
-| **Mã** | **Công việc** | **Loại** | **Rule** | **Mô tả** |
-| --- | --- | --- | --- | --- |
-| CUS-B01 | Đăng xuất | Xác thực | QĐ-CUS01 | Kết thúc phiên làm việc hiện tại; áp dụng cho tất cả vai trò. |
-| CUS-B02 | Đặt lại mật khẩu | Xác thực | QĐ-CUS02 | Khách hàng tự đặt lại mật khẩu qua OTP gửi về email; chỉ dành cho Customer. |
-| CUS-B03 | Cập nhật hồ sơ cá nhân | Lưu trữ/Cập nhật | QĐ-CUS03 | Cập nhật họ tên, số điện thoại và địa chỉ. |
-| CUS-B04 | Quản lý phương tiện | Lưu trữ/Cập nhật | QĐ-CUS04 | Một khách hàng có thể quản lý nhiều xe. |
-| CUS-B05 | Quản lý lịch hẹn | Lưu trữ/Xử lý | QĐ-CUS05 | Tạo, dời hoặc hủy lịch hẹn. |
-| CUS-B06 | Xác nhận tiếp nhận xe | Xác nhận | QĐ-CUS06 | Xác nhận tình trạng xe và phạm vi tiếp nhận. |
-| CUS-B07 | Theo dõi tiến độ sửa chữa | Tra cứu | QĐ-CUS07 | Theo dõi trạng thái thân thiện theo Service. |
-| CUS-B08 | Phản hồi báo giá | Tra cứu/Xác nhận | QĐ-CUS08 | Approve hoặc Reject báo giá. |
-| CUS-B09 | Xem hóa đơn | Tra cứu | QĐ-CUS09 | Theo dõi số tiền phải thanh toán và trạng thái Paid. |
-| CUS-B10 | Xác nhận nhận xe và xem lịch sử | Xác nhận/Tra cứu | QĐ-CUS10 | Xác nhận bàn giao và xem Service History. |
-
-_Bảng 1-2: Quy định/công thức – Khách hàng (Customer)_
-
-| **Mã** | **Tên quy định** | **Mô tả chi tiết** | **Ghi chú** |
-| --- | --- | --- | --- |
-| QĐ-CUS01 | Đăng xuất | Tất cả vai trò đều có thể đăng xuất; hệ thống hủy phiên và chuyển về trang đăng nhập. |  |
-| QĐ-CUS02 | Đặt lại mật khẩu | OTP có hiệu lực 5 phút; chỉ Customer tự đặt lại; tài khoản nhân viên do Admin cấp lại qua UC-41. |  |
-| QĐ-CUS03 | Quyền sở hữu dữ liệu | Customer chỉ xem và thao tác trên hồ sơ, Vehicle, Appointment và Work Order thuộc mình. | RBAC + object ownership. |
-| QĐ-CUS04 | Vehicle | Biển số phải duy nhất trong phạm vi hệ thống; Vehicle không được xóa khi đã phát sinh Work Order. | Dùng trạng thái Inactive. |
-| QĐ-CUS05 | Appointment | Appointment mới ở REQUESTED; chỉ được dời/hủy trước khi ARRIVED hoặc CANCELLED. |  |
-| QĐ-CUS06 | Check-in | Xác nhận Check-in lưu người xác nhận và thời điểm; nội dung đã xác nhận không bị ghi đè im lặng. |  |
-| QĐ-CUS07 | Theo dõi tiến độ | Customer nhìn thấy trạng thái tổng quát, không thấy internal note hoặc giá vốn. |  |
-| QĐ-CUS08 | Duyệt báo giá | Approved Quotation được khóa snapshot; Customer không tự thay đổi line hoặc đơn giá. |  |
-| QĐ-CUS09 | Thanh toán MVP | Xem Invoice và Payment Status thuộc Work Order của mình; trạng thái UNPAID hoặc PAID. |  |
-| QĐ-CUS10 | Service History | Lịch sử dịch vụ chỉ được ghi nhận sau khi Work Order RELEASED/CLOSED. |  |
-
-### Nhân viên quầy dịch vụ (Front Desk Staff) – FDS
-
-_Bảng 1-3: Yêu cầu chức năng nghiệp vụ – Nhân viên quầy dịch vụ (Front Desk Staff)_
-
-| **Mã** | **Công việc** | **Loại** | **Rule** | **Mô tả** |
-| --- | --- | --- | --- | --- |
-| FDS-B01 | Quản lý Appointment | Lưu trữ/Xử lý | QĐ-FDS01 | Tạo thay khách, Confirm, Reschedule, Cancel. |
-| FDS-B02 | Tiếp nhận xe | Xử lý | QĐ-FDS02 | Mark Arrived, Walk-in và Tow-in; đưa xe vào Intake Queue. |
-| FDS-B03 | Quản lý hồ sơ khách hàng | Lưu trữ/Cập nhật | QĐ-FDS03 | Tìm hoặc tạo dữ liệu Customer/Vehicle tại quầy; tránh trùng. |
-| FDS-B04 | Xem phiếu công việc | Tra cứu | QĐ-FDS04 | Tra cứu trạng thái để hỗ trợ khách. |
-| FDS-B05 | Xử lý hóa đơn | Tính toán/Lưu trữ | QĐ-FDS05 | Nhận Billing Request, tạo Draft Invoice và phát hành Invoice chính thức. |
-| FDS-B06 | Xử lý thanh toán | Lưu trữ | QĐ-FDS06 | Ghi nhận Manual Payment hoặc tạo QR Payment; sau khi thanh toán thành công, hệ thống tự ghi nhận Financial Clearance và thông báo cho Cố vấn dịch vụ. |
-
-_Bảng 1-4: Quy định/công thức – Nhân viên quầy dịch vụ (Front Desk Staff)_
-
-| **Mã** | **Tên quy định** | **Mô tả chi tiết** | **Ghi chú** |
-| --- | --- | --- | --- |
-| QĐ-FDS01 | Appointment transition | Chỉ thực hiện chuyển trạng thái hợp lệ; Cancel phải lưu lý do. |  |
-| QĐ-FDS02 | Intake | Walk-in/Tow-in phải có Customer, Vehicle, thời điểm đến và nguồn tiếp nhận. Chỉ Appointment CONFIRMED mới được Mark Arrived. |  |
-| QĐ-FDS03 | Tránh trùng dữ liệu | Tìm Customer theo số điện thoại/email và Vehicle theo biển số trước khi tạo mới. |  |
-| QĐ-FDS04 | Phạm vi xem | Front Desk chỉ xem Work Order Summary và dữ liệu cần thiết cho chăm sóc khách/billing. |  |
-| QĐ-FDS05 | Invoice | Invoice line phải truy vết về Service, Job, Labour, Part/Material hoặc Fee; Invoice ISSUED không sửa trực tiếp. Chỉ nhận Billing Request khi Service Advisor xác nhận Job, QC và Quotation đủ điều kiện. |  |
-| QĐ-FDS06 | Payment & Financial Clearance | Payment không vượt Amount Due; payment hợp lệ chuyển Invoice sang PAID và hệ thống tự động ghi nhận Financial Clearance. Financial Clearance chỉ đạt khi Invoice đã PAID. | CT-BILL02 |
-
-### Cố vấn dịch vụ (Service Advisor) – SA
-
-_Bảng 1-5: Yêu cầu chức năng nghiệp vụ – Cố vấn dịch vụ (Service Advisor)_
-
-| **Mã** | **Công việc** | **Loại** | **Rule** | **Mô tả** |
-| --- | --- | --- | --- | --- |
-| SA-B01 | Xử lý Intake Queue | Tra cứu/Xử lý | QĐ-SA01 | Nhận Appointment Arrived, Walk-in hoặc Tow-in. |
-| SA-B02 | Tạo phiếu công việc | Lưu trữ | QĐ-SA02 | Tạo hồ sơ trung tâm từ Intake hợp lệ. |
-| SA-B03 | Ghi nhận tình trạng xe | Lưu trữ | QĐ-SA03 | Ghi mileage, fuel, complaint, belongings, tình trạng và evidence. |
-| SA-B04 | Quản lý dịch vụ | Lưu trữ | QĐ-SA04 | Một Work Order có nhiều Service; thêm, sửa, xóa Service. |
-| SA-B05 | Kiểm tra xe và ghi nhận phát hiện | Lưu trữ | QĐ-SA05 | Chọn loại marker hư hỏng (Damage, Rust, Dent...) và nhấp lên sơ đồ 2D mô phỏng xe để đặt marker, tự động tạo dòng Finding, đính kèm ảnh và ghi chú. |
-| SA-B06 | Lên kế hoạch công việc | Lưu trữ/Liên kết | QĐ-SA06 | Tạo Job từ Finding (mở modal Create Dispatch Jobs), sinh Job từ Template hoặc tạo thủ công. |
-| SA-B07 | Khai báo nhân công | Lưu trữ | QĐ-SA07 | Khai báo Labour line: loại nhân công, kỹ thuật viên và giờ ước tính theo Job. |
-| SA-B08 | Khai báo phụ tùng | Lưu trữ/Liên kết | QĐ-SA08 | Khai báo Planned/Used Quantity của Part/Material theo Job. |
-| SA-B09 | Quản lý báo giá | Tính toán/Lưu trữ | QĐ-SA09 | Tính package, labour, part/material; tạo, gửi, xử lý Approval và freeze snapshot. |
-| SA-B10 | Thực hiện công việc | Xử lý | QĐ-SA10 | Start và Complete Job; ghi kết quả và Used Part. |
-| SA-B11 | Kiểm định chất lượng | Lưu trữ/Xử lý | QĐ-SA11 | Ghi Pass/Fail theo checklist; Fail tạo Rework Job đơn giản. |
-| SA-B12 | Gửi yêu cầu thanh toán | Xử lý | QĐ-SA12 | Chuyển dữ liệu sang Front Desk khi đủ điều kiện. |
-| SA-B13 | Bàn giao xe | Xác nhận | QĐ-SA13 | Kiểm tra Release Gate và ghi nhận bàn giao xe chính thức. |
-
-_Bảng 1-6: Quy định/công thức – Cố vấn dịch vụ (Service Advisor)_
-
-| **Mã** | **Tên quy định** | **Mô tả chi tiết** | **Ghi chú** |
-| --- | --- | --- | --- |
-| QĐ-SA01 | Nguồn Work Order | Work Order được tạo từ Appointment ARRIVED hoặc Intake Record hợp lệ. |  |
-| QĐ-SA02 | Tạo phiếu công việc | Phải liên kết với khách hàng, xe và nguồn tiếp nhận hợp lệ. |  |
-| QĐ-SA03 | Check-in bắt buộc | Mileage, fuel, complaint và tình trạng xe là bắt buộc; belongings có thể để trống. |  |
-| QĐ-SA04 | Service | Một Work Order có nhiều Service; mỗi Service có pricing và QC policy riêng. |  |
-| QĐ-SA05 | Inspection | Inspection phải gắn Work Order/Service; evidence lưu nguồn và visibility. Finding–Job: Mỗi Finding hợp lệ có thể liên kết một hoặc nhiều hoặc không Job nào. | Core traceability. |
-| QĐ-SA06 | Nguồn Job | Job có thể sinh từ Finding, Service Template hoặc được tạo thủ công. |  |
-| QĐ-SA07 | Labour | Labour line gắn với Job; loại nhân công lấy từ danh mục đã cấu hình; đơn giá được snapshot khi tạo báo giá. |  |
-| QĐ-SA08 | Job–Part | Một Job có 0..N Part/Material; mọi Used Part phải gắn đúng Job. |  |
-| QĐ-SA09 | Pricing | Giá được tính từ Pricing Model; Quotation lưu snapshot đơn giá tại thời điểm gửi/duyệt. | CT-PRICE01..05 |
-| QĐ-SA10 | Job Progress MVP | Job chỉ Start khi Quotation đã APPROVED và đủ Part; chỉ Complete sau khi ghi kết quả. |  |
-| QĐ-SA11 | QC MVP | QC Fail không được coi là Pass; Service chỉ Completed khi QC Pass. |  |
-| QĐ-SA12 | Billing Request | Chỉ gửi khi các Job bắt buộc Completed, QC Pass và charge đã được duyệt. |  |
-| QĐ-SA13 | Release Gate | Chỉ Release khi Job Completed, QC Pass và Invoice PAID. |  |
-
-### Quản lý dịch vụ (Service Manager) – MGR
-
-**Bảng 1-9: Yêu cầu chức năng nghiệp vụ – Quản lý dịch vụ**
-
-|     |     |     |     |     |
-| --- | --- | --- | --- | --- |
-| **Mã** | **Công việc** | **Loại** | **Rule** | **Mô tả** |
-| MGR-B01 | Xem bảng điều hành cơ bản | Tra cứu | QĐ-MGR01 | Theo dõi Work Order, Service và Job. |
-| MGR-B02 | Quản lý Part/Material Master | Lưu trữ/Cập nhật | QĐ-MGR03 | Quản lý SKU, tên, loại, UoM, giá vốn và giá bán. |
-| MGR-B03 | Quản lý Supplier cơ bản | Lưu trữ/Cập nhật | QĐ-MGR04 | Lưu thông tin nhà cung cấp phục vụ Direct Goods Receipt. |
-| MGR-B04 | Nhập tồn đầu kỳ/Direct Goods Receipt | Lưu trữ | QĐ-MGR05 | Tăng On-hand và tạo Stock Movement. |
-| MGR-B05 | Tính Average Cost | Tính toán | QĐ-MGR06 | Tính giá vốn bình quân gia quyền sau mỗi lần nhập. |
-| MGR-B06 | Issue Part cho Job | Xuất kho | QĐ-MGR07 | Giảm tồn và gắn Stock Movement với Job. |
-| MGR-B07 | Return Part từ Job | Nhập trả | QĐ-MGR08 | Nhập lại lượng phụ tùng chưa sử dụng. |
-| MGR-B08 | Xem tồn và Stock Card | Tra cứu | QĐ-MGR09 | Xem On-hand và lịch sử Stock Movement. |
-| MGR-B9 | Phê duyệt điều chỉnh kho | Phê duyệt | QĐ-MGR10 | Duyệt Stock Adjustment nếu phát sinh. |
-| MGR-B10 | Kiểm tra và đóng Work Order | Kiểm tra/Xử lý | QĐ-MGR11 | Close Work Order sau khi xe đã Release và thỏa điều kiện Closure Gate. |
-| MGR-B11 | Xem báo cáo cơ bản | Tra cứu | QĐ-MGR12 | Xem số lượng dịch vụ, doanh thu và tồn kho. |
-
-**Bảng 1-10: Quy định/công thức – Quản lý dịch vụ**
-
-|     |     |     |     |
-| --- | --- | --- | --- |
-| **Mã** | **Tên quy định** | **Mô tả chi tiết** | **Ghi chú** |
-| QĐ-MGR01 | Dashboard MVP | Hiển thị trạng thái hiện tại của Work Order, Service và Job; chưa yêu cầu real-time hoặc KPI nâng cao. |  |
-| QĐ-MGR02 | Inventory Item | Mỗi item có SKU duy nhất, type Part/Consumable/Chemical/Accessory và một UoM cơ sở. |  |
-| QĐ-MGR03 | Supplier MVP | Supplier chỉ lưu dữ liệu cơ bản; chưa có RFQ, hợp đồng hoặc công nợ nhà cung cấp. |  |
-| QĐ-MGR04 | Goods Receipt | Receipt phải lưu supplier/reference, item, quantity, unit purchase cost và received date; tăng tồn và tạo Stock Movement. |  |
-| QĐ-MGR05 | Average Cost | Giá vốn mới được tính theo Moving Weighted Average; không thay đổi giá bán snapshot của Quotation đã duyệt. | CT-MGR01 |
-| QĐ-MGR06 | Issue to Job | Không cho xuất vượt On-hand; mọi lần xuất tạo Stock Movement và lưu unit cost tại thời điểm xuất. | CT-MGR02 |
-| QĐ-MGR07 | Return from Job | Số lượng trả không vượt số lượng đã issue chưa dùng; nhập lại theo unit cost của movement gốc. |  |
-| QĐ-MGR08 | Không sửa tồn trực tiếp | On-hand được tổng hợp từ Stock Movement; thay đổi tồn phải qua nghiệp vụ nhập, xuất, trả hoặc adjustment được phê duyệt. |  |
-| QĐ-MGR9 | Stock Adjustment | Adjustment phải được ghi thành Stock Movement và lưu thông tin người thực hiện/lý do điều chỉnh. |  |
-| QĐ-MGR10 | Closure Gate | Chỉ Close Work Order khi xe đã Release, không còn Job/Rework mở và Invoice ở trạng thái PAID. |  |
-| QĐ-MGR11 | Báo cáo | Số liệu được tổng hợp từ giao dịch và hỗ trợ lọc theo khoảng ngày cơ bản. |  |
-
-### Quản trị viên (Administrator) – ADM
-
-_Bảng 1-11: Yêu cầu chức năng nghiệp vụ – Quản trị viên (Administrator)_
-
-| **Mã** | **Công việc** | **Loại** | **Rule** | **Mô tả** |
-| --- | --- | --- | --- | --- |
-| ADM-B01 | Quản lý User/Role | Lưu trữ/Cập nhật | QĐ-ADM01 | Tạo, khóa và gán quyền; đặt lại mật khẩu tạm thời cho nhân viên. |
-| ADM-B02 | Quản lý Employee/Skill | Lưu trữ/Cập nhật | QĐ-ADM02 | Technician, Detailer, QC Staff và kỹ năng chuyên môn. |
-| ADM-B03 | Quản lý Service Category/Template | Lưu trữ/Cập nhật | QĐ-ADM03 | Repair, Maintenance, Wash, Detailing. |
-| ADM-B04 | Quản lý Job Type/Template | Lưu trữ/Cập nhật | QĐ-ADM04 | Loại công việc, mẫu job mặc định và đơn giá giờ công. |
-| ADM-B05 | Quản lý Pricing Policy | Lưu trữ/Cập nhật | QĐ-ADM05 | Fixed, vehicle-size, labour/parts. |
-| ADM-B06 | Quản lý Inspection/QC Template | Lưu trữ/Cập nhật | QĐ-ADM06 | Checklist cơ bản theo Service. |
-| ADM-B07 | Quản lý UoM/Reason/Terms | Lưu trữ/Cập nhật | QĐ-ADM07 | Danh mục dùng chung trong toàn hệ thống. |
-
-_Bảng 1-12: Quy định/công thức – Quản trị viên (Administrator)_
-
-| **Mã** | **Tên quy định** | **Mô tả chi tiết** | **Ghi chú** |
-| --- | --- | --- | --- |
-| QĐ-ADM01 | RBAC | User có thể có nhiều role; quyền được kiểm tra ở giao diện và API; Admin đặt lại mật khẩu tạm thời cho nhân viên qua email. |  |
-| QĐ-ADM02 | Employee | Employee không phải actor nếu không có tài khoản; Employee có Skill và Assignment. |  |
-| QĐ-ADM03 | Service Template | Template Active mới được sử dụng; Work Order Service lưu snapshot dữ liệu quan trọng. |  |
-| QĐ-ADM04 | Job Template | Job Template định nghĩa Job Type, estimated hours, part/material và QC yêu cầu. |  |
-| QĐ-ADM05 | Labour Rate | Mỗi Job Type có hourly rate; rate dùng trong Quotation được snapshot. | CT-PRICE01 |
-| QĐ-ADM06 | Pricing Policy MVP | Hỗ trợ fixed package, vehicle-size-based và labour/parts; custom line phải lưu lý do. |  |
-| QĐ-ADM07 | Template checklist | Inspection/QC item có tên, bắt buộc/không bắt buộc và thứ tự hiển thị. |  |
-| QĐ-ADM08 | Master data | Không xóa vật lý danh mục đã được giao dịch tham chiếu; chuyển Inactive. |  |
+> **Lưu ý:** Chi tiết toàn bộ Yêu cầu chức năng nghiệp vụ đã được chuẩn hóa và chuyển sang file [UseCase.md](./UseCase.md). Tài liệu UseCase.md là Single Source of Truth cho tất cả các Use Case (từ UC-01 đến UC-40) phân bổ cho 6 Actor chính.
 
 #### 1.2.1.2. Công thức tính giá và tồn kho
 
@@ -307,7 +132,7 @@ _Bảng 1-13: Yêu cầu chức năng hệ thống_
 | FR-12 | Inventory Basic | Item/Supplier, direct receipt, moving average cost, issue/return theo Job và stock card. | Must |
 | FR-13 | Job Execution | Start/Complete, ghi result và Used Part. | Must |
 | FR-14 | QC & Rework Basic | Checklist Pass/Fail và tạo Rework Job đơn giản. | Must |
-| FR-15 | Billing & Payment Basic | Hỗ trợ Billing Request, tích hợp Payment gateway, tạo/phát hành Invoice và quản lý Payment tại Front Desk. Hỗ trợ Manual Payment và QR Payment. Payment thành công tự động ghi nhận Financial Clearance và thông báo cho Cố vấn dịch vụ. | Must |
+| FR-15 | Billing & Payment Basic | Hỗ trợ quản lý hóa đơn (Invoice) từ trạng thái BILLING_REQUESTED, tích hợp Payment gateway, phát hành Invoice và quản lý Payment tại Front Desk. Hỗ trợ Manual Payment và QR Payment. Payment thành công tự động ghi nhận Financial Clearance và thông báo cho Cố vấn dịch vụ. | Must |
 | FR-16 | Release, Closure & History | Release Gate, bàn giao, Close Work Order và cập nhật Service History. | Must |
 | FR-17 | Basic Dashboard & Report | Danh sách trạng thái, doanh thu dịch vụ và tồn kho theo khoảng ngày. | Should |
 | FR-18 | PDF/Export Basic | In hoặc xuất Quotation, Invoice và Release Record ở mức cơ bản. | Should |
@@ -360,7 +185,7 @@ Sau khi Job hoàn thành, Service Advisor ghi QC Result. QC Fail không được
 
 ### 1.3.8. Invoice và Payment
 
-Service Advisor gửi Billing Request; Front Desk tạo Draft Invoice từ các chargeable line, Issue Invoice và ghi một full payment. Payment thành công tự động ghi nhận Financial Clearance và thông báo cho Cố vấn dịch vụ để bàn giao xe.
+Khi Work Order đủ điều kiện (Job Completed, QC Pass), Cố vấn dịch vụ chuyển trạng thái Work Order sang `BILLING_REQUESTED`. Front Desk tạo Draft Invoice từ các chargeable line, Issue Invoice và ghi nhận thanh toán. Payment thành công tự động ghi nhận Financial Clearance và thông báo cho Cố vấn dịch vụ để chuẩn bị bàn giao xe.
 
 ### 1.3.9. Release và Closure
 
@@ -397,7 +222,7 @@ Nhân viên quầy tiếp nhận và thu ngân cơ bản. Actor này không tạ
 
 ### 2.2.4. Cố vấn dịch vụ (Service Advisor)
 
-Actor vận hành chính: tạo Work Order, Inspection/Finding, Job, Labour/Part planning, Quotation, Execution, QC, Billing Request và Release. Tài khoản do Admin cấp.
+Actor vận hành chính: tạo Work Order, Inspection/Finding, Job, Labour/Part planning, Quotation, Execution, QC, Yêu cầu thanh toán (chuyển trạng thái BILLING_REQUESTED) và Release. Tài khoản do Admin cấp.
 
 ### 2.2.5. Quản lý dịch vụ (Service Manager)
 
@@ -409,94 +234,8 @@ Quản lý tài khoản, phân quyền, cấp và đặt lại mật khẩu cho 
 
 ## 2.3. Danh sách Use Case baseline
 
-Các Use Case dưới đây tạo thành baseline bắt buộc của Tiểu luận chuyên ngành. Tài liệu Khóa luận tốt nghiệp chỉ liệt kê Use Case NEW hoặc EXTENDED so với danh sách này.
-
-### 2.3.1. Khách vãng lai (Guest)
-
-_Bảng 2-1b: Use Case baseline – Khách vãng lai (Guest)_
-
-| **UC ID** | **Use Case** | **Ưu tiên** | **Mô tả ngắn** |
-| --- | --- | --- | --- |
-| UC-01 | **Xem thông tin và danh mục dịch vụ (Browse Website)** | Must | Xem trang chủ, danh mục dịch vụ, bảng giá tham khảo và FAQ |
-| UC-02 | **Đăng ký tài khoản (Register)** | Must | Tạo tài khoản Customer mới bằng email và mật khẩu |
-| UC-03 | **Đăng nhập (Login)** | Must | Đăng nhập để truy cập hệ thống theo vai trò |
-
-### 2.3.2. Khách hàng (Customer)
-
-_Bảng 2-2: Use Case baseline – Khách hàng (Customer)_
-
-| **UC ID** | **Use Case** | **Ưu tiên** | **Mô tả ngắn** |
-| --- | --- | --- | --- |
-| UC-04 | **Đăng xuất (Logout)** | Must | Kết thúc phiên làm việc; áp dụng cho tất cả vai trò |
-| UC-05 | **Đặt lại mật khẩu (Reset Password)** | Must | Tự đặt lại mật khẩu qua OTP email; chỉ dành cho Customer |
-| UC-06 | **Cập nhật hồ sơ cá nhân (Update Profile)** | Must | Cập nhật họ tên, số điện thoại và địa chỉ |
-| UC-07 | **Quản lý phương tiện (Manage Vehicles)** | Must | Thêm, sửa, vô hiệu hóa Vehicle |
-| UC-08 | **Quản lý lịch hẹn (Manage Appointments)** | Must | Tạo, dời, hủy lịch hẹn |
-| UC-09 | **Xác nhận tiếp nhận xe (Confirm Vehicle Check-in)** | Must | Xác nhận tình trạng xe và phạm vi tiếp nhận |
-| UC-10 | **Theo dõi tiến độ sửa chữa (Track Repair Progress)** | Must | Theo dõi trạng thái Work Order/Service/Finding |
-| UC-11 | **Phản hồi báo giá (Respond to Quotation)** | Must | Xem, Approve hoặc Reject Quotation |
-| UC-12 | **Xem hóa đơn (View Invoice)** | Must | Xem Invoice, số tiền cần thanh toán và trạng thái Payment |
-| UC-13 | **Xác nhận nhận xe (Confirm Vehicle Release)** | Must | Xác nhận bàn giao và xem Service History |
-
-### 2.3.3. Nhân viên quầy dịch vụ (Front Desk Staff)
-
-_Bảng 2-3: Use Case baseline – Nhân viên quầy dịch vụ (Front Desk Staff)_
-
-| **UC ID** | **Use Case** | **Ưu tiên** | **Mô tả ngắn** |
-| --- | --- | --- | --- |
-| UC-14 | **Quản lý lịch hẹn (Manage Appointments)** | Must | Tạo thay Customer, Confirm, Reschedule, Cancel |
-| UC-15 | **Tiếp nhận xe (Receive Vehicle)** | Must | Mark Arrived, Walk-in, Tow-in; đưa xe vào Intake Queue |
-| UC-16 | **Quản lý hồ sơ khách hàng (Manage Customer Profile)** | Must | Tìm, tạo, cập nhật Customer/Vehicle cơ bản |
-| UC-17 | **Xem phiếu công việc (View Work Order)** | Must | Tra cứu trạng thái để hỗ trợ khách |
-| UC-18 | **Xử lý hóa đơn (Process Invoice)** | Must | Nhận Billing Request, tạo Draft Invoice, phát hành Invoice |
-| UC-19 | **Xử lý thanh toán (Process Payment)** | Must | Manual Payment và QR Payment; tự động ghi nhận Financial Clearance sau khi thanh toán thành công |
-
-### 2.3.4. Cố vấn dịch vụ (Service Advisor)
-
-_Bảng 2-4: Use Case baseline – Cố vấn dịch vụ (Service Advisor)_
-
-| **UC ID** | **Use Case** | **Ưu tiên** | **Mô tả ngắn** |
-| --- | --- | --- | --- |
-| UC-20 | **Tạo phiếu công việc (Create Work Order)** | Must | Xem Intake Queue, tạo Work Order |
-| UC-21 | **Ghi nhận tình trạng xe (Record Vehicle Condition)** | Must | Ghi mileage, fuel, complaint, belongings, condition, evidence |
-| UC-22 | **Quản lý dịch vụ (Manage Services)** | Must | Thêm, sửa, xóa Service; áp dụng Service Template |
-| UC-23 | **Kiểm tra xe (Inspect Vehicle)** | Must | Đặt marker hư hỏng trên sơ đồ xe 2D (Car Diagram UI), tự động tạo dòng Finding, ghi chú và đính kèm hình ảnh |
-| UC-24 | **Lên kế hoạch công việc (Plan Jobs)** | Must | Tạo Job từ Finding (modal Create Dispatch Jobs), sinh Job từ Template hoặc tạo thủ công |
-| UC-25 | **Khai báo nhân công (Declare Labour)** | Must | Labour line: loại nhân công, kỹ thuật viên, số giờ theo Job |
-| UC-26 | **Khai báo phụ tùng (Declare Parts)** | Must | Planned/Used Quantity, Part/Material theo Job |
-| UC-27 | **Quản lý báo giá (Manage Quotation)** | Must | Tính giá, tạo, gửi, xử lý Approval và freeze snapshot |
-| UC-28 | **Thực hiện công việc (Execute Job)** | Must | Start, thực hiện, ghi Result/Used Part, Complete |
-| UC-29 | **Kiểm định chất lượng (Quality Inspection)** | Must | QC checklist, Pass/Fail, tạo Rework khi Fail |
-| UC-30 | **Gửi yêu cầu thanh toán (Request Payment)** | Must | Gửi Billing Request sang Front Desk khi đủ điều kiện |
-| UC-31 | **Bàn giao xe (Release Vehicle)** | Must | Kiểm tra Release Gate và ghi nhận bàn giao xe |
-
-### 2.3.5. Quản lý dịch vụ (Service Manager)
-
-_Bảng 2-6: Use Case baseline – Quản lý dịch vụ (Service Manager)_
-
-| **UC ID** | **Use Case** | **Ưu tiên** | **Mô tả ngắn** |
-| --- | --- | --- | --- |
-| UC-32 | **Theo dõi hoạt động xưởng (Monitor Workshop)** | Must | Dashboard, theo dõi WO/Service/Job |
-| UC-33 | **Quản lý danh mục phụ tùng (Manage Parts Catalog)** | Must | Quản lý Part/Material Item (SKU, UoM, giá) |
-| UC-34 | **Nhập kho (Receive Inventory)** | Must | Opening Stock, Direct Goods Receipt, tự tính Average Cost |
-| UC-35 | **Xuất kho theo công việc (Issue Stock by Job)** | Must | Issue Part to Job, Return Part from Job |
-| UC-36 | **Phê duyệt điều chỉnh tồn kho (Approve Inventory Adjustment)** | Should | Duyệt Stock Adjustment |
-| UC-37 | **Đóng phiếu công việc (Close Work Order)** | Must | Kiểm tra Closure Gate và Close WO |
-| UC-38 | **Xem báo cáo vận hành (View Operational Report)** | Should | Service, revenue, inventory report |
-
-### 2.3.6. Quản trị viên (Administrator)
-
-_Bảng 2-7: Use Case baseline – Quản trị viên (Administrator)_
-
-| **UC ID** | **Use Case** | **Ưu tiên** | **Mô tả ngắn** |
-| --- | --- | --- | --- |
-| UC-39 | **Quản lý tài khoản (Manage Accounts)** | Must | Tạo, khóa User, gán Role, đặt lại mật khẩu tạm thời |
-| UC-40 | **Quản lý nhân viên (Manage Employees)** | Must | Employee, Skill; đặt lại mật khẩu nhân viên |
-| UC-41 | **Quản lý danh mục dịch vụ (Manage Service Catalog)** | Must | Service Category, Service Template |
-| UC-42 | **Cấu hình loại công việc (Configure Job Types)** | Must | Job Type, Job Template, Labour Rate |
-| UC-43 | **Quản lý chính sách tính giá (Manage Pricing Policies)** | Must | Fixed, Vehicle-size, Labour/Parts |
-| UC-44 | **Quản lý mẫu kiểm tra (Manage Inspection Templates)** | Must | Inspection Checklist, QC Checklist |
-| UC-45 | **Quản lý danh mục (Manage System Catalog)** | Must | UoM, Reason, Terms và danh mục dùng chung |
+> **Lưu ý:** Danh sách Use Case baseline chi tiết đã được đồng bộ và cập nhật sang file [UseCase.md](./UseCase.md).
+> Vui lòng tham khảo file `UseCase.md` để xem trọn bộ 40 Use Case chuẩn của hệ thống, bao gồm chi tiết các luồng chính và luồng thay thế cho Guest, Customer, Front Desk Staff, Service Advisor, Service Manager, và Administrator.
 
 ## 2.4. Tiêu chí hoàn thành Tiểu luận
 

@@ -19,10 +19,10 @@ async function main() {
   console.log('✅ Database cleared.');
 
   // 2. CREATE ROLES
-  const rolesData = ['ADMIN', 'MANAGER', 'DESK STAFF', 'QC', 'CUSTOMER'];
+  const rolesData = ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA', 'CUSTOMER'];
   const createdRoles = [];
   for (const r of rolesData) createdRoles.push(await prisma.role.create({ data: { name: r } }));
-  const [roleAdmin, roleManager, roleDeskStaff, roleQC, roleCustomer] = createdRoles;
+  const [roleAdmin, roleManager, roleDeskStaff, roleSA, roleCustomer] = createdRoles;
 
   // 3. CREATE SYSTEM CATALOGS
   const uomCatalog = await prisma.systemCatalog.create({ data: { catalog_type: CatalogType.UOM, name: 'Cái' } });
@@ -44,14 +44,18 @@ async function main() {
 
   const staffs = [];
   const positions = [EmployeePosition.ADVISOR, EmployeePosition.QC_STAFF, EmployeePosition.TECHNICIAN, EmployeePosition.DETAILER, EmployeePosition.OTHER];
-  const staffRoles = [roleAdmin, roleManager, roleDeskStaff, roleQC, roleDeskStaff];
-  for (let i = 1; i <= 10; i++) {
+  const staffRoles = [roleAdmin, roleManager, roleDeskStaff, roleSA, roleDeskStaff];
+  const rolePrefixes = ['admin', 'manager', 'deskstaff', 'sa', 'staff'];
+  
+  for (let i = 0; i < 10; i++) {
+    const roleObj = staffRoles[i % staffRoles.length];
+    const prefix = rolePrefixes[i % rolePrefixes.length];
     staffs.push(await prisma.user.create({
       data: {
-        email: `staff${i}@carservice.com`, phone: `08111111${i.toString().padStart(2, '0')}`,
-        password_hash: passwordHash, full_name: `Nhân Viên ${i}`,
-        roles: { create: { role_id: staffRoles[i % staffRoles.length].id } },
-        employee: { create: { full_name: `Nhân Viên ${i}`, position: positions[i % positions.length] } }
+        email: `${prefix}${Math.floor(i / 5) + 1}@carservice.com`, phone: `08111111${(i + 1).toString().padStart(2, '0')}`,
+        password_hash: passwordHash, full_name: `Nhân Viên ${i + 1}`,
+        roles: { create: { role_id: roleObj.id } },
+        employee: { create: { full_name: `Nhân Viên ${i + 1}`, position: positions[i % positions.length] } }
       },
       include: { employee: true }
     }));
