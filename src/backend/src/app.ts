@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import uploadRoutes from './routes/upload.routes';
 import authRoutes from './routes/auth.routes';
+import customerRoutes from './routes/customer.routes';
 
 const app = express();
 
@@ -22,5 +23,6 @@ app.get('/', (req: Request, res: Response) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/customers', customerRoutes);
 
 export default app;
