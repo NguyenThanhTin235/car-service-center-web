@@ -3,50 +3,71 @@
 ```plantuml
 @startuml
 skinparam style strictuml
-actor "Guest" as user
-participant "Frontend UI" as ui
+actor "Guest / User" as user
+participant "Frontend (Next.js)" as ui
 participant "API Gateway (Express)" as gateway
 participant "Auth Controller" as ctrl
 participant "Auth Service" as svc
 database "Database (Prisma)" as db
 
-user -> ui: Nhập Email và Password\nNhấn "Đăng nhập"
+user -> ui: Nhập email và mật khẩu\nNhấn "Đăng nhập"
 activate ui
+
 ui -> gateway: POST /api/auth/login\n{ email, password }
 activate gateway
 
-gateway -> ctrl: Chuyển tiếp Request
+gateway -> gateway: Joi validate request body
+alt Validation failed
+    gateway --> ui: 400 Bad Request\n{ message: "..." }
+    ui --> user: Hiển thị lỗi validation
+else Validation passed
+
+gateway -> ctrl: login(email, password)
 activate ctrl
 
-ctrl -> svc: login(email, password)
+ctrl -> svc: login(email, passwordPlain)
 activate svc
 
-svc -> db: Tìm User theo email
+svc -> db: findUnique({ where: { email }, include: { roles } })
 activate db
-db --> svc: Trả về User (kèm password_hash và roles)
+db --> svc: User record kèm roles
 deactivate db
 
-alt User không tồn tại hoặc Mật khẩu sai
-    svc --> ctrl: throw UnauthorizedError
+alt User không tồn tại
+    svc --> ctrl: throw Error("Email hoặc mật khẩu không đúng")
     ctrl --> gateway: 401 Unauthorized
-    gateway --> ui: Lỗi: "Email hoặc mật khẩu không đúng"
-    ui --> user: Hiển thị thông báo lỗi
-else Xác thực thành công
-    svc -> svc: bcrypt.compare(password, password_hash)
-    svc -> svc: jwt.sign(payload)
-    svc --> ctrl: { token, user: { id, email, fullName, roles } }
-    deactivate svc
-    
-    ctrl -> ctrl: Set HttpOnly Cookie (token)
-    ctrl --> gateway: 200 OK\nCookie: jwt=token
-    deactivate ctrl
-    
-    gateway --> ui: 200 OK (User data)
-    deactivate gateway
-    
-    ui -> ui: Phân tích roles và gọi helper roleRedirect
-    ui --> user: Điều hướng (Redirect) tới Dashboard tương ứng
+    gateway --> ui: Lỗi xác thực
+    ui --> user: Hiển thị "Email hoặc mật khẩu không đúng"
+else User bị vô hiệu hóa (is_active = false)
+    svc --> ctrl: throw Error("Tài khoản đã bị vô hiệu hóa")
+    ctrl --> gateway: 401 Unauthorized
+    gateway --> ui: Lỗi tài khoản
+    ui --> user: Hiển thị "Tài khoản đã bị vô hiệu hóa"
+else User tồn tại và active
+    svc -> svc: bcrypt.compare(password, user.password_hash)
+    alt Mật khẩu sai
+        svc --> ctrl: throw Error("Email hoặc mật khẩu không đúng")
+        ctrl --> gateway: 401 Unauthorized
+        gateway --> ui: Lỗi xác thực
+        ui --> user: Hiển thị "Email hoặc mật khẩu không đúng"
+    else Mật khẩu đúng
+        svc -> svc: generateToken(payload) → JWT (7 ngày)
+        svc --> ctrl: { token, user: { id, email, fullName, roles } }
+        deactivate svc
+
+        ctrl -> ctrl: res.cookie("jwt", token, { httpOnly, secure, sameSite })
+        ctrl --> gateway: 200 OK\n{ status: "success", data: { token, user } }
+        deactivate ctrl
+        gateway --> ui: 200 OK + Set-Cookie: jwt=<token>
+        deactivate gateway
+
+        ui -> ui: dispatch(setCredentials({ user }))
+        ui -> ui: getDashboardPathByRole(user.roles)
+        ui --> user: Chuyển hướng đến Dashboard\n(Customer / Advisor / Manager / Admin)
+    end
 end
+end
+
 deactivate ui
 
 @enduml

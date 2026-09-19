@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useDispatch } from 'react-redux';
 import api from '@/lib/axios';
 import { setCredentials } from '@/store/slices/authSlice';
@@ -54,7 +55,7 @@ export default function LoginPage() {
       {/* Minimal Brand Header */}
       <header className="bg-surface-container-lowest shadow-sm docked full-width top-0 z-30 sticky">
         <div className="flex justify-between items-center w-full px-6 py-3 max-w-7xl mx-auto">
-          <a className="flex items-center gap-3 group focus:outline-none" href="#">
+          <Link className="flex items-center gap-3 group focus:outline-none" href="/home">
             <div className="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center text-on-primary shadow-sm group-hover:scale-105 transition-transform duration-200">
               <span className="material-symbols-outlined text-[24px]">directions_car</span>
             </div>
@@ -62,7 +63,7 @@ export default function LoginPage() {
               <span className="text-headline-sm font-bold text-primary tracking-tight">AutoCare Pro</span>
               <span className="text-body-sm text-on-surface-variant -mt-0.5">Hệ thống Dịch vụ Ô tô Thông minh</span>
             </div>
-          </a>
+          </Link>
           <nav className="hidden md:flex items-center space-x-6">
             <a className="text-on-surface-variant hover:text-on-surface transition-colors text-label-md" href="#">Tra cứu dịch vụ</a>
             <a className="text-on-surface-variant hover:text-on-surface transition-colors text-label-md" href="#">Bảng giá bảo dưỡng</a>
@@ -160,9 +161,9 @@ export default function LoginPage() {
                   <input className="h-4 w-4 rounded border-outline-variant text-primary-container focus:ring-primary-container/30 cursor-pointer" type="checkbox" />
                   <span className="text-body-md text-on-surface-variant">Ghi nhớ đăng nhập</span>
                 </label>
-                <a className="text-label-md text-primary-container hover:underline transition-colors" href="#">
+                <Link className="text-label-md text-primary-container hover:underline transition-colors" href="/forgot-password">
                   Quên mật khẩu?
-                </a>
+                </Link>
               </div>
 
               {/* Primary Submit Action */}
@@ -177,6 +178,15 @@ export default function LoginPage() {
                 </button>
               </div>
             </form>
+          </div>
+
+            {/* Register link */}
+            <div className="mt-6 text-center text-body-md text-on-surface-variant">
+              Chưa có tài khoản?{' '}
+              <Link href="/register" className="font-semibold text-primary-container hover:underline transition-colors">
+                Đăng ký ngay
+              </Link>
+            </div>
           </div>
         </div>
       </main>
