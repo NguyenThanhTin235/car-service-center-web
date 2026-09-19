@@ -1,10 +1,22 @@
 import app from './app';
 import dotenv from 'dotenv';
+import { connectRedis } from './utils/redis.util';
 
 dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+const start = async () => {
+  // Connect Redis
+  await connectRedis();
+
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+};
+
+start().catch((err) => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
 });
+
