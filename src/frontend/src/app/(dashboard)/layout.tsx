@@ -7,7 +7,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="bg-surface text-on-surface font-body-md text-body-md min-h-screen flex flex-col antialiased">
       <SideNavBar />
       <TopNavBar />
-      <main className="ml-[16rem] mt-14 p-6 flex-1 bg-surface flex flex-col gap-6">
+      <main className="ml-[16rem] mt-[68px] p-6 flex-1 bg-surface flex flex-col gap-6">
         {children}
       </main>
     </div>

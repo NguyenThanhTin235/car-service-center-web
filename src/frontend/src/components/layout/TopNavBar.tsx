@@ -14,7 +14,7 @@ export default function TopNavBar() {
   else if (pathname.includes('/billing')) pageName = 'Báo giá & Hóa đơn';
 
   return (
-    <header className="fixed top-0 right-0 left-64 h-14 z-30 bg-surface-container-lowest dark:bg-inverse-surface border-b border-outline-variant dark:border-outline shadow-sm flex items-center justify-between px-6">
+    <header className="fixed top-0 right-0 left-64 h-[68px] z-30 bg-surface-container-lowest dark:bg-inverse-surface border-b border-outline-variant dark:border-outline shadow-sm flex items-center justify-between px-6">
       {/* Left: Page Context & Global Search */}
       <div className="flex items-center gap-4 flex-1 max-w-xl">
         <button

@@ -19,7 +19,7 @@ export default function SideNavBar() {
       {/* Top & Navigation Cluster */}
       <div className="flex flex-col h-full overflow-y-auto">
         {/* Brand Header */}
-        <div className="p-4 border-b border-outline-variant flex items-center gap-3">
+        <div className="h-[68px] px-4 border-b border-outline-variant flex items-center gap-3 shrink-0">
           <div className="w-10 h-10 rounded-xl bg-primary-container text-on-primary flex items-center justify-center shadow-sm">
             <span className="material-symbols-outlined text-[24px]">car_repair</span>
           </div>

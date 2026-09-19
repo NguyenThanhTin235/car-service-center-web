@@ -6,6 +6,8 @@ import cookieParser from 'cookie-parser';
 import uploadRoutes from './routes/upload.routes';
 import authRoutes from './routes/auth.routes';
 import customerRoutes from './routes/customer.routes';
+import appointmentRoutes from './routes/appointment.routes';
+import serviceRoutes from './routes/service.routes';
 
 const app = express();
 
@@ -24,5 +26,7 @@ app.get('/', (req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api/services', serviceRoutes);
 
 export default app;
