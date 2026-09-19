@@ -5,12 +5,29 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import { getDashboardPathByRole } from '@/utils/roleRedirect';
+
 export default function RegisterPage() {
   const router = useRouter();
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      const redirectPath = getDashboardPathByRole(user.roles);
+      router.push(redirectPath);
+    }
+  }, [isAuthenticated, user, router]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  if (isAuthenticated) {
+    return null;
+  }
 
   const [form, setForm] = useState({
     fullName: '',

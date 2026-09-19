@@ -1,7 +1,8 @@
-import { createClient } from 'redis';
+import Redis from 'ioredis';
 
-const redisClient = createClient({
-  url: process.env.REDIS_URL || 'redis://localhost:6379',
+const redisClient = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: 3,
+  lazyConnect: true,
 });
 
 redisClient.on('error', (err) => {
@@ -13,7 +14,7 @@ redisClient.on('connect', () => {
 });
 
 export const connectRedis = async (): Promise<void> => {
-  if (!redisClient.isOpen) {
+  if (redisClient.status !== 'ready' && redisClient.status !== 'connecting') {
     await redisClient.connect();
   }
 };
@@ -22,7 +23,7 @@ export const connectRedis = async (): Promise<void> => {
  * Store a value in Redis with TTL (in seconds)
  */
 export const setCache = async (key: string, value: string, ttlSeconds: number): Promise<void> => {
-  await redisClient.set(key, value, { EX: ttlSeconds });
+  await redisClient.set(key, value, 'EX', ttlSeconds);
 };
 
 /**

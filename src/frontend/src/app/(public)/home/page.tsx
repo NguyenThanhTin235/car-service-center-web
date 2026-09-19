@@ -2,7 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import api from '@/lib/axios';
+import LogoutButton from '@/components/shared/LogoutButton';
+import { getDashboardPathByRole } from '@/utils/roleRedirect';
 
 interface ServiceCategory {
   id: number;
@@ -48,6 +52,7 @@ function formatPrice(price: string | number) {
 }
 
 export default function HomePage() {
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [services, setServices] = useState<ServiceTemplate[]>([]);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
@@ -95,18 +100,33 @@ export default function HomePage() {
             <a href="#contact" className="text-sm text-[#65676B] hover:text-[#0866FF] transition-colors font-medium">Liên hệ</a>
           </nav>
           <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="text-sm font-semibold text-[#0866FF] hover:underline transition-colors"
-            >
-              Đăng nhập
-            </Link>
-            <Link
-              href="/register"
-              className="text-sm font-semibold bg-[#0866FF] text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-            >
-              Đăng ký miễn phí
-            </Link>
+            {isAuthenticated && user ? (
+              <div className="flex items-center gap-3">
+                <Link
+                  href={getDashboardPathByRole(user.roles)}
+                  className="flex items-center gap-1.5 text-sm font-semibold text-[#0866FF] hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <span className="material-symbols-outlined text-lg">account_circle</span>
+                  <span>{user.fullName || 'Tài khoản'}</span>
+                </Link>
+                <LogoutButton className="text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1" />
+              </div>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-sm font-semibold text-[#0866FF] hover:underline transition-colors"
+                >
+                  Đăng nhập
+                </Link>
+                <Link
+                  href="/register"
+                  className="text-sm font-semibold bg-[#0866FF] text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                >
+                  Đăng ký miễn phí
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -134,8 +154,8 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link
-                href="/register"
-                id="cta-register"
+                href="/login"
+                id="cta-login"
                 className="flex items-center justify-center gap-2 bg-yellow-400 text-[#050505] font-bold px-8 py-4 rounded-xl hover:bg-yellow-300 transition-colors shadow-lg text-base"
               >
                 <span className="material-symbols-outlined">calendar_month</span>
@@ -267,7 +287,7 @@ export default function HomePage() {
                     </div>
 
                     <Link
-                      href="/register"
+                      href="/login"
                       className="mt-4 w-full flex items-center justify-center gap-1.5 bg-[#0866FF] text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       <span className="material-symbols-outlined text-sm">calendar_month</span>

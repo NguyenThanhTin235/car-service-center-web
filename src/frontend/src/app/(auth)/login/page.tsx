@@ -8,15 +8,43 @@ import api from '@/lib/axios';
 import { setCredentials } from '@/store/slices/authSlice';
 import { getDashboardPathByRole } from '@/utils/roleRedirect';
 
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
+
 export default function LoginPage() {
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
 
   const router = useRouter();
   const dispatch = useDispatch();
+
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      const redirectPath = getDashboardPathByRole(user.roles);
+      router.push(redirectPath);
+    }
+  }, [isAuthenticated, user, router]);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('registered') === 'true') {
+        setSuccess('Đăng ký tài khoản thành công! Vui lòng đăng nhập.');
+      } else if (params.get('reset') === 'true') {
+        setSuccess('Đặt lại mật khẩu thành công! Vui lòng đăng nhập bằng mật khẩu mới.');
+      }
+    }
+  }, []);
+
+  if (isAuthenticated) {
+    return null;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +120,13 @@ export default function LoginPage() {
               <h1 className="text-headline-lg font-bold text-on-surface">Đăng nhập</h1>
               <p className="text-body-md text-on-surface-variant mt-1.5">Chào mừng bạn quay lại Car Service Center</p>
             </div>
+
+            {success && (
+              <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-700 text-body-sm font-medium border border-green-200 flex items-center gap-2">
+                <span className="material-symbols-outlined text-green-600 text-lg">check_circle</span>
+                <span>{success}</span>
+              </div>
+            )}
 
             {error && (
               <div className="mb-4 p-3 rounded-lg bg-error-container text-error text-body-sm font-medium">
@@ -188,8 +223,7 @@ export default function LoginPage() {
               </Link>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
 
       {/* Legal & Service Center Standard Footer */}
       <div className="w-full bg-surface-container-lowest/60 border-t border-outline-variant/30 py-3 px-4 text-center z-10 relative">

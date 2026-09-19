@@ -3,8 +3,8 @@ import nodemailer from 'nodemailer';
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
+    user: process.env.GMAIL_USER || process.env.EMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS,
   },
 });
 
@@ -47,7 +47,7 @@ export const sendOtpEmail = async (to: string, otp: string, purpose: 'register' 
   `;
 
   await transporter.sendMail({
-    from: `"AutoCare Pro" <${process.env.GMAIL_USER}>`,
+    from: `"AutoCare Pro" <${process.env.GMAIL_USER || process.env.EMAIL_USER}>`,
     to,
     subject,
     html,

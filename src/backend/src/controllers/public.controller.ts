@@ -23,7 +23,8 @@ export class PublicController {
       });
 
       res.json({ status: 'success', data: categories });
-    } catch {
+    } catch (err) {
+      console.error('[PublicController] getServiceCategories error:', err);
       res.status(500).json({ status: 'error', message: 'Không thể tải danh mục dịch vụ.' });
     }
   }
@@ -69,7 +70,8 @@ export class PublicController {
       }));
 
       res.json({ status: 'success', data: formatted });
-    } catch {
+    } catch (err) {
+      console.error('[PublicController] getServiceTemplates error:', err);
       res.status(500).json({ status: 'error', message: 'Không thể tải danh sách dịch vụ.' });
     }
   }
