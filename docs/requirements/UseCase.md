@@ -1,7 +1,7 @@
 # ĐẶC TẢ USE CASE – HỆ THỐNG QUẢN LÝ TRUNG TÂM DỊCH VỤ Ô TÔ
 
-> **Phiên bản:** 2.0 – Baseline Tiểu luận chuyên ngành  
-> **Cập nhật:** 2026-09-12
+> **Phiên bản:** 3.0 
+> **Cập nhật:** 2026-09-15
 
 ---
 
@@ -10,12 +10,12 @@
 | Nhóm | UC ID | Số lượng |
 |------|-------|----------|
 | **Khách vãng lai (Guest)** | UC-01 → UC-03 | 3 use case |
-| **Khách hàng (Customer)** | UC-04 → UC-10 | 7 use case |
-| **Nhân viên quầy dịch vụ (Front Desk Staff)** | UC-11 → UC-16 | 6 use case |
-| **Cố vấn dịch vụ (Service Advisor)** | UC-17 → UC-29 | 13 use case |
-| **Quản lý dịch vụ (Service Manager)** | UC-30 → UC-33 | 4 use case |
-| **Quản trị viên (Administrator)** | UC-34 → UC-40 | 7 use case |
-| **Tổng cộng** | **UC-01 → UC-40** | **40 use case** |
+| **Khách hàng (Customer)** | UC-04 → UC-16 | 13 use case |
+| **Nhân viên quầy dịch vụ (Front Desk Staff)** | UC-17 → UC-28 | 12 use case |
+| **Cố vấn dịch vụ (Service Advisor)** | UC-29 → UC-43 | 15 use case |
+| **Quản lý dịch vụ (Service Manager)** | UC-44 → UC-50 | 7 use case |
+| **Quản trị viên (Administrator)** | UC-51 → UC-78 | 28 use case |
+| **Tổng cộng** | **UC-01 → UC-78** | **77 use case** |
 
 ---
 
@@ -59,7 +59,7 @@
 | ------------------ | ------ |
 | **Tên Use case**   | Đăng nhập (Login) |
 | **Mô tả**          | Người dùng đăng nhập vào hệ thống bằng email và mật khẩu để truy cập các chức năng tương ứng với vai trò của mình. |
-| **Đối tượng**      | Khách vãng lai (Guest) |
+| **Đối tượng**      | Tất cả người dùng đã có tài khoản. |
 | **Tiền điều kiện** | Người dùng đã có tài khoản và chưa đăng nhập. |
 | **Hậu điều kiện**  | Thành công: Phiên làm việc được mở, người dùng được chuyển đến trang chủ tương ứng với vai trò.<br>Thất bại: Hệ thống thông báo lỗi, phiên không được mở. |
 | **Luồng cơ bản**   | 1. Người dùng truy cập trang đăng nhập.<br>2. Người dùng nhập địa chỉ email và mật khẩu.<br>3. Người dùng nhấn **Đăng nhập**.<br>4. Hệ thống xác thực thông tin và mở phiên làm việc.<br>5. Hệ thống chuyển người dùng đến trang chủ tương ứng với vai trò. |
@@ -117,40 +117,129 @@
 
 ---
 
-## UC-07 – Quản lý phương tiện (Manage Vehicles)
+## UC-07 – Thêm phương tiện (Create Vehicle)
 
 | **Mã Use case**    | UC-07 |
 | ------------------ | ------ |
-| **Tên Use case**   | Quản lý phương tiện (Manage Vehicles) |
-| **Mô tả**          | Khách hàng thêm xe của mình vào hệ thống để sử dụng khi đặt lịch và theo dõi dịch vụ. Mỗi khách hàng có thể quản lý nhiều xe. |
+| **Tên Use case**   | Thêm phương tiện (Create Vehicle) |
+| **Mô tả**          | Tạo mới phương tiện vào hệ thống. |
 | **Đối tượng**      | Khách hàng (Customer) |
-| **Tiền điều kiện** | Khách hàng đã đăng nhập vào hệ thống. |
-| **Hậu điều kiện**  | Thành công: Xe mới được thêm vào danh sách phương tiện của khách hàng.<br>Thất bại: Hệ thống thông báo lỗi, xe không được thêm. |
-| **Luồng cơ bản**   | 1. Khách hàng vào mục **Phương tiện của tôi** và chọn **Thêm xe**.<br>2. Khách hàng nhập thông tin xe: biển số, hãng xe, dòng xe, năm sản xuất, màu sắc và kích thước xe.<br>3. Khách hàng nhấn **Lưu**.<br>4. Hệ thống kiểm tra biển số chưa tồn tại trong hệ thống.<br>5. Hệ thống lưu xe mới và hiển thị trong danh sách phương tiện. |
-| **Luồng thay thế** | **[Cập nhật thông tin xe]** Tại bước 1, thay vì chọn **Thêm xe**, khách hàng chọn xe đã có:<br>1a. Khách hàng chọn xe cần chỉnh sửa từ danh sách.<br>2a. Khách hàng nhấn **Chỉnh sửa**.<br>3a. Khách hàng thay đổi thông tin cần cập nhật.<br>4a. Khách hàng nhấn **Lưu**.<br>5a. Hệ thống lưu thông tin mới và hiển thị thông báo thành công.<br><br>**[Xem lịch sử dịch vụ]** Tại bước 1, khách hàng chọn xe để xem lịch sử:<br>1c. Khách hàng chọn xe cần xem lịch sử từ danh sách.<br>2c. Khách hàng chọn **Lịch sử dịch vụ**.<br>3c. Hệ thống hiển thị danh sách các lần dịch vụ đã hoàn thành: ngày thực hiện, hạng mục, phụ tùng đã thay và tổng chi phí.<br><br>**[Vô hiệu hóa xe]** Tại bước 1, khách hàng chọn xe cần vô hiệu hóa:<br>1b. Khách hàng chọn xe từ danh sách.<br>2b. Khách hàng nhấn **Vô hiệu hóa**.<br>3b. Hệ thống yêu cầu xác nhận; khách hàng nhấn **Xác nhận**.<br>4b. Hệ thống kiểm tra xe không có phiếu công việc đang hoạt động.<br>5b. Hệ thống chuyển trạng thái xe sang Không hoạt động; lịch sử dịch vụ vẫn được giữ lại. |
-| **Luồng ngoại lệ** | Tại bước 4, nếu biển số đã tồn tại trong hệ thống, hệ thống thông báo xe đã được đăng ký và yêu cầu kiểm tra lại. Use case quay lại bước 2.<br><br>Tại bước 4b của luồng Vô hiệu hóa, nếu xe đang có phiếu công việc chưa hoàn thành, hệ thống thông báo không thể vô hiệu hóa và yêu cầu hoàn tất dịch vụ trước. |
+| **Tiền điều kiện** | Có đủ thông tin hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn chức năng thêm mới.<br>2. Nhập các trường thông tin bắt buộc.<br>3. Nhấn Lưu.<br>4. Hệ thống kiểm tra trùng lặp và lưu trữ. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
 
 ---
 
-## UC-08 – Quản lý lịch hẹn (Manage Appointments)
+## UC-08 – Xem phương tiện (View Vehicle)
 
 | **Mã Use case**    | UC-08 |
 | ------------------ | ------ |
-| **Tên Use case**   | Quản lý lịch hẹn (Manage Appointments) |
-| **Mô tả**          | Khách hàng tự đặt lịch hẹn đưa xe đến trung tâm, xem lại các lịch đã đặt, dời lịch hoặc hủy lịch khi cần thiết. |
+| **Tên Use case**   | Xem phương tiện (View Vehicle) |
+| **Mô tả**          | Tìm kiếm và xem danh sách phương tiện. |
 | **Đối tượng**      | Khách hàng (Customer) |
-| **Tiền điều kiện** | Khách hàng đã đăng nhập và có ít nhất một xe trong hệ thống. |
-| **Hậu điều kiện**  | Thành công: Lịch hẹn mới được tạo ở trạng thái **Đã gửi yêu cầu**, chờ nhân viên xác nhận.<br>Thất bại: Hệ thống thông báo lỗi, lịch hẹn không được tạo. |
-| **Luồng cơ bản**   | 1. Khách hàng vào mục **Lịch hẹn** và chọn **Đặt lịch mới**.<br>2. Khách hàng chọn xe, loại dịch vụ mong muốn, ngày giờ đến và ghi chú thêm nếu có.<br>3. Khách hàng nhấn **Xác nhận đặt lịch**.<br>4. Hệ thống tạo lịch hẹn ở trạng thái **Đã gửi yêu cầu** và hiển thị thông báo đặt lịch thành công. |
-| **Luồng thay thế** | **[Dời lịch]** Tại bước 1, thay vì chọn **Đặt lịch mới**, khách hàng chọn lịch hẹn đã có:<br>1a. Khách hàng chọn lịch hẹn cần dời từ danh sách.<br>2a. Khách hàng nhấn **Dời lịch**.<br>3a. Khách hàng chọn ngày giờ mới.<br>4a. Khách hàng nhấn **Xác nhận**.<br>5a. Hệ thống cập nhật lịch hẹn với thời gian mới và thông báo thành công.<br><br>**[Hủy lịch]** Tại bước 1, khách hàng chọn lịch hẹn cần hủy:<br>1b. Khách hàng chọn lịch hẹn từ danh sách.<br>2b. Khách hàng nhấn **Hủy lịch**.<br>3b. Khách hàng nhập lý do hủy.<br>4b. Khách hàng nhấn **Xác nhận**.<br>5b. Hệ thống cập nhật trạng thái lịch thành **Đã hủy** và ghi lý do. |
-| **Luồng ngoại lệ** | Tại bước 2a của luồng Dời lịch hoặc bước 2b của luồng Hủy lịch, nếu xe đã đến trung tâm hoặc lịch hẹn đã được xử lý, hệ thống thông báo không thể thay đổi và không cho phép thực hiện. |
+| **Tiền điều kiện** | Tài khoản có quyền xem. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Truy cập màn hình quản lý.<br>2. Nhập từ khóa tìm kiếm hoặc lọc.<br>3. Hệ thống hiển thị kết quả.<br>4. Chọn một bản ghi để xem chi tiết. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
 
 ---
 
-
-## UC-09 – Theo dõi tiến độ sửa chữa (Track Repair Progress)
+## UC-09 – Cập nhật phương tiện (Update Vehicle)
 
 | **Mã Use case**    | UC-09 |
+| ------------------ | ------ |
+| **Tên Use case**   | Cập nhật phương tiện (Update Vehicle) |
+| **Mô tả**          | Chỉnh sửa thông tin phương tiện. |
+| **Đối tượng**      | Khách hàng (Customer) |
+| **Tiền điều kiện** | Có phương tiện hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Mở bản ghi cần sửa.<br>2. Thay đổi thông tin.<br>3. Nhấn Cập nhật.<br>4. Hệ thống lưu thay đổi. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-10 – Xóa phương tiện (Delete Vehicle)
+
+| **Mã Use case**    | UC-10 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xóa phương tiện (Delete Vehicle) |
+| **Mô tả**          | Xóa hoặc vô hiệu hóa phương tiện. |
+| **Đối tượng**      | Khách hàng (Customer) |
+| **Tiền điều kiện** | Bản ghi tồn tại. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn bản ghi.<br>2. Nhấn Xóa/Khóa.<br>3. Xác nhận hành động.<br>4. Hệ thống kiểm tra ràng buộc và xử lý (chuyển Inactive hoặc xóa). |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-11 – Đặt lịch hẹn (Create Appointment)
+
+| **Mã Use case**    | UC-11 |
+| ------------------ | ------ |
+| **Tên Use case**   | Đặt lịch hẹn (Create Appointment) |
+| **Mô tả**          | Tạo mới lịch hẹn vào hệ thống. |
+| **Đối tượng**      | Khách hàng (Customer) |
+| **Tiền điều kiện** | Khách hàng có nhu cầu. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Người dùng chọn chức năng thêm mới.<br>2. Nhập thông tin cần thiết.<br>3. Nhấn Xác nhận.<br>4. Hệ thống lưu lịch hẹn và thông báo thành công. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-12 – Xem lịch hẹn (View Appointment)
+
+| **Mã Use case**    | UC-12 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xem lịch hẹn (View Appointment) |
+| **Mô tả**          | Xem chi tiết và danh sách lịch hẹn. |
+| **Đối tượng**      | Khách hàng (Customer) |
+| **Tiền điều kiện** | Tồn tại dữ liệu trong hệ thống. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Người dùng truy cập màn hình danh sách.<br>2. Hệ thống hiển thị danh sách.<br>3. Người dùng chọn xem chi tiết một bản ghi. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-13 – Dời lịch hẹn (Reschedule Appointment)
+
+| **Mã Use case**    | UC-13 |
+| ------------------ | ------ |
+| **Tên Use case**   | Dời lịch hẹn (Reschedule Appointment) |
+| **Mô tả**          | Thay đổi thời gian lịch hẹn. |
+| **Đối tượng**      | Khách hàng (Customer) |
+| **Tiền điều kiện** | Có lịch hẹn hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Mở chi tiết.<br>2. Chọn Thay đổi thời gian.<br>3. Cập nhật ngày giờ mới và lưu.<br>4. Hệ thống cập nhật thời gian. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-14 – Hủy lịch hẹn (Cancel Appointment)
+
+| **Mã Use case**    | UC-14 |
+| ------------------ | ------ |
+| **Tên Use case**   | Hủy lịch hẹn (Cancel Appointment) |
+| **Mô tả**          | Hủy bỏ lịch hẹn chưa thực hiện. |
+| **Đối tượng**      | Khách hàng (Customer) |
+| **Tiền điều kiện** | Có lịch hẹn hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn bản ghi cần hủy.<br>2. Nhấn Hủy.<br>3. Hệ thống đổi trạng thái thành Đã hủy. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-15 – Theo dõi tiến độ sửa chữa (Track Repair Progress)
+
+| **Mã Use case**    | UC-15 |
 | ------------------ | ------ |
 | **Tên Use case**   | Theo dõi tiến độ sửa chữa (Track Repair Progress) |
 | **Mô tả**          | Khách hàng xem trạng thái tổng quát của xe đang được xử lý: đang ở bước nào, hạng mục nào đã xong, hạng mục nào đang thực hiện và các vấn đề phát hiện trên xe mà nhân viên đã chia sẻ. |
@@ -163,9 +252,9 @@
 
 
 
-## UC-10 – Xem hóa đơn (View Invoice)
+## UC-16 – Xem hóa đơn (View Invoice)
 
-| **Mã Use case**    | UC-10 |
+| **Mã Use case**    | UC-16 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem hóa đơn (View Invoice) |
 | **Mô tả**          | Khách hàng xem hóa đơn của phiếu công việc để biết số tiền cần thanh toán, kiểm tra chi tiết các hạng mục và trạng thái đã thanh toán hay chưa. |
@@ -182,24 +271,69 @@
 
 ---
 
-## UC-11 – Quản lý lịch hẹn (Manage Appointments)
+## UC-17 – Đặt lịch hẹn (Create Appointment)
 
-| **Mã Use case**    | UC-11 |
+| **Mã Use case**    | UC-17 |
 | ------------------ | ------ |
-| **Tên Use case**   | Quản lý lịch hẹn (Manage Appointments) |
-| **Mô tả**          | Nhân viên quầy tạo lịch hẹn thay cho khách hàng khi khách gọi điện hoặc đến trực tiếp, xác nhận lịch đã gửi, dời lịch hoặc hủy lịch theo yêu cầu. |
+| **Tên Use case**   | Đặt lịch hẹn (Create Appointment) |
+| **Mô tả**          | Tạo mới lịch hẹn vào hệ thống. |
 | **Đối tượng**      | Nhân viên quầy dịch vụ (Front Desk Staff) |
-| **Tiền điều kiện** | Nhân viên đã đăng nhập. Khách hàng và xe đã tồn tại hoặc được tạo mới trong hệ thống (UC-13). |
-| **Hậu điều kiện**  | Thành công: Lịch hẹn mới được tạo ở trạng thái **Đã gửi yêu cầu**.<br>Thất bại: Hệ thống thông báo lỗi, lịch hẹn không được tạo. |
-| **Luồng cơ bản**   | 1. Nhân viên vào mục **Lịch hẹn** và chọn **Tạo lịch mới**.<br>2. Nhân viên tìm và chọn khách hàng, chọn xe và loại dịch vụ mong muốn.<br>3. Nhân viên chọn ngày giờ đến và ghi chú thêm nếu có.<br>4. Nhân viên nhấn **Lưu**.<br>5. Hệ thống tạo lịch hẹn ở trạng thái **Đã gửi yêu cầu**. |
-| **Luồng thay thế** | **[Xác nhận lịch hẹn]** Tại bước 1, thay vì chọn **Tạo lịch mới**, nhân viên chọn lịch đang chờ xác nhận:<br>1a. Nhân viên chọn lịch hẹn ở trạng thái **Đã gửi yêu cầu** từ danh sách.<br>2a. Nhân viên kiểm tra thông tin lịch hẹn.<br>3a. Nhân viên nhấn **Xác nhận**.<br>4a. Hệ thống cập nhật trạng thái thành **Đã xác nhận**.<br><br>**[Dời lịch]** Tại bước 1, nhân viên chọn lịch hẹn cần dời:<br>1b. Nhân viên chọn lịch hẹn từ danh sách.<br>2b. Nhân viên nhấn **Dời lịch**.<br>3b. Nhân viên chọn ngày giờ mới.<br>4b. Nhân viên nhấn **Xác nhận**.<br>5b. Hệ thống cập nhật lịch hẹn với thời gian mới.<br><br>**[Hủy lịch]** Tại bước 1, nhân viên chọn lịch hẹn cần hủy:<br>1c. Nhân viên chọn lịch hẹn từ danh sách.<br>2c. Nhân viên nhấn **Hủy lịch**.<br>3c. Nhân viên nhập lý do hủy.<br>4c. Nhân viên nhấn **Xác nhận**.<br>5c. Hệ thống cập nhật trạng thái thành **Đã hủy** và lưu lý do. |
-| **Luồng ngoại lệ** | Tại bước 2b của luồng Dời lịch hoặc bước 2c của luồng Hủy lịch, nếu lịch hẹn đã ở trạng thái xe đã đến hoặc đã hủy, hệ thống thông báo không thể thay đổi. |
+| **Tiền điều kiện** | Khách hàng có nhu cầu. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Người dùng chọn chức năng thêm mới.<br>2. Nhập thông tin cần thiết.<br>3. Nhấn Xác nhận.<br>4. Hệ thống lưu lịch hẹn và thông báo thành công. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
 
 ---
 
-## UC-12 – Tiếp nhận xe (Receive Vehicle)
+## UC-18 – Xem lịch hẹn (View Appointment)
 
-| **Mã Use case**    | UC-12 |
+| **Mã Use case**    | UC-18 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xem lịch hẹn (View Appointment) |
+| **Mô tả**          | Xem chi tiết và danh sách lịch hẹn. |
+| **Đối tượng**      | Nhân viên quầy dịch vụ (Front Desk Staff) |
+| **Tiền điều kiện** | Tồn tại dữ liệu trong hệ thống. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Người dùng truy cập màn hình danh sách.<br>2. Hệ thống hiển thị danh sách.<br>3. Người dùng chọn xem chi tiết một bản ghi. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-19 – Dời lịch hẹn (Reschedule Appointment)
+
+| **Mã Use case**    | UC-19 |
+| ------------------ | ------ |
+| **Tên Use case**   | Dời lịch hẹn (Reschedule Appointment) |
+| **Mô tả**          | Thay đổi thời gian lịch hẹn. |
+| **Đối tượng**      | Nhân viên quầy dịch vụ (Front Desk Staff) |
+| **Tiền điều kiện** | Có lịch hẹn hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Mở chi tiết.<br>2. Chọn Thay đổi thời gian.<br>3. Cập nhật ngày giờ mới và lưu.<br>4. Hệ thống cập nhật thời gian. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-20 – Hủy lịch hẹn (Cancel Appointment)
+
+| **Mã Use case**    | UC-20 |
+| ------------------ | ------ |
+| **Tên Use case**   | Hủy lịch hẹn (Cancel Appointment) |
+| **Mô tả**          | Hủy bỏ lịch hẹn chưa thực hiện. |
+| **Đối tượng**      | Nhân viên quầy dịch vụ (Front Desk Staff) |
+| **Tiền điều kiện** | Có lịch hẹn hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn bản ghi cần hủy.<br>2. Nhấn Hủy.<br>3. Hệ thống đổi trạng thái thành Đã hủy. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-21 – Tiếp nhận xe (Receive Vehicle)
+
+| **Mã Use case**    | UC-21 |
 | ------------------ | ------ |
 | **Tên Use case**   | Tiếp nhận xe (Receive Vehicle) |
 | **Mô tả**          | Nhân viên quầy đánh dấu khách có lịch hẹn đã đến, hoặc tạo phiếu tiếp nhận cho khách đến không có lịch (Walk-in) và xe được kéo đến (Tow-in). Mọi xe sau tiếp nhận đều vào hàng đợi để Cố vấn dịch vụ xử lý. |
@@ -212,24 +346,69 @@
 
 ---
 
-## UC-13 – Quản lý hồ sơ khách hàng (Manage Customer Profile)
+## UC-22 – Thêm hồ sơ khách hàng (Create Customer Profile)
 
-| **Mã Use case**    | UC-13 |
+| **Mã Use case**    | UC-22 |
 | ------------------ | ------ |
-| **Tên Use case**   | Quản lý hồ sơ khách hàng (Manage Customer Profile) |
-| **Mô tả**          | Nhân viên quầy tìm kiếm, thêm mới hoặc cập nhật thông tin khách hàng và xe khi tiếp nhận trực tiếp, đảm bảo không tạo trùng dữ liệu. |
+| **Tên Use case**   | Thêm hồ sơ khách hàng (Create Customer Profile) |
+| **Mô tả**          | Tạo mới hồ sơ khách hàng vào hệ thống. |
 | **Đối tượng**      | Nhân viên quầy dịch vụ (Front Desk Staff) |
-| **Tiền điều kiện** | Nhân viên đã đăng nhập vào hệ thống. |
-| **Hậu điều kiện**  | Thành công: Khách hàng mới được tạo thành công.<br>Thất bại: Hệ thống thông báo lỗi (ví dụ: số điện thoại đã tồn tại). |
-| **Luồng cơ bản**   | 1. Nhân viên nhập số điện thoại, email hoặc biển số xe vào ô tìm kiếm để kiểm tra dữ liệu đã có.<br>2. Hệ thống không tìm thấy kết quả trùng; nhân viên chọn **Tạo khách hàng mới**.<br>3. Nhân viên điền đầy đủ thông tin khách hàng: họ tên, số điện thoại, địa chỉ email.<br>4. Nhân viên nhấn **Lưu**.<br>5. Hệ thống kiểm tra không trùng số điện thoại / email và lưu khách hàng mới. |
-| **Luồng thay thế** | **[Thêm xe mới cho khách hàng]** Sau bước 5, hoặc khi đã chọn được khách hàng từ kết quả tìm kiếm:<br>5a. Nhân viên chọn **Thêm xe** cho khách hàng vừa tạo / vừa chọn.<br>6a. Nhân viên nhập biển số, hãng xe, dòng xe và các thông tin cần thiết.<br>7a. Nhân viên nhấn **Lưu**.<br>8a. Hệ thống kiểm tra biển số chưa tồn tại và lưu xe mới.<br><br>**[Cập nhật thông tin]** Tại bước 1, nếu tìm thấy khách hàng / xe đã có:<br>1a. Nhân viên chọn khách hàng / xe từ kết quả tìm kiếm.<br>2a. Nhân viên chọn **Chỉnh sửa**.<br>3a. Nhân viên thay đổi thông tin cần cập nhật.<br>4a. Nhân viên nhấn **Lưu**.<br>5a. Hệ thống lưu thông tin mới và hiển thị thông báo thành công. |
-| **Luồng ngoại lệ** | Tại bước 5, nếu số điện thoại hoặc email đã tồn tại, hệ thống thông báo và gợi ý dùng thông tin có sẵn thay vì tạo mới.<br><br>Tại bước 8a của luồng Thêm xe, nếu biển số đã tồn tại, hệ thống thông báo xe đã được đăng ký và yêu cầu kiểm tra lại. |
+| **Tiền điều kiện** | Có đủ thông tin hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn chức năng thêm mới.<br>2. Nhập các trường thông tin bắt buộc.<br>3. Nhấn Lưu.<br>4. Hệ thống kiểm tra trùng lặp và lưu trữ. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
 
 ---
 
-## UC-14 – Xem phiếu công việc (View Work Order)
+## UC-23 – Xem hồ sơ khách hàng (View Customer Profile)
 
-| **Mã Use case**    | UC-14 |
+| **Mã Use case**    | UC-23 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xem hồ sơ khách hàng (View Customer Profile) |
+| **Mô tả**          | Tìm kiếm và xem danh sách hồ sơ khách hàng. |
+| **Đối tượng**      | Nhân viên quầy dịch vụ (Front Desk Staff) |
+| **Tiền điều kiện** | Tài khoản có quyền xem. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Truy cập màn hình quản lý.<br>2. Nhập từ khóa tìm kiếm hoặc lọc.<br>3. Hệ thống hiển thị kết quả.<br>4. Chọn một bản ghi để xem chi tiết. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-24 – Cập nhật hồ sơ khách hàng (Update Customer Profile)
+
+| **Mã Use case**    | UC-24 |
+| ------------------ | ------ |
+| **Tên Use case**   | Cập nhật hồ sơ khách hàng (Update Customer Profile) |
+| **Mô tả**          | Chỉnh sửa thông tin hồ sơ khách hàng. |
+| **Đối tượng**      | Nhân viên quầy dịch vụ (Front Desk Staff) |
+| **Tiền điều kiện** | Có hồ sơ khách hàng hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Mở bản ghi cần sửa.<br>2. Thay đổi thông tin.<br>3. Nhấn Cập nhật.<br>4. Hệ thống lưu thay đổi. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-25 – Xóa hồ sơ khách hàng (Delete Customer Profile)
+
+| **Mã Use case**    | UC-25 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xóa hồ sơ khách hàng (Delete Customer Profile) |
+| **Mô tả**          | Xóa hoặc vô hiệu hóa hồ sơ khách hàng. |
+| **Đối tượng**      | Nhân viên quầy dịch vụ (Front Desk Staff) |
+| **Tiền điều kiện** | Bản ghi tồn tại. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn bản ghi.<br>2. Nhấn Xóa/Khóa.<br>3. Xác nhận hành động.<br>4. Hệ thống kiểm tra ràng buộc và xử lý (chuyển Inactive hoặc xóa). |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-26 – Xem phiếu công việc (View Work Order)
+
+| **Mã Use case**    | UC-26 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem phiếu công việc (View Work Order) |
 | **Mô tả**          | Nhân viên quầy tra cứu trạng thái tổng quát của phiếu công việc để trả lời thắc mắc của khách hàng, ví dụ xe xong chưa, đang làm đến bước nào. |
@@ -242,9 +421,9 @@
 
 ---
 
-## UC-15 – Xử lý hóa đơn (Process Invoice)
+## UC-27 – Xử lý hóa đơn (Process Invoice)
 
-| **Mã Use case**    | UC-15 |
+| **Mã Use case**    | UC-27 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xử lý hóa đơn (Process Invoice) |
 | **Mô tả**          | Sau khi nhận yêu cầu thanh toán từ Cố vấn dịch vụ, nhân viên quầy tạo hóa đơn tổng hợp từ các hạng mục đã được duyệt và phát hành hóa đơn chính thức cho khách hàng. |
@@ -257,9 +436,9 @@
 
 ---
 
-## UC-16 – Xử lý thanh toán (Process Payment)
+## UC-28 – Xử lý thanh toán (Process Payment)
 
-| **Mã Use case**    | UC-16 |
+| **Mã Use case**    | UC-28 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xử lý thanh toán (Process Payment) |
 | **Mô tả**          | Nhân viên quầy ghi nhận khoản thanh toán của khách hàng. Hệ thống hỗ trợ hai hình thức: ghi nhận thủ công (tiền mặt, thẻ) hoặc tạo mã QR để khách quét qua ứng dụng thanh toán điện tử. Sau khi thanh toán thành công, hệ thống tự động ghi nhận điều kiện tài chính đã đạt và thông báo cho Cố vấn dịch vụ để tiến hành bàn giao xe. |
@@ -276,9 +455,9 @@
 
 ---
 
-## UC-17 – Tạo phiếu công việc (Create Work Order)
+## UC-29 – Tạo phiếu công việc (Create Work Order)
 
-| **Mã Use case**    | UC-17 |
+| **Mã Use case**    | UC-29 |
 | ------------------ | ------ |
 | **Tên Use case**   | Tạo phiếu công việc (Create Work Order) |
 | **Mô tả**          | Cố vấn dịch vụ xem danh sách xe đang chờ xử lý và tạo phiếu công việc – hồ sơ trung tâm theo dõi toàn bộ quá trình sửa chữa / bảo dưỡng – cho từng xe trong hàng đợi. |
@@ -291,9 +470,9 @@
 
 ---
 
-## UC-18 – Ghi nhận tình trạng xe (Record Vehicle Condition)
+## UC-30 – Ghi nhận tình trạng xe (Record Vehicle Condition)
 
-| **Mã Use case**    | UC-18 |
+| **Mã Use case**    | UC-30 |
 | ------------------ | ------ |
 | **Tên Use case**   | Ghi nhận tình trạng xe (Record Vehicle Condition) |
 | **Mô tả**          | Cố vấn dịch vụ ghi lại tình trạng xe tại thời điểm tiếp nhận: đồng hồ km, mức xăng, vấn đề khách phản ánh, tài sản để trong xe, hư hỏng hiển nhiên quan sát được và hình ảnh minh chứng. |
@@ -306,24 +485,39 @@
 
 ---
 
-## UC-19 – Quản lý dịch vụ (Manage Services)
+## UC-31 – Thêm hạng mục dịch vụ (Add Service)
 
-| **Mã Use case**    | UC-19 |
+| **Mã Use case**    | UC-31 |
 | ------------------ | ------ |
-| **Tên Use case**   | Quản lý dịch vụ (Manage Services) |
-| **Mô tả**          | Cố vấn dịch vụ thêm một hoặc nhiều dịch vụ vào phiếu công việc dựa trên nhu cầu của khách hàng và kết quả kiểm tra xe, áp dụng mẫu dịch vụ có sẵn hoặc điều chỉnh chi tiết cho phù hợp. |
+| **Tên Use case**   | Thêm hạng mục dịch vụ (Add Service) |
+| **Mô tả**          | Thêm hạng mục dịch vụ vào Work Order. |
 | **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Phiếu công việc đã được tạo (UC-17). |
-| **Hậu điều kiện**  | Thành công: Dịch vụ được thêm vào phiếu công việc và sẵn sàng để lên kế hoạch công việc.<br>Thất bại: Hệ thống thông báo lỗi, dịch vụ không được thêm. |
-| **Luồng cơ bản**   | 1. Cố vấn vào phiếu công việc và chọn **Thêm dịch vụ**.<br>2. Hệ thống hiển thị danh mục dịch vụ đang hoạt động.<br>3. Cố vấn chọn loại dịch vụ và áp dụng mẫu dịch vụ có sẵn nếu phù hợp.<br>4. Cố vấn điều chỉnh thêm chi tiết nếu cần.<br>5. Cố vấn nhấn **Lưu**.<br>6. Hệ thống thêm dịch vụ vào phiếu công việc. |
-| **Luồng thay thế** | **[Chỉnh sửa dịch vụ]** Tại bước 1, thay vì chọn **Thêm dịch vụ**, cố vấn chọn dịch vụ đã có:<br>1a. Cố vấn chọn dịch vụ cần chỉnh sửa trong danh sách.<br>2a. Cố vấn nhấn **Chỉnh sửa**.<br>3a. Cố vấn thay đổi chi tiết cần cập nhật.<br>4a. Cố vấn nhấn **Lưu**.<br>5a. Hệ thống cập nhật thông tin dịch vụ.<br><br>**[Xóa dịch vụ]** Tại bước 1, cố vấn chọn dịch vụ cần xóa:<br>1b. Cố vấn chọn dịch vụ từ danh sách.<br>2b. Cố vấn nhấn **Xóa**.<br>3b. Hệ thống yêu cầu xác nhận; cố vấn nhấn **Xác nhận**.<br>4b. Hệ thống xóa dịch vụ khỏi phiếu công việc. |
-| **Luồng ngoại lệ** | Tại bước 3b của luồng Xóa, nếu dịch vụ đã có job đang thực hiện hoặc đã hoàn thành, hệ thống từ chối và thông báo không thể xóa. |
+| **Tiền điều kiện** | Work Order đang mở. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Mở Work Order.<br>2. Nhấn Thêm dịch vụ.<br>3. Chọn dịch vụ từ danh mục.<br>4. Hệ thống lưu vào WO. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
 
 ---
 
-## UC-20 – Kiểm tra xe (Inspect Vehicle)
+## UC-32 – Xóa hạng mục dịch vụ (Remove Service)
 
-| **Mã Use case**    | UC-20 |
+| **Mã Use case**    | UC-32 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xóa hạng mục dịch vụ (Remove Service) |
+| **Mô tả**          | Xóa hạng mục dịch vụ khỏi Work Order. |
+| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
+| **Tiền điều kiện** | Work Order đang mở. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Mở Work Order.<br>2. Chọn dịch vụ cần xóa.<br>3. Nhấn Xóa.<br>4. Hệ thống loại bỏ khỏi WO. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-33 – Kiểm tra xe (Inspect Vehicle)
+
+| **Mã Use case**    | UC-33 |
 | ------------------ | ------ |
 | **Tên Use case**   | Kiểm tra xe (Inspect Vehicle) |
 | **Mô tả**          | Cố vấn dịch vụ mở giao diện kiểm tra xe (Vehicle Inspection), chọn loại dấu vết (Damage / Rust / Missing / Dent / Scratch,...) và nhấp chọn trực tiếp trên hình ảnh sơ đồ thân xe (Car Diagram UI) để đặt marker tại vị trí phát hiện hư hỏng (ví dụ: Driver side - Front door, Driver side - Front bumper,...). Hệ thống tự động ghi nhận vị trí và tạo dòng vấn đề phát hiện (Finding / Issue) tương ứng, cho phép cố vấn ghi chú, đính kèm hình ảnh và liên kết với công việc (Job). |
@@ -336,9 +530,9 @@
 
 ---
 
-## UC-21 – Lên kế hoạch công việc (Plan Jobs)
+## UC-34 – Lên kế hoạch công việc (Plan Jobs)
 
-| **Mã Use case**    | UC-21 |
+| **Mã Use case**    | UC-34 |
 | ------------------ | ------ |
 | **Tên Use case**   | Lên kế hoạch công việc (Plan Jobs) |
 | **Mô tả**          | Cố vấn dịch vụ tạo các job (đầu công việc) cần thực hiện trong phiếu công việc. Hệ thống hỗ trợ tạo Job trực tiếp từ một Finding phát hiện khi kiểm tra xe (nhấn nút **+ New Job** tại dòng Finding), gán Finding vào Job đã có từ danh sách chọn (Select a job...), sinh Job từ mẫu dịch vụ (Service Template) hoặc tạo Job thủ công không qua Finding. |
@@ -351,14 +545,14 @@
 
 ---
 
-## UC-22 – Khai báo nhân công (Declare Labour)
+## UC-35 – Khai báo nhân công (Declare Labour)
 
-| **Mã Use case**    | UC-22 |
+| **Mã Use case**    | UC-35 |
 | ------------------ | ------ |
 | **Tên Use case**   | Khai báo nhân công (Declare Labour) |
 | **Mô tả**          | Cố vấn dịch vụ khai báo các labour lines cho từng job: loại nhân công, mô tả chi tiết task cần thực hiện, kỹ thuật viên đảm nhận và số lượng giờ / đơn vị ước tính. Thông tin này được dùng để tính chi phí nhân công trong báo giá. |
 | **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Job đã được tạo trong phiếu công việc (UC-21). |
+| **Tiền điều kiện** | Job đã được tạo trong phiếu công việc (UC-34). |
 | **Hậu điều kiện**  | Thành công: Labour line được ghi nhận và liên kết với job, sẵn sàng tính vào báo giá.<br>Thất bại: Hệ thống thông báo lỗi, labour line không được tạo. |
 | **Luồng cơ bản**   | 1. Cố vấn mở một job và chọn **Thêm nhân công**.<br>2. Hệ thống hiển thị danh mục loại nhân công đã được cấu hình (UC-37).<br>3. Cố vấn chọn loại nhân công và nhập mô tả chi tiết task cần thực hiện.<br>4. Cố vấn chọn kỹ thuật viên thực hiện từ danh sách nhân viên đang hoạt động.<br>5. Cố vấn nhập số lượng giờ / đơn vị ước tính.<br>6. Cố vấn nhấn **Lưu**.<br>7. Hệ thống ghi nhận labour line và tự động tính chi phí nhân công theo đơn giá đã cấu hình. |
 | **Luồng thay thế** | **[Chỉnh sửa labour line]** Tại bước 1, thay vì chọn **Thêm nhân công**, cố vấn chọn dòng đã có:<br>1a. Cố vấn chọn labour line cần chỉnh sửa từ danh sách.<br>2a. Cố vấn nhấn **Chỉnh sửa**.<br>3a. Cố vấn thay đổi loại nhân công, mô tả, kỹ thuật viên hoặc số lượng giờ.<br>4a. Cố vấn nhấn **Lưu**.<br>5a. Hệ thống lưu thông tin mới và tính lại chi phí nhân công.<br><br>**[Xóa labour line]** Tại bước 1, cố vấn chọn dòng cần xóa:<br>1b. Cố vấn chọn labour line cần xóa từ danh sách.<br>2b. Cố vấn nhấn **Xóa** và xác nhận.<br>3b. Hệ thống xóa labour line khỏi job. |
@@ -366,14 +560,14 @@
 
 ---
 
-## UC-23 – Khai báo phụ tùng (Declare Parts)
+## UC-36 – Khai báo phụ tùng (Declare Parts)
 
-| **Mã Use case**    | UC-23 |
+| **Mã Use case**    | UC-36 |
 | ------------------ | ------ |
 | **Tên Use case**   | Khai báo phụ tùng (Declare Parts) |
 | **Mô tả**          | Cố vấn dịch vụ khai báo danh sách phụ tùng và vật tư dự kiến cần dùng cho từng job. Sau khi thực hiện xong, cố vấn cập nhật số lượng thực tế đã sử dụng để truy vết chi phí. |
 | **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Job đã được tạo trong phiếu công việc (UC-21). |
+| **Tiền điều kiện** | Job đã được tạo trong phiếu công việc (UC-34). |
 | **Hậu điều kiện**  | Thành công: Danh sách phụ tùng / vật tư được lưu theo từng job và có thể truy vết.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu không được lưu. |
 | **Luồng cơ bản**   | 1. Cố vấn mở một job và chọn **Thêm phụ tùng / vật tư**.<br>2. Cố vấn tìm kiếm mặt hàng từ danh mục kho và chọn phụ tùng / vật tư cần dùng.<br>3. Cố vấn nhập số lượng dự kiến cần sử dụng.<br>4. Cố vấn nhấn **Lưu**.<br>5. Hệ thống ghi nhận phụ tùng / vật tư và số lượng kế hoạch cho job. |
 | **Luồng thay thế** | **[Cập nhật số lượng thực tế]** Sau khi job hoàn thành (UC-25), tại bước 1:<br>1a. Cố vấn mở job đã hoàn thành.<br>2a. Cố vấn chọn phụ tùng cần cập nhật số lượng thực tế.<br>3a. Cố vấn nhấn **Cập nhật số lượng thực tế**.<br>4a. Cố vấn nhập số lượng thực tế đã sử dụng.<br>5a. Cố vấn nhấn **Lưu**.<br>6a. Hệ thống ghi nhận số lượng thực tế.<br><br>**[Xóa phụ tùng / vật tư]** Tại bước 1, cố vấn chọn xóa mặt hàng không còn cần thiết:<br>1b. Cố vấn mở job có phụ tùng cần xóa.<br>2b. Cố vấn chọn dòng phụ tùng cần xóa.<br>3b. Cố vấn nhấn **Xóa** và xác nhận.<br>4b. Hệ thống xóa dòng đó khỏi danh sách job. |
@@ -381,26 +575,41 @@
 
 ---
 
-## UC-24 – Quản lý báo giá (Manage Quotation)
+## UC-37 – Xử lý báo giá (Process Quotation)
 
-| **Mã Use case**    | UC-24 |
+| **Mã Use case**    | UC-37 |
 | ------------------ | ------ |
-| **Tên Use case**   | Quản lý báo giá (Manage Quotation) |
+| **Tên Use case**   | Xử lý báo giá (Process Quotation) |
 | **Mô tả**          | Cố vấn dịch vụ tính tổng chi phí rồi tạo báo giá. Sau khi trao đổi với khách hàng (qua điện thoại, tin nhắn hoặc tại quầy), cố vấn ghi nhận kết quả phản hồi: Duyệt hoặc Từ chối. Khi duyệt, báo giá được khóa lại. Nếu phát sinh thêm hạng mục, cố vấn tạo báo giá bổ sung. |
 | **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
 | **Tiền điều kiện** | Phiếu công việc đã có đầy đủ job, labour và phụ tùng / vật tư. |
 | **Hậu điều kiện**  | Thành công – Duyệt: Báo giá được khóa và snapshot đơn giá được lưu lại.<br>Thành công – Từ chối: Báo giá bị từ chối, cố vấn có thể tạo báo giá mới. |
 | **Luồng cơ bản**   | 1. Cố vấn vào phiếu công việc và chọn **Tạo báo giá**.<br>2. Hệ thống tự động tổng hợp chi phí: nhân công theo đơn giá và số giờ, phụ tùng / vật tư và phí phụ trợ, tổng cộng trước / sau thuế.<br>3. Cố vấn kiểm tra các dòng chi phí và điều chỉnh nếu cần.<br>4. Cố vấn nhấn **Lưu báo giá**.<br>5. Hệ thống tạo báo giá ở trạng thái **Chờ phản hồi**.<br>6. Cố vấn trao đổi với khách hàng bên ngoài hệ thống (điện thoại, tin nhắn, tại quầy).<br>7. Sau khi khách hàng đồng ý, cố vấn nhấn **Duyệt báo giá**.<br>8. Hệ thống khóa báo giá và lưu snapshot đơn giá tại thời điểm duyệt. |
-| **Luồng thay thế** | **[Từ chối báo giá]** Tại bước 7, nếu khách hàng không đồng ý:<br>7a. Cố vấn nhấn **Từ chối báo giá** và ghi lý do từ chối.<br>8a. Hệ thống cập nhật trạng thái báo giá thành **Từ chối**.<br>9a. Cố vấn điều chỉnh lại hạng mục (thêm, sửa, xóa) và nhấn **Tạo báo giá mới**.<br>10a. Quay lại bước 2.<br><br>**[Tạo báo giá bổ sung]** Tại bước 1, khi phát sinh thêm hạng mục sau khi báo giá gốc đã được duyệt:<br>1b. Cố vấn chọn **Tạo báo giá bổ sung** trong phiếu công việc.<br>2b. Cố vấn thêm các hạng mục mới vào báo giá bổ sung.<br>3b. Cố vấn nhấn **Lưu báo giá bổ sung**.<br>4b. Sau khi trao đổi với khách hàng, cố vấn nhấn **Duyệt** hoặc **Từ chối** báo giá bổ sung. |
+| **Luồng thay thế** | **[Từ chối báo giá]** Tại bước 7, nếu khách hàng không đồng ý:<br>7a. Cố vấn nhấn **Từ chối báo giá** và ghi lý do từ chối.<br>8a. Hệ thống cập nhật trạng thái báo giá thành **Từ chối**.<br>9a. Cố vấn điều chỉnh lại hạng mục (thêm, sửa, xóa) và nhấn **Tạo báo giá mới**.<br>10a. Quay lại bước 2. |
 | **Luồng ngoại lệ** | Không có. |
 
 ---
 
-## UC-25 – Quản lý tiến trình (Manage Progress)
+## UC-38 – Tạo báo giá bổ sung (Create Supplementary Quotation)
 
-| **Mã Use case**    | UC-25 |
+| **Mã Use case**    | UC-38 |
 | ------------------ | ------ |
-| **Tên Use case**   | Quản lý tiến trình (Manage Progress) |
+| **Tên Use case**   | Tạo báo giá bổ sung (Create Supplementary Quotation) |
+| **Mô tả**          | Cố vấn dịch vụ tạo báo giá bổ sung khi phát sinh thêm hạng mục dịch vụ/phụ tùng sau khi báo giá gốc đã được khách hàng duyệt. |
+| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
+| **Tiền điều kiện** | Phiếu công việc đã có báo giá gốc được duyệt (UC-37). |
+| **Hậu điều kiện**  | Thành công: Báo giá bổ sung được tạo và duyệt, chi phí được cộng dồn vào hóa đơn.<br>Thất bại: Hệ thống thông báo lỗi. |
+| **Luồng cơ bản**   | 1. Cố vấn chọn **Tạo báo giá bổ sung** trong phiếu công việc.<br>2. Cố vấn thêm các hạng mục mới vào báo giá bổ sung.<br>3. Cố vấn nhấn **Lưu báo giá bổ sung**.<br>4. Hệ thống tạo báo giá bổ sung ở trạng thái **Chờ phản hồi**.<br>5. Sau khi trao đổi với khách hàng, cố vấn nhấn **Duyệt**.<br>6. Hệ thống khóa báo giá bổ sung và cộng dồn chi phí. |
+| **Luồng thay thế** | **[Từ chối báo giá bổ sung]** Tại bước 5:<br>5a. Khách hàng không đồng ý, cố vấn nhấn **Từ chối**.<br>6a. Hệ thống hủy báo giá bổ sung và không cộng chi phí. |
+| **Luồng ngoại lệ** | Không có. |
+
+---
+
+## UC-39 – Cập nhật tiến trình (Update Progress)
+
+| **Mã Use case**    | UC-39 |
+| ------------------ | ------ |
+| **Tên Use case**   | Cập nhật tiến trình (Update Progress) |
 | **Mô tả**          | Cố vấn dịch vụ sử dụng tính năng này để cập nhật trạng thái của các thực thể trong quá trình thực thi: đánh dấu hoàn thành từng Job (cập nhật số lượng vật tư thực dùng) và Đóng toàn bộ Work Order khi đã thỏa mãn mọi điều kiện cuối cùng. |
 | **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
 | **Tiền điều kiện** | Để cập nhật Job: Báo giá đã được duyệt và phụ tùng đã xuất kho (UC-29).<br>Để đóng Work Order: Xe đã được bàn giao (UC-28), không còn Job đang mở và hóa đơn đã được thanh toán. |
@@ -411,9 +620,9 @@
 
 ---
 
-## UC-26 – Kiểm định chất lượng (Quality Inspection)
+## UC-40 – Kiểm định chất lượng (Quality Inspection)
 
-| **Mã Use case**    | UC-26 |
+| **Mã Use case**    | UC-40 |
 | ------------------ | ------ |
 | **Tên Use case**   | Kiểm định chất lượng (Quality Inspection) |
 | **Mô tả**          | Sau khi các job hoàn thành, cố vấn dịch vụ thực hiện kiểm định chất lượng theo danh sách hạng mục. Nếu đạt, dịch vụ được đánh dấu hoàn thành. Nếu không đạt, cố vấn tạo job sửa lại và thực hiện lại trước khi kiểm định lần nữa. |
@@ -426,9 +635,9 @@
 
 ---
 
-## UC-27 – Gửi yêu cầu thanh toán (Request Payment)
+## UC-41 – Gửi yêu cầu thanh toán (Request Payment)
 
-| **Mã Use case**    | UC-27 |
+| **Mã Use case**    | UC-41 |
 | ------------------ | ------ |
 | **Tên Use case**   | Gửi yêu cầu thanh toán (Request Payment) |
 | **Mô tả**          | Sau khi toàn bộ job hoàn thành và kiểm định đạt, cố vấn dịch vụ gửi yêu cầu thanh toán sang nhân viên quầy để tạo hóa đơn cho khách hàng. |
@@ -441,9 +650,9 @@
 
 ---
 
-## UC-28 – Bàn giao xe (Release Vehicle)
+## UC-42 – Bàn giao xe (Release Vehicle)
 
-| **Mã Use case**    | UC-28 |
+| **Mã Use case**    | UC-42 |
 | ------------------ | ------ |
 | **Tên Use case**   | Bàn giao xe (Release Vehicle) |
 | **Mô tả**          | Cố vấn dịch vụ kiểm tra toàn bộ điều kiện bàn giao (job xong, kiểm định đạt, hóa đơn đã thanh toán) và thực hiện thủ tục bàn giao xe chính thức cho khách hàng. |
@@ -454,9 +663,9 @@
 | **Luồng thay thế** | Không có. |
 | **Luồng ngoại lệ** | Tại bước 2, nếu bất kỳ điều kiện nào chưa đạt, hệ thống không cho phép bàn giao và hiển thị danh sách điều kiện còn thiếu cụ thể. |
 
-## UC-29 – Xuất kho theo công việc (Issue Stock by Job)
+## UC-43 – Xuất kho theo công việc (Issue Stock by Job)
 
-| **Mã Use case**    | UC-29 |
+| **Mã Use case**    | UC-43 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xuất kho theo công việc (Issue Stock by Job) |
 | **Mô tả**          | Quản lý xuất phụ tùng / vật tư từ kho cho một job cụ thể và nhập trả lại phụ tùng chưa sử dụng sau khi job hoàn thành. Mọi thao tác đều được ghi lại lịch sử kho gắn với job tương ứng. |
@@ -473,9 +682,9 @@
 
 ---
 
-## UC-30 – Theo dõi hoạt động xưởng (Monitor Workshop)
+## UC-44 – Theo dõi hoạt động xưởng (Monitor Workshop)
 
-| **Mã Use case**    | UC-30 |
+| **Mã Use case**    | UC-44 |
 | ------------------ | ------ |
 | **Tên Use case**   | Theo dõi hoạt động xưởng (Monitor Workshop) |
 | **Mô tả**          | Quản lý xem bảng tổng quan để nắm bắt tình hình vận hành: số xe đang trong xưởng, từng xe đang ở bước nào và job nào đang chờ xử lý. |
@@ -488,24 +697,69 @@
 
 ---
 
-## UC-31 – Quản lý danh mục phụ tùng (Manage Parts Catalog)
+## UC-45 – Thêm phụ tùng (Create Part Catalog)
 
-| **Mã Use case**    | UC-31 |
+| **Mã Use case**    | UC-45 |
 | ------------------ | ------ |
-| **Tên Use case**   | Quản lý danh mục phụ tùng (Manage Parts Catalog) |
-| **Mô tả**          | Quản lý thêm mới, chỉnh sửa và vô hiệu hóa các mặt hàng phụ tùng và vật tư trong kho: mã SKU, tên, loại hàng, đơn vị tính, giá vốn và giá bán. |
+| **Tên Use case**   | Thêm phụ tùng (Create Part Catalog) |
+| **Mô tả**          | Tạo mới phụ tùng vào hệ thống. |
 | **Đối tượng**      | Quản lý dịch vụ (Service Manager) |
-| **Tiền điều kiện** | Quản lý đã đăng nhập vào hệ thống. |
-| **Hậu điều kiện**  | Thành công: Mặt hàng mới được thêm vào danh mục.<br>Thất bại: Hệ thống thông báo lỗi (ví dụ: mã SKU đã tồn tại). |
-| **Luồng cơ bản**   | 1. Quản lý vào mục **Danh mục phụ tùng** và chọn **Thêm mặt hàng mới**.<br>2. Quản lý điền đầy đủ thông tin: mã SKU, tên hàng, loại (Phụ tùng / Tiêu hao / Hóa chất / Phụ kiện), đơn vị tính, giá vốn và giá bán.<br>3. Quản lý nhấn **Lưu**.<br>4. Hệ thống kiểm tra mã SKU chưa tồn tại và lưu mặt hàng mới vào danh mục. |
-| **Luồng thay thế** | **[Cập nhật thông tin mặt hàng]** Tại bước 1, thay vì chọn **Thêm mặt hàng mới**:<br>1a. Quản lý tìm kiếm mặt hàng cần cập nhật.<br>2a. Quản lý chọn mặt hàng và nhấn **Chỉnh sửa**.<br>3a. Quản lý thay đổi thông tin cần cập nhật.<br>4a. Quản lý nhấn **Lưu**.<br>5a. Hệ thống lưu thông tin mới.<br><br>**[Vô hiệu hóa mặt hàng]** Tại bước 1, quản lý chọn mặt hàng cần vô hiệu hóa:<br>1b. Quản lý tìm kiếm và chọn mặt hàng.<br>2b. Quản lý nhấn **Vô hiệu hóa**.<br>3b. Hệ thống yêu cầu xác nhận; quản lý nhấn **Xác nhận**.<br>4b. Hệ thống chuyển trạng thái mặt hàng sang Không hoạt động; lịch sử giao dịch được giữ lại. |
-| **Luồng ngoại lệ** | Tại bước 4, nếu mã SKU đã tồn tại, hệ thống thông báo trùng mã và yêu cầu dùng mã khác. |
+| **Tiền điều kiện** | Có đủ thông tin hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn chức năng thêm mới.<br>2. Nhập các trường thông tin bắt buộc.<br>3. Nhấn Lưu.<br>4. Hệ thống kiểm tra trùng lặp và lưu trữ. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
 
 ---
 
-## UC-32 – Nhập kho (Receive Inventory)
+## UC-46 – Xem phụ tùng (View Part Catalog)
 
-| **Mã Use case**    | UC-32 |
+| **Mã Use case**    | UC-46 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xem phụ tùng (View Part Catalog) |
+| **Mô tả**          | Tìm kiếm và xem danh sách phụ tùng. |
+| **Đối tượng**      | Quản lý dịch vụ (Service Manager) |
+| **Tiền điều kiện** | Tài khoản có quyền xem. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Truy cập màn hình quản lý.<br>2. Nhập từ khóa tìm kiếm hoặc lọc.<br>3. Hệ thống hiển thị kết quả.<br>4. Chọn một bản ghi để xem chi tiết. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-47 – Cập nhật phụ tùng (Update Part Catalog)
+
+| **Mã Use case**    | UC-47 |
+| ------------------ | ------ |
+| **Tên Use case**   | Cập nhật phụ tùng (Update Part Catalog) |
+| **Mô tả**          | Chỉnh sửa thông tin phụ tùng. |
+| **Đối tượng**      | Quản lý dịch vụ (Service Manager) |
+| **Tiền điều kiện** | Có phụ tùng hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Mở bản ghi cần sửa.<br>2. Thay đổi thông tin.<br>3. Nhấn Cập nhật.<br>4. Hệ thống lưu thay đổi. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-48 – Xóa phụ tùng (Delete Part Catalog)
+
+| **Mã Use case**    | UC-48 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xóa phụ tùng (Delete Part Catalog) |
+| **Mô tả**          | Xóa hoặc vô hiệu hóa phụ tùng. |
+| **Đối tượng**      | Quản lý dịch vụ (Service Manager) |
+| **Tiền điều kiện** | Bản ghi tồn tại. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn bản ghi.<br>2. Nhấn Xóa/Khóa.<br>3. Xác nhận hành động.<br>4. Hệ thống kiểm tra ràng buộc và xử lý (chuyển Inactive hoặc xóa). |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-49 – Nhập kho (Receive Inventory)
+
+| **Mã Use case**    | UC-49 |
 | ------------------ | ------ |
 | **Tên Use case**   | Nhập kho (Receive Inventory) |
 | **Mô tả**          | Quản lý ghi nhận hàng nhập từ nhà cung cấp hoặc nhập tồn đầu kỳ. Sau mỗi lần nhập, hệ thống tự động tính lại giá vốn bình quân theo phương pháp bình quân gia quyền di động. |
@@ -520,9 +774,9 @@
 
 
 
-## UC-33 – Xem báo cáo vận hành (View Operational Report)
+## UC-50 – Xem báo cáo vận hành (View Operational Report)
 
-| **Mã Use case**    | UC-33 |
+| **Mã Use case**    | UC-50 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem báo cáo vận hành (View Operational Report) |
 | **Mô tả**          | Quản lý xem các báo cáo cơ bản: số lượng dịch vụ theo loại, doanh thu theo khoảng thời gian và tình trạng tồn kho hiện tại để nắm bắt hiệu quả kinh doanh. |
@@ -539,109 +793,423 @@
 
 ---
 
-## UC-34 – Quản lý tài khoản (Manage Accounts)
+## UC-51 – Thêm tài khoản (Create Account)
 
-| **Mã Use case**    | UC-34 |
+| **Mã Use case**    | UC-51 |
 | ------------------ | ------ |
-| **Tên Use case**   | Quản lý tài khoản (Manage Accounts) |
-| **Mô tả**          | Quản trị viên tạo tài khoản cho nhân viên, gán vai trò và khóa / mở khóa tài khoản khi cần. Quyền truy cập của mỗi tài khoản được kiểm soát theo vai trò được gán. |
+| **Tên Use case**   | Thêm tài khoản (Create Account) |
+| **Mô tả**          | Tạo mới tài khoản vào hệ thống. |
 | **Đối tượng**      | Quản trị viên (Administrator) |
-| **Tiền điều kiện** | Quản trị viên đã đăng nhập vào hệ thống. |
-| **Hậu điều kiện**  | Thành công: Tài khoản nhân viên mới được tạo với vai trò tương ứng.<br>Thất bại: Hệ thống thông báo lỗi, tài khoản không được tạo. |
-| **Luồng cơ bản**   | 1. Quản trị viên vào mục **Quản lý người dùng** và chọn **Tạo tài khoản mới**.<br>2. Quản trị viên điền thông tin nhân viên: họ tên, email và mật khẩu tạm thời.<br>3. Quản trị viên chọn vai trò cho tài khoản (Nhân viên quầy / Cố vấn dịch vụ / Quản lý / Quản trị viên).<br>4. Quản trị viên nhấn **Lưu**.<br>5. Hệ thống tạo tài khoản và thiết lập quyền truy cập theo vai trò đã chọn. |
-| **Luồng thay thế** | **[Gán / Thay đổi vai trò]** Tại bước 1, thay vì chọn **Tạo tài khoản mới**:<br>1a. Quản trị viên tìm kiếm tài khoản cần thay đổi vai trò.<br>2a. Quản trị viên chọn tài khoản và nhấn **Chỉnh sửa vai trò**.<br>3a. Quản trị viên chọn vai trò mới.<br>4a. Quản trị viên nhấn **Lưu**.<br>5a. Hệ thống cập nhật quyền truy cập ngay lập tức.<br><br>**[Khóa tài khoản]** Tại bước 1, quản trị viên chọn tài khoản cần khóa:<br>1b. Quản trị viên tìm kiếm tài khoản cần khóa.<br>2b. Quản trị viên chọn tài khoản và nhấn **Khóa**.<br>3b. Hệ thống yêu cầu xác nhận; quản trị viên nhấn **Xác nhận**.<br>4b. Hệ thống vô hiệu hóa quyền đăng nhập của tài khoản đó.<br><br>**[Mở khóa tài khoản]** Tại bước 1, quản trị viên chọn tài khoản đang bị khóa:<br>1c. Quản trị viên tìm kiếm tài khoản đang bị khóa.<br>2c. Quản trị viên chọn tài khoản và nhấn **Mở khóa**.<br>3c. Hệ thống yêu cầu xác nhận; quản trị viên nhấn **Xác nhận**.<br>4c. Hệ thống khôi phục quyền đăng nhập cho tài khoản. |
-| **Luồng ngoại lệ** | Không có. |
+| **Tiền điều kiện** | Có đủ thông tin hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn chức năng thêm mới.<br>2. Nhập các trường thông tin bắt buộc.<br>3. Nhấn Lưu.<br>4. Hệ thống kiểm tra trùng lặp và lưu trữ. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
 
 ---
 
-## UC-35 – Quản lý nhân viên (Manage Employees)
+## UC-52 – Xem tài khoản (View Account)
 
-| **Mã Use case**    | UC-35 |
+| **Mã Use case**    | UC-52 |
 | ------------------ | ------ |
-| **Tên Use case**   | Quản lý nhân viên (Manage Employees) |
-| **Mô tả**          | Quản trị viên thêm và cập nhật thông tin nhân viên trong hệ thống (kỹ thuật viên, nhân viên detailing, nhân viên kiểm định,...) và kỹ năng chuyên môn của họ để phục vụ khai báo nhân công. |
+| **Tên Use case**   | Xem tài khoản (View Account) |
+| **Mô tả**          | Tìm kiếm và xem danh sách tài khoản. |
 | **Đối tượng**      | Quản trị viên (Administrator) |
-| **Tiền điều kiện** | Quản trị viên đã đăng nhập vào hệ thống. |
-| **Hậu điều kiện**  | Thành công: Thông tin nhân viên mới được thêm vào hệ thống. |
-| **Luồng cơ bản**   | 1. Quản trị viên vào mục **Quản lý nhân viên** và chọn **Thêm nhân viên**.<br>2. Quản trị viên điền thông tin: họ tên, vị trí công việc (kỹ thuật viên / nhân viên detailing / nhân viên kiểm định).<br>3. Quản trị viên chọn các kỹ năng chuyên môn từ danh sách.<br>4. Quản trị viên nhấn **Lưu**.<br>5. Hệ thống lưu thông tin nhân viên và danh sách kỹ năng. |
-| **Luồng thay thế** | **[Cập nhật thông tin]** Tại bước 1, thay vì chọn **Thêm nhân viên**:<br>1a. Quản trị viên tìm kiếm nhân viên cần cập nhật.<br>2a. Quản trị viên chọn nhân viên và nhấn **Chỉnh sửa**.<br>3a. Quản trị viên thay đổi thông tin hoặc kỹ năng cần cập nhật.<br>4a. Quản trị viên nhấn **Lưu**.<br>5a. Hệ thống lưu thông tin mới.<br><br>**[Đặt lại mật khẩu nhân viên]** Tại bước 1, quản trị viên chọn nhân viên cần đặt lại mật khẩu:<br>1b. Quản trị viên tìm kiếm và chọn nhân viên cần đặt lại mật khẩu.<br>2b. Quản trị viên nhấn **Đặt lại mật khẩu**.<br>3b. Hệ thống hiển thị hộp xác nhận; quản trị viên nhấn **Xác nhận**.<br>4b. Hệ thống tạo mật khẩu tạm thời và gửi về email của nhân viên.<br>5b. Nhân viên nhận email chứa mật khẩu tạm thời và đăng nhập để tiếp tục làm việc.<br><br>**[Vô hiệu hóa nhân viên]** Tại bước 1, quản trị viên chọn nhân viên cần vô hiệu hóa:<br>1c. Quản trị viên tìm kiếm và chọn nhân viên.<br>2c. Quản trị viên nhấn **Vô hiệu hóa**.<br>3c. Hệ thống yêu cầu xác nhận; quản trị viên nhấn **Xác nhận**.<br>4c. Hệ thống chuyển nhân viên sang trạng thái Không hoạt động; lịch sử công việc được giữ lại. |
-| **Luồng ngoại lệ** | Không có. |
+| **Tiền điều kiện** | Tài khoản có quyền xem. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Truy cập màn hình quản lý.<br>2. Nhập từ khóa tìm kiếm hoặc lọc.<br>3. Hệ thống hiển thị kết quả.<br>4. Chọn một bản ghi để xem chi tiết. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
 
 ---
 
-## UC-36 – Quản lý danh mục dịch vụ (Manage Service Catalog)
+## UC-53 – Cập nhật tài khoản (Update Account)
 
-| **Mã Use case**    | UC-36 |
+| **Mã Use case**    | UC-53 |
 | ------------------ | ------ |
-| **Tên Use case**   | Quản lý danh mục dịch vụ (Manage Service Catalog) |
-| **Mô tả**          | Quản trị viên tạo và quản lý các nhóm dịch vụ và các mẫu dịch vụ cụ thể. Chỉ mẫu dịch vụ đang hoạt động mới hiển thị cho khách hàng và được dùng khi tạo phiếu công việc. |
+| **Tên Use case**   | Cập nhật tài khoản (Update Account) |
+| **Mô tả**          | Chỉnh sửa thông tin tài khoản. |
 | **Đối tượng**      | Quản trị viên (Administrator) |
-| **Tiền điều kiện** | Quản trị viên đã đăng nhập vào hệ thống. |
-| **Hậu điều kiện**  | Thành công: Mẫu dịch vụ mới được tạo và hiển thị trong danh mục. |
-| **Luồng cơ bản**   | 1. Quản trị viên vào mục **Danh mục dịch vụ** và chọn **Thêm mẫu dịch vụ mới**.<br>2. Quản trị viên chọn nhóm dịch vụ phù hợp (Sửa chữa / Bảo dưỡng / Rửa xe / Detailing).<br>3. Quản trị viên điền thông tin mẫu dịch vụ: tên, mô tả, chính sách tính giá và trạng thái Hoạt động.<br>4. Quản trị viên nhấn **Lưu**.<br>5. Hệ thống lưu mẫu dịch vụ mới và hiển thị trong danh mục. |
-| **Luồng thay thế** | **[Cập nhật mẫu dịch vụ]** Tại bước 1, thay vì chọn **Thêm mẫu dịch vụ mới**:<br>1a. Quản trị viên tìm kiếm mẫu dịch vụ cần cập nhật.<br>2a. Quản trị viên chọn mẫu và nhấn **Chỉnh sửa**.<br>3a. Quản trị viên thay đổi thông tin cần thiết.<br>4a. Quản trị viên nhấn **Lưu**.<br>5a. Hệ thống lưu thông tin mới.<br><br>**[Vô hiệu hóa mẫu dịch vụ]** Tại bước 1, quản trị viên chọn mẫu cần vô hiệu hóa:<br>1b. Quản trị viên tìm kiếm và chọn mẫu dịch vụ.<br>2b. Quản trị viên nhấn **Vô hiệu hóa**.<br>3b. Hệ thống yêu cầu xác nhận; quản trị viên nhấn **Xác nhận**.<br>4b. Hệ thống chuyển mẫu sang trạng thái Không hoạt động; các phiếu công việc đang dùng mẫu này không bị ảnh hưởng. |
-| **Luồng ngoại lệ** | Không có. |
+| **Tiền điều kiện** | Có tài khoản hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Mở bản ghi cần sửa.<br>2. Thay đổi thông tin.<br>3. Nhấn Cập nhật.<br>4. Hệ thống lưu thay đổi. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
 
 ---
 
-## UC-37 – Cấu hình loại công việc (Configure Job Types)
+## UC-54 – Xóa tài khoản (Delete Account)
 
-| **Mã Use case**    | UC-37 |
+| **Mã Use case**    | UC-54 |
 | ------------------ | ------ |
-| **Tên Use case**   | Cấu hình loại công việc và nhân công (Configure Job Types & Labour) |
-| **Mô tả**          | Quản trị viên định nghĩa các loại công việc, tạo mẫu job mặc định bao gồm thời gian ước tính và phụ tùng cần dùng, đồng thời cấu hình danh mục loại nhân công (Labour Type) và đơn giá nhân công theo giờ cho từng loại. |
+| **Tên Use case**   | Xóa tài khoản (Delete Account) |
+| **Mô tả**          | Xóa hoặc vô hiệu hóa tài khoản. |
 | **Đối tượng**      | Quản trị viên (Administrator) |
-| **Tiền điều kiện** | Quản trị viên đã đăng nhập vào hệ thống. |
-| **Hậu điều kiện**  | Thành công: Loại công việc hoặc loại nhân công mới được tạo với đơn giá tương ứng. |
-| **Luồng cơ bản**   | 1. Quản trị viên vào mục **Cấu hình công việc** và chọn **Thêm loại công việc**.<br>2. Quản trị viên nhập tên loại công việc, mô tả và đơn giá nhân công theo giờ.<br>3. Quản trị viên nhấn **Lưu**.<br>4. Hệ thống lưu loại công việc mới. |
-| **Luồng thay thế** | **[Thêm mẫu job]** Sau bước 4, hoặc từ loại công việc đã có:<br>4a. Quản trị viên chọn loại công việc cần thêm mẫu.<br>5a. Quản trị viên nhấn **Thêm mẫu job**.<br>6a. Quản trị viên nhập thời gian dự kiến và danh sách phụ tùng / vật tư mặc định.<br>7a. Quản trị viên nhấn **Lưu**.<br>8a. Hệ thống lưu mẫu job và liên kết với loại công việc.<br><br>**[Cấu hình loại nhân công (Labour Type)]** Tại bước 1, quản trị viên chọn tab **Loại nhân công**:<br>1b. Quản trị viên chọn **Thêm loại nhân công**.<br>2b. Quản trị viên nhập tên loại nhân công (ví dụ: Kỹ thuật sửa chữa, Kỹ thuật sơn, Detailing,...), mô tả và đơn giá theo giờ.<br>3b. Quản trị viên nhấn **Lưu**.<br>4b. Hệ thống lưu loại nhân công mới vào danh mục để sử dụng khi khai báo nhân công trong job.<br><br>**[Cập nhật loại công việc / mẫu / loại nhân công]** Tại bước 1, thay vì chọn **Thêm**:<br>1c. Quản trị viên tìm kiếm loại công việc, mẫu hoặc loại nhân công cần cập nhật.<br>2c. Quản trị viên chọn và nhấn **Chỉnh sửa**.<br>3c. Quản trị viên thay đổi thông tin cần thiết.<br>4c. Quản trị viên nhấn **Lưu**.<br>5c. Hệ thống lưu thông tin mới.<br><br>**[Vô hiệu hóa]** Tại bước 1, quản trị viên chọn loại cần vô hiệu hóa:<br>1d. Quản trị viên tìm kiếm và chọn loại công việc hoặc loại nhân công.<br>2d. Quản trị viên nhấn **Vô hiệu hóa** và xác nhận.<br>3d. Hệ thống chuyển sang trạng thái Không hoạt động. |
-| **Luồng ngoại lệ** | Không có. |
+| **Tiền điều kiện** | Bản ghi tồn tại. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn bản ghi.<br>2. Nhấn Xóa/Khóa.<br>3. Xác nhận hành động.<br>4. Hệ thống kiểm tra ràng buộc và xử lý (chuyển Inactive hoặc xóa). |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
 
 ---
 
-## UC-38 – Quản lý chính sách tính giá (Manage Pricing Policies)
+## UC-55 – Thêm nhân viên (Create Employee)
 
-| **Mã Use case**    | UC-38 |
+| **Mã Use case**    | UC-55 |
 | ------------------ | ------ |
-| **Tên Use case**   | Quản lý chính sách tính giá (Manage Pricing Policies) |
-| **Mô tả**          | Quản trị viên thiết lập và cập nhật các chính sách tính giá cho từng loại dịch vụ: giá trọn gói cố định, giá theo kích thước xe hoặc tính theo nhân công và phụ tùng thực tế. |
+| **Tên Use case**   | Thêm nhân viên (Create Employee) |
+| **Mô tả**          | Tạo mới nhân viên vào hệ thống. |
 | **Đối tượng**      | Quản trị viên (Administrator) |
-| **Tiền điều kiện** | Quản trị viên đã đăng nhập. Danh mục dịch vụ (UC-36) và loại công việc (UC-37) đã được cấu hình. |
-| **Hậu điều kiện**  | Thành công: Chính sách giá mới được thiết lập và áp dụng khi tính báo giá. |
-| **Luồng cơ bản**   | 1. Quản trị viên vào mục **Chính sách tính giá** và chọn **Thêm chính sách**.<br>2. Quản trị viên chọn dịch vụ áp dụng và hình thức tính giá (Trọn gói cố định / Theo kích thước xe / Theo nhân công và phụ tùng).<br>3. Quản trị viên nhập các mức giá tương ứng.<br>4. Quản trị viên nhấn **Lưu**.<br>5. Hệ thống lưu chính sách giá và áp dụng khi tạo báo giá. |
-| **Luồng thay thế** | **[Cập nhật chính sách giá]** Tại bước 1, thay vì chọn **Thêm chính sách**:<br>1a. Quản trị viên tìm kiếm chính sách giá cần cập nhật.<br>2a. Quản trị viên chọn chính sách và nhấn **Chỉnh sửa**.<br>3a. Quản trị viên thay đổi mức giá hoặc hình thức tính.<br>4a. Quản trị viên nhấn **Lưu**.<br>5a. Hệ thống lưu chính sách mới; chỉ áp dụng cho báo giá tạo sau thời điểm cập nhật, các báo giá đã duyệt không bị ảnh hưởng.<br><br>**[Vô hiệu hóa chính sách]** Tại bước 1, quản trị viên chọn chính sách cần vô hiệu hóa:<br>1b. Quản trị viên tìm kiếm và chọn chính sách giá.<br>2b. Quản trị viên nhấn **Vô hiệu hóa** và xác nhận.<br>3b. Hệ thống chuyển chính sách sang trạng thái Không hoạt động. |
-| **Luồng ngoại lệ** | Không có. |
+| **Tiền điều kiện** | Có đủ thông tin hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn chức năng thêm mới.<br>2. Nhập các trường thông tin bắt buộc.<br>3. Nhấn Lưu.<br>4. Hệ thống kiểm tra trùng lặp và lưu trữ. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
 
 ---
 
-## UC-39 – Quản lý mẫu kiểm tra (Manage Inspection Templates)
+## UC-56 – Xem nhân viên (View Employee)
 
-| **Mã Use case**    | UC-39 |
+| **Mã Use case**    | UC-56 |
 | ------------------ | ------ |
-| **Tên Use case**   | Quản lý mẫu kiểm tra (Manage Inspection Templates) |
-| **Mô tả**          | Quản trị viên tạo và quản lý danh sách hạng mục kiểm tra xe ban đầu (khi tiếp nhận – UC-20) và hạng mục kiểm định chất lượng (sau khi hoàn thành job – UC-26) theo từng loại dịch vụ. |
+| **Tên Use case**   | Xem nhân viên (View Employee) |
+| **Mô tả**          | Tìm kiếm và xem danh sách nhân viên. |
 | **Đối tượng**      | Quản trị viên (Administrator) |
-| **Tiền điều kiện** | Quản trị viên đã đăng nhập. Danh mục dịch vụ đã được cấu hình (UC-36). |
-| **Hậu điều kiện**  | Thành công: Mẫu kiểm tra mới được tạo và áp dụng cho dịch vụ tương ứng. |
-| **Luồng cơ bản**   | 1. Quản trị viên vào mục **Mẫu kiểm tra** và chọn **Tạo mẫu mới**.<br>2. Quản trị viên chọn loại mẫu (Kiểm tra ban đầu / Kiểm định chất lượng) và dịch vụ áp dụng.<br>3. Quản trị viên thêm từng hạng mục: nhập tên, xác định có bắt buộc không và thứ tự hiển thị.<br>4. Quản trị viên nhấn **Lưu**.<br>5. Hệ thống lưu mẫu và áp dụng cho dịch vụ tương ứng. |
-| **Luồng thay thế** | **[Cập nhật hạng mục]** Tại bước 3, thay vì thêm hạng mục mới, quản trị viên chọn hạng mục đã có:<br>3a. Quản trị viên chọn hạng mục cần cập nhật từ danh sách.<br>4a. Quản trị viên nhấn **Chỉnh sửa**.<br>5a. Quản trị viên thay đổi tên, tính bắt buộc hoặc thứ tự hiển thị.<br>6a. Quản trị viên nhấn **Lưu**.<br>7a. Hệ thống lưu thay đổi.<br><br>**[Xóa hạng mục]** Tại bước 3, quản trị viên chọn xóa hạng mục không còn phù hợp:<br>3b. Quản trị viên chọn hạng mục cần xóa.<br>4b. Quản trị viên nhấn **Xóa** và xác nhận.<br>5b. Hệ thống xóa hạng mục nếu mẫu chưa được dùng trong giao dịch đang hoạt động. |
-| **Luồng ngoại lệ** | Tại bước 5b của luồng Xóa, nếu hạng mục đang được tham chiếu bởi phiếu kiểm tra đang hoạt động, hệ thống thông báo không thể xóa. |
+| **Tiền điều kiện** | Tài khoản có quyền xem. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Truy cập màn hình quản lý.<br>2. Nhập từ khóa tìm kiếm hoặc lọc.<br>3. Hệ thống hiển thị kết quả.<br>4. Chọn một bản ghi để xem chi tiết. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
 
 ---
 
-## UC-40 – Quản lý danh mục (Manage System Catalog)
+## UC-57 – Cập nhật nhân viên (Update Employee)
 
-| **Mã Use case**    | UC-40 |
+| **Mã Use case**    | UC-57 |
 | ------------------ | ------ |
-| **Tên Use case**   | Quản lý danh mục (Manage System Catalog) |
-| **Mô tả**          | Quản trị viên quản lý các danh mục dùng chung trong toàn hệ thống: đơn vị tính (chiếc, lít, hộp,...), lý do hủy lịch / điều chỉnh kho và điều khoản dịch vụ. |
+| **Tên Use case**   | Cập nhật nhân viên (Update Employee) |
+| **Mô tả**          | Chỉnh sửa thông tin nhân viên. |
 | **Đối tượng**      | Quản trị viên (Administrator) |
-| **Tiền điều kiện** | Quản trị viên đã đăng nhập vào hệ thống. |
-| **Hậu điều kiện**  | Thành công: Mục danh mục mới được thêm và có thể dùng ngay trong hệ thống. |
-| **Luồng cơ bản**   | 1. Quản trị viên vào mục **Danh mục hệ thống**.<br>2. Quản trị viên chọn loại danh mục cần quản lý (Đơn vị tính / Lý do / Điều khoản).<br>3. Quản trị viên chọn **Thêm mới**, nhập tên và mô tả cho mục danh mục.<br>4. Quản trị viên nhấn **Lưu**.<br>5. Hệ thống lưu mục mới và hiển thị trong danh sách tương ứng. |
-| **Luồng thay thế** | **[Cập nhật mục danh mục]** Tại bước 3, thay vì chọn **Thêm mới**:<br>3a. Quản trị viên chọn mục cần cập nhật từ danh sách.<br>4a. Quản trị viên nhấn **Chỉnh sửa**.<br>5a. Quản trị viên thay đổi tên và mô tả.<br>6a. Quản trị viên nhấn **Lưu**.<br>7a. Hệ thống lưu thông tin mới.<br><br>**[Vô hiệu hóa mục danh mục]** Tại bước 3, quản trị viên chọn mục cần vô hiệu hóa:<br>3b. Quản trị viên chọn mục từ danh sách.<br>4b. Quản trị viên nhấn **Vô hiệu hóa** và xác nhận.<br>5b. Hệ thống chuyển mục sang trạng thái Không hoạt động; dữ liệu lịch sử tham chiếu vẫn được giữ nguyên. |
-| **Luồng ngoại lệ** | Không có. |
+| **Tiền điều kiện** | Có nhân viên hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Mở bản ghi cần sửa.<br>2. Thay đổi thông tin.<br>3. Nhấn Cập nhật.<br>4. Hệ thống lưu thay đổi. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
 
 ---
 
-*Hết tài liệu đặc tả Use Case – Phiên bản 2.0*
+## UC-58 – Xóa nhân viên (Delete Employee)
+
+| **Mã Use case**    | UC-58 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xóa nhân viên (Delete Employee) |
+| **Mô tả**          | Xóa hoặc vô hiệu hóa nhân viên. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Bản ghi tồn tại. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn bản ghi.<br>2. Nhấn Xóa/Khóa.<br>3. Xác nhận hành động.<br>4. Hệ thống kiểm tra ràng buộc và xử lý (chuyển Inactive hoặc xóa). |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-59 – Thêm danh mục dịch vụ (Create Service Catalog)
+
+| **Mã Use case**    | UC-59 |
+| ------------------ | ------ |
+| **Tên Use case**   | Thêm danh mục dịch vụ (Create Service Catalog) |
+| **Mô tả**          | Tạo mới danh mục dịch vụ vào hệ thống. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Có đủ thông tin hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn chức năng thêm mới.<br>2. Nhập các trường thông tin bắt buộc.<br>3. Nhấn Lưu.<br>4. Hệ thống kiểm tra trùng lặp và lưu trữ. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-60 – Xem danh mục dịch vụ (View Service Catalog)
+
+| **Mã Use case**    | UC-60 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xem danh mục dịch vụ (View Service Catalog) |
+| **Mô tả**          | Tìm kiếm và xem danh sách danh mục dịch vụ. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Tài khoản có quyền xem. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Truy cập màn hình quản lý.<br>2. Nhập từ khóa tìm kiếm hoặc lọc.<br>3. Hệ thống hiển thị kết quả.<br>4. Chọn một bản ghi để xem chi tiết. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-61 – Cập nhật danh mục dịch vụ (Update Service Catalog)
+
+| **Mã Use case**    | UC-61 |
+| ------------------ | ------ |
+| **Tên Use case**   | Cập nhật danh mục dịch vụ (Update Service Catalog) |
+| **Mô tả**          | Chỉnh sửa thông tin danh mục dịch vụ. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Có danh mục dịch vụ hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Mở bản ghi cần sửa.<br>2. Thay đổi thông tin.<br>3. Nhấn Cập nhật.<br>4. Hệ thống lưu thay đổi. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-62 – Xóa danh mục dịch vụ (Delete Service Catalog)
+
+| **Mã Use case**    | UC-62 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xóa danh mục dịch vụ (Delete Service Catalog) |
+| **Mô tả**          | Xóa hoặc vô hiệu hóa danh mục dịch vụ. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Bản ghi tồn tại. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn bản ghi.<br>2. Nhấn Xóa/Khóa.<br>3. Xác nhận hành động.<br>4. Hệ thống kiểm tra ràng buộc và xử lý (chuyển Inactive hoặc xóa). |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-63 – Thêm loại công việc (Create Job Type)
+
+| **Mã Use case**    | UC-63 |
+| ------------------ | ------ |
+| **Tên Use case**   | Thêm loại công việc (Create Job Type) |
+| **Mô tả**          | Tạo mới loại công việc vào hệ thống. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Có đủ thông tin hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn chức năng thêm mới.<br>2. Nhập các trường thông tin bắt buộc.<br>3. Nhấn Lưu.<br>4. Hệ thống kiểm tra trùng lặp và lưu trữ. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-64 – Xem loại công việc (View Job Type)
+
+| **Mã Use case**    | UC-64 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xem loại công việc (View Job Type) |
+| **Mô tả**          | Tìm kiếm và xem danh sách loại công việc. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Tài khoản có quyền xem. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Truy cập màn hình quản lý.<br>2. Nhập từ khóa tìm kiếm hoặc lọc.<br>3. Hệ thống hiển thị kết quả.<br>4. Chọn một bản ghi để xem chi tiết. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-65 – Cập nhật loại công việc (Update Job Type)
+
+| **Mã Use case**    | UC-65 |
+| ------------------ | ------ |
+| **Tên Use case**   | Cập nhật loại công việc (Update Job Type) |
+| **Mô tả**          | Chỉnh sửa thông tin loại công việc. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Có loại công việc hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Mở bản ghi cần sửa.<br>2. Thay đổi thông tin.<br>3. Nhấn Cập nhật.<br>4. Hệ thống lưu thay đổi. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-66 – Xóa loại công việc (Delete Job Type)
+
+| **Mã Use case**    | UC-66 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xóa loại công việc (Delete Job Type) |
+| **Mô tả**          | Xóa hoặc vô hiệu hóa loại công việc. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Bản ghi tồn tại. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn bản ghi.<br>2. Nhấn Xóa/Khóa.<br>3. Xác nhận hành động.<br>4. Hệ thống kiểm tra ràng buộc và xử lý (chuyển Inactive hoặc xóa). |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-67 – Thêm chính sách tính giá (Create Pricing Policy)
+
+| **Mã Use case**    | UC-67 |
+| ------------------ | ------ |
+| **Tên Use case**   | Thêm chính sách tính giá (Create Pricing Policy) |
+| **Mô tả**          | Tạo mới chính sách tính giá vào hệ thống. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Có đủ thông tin hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn chức năng thêm mới.<br>2. Nhập các trường thông tin bắt buộc.<br>3. Nhấn Lưu.<br>4. Hệ thống kiểm tra trùng lặp và lưu trữ. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-68 – Xem chính sách tính giá (View Pricing Policy)
+
+| **Mã Use case**    | UC-68 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xem chính sách tính giá (View Pricing Policy) |
+| **Mô tả**          | Tìm kiếm và xem danh sách chính sách tính giá. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Tài khoản có quyền xem. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Truy cập màn hình quản lý.<br>2. Nhập từ khóa tìm kiếm hoặc lọc.<br>3. Hệ thống hiển thị kết quả.<br>4. Chọn một bản ghi để xem chi tiết. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-69 – Cập nhật chính sách tính giá (Update Pricing Policy)
+
+| **Mã Use case**    | UC-69 |
+| ------------------ | ------ |
+| **Tên Use case**   | Cập nhật chính sách tính giá (Update Pricing Policy) |
+| **Mô tả**          | Chỉnh sửa thông tin chính sách tính giá. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Có chính sách tính giá hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Mở bản ghi cần sửa.<br>2. Thay đổi thông tin.<br>3. Nhấn Cập nhật.<br>4. Hệ thống lưu thay đổi. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-70 – Xóa chính sách tính giá (Delete Pricing Policy)
+
+| **Mã Use case**    | UC-70 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xóa chính sách tính giá (Delete Pricing Policy) |
+| **Mô tả**          | Xóa hoặc vô hiệu hóa chính sách tính giá. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Bản ghi tồn tại. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn bản ghi.<br>2. Nhấn Xóa/Khóa.<br>3. Xác nhận hành động.<br>4. Hệ thống kiểm tra ràng buộc và xử lý (chuyển Inactive hoặc xóa). |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-71 – Thêm mẫu kiểm tra (Create Inspection Template)
+
+| **Mã Use case**    | UC-71 |
+| ------------------ | ------ |
+| **Tên Use case**   | Thêm mẫu kiểm tra (Create Inspection Template) |
+| **Mô tả**          | Tạo mới mẫu kiểm tra vào hệ thống. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Có đủ thông tin hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn chức năng thêm mới.<br>2. Nhập các trường thông tin bắt buộc.<br>3. Nhấn Lưu.<br>4. Hệ thống kiểm tra trùng lặp và lưu trữ. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-72 – Xem mẫu kiểm tra (View Inspection Template)
+
+| **Mã Use case**    | UC-72 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xem mẫu kiểm tra (View Inspection Template) |
+| **Mô tả**          | Tìm kiếm và xem danh sách mẫu kiểm tra. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Tài khoản có quyền xem. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Truy cập màn hình quản lý.<br>2. Nhập từ khóa tìm kiếm hoặc lọc.<br>3. Hệ thống hiển thị kết quả.<br>4. Chọn một bản ghi để xem chi tiết. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-73 – Cập nhật mẫu kiểm tra (Update Inspection Template)
+
+| **Mã Use case**    | UC-73 |
+| ------------------ | ------ |
+| **Tên Use case**   | Cập nhật mẫu kiểm tra (Update Inspection Template) |
+| **Mô tả**          | Chỉnh sửa thông tin mẫu kiểm tra. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Có mẫu kiểm tra hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Mở bản ghi cần sửa.<br>2. Thay đổi thông tin.<br>3. Nhấn Cập nhật.<br>4. Hệ thống lưu thay đổi. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-74 – Xóa mẫu kiểm tra (Delete Inspection Template)
+
+| **Mã Use case**    | UC-74 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xóa mẫu kiểm tra (Delete Inspection Template) |
+| **Mô tả**          | Xóa hoặc vô hiệu hóa mẫu kiểm tra. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Bản ghi tồn tại. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn bản ghi.<br>2. Nhấn Xóa/Khóa.<br>3. Xác nhận hành động.<br>4. Hệ thống kiểm tra ràng buộc và xử lý (chuyển Inactive hoặc xóa). |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-75 – Thêm danh mục chung (Create System Catalog)
+
+| **Mã Use case**    | UC-75 |
+| ------------------ | ------ |
+| **Tên Use case**   | Thêm danh mục chung (Create System Catalog) |
+| **Mô tả**          | Tạo mới danh mục chung vào hệ thống. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Có đủ thông tin hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn chức năng thêm mới.<br>2. Nhập các trường thông tin bắt buộc.<br>3. Nhấn Lưu.<br>4. Hệ thống kiểm tra trùng lặp và lưu trữ. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-76 – Xem danh mục chung (View System Catalog)
+
+| **Mã Use case**    | UC-76 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xem danh mục chung (View System Catalog) |
+| **Mô tả**          | Tìm kiếm và xem danh sách danh mục chung. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Tài khoản có quyền xem. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Truy cập màn hình quản lý.<br>2. Nhập từ khóa tìm kiếm hoặc lọc.<br>3. Hệ thống hiển thị kết quả.<br>4. Chọn một bản ghi để xem chi tiết. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-78 – Cập nhật danh mục chung (Update System Catalog)
+
+| **Mã Use case**    | UC-78 |
+| ------------------ | ------ |
+| **Tên Use case**   | Cập nhật danh mục chung (Update System Catalog) |
+| **Mô tả**          | Chỉnh sửa thông tin danh mục chung. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Có danh mục chung hợp lệ. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Mở bản ghi cần sửa.<br>2. Thay đổi thông tin.<br>3. Nhấn Cập nhật.<br>4. Hệ thống lưu thay đổi. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
+## UC-78 – Xóa danh mục chung (Delete System Catalog)
+
+| **Mã Use case**    | UC-78 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xóa danh mục chung (Delete System Catalog) |
+| **Mô tả**          | Xóa hoặc vô hiệu hóa danh mục chung. |
+| **Đối tượng**      | Quản trị viên (Administrator) |
+| **Tiền điều kiện** | Bản ghi tồn tại. |
+| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
+| **Luồng cơ bản**   | 1. Chọn bản ghi.<br>2. Nhấn Xóa/Khóa.<br>3. Xác nhận hành động.<br>4. Hệ thống kiểm tra ràng buộc và xử lý (chuyển Inactive hoặc xóa). |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+
+---
+
