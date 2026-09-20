@@ -129,8 +129,9 @@ export default function LoginPage() {
             )}
 
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-error-container text-error text-body-sm font-medium">
-                {error}
+              <div className="mb-4 p-3 rounded-lg bg-error-container text-error text-body-sm font-medium flex items-center gap-2">
+                <span className="material-symbols-outlined text-[1.125rem]">error</span>
+                <span>{error}</span>
               </div>
             )}
 

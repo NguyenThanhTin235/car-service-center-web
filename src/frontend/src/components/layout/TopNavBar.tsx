@@ -1,11 +1,17 @@
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import { useAppSelector } from '@/store';
 import { usePathname } from 'next/navigation';
 
 export default function TopNavBar() {
   const { user } = useAppSelector((state) => state.auth);
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   let pageName = 'Tổng quan';
   if (pathname.includes('/customers')) pageName = 'Quản lý Khách hàng';
@@ -72,10 +78,10 @@ export default function TopNavBar() {
           </div>
           <div className="hidden md:flex flex-col text-left">
             <span className="text-label-md font-label-md font-semibold text-on-surface leading-tight">
-              {user?.fullName || 'Người dùng'}
+              {mounted ? (user?.fullName || 'Người dùng') : 'Người dùng'}
             </span>
             <span className="text-label-sm font-label-sm text-on-surface-variant">
-              {user?.roles?.[0] || 'Nhân viên'}
+              {mounted ? (user?.roles?.[0] || 'Nhân viên') : 'Nhân viên'}
             </span>
           </div>
           <span className="material-symbols-outlined text-[18px] text-on-surface-variant hidden md:block">

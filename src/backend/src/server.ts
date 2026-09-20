@@ -7,8 +7,12 @@ dotenv.config();
 const PORT = process.env.PORT || 5000;
 
 const start = async () => {
-  // Connect Redis
-  await connectRedis();
+  try {
+    // Connect Redis
+    await connectRedis();
+  } catch (error) {
+    console.warn('[Warning] Failed to connect to Redis, some cache/OTP features might not work.', error);
+  }
 
   app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);

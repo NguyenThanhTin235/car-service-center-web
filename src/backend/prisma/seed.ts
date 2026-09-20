@@ -93,16 +93,29 @@ async function main() {
   const serviceCategories = [];
   for (let i = 1; i <= 5; i++) serviceCategories.push(await prisma.serviceCategory.create({ data: { name: `Danh mục Dịch vụ ${i}` } }));
 
+  const serviceNames = [
+    'Bảo dưỡng định kỳ',
+    'Sửa chữa động cơ và hộp số',
+    'Chăm sóc nội thất',
+    'Hệ thống phanh',
+    'Sửa chữa lốp xe',
+    'Sửa chữa hệ thống điện',
+    'Sửa chữa hệ thống chiếu sáng',
+    'Sữa chữa điều hòa',
+    'Dịch vụ khác 1',
+    'Dịch vụ khác 2'
+  ];
+
   const serviceTemplates = [];
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 0; i < 10; i++) {
     const st = await prisma.serviceTemplate.create({
-      data: { category_id: serviceCategories[i % 5].id, name: `Dịch vụ mẫu ${i}`, pricing_type: PricingType.VEHICLE_SIZE }
+      data: { category_id: serviceCategories[i % 5].id, name: serviceNames[i], pricing_type: PricingType.VEHICLE_SIZE }
     });
     serviceTemplates.push(st);
     
     // VehicleSizePrice
     for (const size of sizes) {
-      await prisma.vehicleSizePrice.create({ data: { service_template_id: st.id, vehicle_size: size, price: 50000 * i } });
+      await prisma.vehicleSizePrice.create({ data: { service_template_id: st.id, vehicle_size: size, price: 50000 * (i + 1) } });
     }
   }
 

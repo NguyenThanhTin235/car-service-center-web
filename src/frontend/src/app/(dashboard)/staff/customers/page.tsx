@@ -28,7 +28,7 @@ export default function CustomersPage() {
     try {
       setLoading(true);
       const res = await axios.get('http://localhost:5000/api/customers', {
-        params: { search: searchQuery, page, limit: 10 },
+        params: { search: searchQuery, page, limit: 5 },
         withCredentials: true,
       });
       setCustomers(res.data.data);
@@ -324,18 +324,22 @@ export default function CustomersPage() {
                     </td>
                     <td className="px-4 py-3">
                       {c.vehicles && c.vehicles.length > 0 ? (
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded border border-slate-700 bg-slate-100 font-code-mono text-label-sm font-bold text-slate-900 tracking-wider shadow-2xs whitespace-nowrap">
-                            {c.vehicles[0].licensePlate}
-                          </span>
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-body-sm font-medium text-on-surface truncate max-w-[150px]">
-                              {c.vehicles[0].make} {c.vehicles[0].model}
-                            </span>
-                            <span className="text-[11px] text-secondary truncate">
-                              Màu {c.vehicles[0].color || 'N/A'}
-                            </span>
-                          </div>
+                        <div className="flex flex-col gap-2">
+                          {c.vehicles.map((v: any, vIdx: number) => (
+                            <div key={v.id || vIdx} className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded border border-slate-700 bg-slate-100 font-code-mono text-label-sm font-bold text-slate-900 tracking-wider shadow-2xs whitespace-nowrap">
+                                {v.licensePlate}
+                              </span>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-body-sm font-medium text-on-surface truncate max-w-[150px]">
+                                  {v.make} {v.model}
+                                </span>
+                                <span className="text-[11px] text-secondary truncate">
+                                  Màu {v.color || 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       ) : (
                         <span className="text-secondary italic text-body-sm">Chưa có xe</span>

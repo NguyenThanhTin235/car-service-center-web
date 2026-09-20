@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import PublicHeader from '@/components/layout/PublicHeader';
+import PublicFooter from '@/components/layout/PublicFooter';
 
 export const metadata: Metadata = {
   title: 'AutoCare Pro – Hệ thống Dịch vụ Ô tô Thông minh',
@@ -6,5 +8,13 @@ export const metadata: Metadata = {
 };
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <div className="flex flex-col min-h-screen">
+      <PublicHeader />
+      <main className="flex-1 w-full">
+        {children}
+      </main>
+      <PublicFooter />
+    </div>
+  );
 }

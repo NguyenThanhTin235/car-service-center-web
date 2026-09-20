@@ -108,28 +108,40 @@
   --text-code-sm--letter-spacing: 0.05em;
   --text-code-sm--font-weight: 500;
 
-  --font-body-lg: "Inter", sans-serif;
-  --font-headline-lg-mobile: "Inter", sans-serif;
-  --font-title-md: "Inter", sans-serif;
-  --font-body-md: "Inter", sans-serif;
-  --font-headline-sm: "Inter", sans-serif;
-  --font-display: "Inter", sans-serif;
-  --font-body-sm: "Inter", sans-serif;
-  --font-label-sm: "Inter", sans-serif;
-  --font-label-md: "Inter", sans-serif;
-  --font-headline-lg: "Inter", sans-serif;
-  --font-headline-md: "Inter", sans-serif;
-  --font-code-sm: "Inter", sans-serif;
+  --font-body-lg: "Be Vietnam Pro", sans-serif;
+  --font-headline-lg-mobile: "Be Vietnam Pro", sans-serif;
+  --font-title-md: "Be Vietnam Pro", sans-serif;
+  --font-body-md: "Be Vietnam Pro", sans-serif;
+  --font-headline-sm: "Be Vietnam Pro", sans-serif;
+  --font-display: "Be Vietnam Pro", sans-serif;
+  --font-body-sm: "Be Vietnam Pro", sans-serif;
+  --font-label-sm: "Be Vietnam Pro", sans-serif;
+  --font-label-md: "Be Vietnam Pro", sans-serif;
+  --font-headline-lg: "Be Vietnam Pro", sans-serif;
+  --font-headline-md: "Be Vietnam Pro", sans-serif;
+  --font-code-sm: "Be Vietnam Pro", sans-serif;
 
-  --spacing-space-md: 1rem;
-  --spacing-space-lg: 1.5rem;
+  --spacing-space-xxs: 0.125rem;
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 0.75rem;
+  --spacing-space-base: 1rem;
+  --spacing-space-lg: 1.25rem;
+  --spacing-space-xl: 1.5rem;
+  --spacing-space-2xl: 2rem;
+  --spacing-space-3xl: 2.5rem;
+  --spacing-space-4xl: 3rem;
+  
+  --spacing-gutter-mobile: 1rem;
+  --spacing-gutter-tablet: 1.5rem;
+  --spacing-gutter-desktop: 2rem;
+  
+  --spacing-container-max: 1440px;
+  
   --spacing-margin: 1rem;
   --spacing-gutter-md: 1.5rem;
-  --spacing-space-sm: 0.5rem;
   --spacing-gutter: 1rem;
-  --spacing-space-xs: 0.25rem;
   --spacing-margin-md: 2rem;
-  --spacing-space-xl: 2rem;
 
   --radius: 0.25rem;
   --radius-lg: 0.5rem;
@@ -140,7 +152,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', sans-serif;
+  font-family: 'Be Vietnam Pro', sans-serif;
 }
 
 .material-symbols-outlined {

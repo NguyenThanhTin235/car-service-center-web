@@ -71,7 +71,7 @@ export default function RescheduleModal({ appointment, onClose }: RescheduleModa
           
           <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4">
             {error && (
-              <div className="p-3 rounded-lg bg-error-container text-on-error-container text-body-sm flex items-start gap-2">
+              <div className="p-3 rounded-lg bg-error-container text-on-error-container text-body-sm flex items-center gap-2">
                 <span className="material-symbols-outlined text-base" data-icon="error">error</span>
                 <span>{error}</span>
               </div>

@@ -124,7 +124,7 @@ export default function CreateAppointmentModal({ onClose, onSuccess, selectedDat
           
           <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[75vh]">
             {error && (
-              <div className="p-3 rounded-lg bg-error-container text-on-error-container text-body-sm flex items-start gap-2">
+              <div className="p-3 rounded-lg bg-error-container text-on-error-container text-body-sm flex items-center gap-2">
                 <span className="material-symbols-outlined text-base" data-icon="error">error</span>
                 <span>{error}</span>
               </div>

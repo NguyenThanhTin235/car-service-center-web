@@ -43,8 +43,8 @@ async function main() {
   await prisma.appointmentService.deleteMany();
   await prisma.appointment.deleteMany();
 
-  // Tạo Appointment 1 (Hôm nay/Ngày gần đây, 09:00, Trạng thái CONFIRMED)
-  const time1 = new Date(Date.UTC(1970, 0, 1, 9, 0)); // 09:00
+  // Tạo Appointment 1 (Thứ Hai, 09:00 VN -> 02:00 UTC)
+  const time1 = new Date(Date.UTC(1970, 0, 1, 2, 0)); // 02:00 UTC = 09:00 VN
   await prisma.appointment.create({
     data: {
       customer_id: customer1.id,
@@ -61,8 +61,8 @@ async function main() {
     }
   });
 
-  // Tạo Appointment 2 (Thứ Tư, 14:00, Trạng thái REQUESTED)
-  const time2 = new Date(Date.UTC(1970, 0, 1, 14, 0)); // 14:00
+  // Tạo Appointment 2 (Thứ Tư, 14:00 VN -> 07:00 UTC)
+  const time2 = new Date(Date.UTC(1970, 0, 1, 7, 0)); // 07:00 UTC = 14:00 VN
   await prisma.appointment.create({
     data: {
       customer_id: customer1.id,
@@ -80,8 +80,8 @@ async function main() {
     }
   });
 
-  // Tạo Appointment 3 (Thứ Sáu, 10:30, Trạng thái RESCHEDULED)
-  const time3 = new Date(Date.UTC(1970, 0, 1, 10, 30)); // 10:30
+  // Tạo Appointment 3 (Thứ Sáu, 10:30 VN -> 03:30 UTC)
+  const time3 = new Date(Date.UTC(1970, 0, 1, 3, 30)); // 03:30 UTC = 10:30 VN
   await prisma.appointment.create({
     data: {
       customer_id: customer1.id,

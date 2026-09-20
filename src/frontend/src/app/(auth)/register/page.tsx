@@ -117,9 +117,9 @@ export default function RegisterPage() {
 
             {/* Error */}
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm font-medium flex items-start gap-2 border border-red-100">
-                <span className="material-symbols-outlined text-sm mt-0.5">error</span>
-                {error}
+              <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm font-medium flex items-center gap-2 border border-red-100">
+                <span className="material-symbols-outlined text-[1.125rem]">error</span>
+                <span>{error}</span>
               </div>
             )}
 

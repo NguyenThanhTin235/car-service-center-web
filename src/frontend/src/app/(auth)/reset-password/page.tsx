@@ -16,6 +16,7 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
     const storedEmail = sessionStorage.getItem('pendingEmail');
@@ -31,6 +32,19 @@ export default function ResetPasswordPage() {
       setOtp(storedOtp);
     }
   }, [router]);
+
+  useEffect(() => {
+    if (success) {
+      if (countdown === 0) {
+        router.push('/login');
+        return;
+      }
+      const timer = setTimeout(() => {
+        setCountdown(prev => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, countdown, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +81,7 @@ export default function ResetPasswordPage() {
           </div>
           <h2 className="text-2xl font-extrabold text-[#050505] mb-3">Thành công!</h2>
           <p className="text-sm text-[#65676B] mb-8 leading-relaxed">
-            Mật khẩu của bạn đã được cập nhật thành công. Vui lòng đăng nhập lại bằng mật khẩu mới.
+            Mật khẩu của bạn đã được cập nhật thành công. Đang tự động chuyển về trang đăng nhập sau <span className="font-bold text-[#0866FF]">{countdown}s</span>...
           </p>
           <Link
             href="/login"
@@ -125,9 +139,9 @@ export default function ResetPasswordPage() {
 
             {/* Error */}
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm font-medium flex items-start gap-2 border border-red-100">
-                <span className="material-symbols-outlined text-sm mt-0.5">error</span>
-                {error}
+              <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm font-medium flex items-center gap-2 border border-red-100">
+                <span className="material-symbols-outlined text-[1.125rem]">error</span>
+                <span>{error}</span>
               </div>
             )}
 
