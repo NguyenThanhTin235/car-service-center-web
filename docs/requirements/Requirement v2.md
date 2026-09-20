@@ -413,13 +413,14 @@ Các Use Case dưới đây tạo thành baseline bắt buộc của Tiểu lu�
 
 ### 2.3.1. Khách vãng lai (Guest)
 
-_Bảng 2-1b: Use Case baseline – Khách vãng lai (Guest)_
+_Bảng 2-1: Use Case baseline – Khách vãng lai (Guest)_
 
 | **UC ID** | **Use Case** | **Ưu tiên** | **Mô tả ngắn** |
 | --- | --- | --- | --- |
-| UC-01 | **Xem thông tin và danh mục dịch vụ (Browse Website)** | Must | Xem trang chủ, danh mục dịch vụ, bảng giá tham khảo và FAQ |
-| UC-02 | **Đăng ký tài khoản (Register)** | Must | Tạo tài khoản Customer mới bằng email và mật khẩu |
-| UC-03 | **Đăng nhập (Login)** | Must | Đăng nhập để truy cập hệ thống theo vai trò |
+| UC-01 | **Xem thông tin website** | Must | Mọi người dùng kể cả chưa đăng nhập đều có thể xem thông tin công khai: trang... |
+| UC-02 | **Đăng ký tài khoản (Register)** | Must | Khách vãng lai tự tạo tài khoản mới trên hệ thống bằng cách cung cấp thông ti... |
+| UC-03 | **Đăng nhập (Login)** | Must | Người dùng đăng nhập vào hệ thống bằng email và mật khẩu để truy cập các chức... |
+| UC-04 | **Đăng xuất (Logout)** | Must | Người dùng kết thúc phiên làm việc hiện tại trên hệ thống. Thao tác này áp dụ... |
 
 ### 2.3.2. Khách hàng (Customer)
 
@@ -427,19 +428,19 @@ _Bảng 2-2: Use Case baseline – Khách hàng (Customer)_
 
 | **UC ID** | **Use Case** | **Ưu tiên** | **Mô tả ngắn** |
 | --- | --- | --- | --- |
-| UC-04 | **Đăng xuất (Logout)** | Must | Kết thúc phiên làm việc; áp dụng cho tất cả vai trò |
-| UC-05 | **Đặt lại mật khẩu (Reset Password)** | Must | Tự đặt lại mật khẩu qua OTP email; chỉ dành cho Customer |
-| UC-06 | **Cập nhật hồ sơ cá nhân (Update Profile)** | Must | Cập nhật họ tên, số điện thoại và địa chỉ |
-| UC-07 | **Thêm phương tiện (Create Vehicle)** | Must | Thêm mới phương tiện |
-| UC-08 | **Xem danh sách phương tiện (View Vehicles)** | Must | Xem danh sách và lịch sử dịch vụ |
-| UC-09 | **Cập nhật phương tiện (Update Vehicle)** | Must | Cập nhật thông tin phương tiện |
-| UC-10 | **Xóa phương tiện (Delete Vehicle)** | Must | Vô hiệu hóa phương tiện |
-| UC-11 | **Đặt lịch hẹn (Create Appointment)** | Must | Đặt lịch hẹn dịch vụ |
-| UC-12 | **Xem lịch hẹn (View Appointment)** | Must | Xem chi tiết lịch hẹn |
-| UC-13 | **Dời lịch hẹn (Reschedule Appointment)** | Must | Đổi thời gian lịch hẹn |
-| UC-14 | **Hủy lịch hẹn (Cancel Appointment)** | Must | Hủy bỏ lịch hẹn |
-| UC-15 | **Theo dõi tiến độ sửa chữa (Track Repair Progress)** | Must | Theo dõi trạng thái Work Order/Service/Finding |
-| UC-16 | **Xem hóa đơn (View Invoice)** | Must | Xem Invoice, số tiền cần thanh toán và trạng thái Payment |
+| UC-05 | **Khôi phục mật khẩu** | Must | Khách hàng quên mật khẩu có thể yêu cầu đặt lại mật khẩu ngay tại trang đăng ... |
+| UC-06 | **Cập nhật hồ sơ cá nhân (Update Profile)** | Must | Khách hàng xem và cập nhật thông tin cá nhân của mình trong hệ thống, bao gồm... |
+| UC-07 | **Thêm phương tiện (Create Vehicle)** | Must | Khách hàng tạo mới dữ liệu phương tiện vào hệ thống để lưu trữ và quản lý. |
+| UC-08 | **Xem phương tiện (View Vehicle)** | Must | Khách hàng tra cứu, tìm kiếm và xem chi tiết thông tin của phương tiện đã có ... |
+| UC-09 | **Cập nhật phương tiện (Update Vehicle)** | Must | Khách hàng chỉnh sửa và cập nhật lại thông tin của phương tiện hiện có trong ... |
+| UC-10 | **Xóa phương tiện (Delete Vehicle)** | Must | Khách hàng thực hiện xóa hoặc vô hiệu hóa bản ghi phương tiện khỏi hệ thống k... |
+| UC-11 | **Đặt lịch hẹn (Create Appointment)** | Must | Khách hàng tạo mới dữ liệu lịch hẹn vào hệ thống để lưu trữ và quản lý. |
+| UC-12 | **Xem lịch hẹn (View Appointment)** | Must | Khách hàng tra cứu, tìm kiếm và xem chi tiết thông tin của lịch hẹn đã có tro... |
+| UC-13 | **Dời lịch hẹn (Reschedule Appointment)** | Must | Khách hàng chỉnh sửa và cập nhật lại thông tin của lịch hẹn hiện có trong hệ ... |
+| UC-14 | **Hủy lịch hẹn (Cancel Appointment)** | Must | Khách hàng thực hiện xóa hoặc vô hiệu hóa bản ghi lịch hẹn khỏi hệ thống khi ... |
+| UC-15 | **Theo dõi tiến độ sửa chữa (Track Repair Progress)** | Must | Khách hàng xem trạng thái tổng quát của xe đang được xử lý: đang ở bước nào, ... |
+| UC-16 | **Xem hóa đơn (View Invoice)** | Must | Khách hàng xem hóa đơn của phiếu công việc để biết số tiền cần thanh toán, ki... |
+| UC-38 | **Xem báo giá (View Quotation)** | Must | Cố vấn dịch vụ hoặc khách hàng xem chi tiết báo giá đã tạo, bao gồm các hạng ... |
 
 ### 2.3.3. Nhân viên quầy dịch vụ (Front Desk Staff)
 
@@ -447,18 +448,18 @@ _Bảng 2-3: Use Case baseline – Nhân viên quầy dịch vụ (Front Desk St
 
 | **UC ID** | **Use Case** | **Ưu tiên** | **Mô tả ngắn** |
 | --- | --- | --- | --- |
-| UC-17 | **Đặt lịch hẹn (Create Appointment)** | Must | Tạo lịch hẹn thay khách |
-| UC-18 | **Xem lịch hẹn (View Appointment)** | Must | Theo dõi lịch hẹn trong ngày |
-| UC-19 | **Dời lịch hẹn (Reschedule Appointment)** | Must | Đổi thời gian lịch hẹn thay khách |
-| UC-20 | **Hủy lịch hẹn (Cancel Appointment)** | Must | Hủy lịch hẹn (lưu lý do) |
-| UC-21 | **Tiếp nhận xe (Receive Vehicle)** | Must | Mark Arrived, Walk-in, Tow-in; đưa xe vào Intake Queue |
-| UC-22 | **Thêm hồ sơ khách hàng (Create Customer Profile)** | Must | Tạo mới Customer/Vehicle tại quầy |
-| UC-23 | **Xem hồ sơ khách hàng (View Customer Profile)** | Must | Tra cứu thông tin khách hàng |
-| UC-24 | **Cập nhật hồ sơ khách hàng (Update Customer Profile)** | Must | Cập nhật thông tin khách hàng |
-| UC-25 | **Xóa hồ sơ khách hàng (Delete Customer Profile)** | Must | Khóa/Vô hiệu hóa khách hàng |
-| UC-26 | **Xem phiếu công việc (View Work Order)** | Must | Tra cứu trạng thái để hỗ trợ khách |
-| UC-27 | **Xử lý hóa đơn (Process Invoice)** | Must | Nhận Billing Request, tạo Draft Invoice, phát hành Invoice |
-| UC-28 | **Xử lý thanh toán (Process Payment)** | Must | Manual Payment, tự động ghi nhận Financial Clearance |
+| UC-17 | **Đặt lịch hẹn (Create Appointment)** | Must | Nhân viên quầy dịch vụ tạo mới dữ liệu lịch hẹn vào hệ thống để lưu trữ và qu... |
+| UC-18 | **Xem lịch hẹn (View Appointment)** | Must | Nhân viên quầy dịch vụ tra cứu, tìm kiếm và xem chi tiết thông tin của lịch h... |
+| UC-19 | **Dời lịch hẹn (Reschedule Appointment)** | Must | Nhân viên quầy dịch vụ chỉnh sửa và cập nhật lại thông tin của lịch hẹn hiện ... |
+| UC-20 | **Hủy lịch hẹn (Cancel Appointment)** | Must | Nhân viên quầy dịch vụ thực hiện xóa hoặc vô hiệu hóa bản ghi lịch hẹn khỏi h... |
+| UC-21 | **Tiếp nhận xe (Receive Vehicle)** | Must | Nhân viên quầy đánh dấu khách có lịch hẹn đã đến, hoặc tạo phiếu tiếp nhận ch... |
+| UC-22 | **Thêm hồ sơ khách hàng (Create Customer Profile)** | Must | Nhân viên quầy dịch vụ tạo mới dữ liệu hồ sơ khách hàng vào hệ thống để lưu t... |
+| UC-23 | **Xem hồ sơ khách hàng (View Customer Profile)** | Must | Nhân viên quầy dịch vụ tra cứu, tìm kiếm và xem chi tiết thông tin của hồ sơ ... |
+| UC-24 | **Cập nhật hồ sơ khách hàng (Update Customer Profile)** | Must | Nhân viên quầy dịch vụ chỉnh sửa và cập nhật lại thông tin của hồ sơ khách hà... |
+| UC-25 | **Xóa hồ sơ khách hàng (Delete Customer Profile)** | Must | Nhân viên quầy dịch vụ thực hiện xóa hoặc vô hiệu hóa bản ghi hồ sơ khách hàn... |
+| UC-26 | **Xem phiếu công việc (View Work Order)** | Must | Nhân viên quầy tra cứu trạng thái tổng quát của phiếu công việc để trả lời th... |
+| UC-27 | **Xử lý hóa đơn (Process Invoice)** | Must | Sau khi nhận yêu cầu thanh toán từ Cố vấn dịch vụ, nhân viên quầy tạo hóa đơn... |
+| UC-28 | **Xử lý thanh toán (Process Payment)** | Must | Nhân viên quầy ghi nhận khoản thanh toán của khách hàng. Hệ thống hỗ trợ hai ... |
 
 ### 2.3.4. Cố vấn dịch vụ (Service Advisor)
 
@@ -466,71 +467,68 @@ _Bảng 2-4: Use Case baseline – Cố vấn dịch vụ (Service Advisor)_
 
 | **UC ID** | **Use Case** | **Ưu tiên** | **Mô tả ngắn** |
 | --- | --- | --- | --- |
-| UC-29 | **Tạo phiếu công việc (Create Work Order)** | Must | Xem Intake Queue, tạo Work Order |
-| UC-30 | **Ghi nhận tình trạng xe (Record Vehicle Condition)** | Must | Ghi mileage, fuel, complaint, belongings, condition, evidence |
-| UC-31 | **Thêm hạng mục dịch vụ (Add Service)** | Must | Thêm dịch vụ vào Work Order |
-| UC-32 | **Xóa hạng mục dịch vụ (Remove Service)** | Must | Hủy/Xóa dịch vụ khỏi Work Order |
-| UC-33 | **Kiểm tra xe (Inspect Vehicle)** | Must | Đặt marker hư hỏng trên sơ đồ xe 2D, tự động tạo dòng Finding |
-| UC-34 | **Lên kế hoạch công việc (Plan Jobs)** | Must | Tạo Job từ Finding, sinh Job từ Template hoặc tạo thủ công |
-| UC-35 | **Khai báo nhân công (Declare Labour)** | Must | Labour line: loại nhân công (Labour Type), kỹ thuật viên, số giờ |
-| UC-36 | **Khai báo phụ tùng (Declare Parts)** | Must | Planned/Used Quantity, Part/Material theo Job |
-| UC-37 | **Xử lý báo giá (Process Quotation)** | Must | Tính giá, tạo, gửi, xử lý Approval và freeze snapshot |
-| UC-38 | **Tạo báo giá bổ sung (Create Supplementary Quotation)** | Must | Tạo báo giá phụ khi phát sinh hạng |
-| UC-39 | **Cập nhật tiến trình (Update Progress)** | Must | Đánh dấu hoàn thành Job, nhập Used Part và Đóng WO |
-| UC-40 | **Kiểm định chất lượng (Quality Inspection)** | Must | QC checklist, Pass/Fail, tạo Rework khi Fail |
-| UC-41 | **Gửi yêu cầu thanh toán (Request Payment)** | Must | Gửi Billing Request sang Front Desk khi đủ điều kiện |
-| UC-42 | **Bàn giao xe (Release Vehicle)** | Must | Kiểm tra Release Gate và ghi nhận bàn giao xe |
-| UC-43 | **Xuất kho theo công việc (Issue Stock by Job)** | Must | Issue Part to Job, Return Part from Job |
-
+| UC-29 | **Tạo phiếu công việc (Create Work Order)** | Must | Cố vấn dịch vụ xem danh sách xe đang chờ xử lý và tạo phiếu công việc – hồ sơ... |
+| UC-30 | **Ghi nhận tình trạng xe (Record Vehicle Condition)** | Must | Cố vấn dịch vụ ghi lại tình trạng xe tại thời điểm tiếp nhận: đồng hồ km, mức... |
+| UC-31 | **Thêm hạng mục dịch vụ (Add Service)** | Must | Thêm hạng mục dịch vụ vào Work Order. |
+| UC-32 | **Xóa hạng mục dịch vụ (Remove Service)** | Must | Xóa hạng mục dịch vụ khỏi Work Order. |
+| UC-33 | **Kiểm tra xe (Inspect Vehicle)** | Must | Cố vấn dịch vụ mở giao diện kiểm tra xe (Vehicle Inspection), chọn loại dấu v... |
+| UC-34 | **Lên kế hoạch công việc (Plan Jobs)** | Must | Cố vấn dịch vụ tạo các job (đầu công việc) cần thực hiện trong phiếu công việ... |
+| UC-35 | **Khai báo nhân công (Declare Labour)** | Must | Cố vấn dịch vụ khai báo các labour lines cho từng job: loại nhân công, mô tả ... |
+| UC-36 | **Khai báo phụ tùng (Declare Parts)** | Must | Cố vấn dịch vụ khai báo danh sách phụ tùng và vật tư dự kiến cần dùng cho từn... |
+| UC-37 | **Tạo báo giá (Create Quotation)** | Must | Cố vấn dịch vụ tạo báo giá từ các hạng mục dịch vụ, nhân công và phụ tùng đã ... |
+| UC-39 | **Cập nhật báo giá (Update Quotation)** | Must | Cố vấn dịch vụ cập nhật lại các chi phí, chiết khấu hoặc ghi nhận kết quả duy... |
+| UC-40 | **Hủy báo giá (Cancel Quotation)** | Must | Cố vấn dịch vụ hủy bỏ một báo giá đang chờ nếu phát hiện sai sót trước khi gử... |
+| UC-41 | **Kiểm định chất lượng (Quality Inspection)** | Must | Sau khi các job hoàn thành, cố vấn dịch vụ thực hiện kiểm định chất lượng the... |
+| UC-42 | **Bàn giao xe (Release Vehicle)** | Must | Cố vấn dịch vụ kiểm tra toàn bộ điều kiện bàn giao (job xong, kiểm định đạt, ... |
 
 ### 2.3.5. Quản lý dịch vụ (Service Manager)
 
-_Bảng 2-6: Use Case baseline – Quản lý dịch vụ (Service Manager)_
+_Bảng 2-5: Use Case baseline – Quản lý dịch vụ (Service Manager)_
 
 | **UC ID** | **Use Case** | **Ưu tiên** | **Mô tả ngắn** |
 | --- | --- | --- | --- |
-| UC-44 | **Theo dõi hoạt động xưởng (Monitor Workshop)** | Must | Dashboard, theo dõi WO/Service/Job |
-| UC-45 | **Thêm phụ tùng/vật tư (Create Part/Material)** | Must | Khai báo phụ tùng mới |
-| UC-46 | **Xem danh mục phụ tùng (View Parts Catalog)** | Must | Xem danh sách và tồn kho |
-| UC-47 | **Cập nhật phụ tùng (Update Part/Material)** | Must | Chỉnh sửa thông tin phụ tùng |
-| UC-48 | **Xóa phụ tùng (Delete Part/Material)** | Must | Vô hiệu hóa phụ tùng |
-| UC-49 | **Nhập kho (Receive Inventory)** | Must | Opening Stock, Direct Goods Receipt, tự tính Average Cost |
-| UC-50 | **Xem báo cáo vận hành (View Operational Report)** | Should | Service, revenue, inventory report |
+| UC-43 | **Theo dõi hoạt động xưởng (Monitor Workshop)** | Must | Quản lý xem bảng tổng quan để nắm bắt tình hình vận hành: số xe đang trong xư... |
+| UC-44 | **Thêm phụ tùng (Create Part Catalog)** | Must | Quản lý dịch vụ tạo mới dữ liệu phụ tùng vào hệ thống để lưu trữ và quản lý. |
+| UC-45 | **Xem phụ tùng (View Part Catalog)** | Must | Quản lý dịch vụ tra cứu, tìm kiếm và xem chi tiết thông tin của phụ tùng đã c... |
+| UC-46 | **Cập nhật phụ tùng (Update Part Catalog)** | Must | Quản lý dịch vụ chỉnh sửa và cập nhật lại thông tin của phụ tùng hiện có tron... |
+| UC-47 | **Xóa phụ tùng (Delete Part Catalog)** | Must | Quản lý dịch vụ thực hiện xóa hoặc vô hiệu hóa bản ghi phụ tùng khỏi hệ thống... |
+| UC-48 | **Nhập kho (Receive Inventory)** | Must | Quản lý ghi nhận hàng nhập từ nhà cung cấp hoặc nhập tồn đầu kỳ. Sau mỗi lần ... |
+| UC-49 | **Xem báo cáo vận hành (View Operational Report)** | Must | Quản lý xem các báo cáo cơ bản: số lượng dịch vụ theo loại, doanh thu theo kh... |
 
 ### 2.3.6. Quản trị viên (Administrator)
 
-_Bảng 2-7: Use Case baseline – Quản trị viên (Administrator)_
+_Bảng 2-6: Use Case baseline – Quản trị viên (Administrator)_
 
 | **UC ID** | **Use Case** | **Ưu tiên** | **Mô tả ngắn** |
 | --- | --- | --- | --- |
-| UC-51 | **Thêm tài khoản (Create Account)** | Must | Tạo tài khoản mới, gán Role |
-| UC-52 | **Xem danh sách tài khoản (View Accounts)** | Must | Xem danh sách tài khoản |
-| UC-53 | **Cập nhật tài khoản (Update Account)** | Must | Sửa quyền, đổi mật khẩu |
-| UC-54 | **Khóa/Xóa tài khoản (Disable/Delete Account)** | Must | Vô hiệu hóa tài khoản |
-| UC-55 | **Thêm nhân viên (Create Employee)** | Must | Tạo hồ sơ nhân viên mới |
-| UC-56 | **Xem danh sách nhân viên (View Employees)** | Must | Xem danh sách và skill |
-| UC-57 | **Cập nhật nhân viên (Update Employee)** | Must | Sửa thông tin nhân viên |
-| UC-58 | **Xóa nhân viên (Delete Employee)** | Must | Vô hiệu hóa nhân viên |
-| UC-59 | **Thêm danh mục dịch vụ (Create Service Category)** | Must | Tạo mới Service Template |
-| UC-60 | **Xem danh mục dịch vụ (View Service Category)** | Must | Xem danh sách dịch vụ |
-| UC-61 | **Cập nhật danh mục dịch vụ (Update Service Category)** | Must | Sửa Service Template |
-| UC-62 | **Xóa danh mục dịch vụ (Delete Service Category)** | Must | Xóa Service Template |
-| UC-63 | **Thêm loại công việc (Create Job Type)** | Must | Tạo Job Type mới |
-| UC-64 | **Xem loại công việc (View Job Types)** | Must | Xem danh sách Job Type |
-| UC-65 | **Cập nhật loại công việc (Update Job Type)** | Must | Cập nhật Labour Rate |
-| UC-66 | **Xóa loại công việc (Delete Job Type)** | Must | Vô hiệu hóa Job Type |
-| UC-67 | **Thêm chính sách tính giá (Create Pricing Policy)** | Must | Định nghĩa luật tính giá |
-| UC-68 | **Xem chính sách tính giá (View Pricing Policies)** | Must | Xem bảng giá |
-| UC-69 | **Cập nhật chính sách tính giá (Update Pricing Policy)** | Must | Chỉnh sửa bảng giá |
-| UC-70 | **Xóa chính sách tính giá (Delete Pricing Policy)** | Must | Xóa chính sách giá |
-| UC-71 | **Thêm mẫu kiểm tra (Create Inspection Template)** | Must | Tạo QC Checklist |
-| UC-72 | **Xem mẫu kiểm tra (View Inspection Templates)** | Must | Xem QC Checklist |
-| UC-73 | **Cập nhật mẫu kiểm tra (Update Inspection Template)** | Must | Sửa item kiểm tra |
-| UC-74 | **Xóa mẫu kiểm tra (Delete Inspection Template)** | Must | Xóa mẫu kiểm tra |
-| UC-75 | **Thêm danh mục chung (Create System Catalog)** | Must | Tạo UoM, Reason, Terms |
-| UC-76 | **Xem danh mục chung (View System Catalog)** | Must | Xem danh mục |
-| UC-77 | **Cập nhật danh mục chung (Update System Catalog)** | Must | Sửa danh mục |
-| UC-78 | **Xóa danh mục chung (Delete System Catalog)** | Must | Xóa danh mục |
+| UC-50 | **Thêm tài khoản (Create Account)** | Must | Quản trị viên tạo mới dữ liệu tài khoản vào hệ thống để lưu trữ và quản lý. |
+| UC-51 | **Xem tài khoản (View Account)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của tài khoản đã có... |
+| UC-52 | **Cập nhật tài khoản (Update Account)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của tài khoản hiện có trong... |
+| UC-53 | **Xóa tài khoản (Delete Account)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi tài khoản khỏi hệ thống ... |
+| UC-54 | **Thêm nhân viên (Create Employee)** | Must | Quản trị viên tạo mới dữ liệu nhân viên vào hệ thống để lưu trữ và quản lý. |
+| UC-55 | **Xem nhân viên (View Employee)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của nhân viên đã có... |
+| UC-56 | **Cập nhật nhân viên (Update Employee)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của nhân viên hiện có trong... |
+| UC-57 | **Xóa nhân viên (Delete Employee)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi nhân viên khỏi hệ thống ... |
+| UC-58 | **Thêm danh mục dịch vụ (Create Service Catalog)** | Must | Quản trị viên tạo mới dữ liệu danh mục dịch vụ vào hệ thống để lưu trữ và quả... |
+| UC-59 | **Xem danh mục dịch vụ (View Service Catalog)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của danh mục dịch v... |
+| UC-60 | **Cập nhật danh mục dịch vụ (Update Service Catalog)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của danh mục dịch vụ hiện c... |
+| UC-61 | **Xóa danh mục dịch vụ (Delete Service Catalog)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi danh mục dịch vụ khỏi hệ... |
+| UC-62 | **Thêm loại công việc (Create Job Type)** | Must | Quản trị viên tạo mới dữ liệu loại công việc vào hệ thống để lưu trữ và quản lý. |
+| UC-63 | **Xem loại công việc (View Job Type)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của loại công việc ... |
+| UC-64 | **Cập nhật loại công việc (Update Job Type)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của loại công việc hiện có ... |
+| UC-65 | **Xóa loại công việc (Delete Job Type)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi loại công việc khỏi hệ t... |
+| UC-66 | **Thêm chính sách tính giá (Create Pricing Policy)** | Must | Quản trị viên tạo mới dữ liệu chính sách tính giá vào hệ thống để lưu trữ và ... |
+| UC-67 | **Xem chính sách tính giá (View Pricing Policy)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của chính sách tính... |
+| UC-68 | **Cập nhật chính sách tính giá (Update Pricing Policy)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của chính sách tính giá hiệ... |
+| UC-69 | **Xóa chính sách tính giá (Delete Pricing Policy)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi chính sách tính giá khỏi... |
+| UC-70 | **Thêm danh mục chung (Create System Catalog)** | Must | Quản trị viên tạo mới dữ liệu danh mục chung vào hệ thống để lưu trữ và quản lý. |
+| UC-71 | **Xem danh mục chung (View System Catalog)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của danh mục chung ... |
+| UC-72 | **Cập nhật danh mục chung (Update System Catalog)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của danh mục chung hiện có ... |
+| UC-73 | **Xóa danh mục chung (Delete System Catalog)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi danh mục chung khỏi hệ t... |
+| UC-74 | **Xem mẫu kiểm tra (View Inspection Template)** | Must | Quản trị viên xem danh sách và chi tiết các mẫu kiểm tra cấu hình sẵn. |
+| UC-75 | **Thêm mẫu kiểm tra (Create Inspection Template)** | Must | Quản trị viên tạo mới một mẫu kiểm tra xe (gồm nhiều hạng mục) để kỹ thuật vi... |
+| UC-76 | **Cập nhật mẫu kiểm tra (Update Inspection Template)** | Must | Quản trị viên chỉnh sửa nội dung mẫu kiểm tra đã có. |
+| UC-77 | **Xóa mẫu kiểm tra (Delete Inspection Template)** | Must | Quản trị viên xóa một mẫu kiểm tra không còn sử dụng. |
 
 ## 2.4. Tiêu chí hoàn thành Tiểu luận
 
