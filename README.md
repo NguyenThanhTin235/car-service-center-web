@@ -15,13 +15,40 @@ Dự án **Car Service Center Web** nhằm xây dựng một hệ thống quản
 *(Lưu ý: Các tính năng chi tiết sẽ bám sát theo tài liệu thiết kế Use Case và Database).*
 
 ## Cài đặt & Khởi chạy
-*(Phần này sẽ được cập nhật sau khi mã nguồn dự án được khởi tạo)*
+
+### Yêu cầu
+- Node.js (phiên bản 18+)
+- Trình quản lý gói npm
+
+### Hướng dẫn chạy môi trường phát triển
+
+1. **Khởi tạo và cài đặt Dependencies:**
+   - Điều hướng vào thư mục `src/frontend`:
+     ```bash
+     cd src/frontend
+     npm install
+     ```
+
+2. **Chạy ứng dụng:**
+   - **Chạy cả 2 web (Customer & Internal):**
+     ```bash
+     npm run dev
+     ```
+   - **Chỉ chạy Customer Web (Cổng 3000):**
+     ```bash
+     npm run dev:customer
+     ```
+   - **Chỉ chạy Internal Web (Cổng 3001):**
+     ```bash
+     npm run dev:internal
+     ```
 
 ## Công nghệ sử dụng dự kiến
-*(Đang cập nhật)*
+- **Frontend**: Next.js (App Router), Tailwind CSS, Redux Toolkit, npm workspaces (Monorepo).
+- **Backend**: Express.js (TypeScript), Prisma ORM.
 
 ## Cấu trúc thư mục
-*(Đang cập nhật)*
+Vui lòng xem file [DirectoryStructure.md](DirectoryStructure.md) để biết thêm chi tiết.
 
 ## Đóng góp
 Dự án đang trong giai đoạn khởi tạo và phát triển. Mọi thông tin thiết kế và cơ sở dữ liệu đang được hoàn thiện dần.

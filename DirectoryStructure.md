@@ -71,28 +71,28 @@ src/backend/
 
 ---
 
-## 📂 3. Frontend Web (`src/frontend/`)
+## 📂 3. Frontend Web (`src/frontend/` - Monorepo)
 
-Xây dựng theo chuẩn **Next.js (App Router)** với **Tailwind CSS** và **Redux Toolkit**.
+Xây dựng theo chuẩn **Next.js (App Router)** với **Tailwind CSS** và **Redux Toolkit**. 
+Sử dụng cấu trúc **Monorepo (npm workspaces)** để tách biệt Web cho Khách hàng và Web Nội bộ, nhưng vẫn tái sử dụng được UI Components.
 
 ```text
 src/frontend/
-├── src/
-│   ├── app/                         # [Next.js App Router] Chứa các Pages và Layouts.
-│   │   ├── (auth)/                  # Route group cho các trang đăng nhập/đăng ký.
-│   │   ├── (dashboard)/             # Route group cho khu vực quản trị/nhân viên.
-│   │   ├── layout.tsx               # Root layout.
-│   │   └── page.tsx                 # Trang chủ (Landing page).
-│   ├── components/                  # [UI] Chứa các React Components dùng chung (Button, Modal, Table...).
-│   ├── lib/                         # Chứa các config thư viện (Axios client).
-│   ├── store/                       # [Redux] Quản lý global state.
-│   │   ├── slices/                  # Các Redux Toolkit slices (authSlice...).
-│   │   └── index.ts                 # File cấu hình Redux Store chính.
-│   └── utils/                       # Hàm helper tiện ích cho Frontend (roleRedirect).
-├── public/                          # Chứa các file tĩnh (Hình ảnh, Icons, Fonts).
-├── next.config.ts                   # Cấu hình Next.js.
-├── package.json                     # Quản lý dependencies Frontend.
-└── tsconfig.json                    # Cấu hình biên dịch TypeScript cho Frontend.
+├── apps/
+│   ├── customer-web/                # [Port 3000] Web dành cho Khách hàng & Guest.
+│   │   ├── src/app/(auth)/          # Đăng nhập, đăng ký cho khách.
+│   │   ├── src/app/(customer)/      # Lịch sử dịch vụ, tiến độ sửa chữa, lịch hẹn.
+│   │   ├── src/app/(public)/        # Trang chủ, thông tin công khai.
+│   │   └── package.json             # App-specific dependencies.
+│   └── internal-web/                # [Port 3001] Web dành cho Nhân viên, QC, Quản lý, Admin.
+│       ├── src/app/(auth)/          # Đăng nhập nhân viên.
+│       ├── src/app/(dashboard)/     # Quản lý dịch vụ, kho, duyệt báo giá.
+│       └── package.json             # App-specific dependencies.
+├── packages/                        # Chứa các thư viện/components dùng chung.
+│   ├── shared/ui/                   # UI components (Button, Modal, Table...).
+│   └── shared/lib/                  # Tiện ích chung, Axios client, cấu hình Redux.
+├── package.json                     # Root workspace cấu hình npm workspaces.
+└── package-lock.json                # Lockfile duy nhất cho toàn bộ Monorepo.
 ```
 
 ---
