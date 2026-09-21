@@ -9,6 +9,8 @@ import publicRoutes from './routes/public.routes';
 import customerRoutes from './routes/customer.routes';
 import appointmentRoutes from './routes/appointment.routes';
 import serviceRoutes from './routes/service.routes';
+import userRoutes from './routes/user.routes';
+import employeeRoutes from './routes/employee.routes';
 
 const app = express();
 
@@ -44,5 +46,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/services', serviceRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/employees', employeeRoutes);
 
 export default app;
