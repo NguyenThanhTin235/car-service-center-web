@@ -144,17 +144,23 @@ export const cancelAppointment = async (req: Request, res: Response): Promise<vo
 export const arriveAppointment = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const arrivedAppointment = await appointmentService.arriveAppointment(Number(id));
+    const createdById = req.user?.id;
+    const result = await appointmentService.arriveAppointment(Number(id), createdById);
     
     res.json({
-      status: 'success',
+      success: true,
+      code: 200,
       message: 'Tiếp nhận xe thành công',
-      data: arrivedAppointment,
+      data: result,
+      timestamp: Math.floor(Date.now() / 1000),
     });
   } catch (error: any) {
     res.status(400).json({
-      status: 'error',
+      success: false,
+      code: 400,
       message: error.message || 'Lỗi khi tiếp nhận xe',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
     });
   }
 };

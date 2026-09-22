@@ -7,6 +7,7 @@ export const metadata: Metadata = {
 };
 
 import StoreProvider from "@/components/StoreProvider";
+import { Toaster } from "react-hot-toast";
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col">
         <StoreProvider>{children}</StoreProvider>
+        <Toaster position="top-right" />
       </body>
     </html>
   );
