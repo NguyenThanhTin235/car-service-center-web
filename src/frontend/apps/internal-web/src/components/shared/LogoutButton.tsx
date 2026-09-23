@@ -21,10 +21,9 @@ export default function LogoutButton({ className = '', iconOnly = false }: Logou
     try {
       await api.post('/api/auth/logout');
     } catch {
-      // Ignore API errors — clear client state regardless
     } finally {
       dispatch(logout());
-      router.push('/login');
+      window.location.href = '/login';
       setLoading(false);
     }
   };
