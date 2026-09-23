@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-
+import LogoutButton from '@/components/shared/LogoutButton';
+import AuthGuard from '@/components/auth/AuthGuard';
 export const metadata: Metadata = {
   title: 'Admin Portal – Car Service Center',
   description: 'Hệ thống quản trị trung tâm dịch vụ ô tô',
@@ -9,6 +10,15 @@ export const metadata: Metadata = {
 const NAV_ITEMS = [
   { href: '/accounts', icon: 'manage_accounts', label: 'Tài khoản & Phân quyền', section: 'admin' },
   { href: '/employees', icon: 'engineering', label: 'Nhân viên', section: 'admin' },
+  { 
+    icon: 'build_circle', label: 'Danh mục', section: 'catalog',
+    children: [
+      { href: '/services', label: 'Dịch vụ' },
+      { href: '/service-categories', label: 'Danh mục dịch vụ' },
+    ]
+  },
+  { href: '/job-types', icon: 'work', label: 'Loại công việc', section: 'catalog' },
+  { href: '/catalogs', icon: 'category', label: 'Danh mục chung', section: 'catalog' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -47,12 +57,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   Phân hệ quản trị
                 </div>
                 <nav style={{ padding: '0 0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  {NAV_ITEMS.map(item => (
-                    <a key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#424656] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[13px] font-medium transition-colors no-underline">
-                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{item.icon}</span>
-                      <span>{item.label}</span>
-                    </a>
-                  ))}
+                  {NAV_ITEMS.map((item, idx) => {
+                    if (item.children) {
+                      return (
+                        <details key={idx} className="group" open>
+                          <summary className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#424656] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[13px] font-medium transition-colors cursor-pointer list-none select-none">
+                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{item.icon}</span>
+                            <span className="flex-1">{item.label}</span>
+                            <span className="material-symbols-outlined transition-transform group-open:-rotate-180" style={{ fontSize: '18px' }}>expand_more</span>
+                          </summary>
+                          <div className="flex flex-col gap-1 pl-10 mt-1 mb-1">
+                            {item.children.map(child => (
+                              <a key={child.href} href={child.href} className="px-3 py-1.5 rounded-lg text-[#727687] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[12px] font-medium transition-colors no-underline">
+                                {child.label}
+                              </a>
+                            ))}
+                          </div>
+                        </details>
+                      );
+                    }
+                    return (
+                      <a key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#424656] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[13px] font-medium transition-colors no-underline">
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{item.icon}</span>
+                        <span>{item.label}</span>
+                      </a>
+                    );
+                  })}
                 </nav>
               </div>
             </div>
@@ -79,16 +109,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <span style={{ fontSize: '11px', color: '#424656' }}>Quản trị viên</span>
                   </div>
                 </div>
-                <a href="/public/home" title="Về trang chủ" className="w-7 h-7 rounded flex items-center justify-center text-[#424656] hover:bg-[#fef2f2] hover:text-[#ef4444] transition-colors no-underline">
-                  <span className="material-symbols-outlined text-[18px]">logout</span>
-                </a>
+                <LogoutButton iconOnly className="w-7 h-7 rounded flex items-center justify-center text-[#424656] hover:bg-[#fef2f2] hover:text-[#ef4444] transition-colors no-underline" />
               </div>
             </div>
           </aside>
 
           {/* Main */}
           <main style={{ marginLeft: '16rem', flex: 1, minHeight: '100vh' }}>
-            {children}
+            <AuthGuard>
+              {children}
+            </AuthGuard>
           </main>
         </div>
       </div>
