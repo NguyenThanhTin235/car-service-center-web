@@ -18,7 +18,28 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col">
         <StoreProvider>{children}</StoreProvider>
-        <Toaster position="top-right" />
+        <Toaster 
+          position="bottom-right" 
+          toastOptions={{
+            className: 'border border-outline-variant shadow-lg font-semibold text-body-md bg-surface-container-lowest text-on-surface rounded-xl',
+            duration: 3000,
+            style: {
+              padding: '16px',
+            },
+            success: {
+              iconTheme: {
+                primary: '#16a34a',
+                secondary: '#ffffff',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#dc2626',
+                secondary: '#ffffff',
+              },
+            }
+          }}
+        />
       </body>
     </html>
   );

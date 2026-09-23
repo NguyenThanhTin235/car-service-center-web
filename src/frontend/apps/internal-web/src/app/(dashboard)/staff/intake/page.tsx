@@ -13,6 +13,7 @@ import api from '@/lib/axios';
 import IntakeQueueCard from '@/components/intake/IntakeQueueCard';
 import WalkInIntakeModal from '@/components/intake/WalkInIntakeModal';
 import TowInIntakeModal from '@/components/intake/TowInIntakeModal';
+import ConfirmModal from '@/components/shared/ConfirmModal';
 import toast from 'react-hot-toast';
 
 export default function IntakePage() {
@@ -26,8 +27,18 @@ export default function IntakePage() {
   const [isWalkInModalOpen, setWalkInModalOpen] = useState(false);
   const [isTowInModalOpen, setTowInModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'QUEUED' | 'CONVERTED' | 'CANCELLED'>('QUEUED');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
   const [serviceTemplates, setServiceTemplates] = useState<Array<{id: number, name: string}>>([]);
   const [customers, setCustomers] = useState<any[]>([]);
+  
+  const [confirmAction, setConfirmAction] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isDestructive?: boolean;
+  } | null>(null);
 
   // Fetch data on mount
   useEffect(() => {
@@ -66,15 +77,26 @@ export default function IntakePage() {
   }, [dispatch]);
 
   // Handlers
-  const handleArriveAppointment = async (id: number) => {
-    if (confirm('Xác nhận xe đã đến xưởng?')) {
-      await dispatch(arriveAppointment(id)).unwrap();
-      toast.success('Đã tiếp nhận xe thành công!');
-      // Refresh appointment list to remove it from "Lịch hẹn hôm nay"
-      const todayStr = new Date().toISOString().split('T')[0];
-      dispatch(fetchAppointments({ startDate: todayStr, endDate: todayStr, status: 'CONFIRMED' }));
-      dispatch(fetchIntakeQueue({}));
-    }
+  const handleArriveAppointment = (id: number) => {
+    setConfirmAction({
+      isOpen: true,
+      title: 'Xác nhận tiếp nhận',
+      message: 'Bạn có chắc chắn xe đã đến xưởng và bắt đầu tiếp nhận?',
+      onConfirm: async () => {
+        try {
+          await dispatch(arriveAppointment(id)).unwrap();
+          toast.success('Đã tiếp nhận xe thành công!');
+          // Refresh appointment list to remove it from "Lịch hẹn hôm nay"
+          const todayStr = new Date().toISOString().split('T')[0];
+          dispatch(fetchAppointments({ startDate: todayStr, endDate: todayStr, status: 'CONFIRMED' }));
+          dispatch(fetchIntakeQueue({}));
+        } catch (err: any) {
+          toast.error(err || 'Có lỗi xảy ra');
+        } finally {
+          setConfirmAction(null);
+        }
+      }
+    });
   };
 
   const handleWalkInSubmit = async (data: any) => {
@@ -99,16 +121,24 @@ export default function IntakePage() {
     }
   };
 
-  const handleCancelIntake = async (id: number) => {
-    if (confirm('Bạn có chắc chắn muốn hủy phiếu tiếp nhận này?')) {
-      try {
-        await dispatch(cancelIntakeRecord(id)).unwrap();
-        toast.success('Hủy phiếu thành công');
-        dispatch(fetchIntakeQueue({}));
-      } catch (err: any) {
-        toast.error(err || 'Có lỗi xảy ra khi hủy phiếu');
+  const handleCancelIntake = (id: number) => {
+    setConfirmAction({
+      isOpen: true,
+      title: 'Hủy phiếu tiếp nhận',
+      message: 'Bạn có chắc chắn muốn hủy phiếu tiếp nhận này?',
+      isDestructive: true,
+      onConfirm: async () => {
+        try {
+          await dispatch(cancelIntakeRecord(id)).unwrap();
+          toast.success('Hủy phiếu thành công');
+          dispatch(fetchIntakeQueue({}));
+        } catch (err: any) {
+          toast.error(err || 'Có lỗi xảy ra khi hủy phiếu');
+        } finally {
+          setConfirmAction(null);
+        }
       }
-    }
+    });
   };
 
   const handleConvertToRO = (id: number) => {
@@ -216,7 +246,10 @@ export default function IntakePage() {
             {(['QUEUED', 'CONVERTED', 'CANCELLED'] as const).map(tab => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setCurrentPage(1);
+                }}
                 className={`px-4 py-2 font-semibold text-body-md border-b-2 transition-colors ${
                   activeTab === tab 
                     ? 'border-primary text-primary' 
@@ -250,16 +283,17 @@ export default function IntakePage() {
               <tbody>
                 {queueLoading ? (
                   <tr>
-                    <td colSpan={5} className="text-center text-secondary py-10">Đang tải danh sách...</td>
+                    <td colSpan={6} className="text-center text-secondary py-10">Đang tải danh sách...</td>
                   </tr>
                 ) : queueRecords.filter(r => r.status === activeTab).length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center text-secondary py-10">Danh sách trống.</td>
+                    <td colSpan={6} className="text-center text-secondary py-10">Danh sách trống.</td>
                   </tr>
                 ) : (
-                  queueRecords
-                    .filter(r => r.status === activeTab)
-                    .map((record) => {
+                  (() => {
+                    const filteredRecords = queueRecords.filter(r => r.status === activeTab);
+                    const paginatedRecords = filteredRecords.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+                    return paginatedRecords.map((record) => {
                       const getTypeStyles = (type: string) => {
                         switch (type) {
                           case 'WALK_IN':
@@ -308,7 +342,7 @@ export default function IntakePage() {
                           </td>
                           <td className="py-3 px-4">
                             {record.services && record.services.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
+                              <div className="flex flex-col items-start gap-1">
                                 {record.services.map(s => (
                                   <span key={s.id} className="bg-surface-container-high text-on-surface-variant text-[11px] px-2 py-0.5 rounded border border-outline-variant whitespace-nowrap">
                                     {s.service_template?.name}
@@ -345,11 +379,47 @@ export default function IntakePage() {
                           )}
                         </tr>
                       );
-                    })
+                    });
+                  })()
                 )}
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          {(() => {
+            const filteredRecords = queueRecords.filter(r => r.status === activeTab);
+            const totalPages = Math.ceil(filteredRecords.length / itemsPerPage);
+            
+            if (totalPages <= 1) return null;
+            
+            return (
+              <div className="flex items-center justify-between pt-4 mt-4 border-t border-outline-variant">
+                <div className="text-body-sm text-secondary">
+                  Hiển thị {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredRecords.length)} trên tổng số {filteredRecords.length}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    disabled={currentPage === 1} 
+                    onClick={() => setCurrentPage(p => p - 1)}
+                    className="p-1 rounded-full hover:bg-surface-container disabled:opacity-50 text-secondary"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                  </button>
+                  <span className="text-label-md font-semibold text-on-surface px-2">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button 
+                    disabled={currentPage === totalPages} 
+                    onClick={() => setCurrentPage(p => p + 1)}
+                    className="p-1 rounded-full hover:bg-surface-container disabled:opacity-50 text-secondary"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -367,6 +437,14 @@ export default function IntakePage() {
         onSubmit={handleTowInSubmit}
         services={serviceTemplates}
         customers={customers}
+      />
+      <ConfirmModal
+        isOpen={confirmAction?.isOpen || false}
+        title={confirmAction?.title || ''}
+        message={confirmAction?.message || ''}
+        isDestructive={confirmAction?.isDestructive}
+        onConfirm={confirmAction?.onConfirm || (() => {})}
+        onCancel={() => setConfirmAction(null)}
       />
     </div>
   );

@@ -3,6 +3,9 @@ import Redis from 'ioredis';
 const redisClient = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: 3,
   lazyConnect: true,
+  retryStrategy(times) {
+    return null; // Don't retry, fail immediately
+  }
 });
 
 redisClient.on('error', (err) => {
