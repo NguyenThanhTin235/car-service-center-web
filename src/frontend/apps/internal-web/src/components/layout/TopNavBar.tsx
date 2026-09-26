@@ -16,8 +16,15 @@ export default function TopNavBar() {
   let pageName = 'Tổng quan';
   if (pathname.includes('/customers')) pageName = 'Quản lý Khách hàng';
   else if (pathname.includes('/appointments')) pageName = 'Quản lý lịch hẹn';
+  else if (pathname.includes('/intake-inspection')) pageName = 'Tiếp nhận & Kiểm tra';
   else if (pathname.includes('/intake')) pageName = 'Tiếp nhận xe';
   else if (pathname.includes('/billing')) pageName = 'Báo giá & Hóa đơn';
+  else if (pathname.includes('/qc-record')) pageName = 'Thực hiện QC';
+  else if (pathname.includes('/qc-history')) pageName = 'Lịch sử QC';
+  else if (pathname.includes('/job-dispatch')) pageName = 'Kế hoạch công việc';
+  else if (pathname.includes('/quotation')) pageName = 'Báo giá';
+  else if (pathname.includes('/release-vehicle')) pageName = 'Thực hiện & Bàn giao';
+  else if (pathname === '/advisor') pageName = 'Waitlist';
 
   return (
     <header className="fixed top-0 right-0 left-64 h-[68px] z-30 bg-surface-container-lowest dark:bg-inverse-surface border-b border-outline-variant dark:border-outline shadow-sm flex items-center justify-between px-6">

@@ -141,9 +141,7 @@ export default function IntakePage() {
     });
   };
 
-  const handleConvertToRO = (id: number) => {
-    toast.success(`Chuyển phiếu tiếp nhận #${id} sang tạo Lệnh Sửa Chữa (Work Order)`);
-  };
+
 
   return (
     <div className="flex flex-col gap-6 max-w-[1600px] mx-auto w-full">
@@ -362,12 +360,6 @@ export default function IntakePage() {
                           {activeTab === 'QUEUED' && (
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-2">
-                                <button
-                                  onClick={() => handleConvertToRO(record.id)}
-                                  className="px-3 py-1.5 bg-primary text-on-primary rounded-md text-label-sm font-semibold hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm"
-                                >
-                                  Lên lệnh
-                                </button>
                                 <button
                                   onClick={() => handleCancelIntake(record.id)}
                                   className="px-3 py-1.5 bg-surface-container border border-outline-variant text-error rounded-md text-label-sm font-semibold hover:bg-error-container transition-colors shadow-sm"

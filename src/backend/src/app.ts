@@ -10,6 +10,7 @@ import customerRoutes from './routes/customer.routes';
 import appointmentRoutes from './routes/appointment.routes';
 import serviceRoutes from './routes/service.routes';
 import intakeRoutes from './routes/intake.routes';
+import workOrderRoutes from './routes/work-order.routes';
 
 const app = express();
 
@@ -46,5 +47,6 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/intake', intakeRoutes);
+app.use('/api/work-orders', workOrderRoutes);
 
 export default app;
