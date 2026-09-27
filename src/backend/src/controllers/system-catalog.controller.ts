@@ -33,7 +33,7 @@ export const createCatalog = async (req: Request, res: Response) => {
 export const updateCatalog = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const data = await svc.updateCatalog(parseInt(id), req.body);
+    const data = await svc.updateCatalog(parseInt(id as string), req.body);
     res.json({ status: 'success', message: 'Cập nhật danh mục chung thành công', data });
   } catch (error: any) {
     const statusCode = error.message.includes('Không tìm thấy') ? 404 : 400;
@@ -45,7 +45,7 @@ export const updateCatalog = async (req: Request, res: Response) => {
 export const toggleCatalog = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const result = await svc.toggleCatalog(parseInt(id));
+    const result = await svc.toggleCatalog(parseInt(id as string));
     res.json({ status: 'success', message: result.isActive ? 'Kích hoạt thành công' : 'Vô hiệu hóa thành công', data: result });
   } catch (error: any) {
     const statusCode = error.message.includes('Không tìm thấy') ? 404 : 400;

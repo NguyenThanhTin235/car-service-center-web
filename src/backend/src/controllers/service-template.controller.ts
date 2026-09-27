@@ -42,7 +42,7 @@ export const createServiceTemplate = async (req: Request, res: Response) => {
 export const updateServiceTemplate = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const data = await svc.updateServiceTemplate(parseInt(id), req.body);
+    const data = await svc.updateServiceTemplate(parseInt(id as string), req.body);
     res.json({ status: 'success', message: 'Cập nhật danh mục dịch vụ thành công', data });
   } catch (error: any) {
     const statusCode = error.message.includes('Không tìm thấy') ? 404 : 400;
@@ -54,7 +54,7 @@ export const updateServiceTemplate = async (req: Request, res: Response) => {
 export const toggleServiceTemplate = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const result = await svc.toggleServiceTemplate(parseInt(id));
+    const result = await svc.toggleServiceTemplate(parseInt(id as string));
     res.json({ status: 'success', message: result.isActive ? 'Kích hoạt thành công' : 'Vô hiệu hóa thành công', data: result });
   } catch (error: any) {
     const statusCode = error.message.includes('Không tìm thấy') ? 404 : 400;

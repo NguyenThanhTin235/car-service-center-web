@@ -32,7 +32,7 @@ export const createCategory = async (req: Request, res: Response) => {
 export const updateCategory = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const data = await svc.updateCategory(parseInt(id), req.body);
+    const data = await svc.updateCategory(parseInt(id as string), req.body);
     res.json({ status: 'success', message: 'Cập nhật nhóm dịch vụ thành công', data });
   } catch (error: any) {
     const statusCode = error.message.includes('Không tìm thấy') ? 404 : 400;
@@ -44,7 +44,7 @@ export const updateCategory = async (req: Request, res: Response) => {
 export const deleteCategory = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const result = await svc.deleteCategory(parseInt(id));
+    const result = await svc.deleteCategory(parseInt(id as string));
     res.json({ status: 'success', message: result.message, data: result });
   } catch (error: any) {
     const statusCode = error.message.includes('Không tìm thấy') ? 404 : 400;

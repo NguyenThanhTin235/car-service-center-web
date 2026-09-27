@@ -32,7 +32,7 @@ export const createJobType = async (req: Request, res: Response) => {
 export const updateJobType = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const data = await svc.updateJobType(parseInt(id), req.body);
+    const data = await svc.updateJobType(parseInt(id as string), req.body);
     res.json({ status: 'success', message: 'Cập nhật loại công việc thành công', data });
   } catch (error: any) {
     const statusCode = error.message.includes('Không tìm thấy') ? 404 : 400;
@@ -44,7 +44,7 @@ export const updateJobType = async (req: Request, res: Response) => {
 export const toggleJobType = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const result = await svc.toggleJobType(parseInt(id));
+    const result = await svc.toggleJobType(parseInt(id as string));
     res.json({ status: 'success', message: result.isActive ? 'Kích hoạt thành công' : 'Vô hiệu hóa thành công', data: result });
   } catch (error: any) {
     const statusCode = error.message.includes('Không tìm thấy') ? 404 : 400;
