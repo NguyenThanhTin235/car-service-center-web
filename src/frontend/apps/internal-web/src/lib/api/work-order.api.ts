@@ -63,6 +63,17 @@ export interface WorkOrder {
     phone: string;
   };
   created_at: string;
+  updated_at: string;
+  invoice?: {
+    id: number;
+    status: string;
+  } | null;
+  services?: {
+    id: number;
+    name: string;
+    pricing_type: string;
+    status: string;
+  }[] | null;
 }
 
 export interface PaginationMeta {

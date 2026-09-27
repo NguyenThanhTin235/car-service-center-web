@@ -12,9 +12,9 @@
 | **Khách vãng lai (Guest)** | UC-01 → UC-03 | 3 use case |
 | **Khách hàng (Customer)** | UC-04 → UC-16 | 13 use case |
 | **Nhân viên quầy dịch vụ (Front Desk Staff)** | UC-17 → UC-28 | 12 use case |
-| **Cố vấn dịch vụ (Service Advisor)** | UC-29 → UC-46 | 18 use case |
-| **Quản lý dịch vụ (Service Manager)** | UC-47 → UC-53 | 7 use case |
-| **Quản trị viên (Administrator)** | UC-54 → UC-81 | 28 use case |
+| **Cố vấn dịch vụ (Service Advisor)** | UC-29 → UC-42 | 14 use case |
+| **Quản lý dịch vụ (Service Manager)** | UC-43 → UC-49 | 7 use case |
+| **Quản trị viên (Administrator)** | UC-50 → UC-81 | 32 use case |
 | **Tổng cộng** | **UC-01 → UC-81** | **81 use case** |
 
 ---
