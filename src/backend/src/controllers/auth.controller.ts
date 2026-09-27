@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { authService } from '../services/auth.service';
+import { PrismaClient } from '@prisma/client';
 import {
   loginSchema,
   sendOtpRegisterSchema,
@@ -171,6 +172,107 @@ export class AuthController {
       res.status(200).json({ status: 'success', message: 'Mã OTP mới đã được gửi.' });
     } catch (err: any) {
       res.status(400).json({ status: 'error', message: err.message });
+    }
+  }
+
+  // ========================
+  // UC-06: Get own profile
+  // ========================
+  async getMe(req: Request, res: Response): Promise<void> {
+    try {
+      const prisma = new PrismaClient();
+      const userId = req.user!.id;
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          full_name: true,
+          phone: true,
+          email: true,
+          address: true,
+          is_active: true,
+          created_at: true,
+          roles: { select: { role: { select: { name: true } } } },
+        },
+      });
+      if (!user) {
+        res.status(404).json({ status: 'error', message: 'Không tìm thấy người dùng.' });
+        return;
+      }
+      res.json({
+        status: 'success',
+        data: {
+          id: user.id,
+          fullName: user.full_name,
+          phone: user.phone,
+          email: user.email,
+          address: user.address,
+          isActive: user.is_active,
+          createdAt: user.created_at,
+          roles: user.roles.map((r) => r.role.name),
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ status: 'error', message: err.message || 'Lỗi server.' });
+    }
+  }
+
+  // ========================
+  // UC-06: Update own profile
+  // ========================
+  async updateMe(req: Request, res: Response): Promise<void> {
+    try {
+      const prisma = new PrismaClient();
+      const userId = req.user!.id;
+      const { fullName, phone, email, address } = req.body;
+
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        res.status(404).json({ status: 'error', message: 'Không tìm thấy người dùng.' });
+        return;
+      }
+
+      // Validate unique phone if changed
+      if (phone && phone !== user.phone) {
+        const existPhone = await prisma.user.findUnique({ where: { phone } });
+        if (existPhone) {
+          res.status(400).json({ status: 'error', message: 'Số điện thoại đã được sử dụng bởi tài khoản khác.' });
+          return;
+        }
+      }
+
+      // Validate unique email if changed
+      if (email && email !== user.email) {
+        const existEmail = await prisma.user.findUnique({ where: { email } });
+        if (existEmail) {
+          res.status(400).json({ status: 'error', message: 'Email đã được sử dụng bởi tài khoản khác.' });
+          return;
+        }
+      }
+
+      const updated = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          full_name: fullName !== undefined ? fullName : undefined,
+          phone: phone !== undefined ? phone : undefined,
+          email: email !== undefined ? email : undefined,
+          address: address !== undefined ? address : undefined,
+        },
+      });
+
+      res.json({
+        status: 'success',
+        message: 'Cập nhật hồ sơ thành công.',
+        data: {
+          id: updated.id,
+          fullName: updated.full_name,
+          phone: updated.phone,
+          email: updated.email,
+          address: updated.address,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ status: 'error', message: err.message || 'Lỗi server.' });
     }
   }
 }

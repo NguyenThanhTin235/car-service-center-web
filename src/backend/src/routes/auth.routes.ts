@@ -20,4 +20,8 @@ router.post('/forgot-password', authController.forgotPassword.bind(authControlle
 router.post('/reset-password', authController.resetPassword.bind(authController));
 router.post('/resend-otp-reset', authController.resendOtpReset.bind(authController));
 
+// UC-06: Get & Update own profile (customer self-service)
+router.get('/me', authenticate, authController.getMe.bind(authController));
+router.put('/me', authenticate, authController.updateMe.bind(authController));
+
 export default router;
