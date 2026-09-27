@@ -57,6 +57,7 @@ enum AppointmentStatus {
 enum IntakeType {
   WALK_IN
   TOW_IN
+  APPOINTMENT
 }
 
 enum IntakeStatus {
@@ -425,6 +426,7 @@ model ServiceTemplate {
   job_templates   JobTemplate[]
   inspection_tpls InspectionTemplate[]
   appt_services   AppointmentService[]
+  intake_services IntakeService[]
   wo_services     WoService[]
 
   @@map("service_templates")
@@ -570,8 +572,20 @@ model IntakeRecord {
   created_by User       @relation("CreatedIntakes", fields: [created_by_id], references: [id])
   vehicle    Vehicle    @relation(fields: [vehicle_id], references: [id])
   work_order WorkOrder?
+  services   IntakeService[]
 
   @@map("intake_records")
+}
+
+model IntakeService {
+  id                  Int @id @default(autoincrement())
+  intake_id           Int
+  service_template_id Int
+
+  intake           IntakeRecord    @relation(fields: [intake_id], references: [id])
+  service_template ServiceTemplate @relation(fields: [service_template_id], references: [id])
+
+  @@map("intake_services")
 }
 
 // ==========================================

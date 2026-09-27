@@ -357,19 +357,85 @@ export class AppointmentService {
   }
 
   /**
-   * Đánh dấu lịch hẹn đã đến (Tiếp nhận xe)
+   * Đánh dấu lịch hẹn đã đến (Tiếp nhận xe) – UC-21 Luồng chính
+   * Chuyển Appointment → ARRIVED + Tạo IntakeRecord → QUEUED trong cùng transaction
    */
-  async arriveAppointment(id: number) {
-    const appointment = await prisma.appointment.findUnique({ where: { id } });
+  async arriveAppointment(id: number, createdById?: number) {
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        customer: { select: { id: true, full_name: true } },
+        vehicle: { select: { id: true, license_plate: true } },
+      },
+    });
     if (!appointment) throw new Error('Không tìm thấy lịch hẹn');
 
-    if (appointment.status !== 'CONFIRMED' && appointment.status !== 'RESCHEDULED') {
-      throw new Error(`Chỉ có thể tiếp nhận xe từ lịch hẹn đã được xác nhận. Trạng thái hiện tại: ${appointment.status}`);
+    if (appointment.status !== 'CONFIRMED') {
+      throw new Error(`Chỉ có thể tiếp nhận xe từ lịch hẹn đã được xác nhận (CONFIRMED). Trạng thái hiện tại: ${appointment.status}`);
     }
 
-    return prisma.appointment.update({
-      where: { id },
-      data: { status: 'ARRIVED' },
+    // Kiểm tra xe đã có trong hàng đợi chưa
+    const existingIntake = await prisma.intakeRecord.findFirst({
+      where: { vehicle_id: appointment.vehicle_id, status: 'QUEUED' },
+    });
+    if (existingIntake) {
+      throw new Error('Xe này đang trong hàng đợi tiếp nhận. Không thể tạo phiếu trùng.');
+    }
+
+    return prisma.$transaction(async (tx) => {
+      // Cập nhật trạng thái lịch hẹn → ARRIVED
+      const updatedAppointment = await tx.appointment.update({
+        where: { id },
+        data: { status: 'ARRIVED' },
+        include: {
+          customer: { select: { id: true, full_name: true, phone: true } },
+          vehicle: { select: { id: true, license_plate: true, make: true, model: true } },
+          services: { include: { service_template: { select: { id: true, name: true } } } },
+        },
+      });
+
+      // Tạo IntakeRecord → QUEUED
+      const intakeRecord = await tx.intakeRecord.create({
+        data: {
+          customer_id: appointment.customer_id,
+          vehicle_id: appointment.vehicle_id,
+          intake_type: 'APPOINTMENT',
+          status: 'QUEUED',
+          arrived_at: new Date(),
+          notes: appointment.notes,
+          created_by_id: createdById || appointment.customer_id,
+        },
+        include: {
+          customer: { select: { id: true, full_name: true, phone: true } },
+          vehicle: { select: { id: true, license_plate: true, make: true, model: true } },
+          created_by: { select: { id: true, full_name: true } },
+          services: { include: { service_template: true } },
+        },
+      });
+
+      // Copy services từ Appointment sang IntakeRecord
+      if (updatedAppointment.services && updatedAppointment.services.length > 0) {
+        await tx.intakeService.createMany({
+          data: updatedAppointment.services.map((svc) => ({
+            intake_id: intakeRecord.id,
+            service_template_id: svc.service_template_id,
+          })),
+        });
+        
+        // Cần fetch lại để include services cho chuẩn, hoặc mutate object
+        const finalIntakeRecord = await tx.intakeRecord.findUnique({
+          where: { id: intakeRecord.id },
+          include: {
+            customer: { select: { id: true, full_name: true, phone: true } },
+            vehicle: { select: { id: true, license_plate: true, make: true, model: true } },
+            created_by: { select: { id: true, full_name: true } },
+            services: { include: { service_template: true } },
+          }
+        });
+        return { appointment: updatedAppointment, intakeRecord: finalIntakeRecord };
+      }
+
+      return { appointment: updatedAppointment, intakeRecord };
     });
   }
 }
