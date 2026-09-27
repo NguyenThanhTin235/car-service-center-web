@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/store';
 import { logout } from '@/store/slices/authSlice';
 import api from '@/lib/axios';
+import ConfirmModal from '@/components/shared/ConfirmModal';
 
 const navLinks = [
   { href: '/customer', label: 'Tổng quan', icon: 'home' },
@@ -23,10 +24,17 @@ export default function CustomerNavBar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const requestLogout = () => {
+    setConfirmLogout(true);
+    setProfileOpen(false);
+    setMobileOpen(false);
+  };
 
   const handleLogout = async () => {
     setLogoutLoading(true);
@@ -38,6 +46,7 @@ export default function CustomerNavBar() {
       dispatch(logout());
       setTimeout(() => router.replace('/login'), 50);
       setLogoutLoading(false);
+      setConfirmLogout(false);
     }
   };
 
@@ -133,7 +142,7 @@ export default function CustomerNavBar() {
                     Hồ sơ cá nhân
                   </Link>
                   <button
-                    onClick={handleLogout}
+                    onClick={requestLogout}
                     disabled={logoutLoading}
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-error hover:bg-error-container/30 transition-colors"
                   >
@@ -182,7 +191,7 @@ export default function CustomerNavBar() {
             ))}
             <div className="mt-2 pt-2 border-t border-surface-container-high">
               <button
-                onClick={handleLogout}
+                onClick={requestLogout}
                 className="flex items-center gap-3 px-3 py-3 text-sm text-error w-full text-left"
               >
                 <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>logout</span>
@@ -197,6 +206,18 @@ export default function CustomerNavBar() {
       {profileOpen && (
         <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
       )}
+
+      {/* Logout Confirmation */}
+      <ConfirmModal
+        isOpen={confirmLogout}
+        title="Xác nhận đăng xuất"
+        message="Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?"
+        confirmText="Đăng xuất"
+        isDanger={true}
+        loading={logoutLoading}
+        onConfirm={handleLogout}
+        onCancel={() => setConfirmLogout(false)}
+      />
     </>
   );
 }

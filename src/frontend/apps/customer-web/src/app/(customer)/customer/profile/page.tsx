@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchProfile, updateProfile, clearUpdateStatus } from '@/store/slices/profileSlice';
+import Toast from '@/components/shared/Toast';
+import ConfirmModal from '@/components/shared/ConfirmModal';
 
 export default function ProfilePage() {
   const dispatch = useAppDispatch();
@@ -17,6 +19,7 @@ export default function ProfilePage() {
     email: '',
     address: '',
   });
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Load profile on mount
   useEffect(() => {
@@ -44,14 +47,19 @@ export default function ProfilePage() {
     }
   }, [updateSuccess, dispatch]);
 
-  const handleSave = async () => {
+  const requestSave = () => {
     if (!form.fullName.trim()) return;
+    setConfirmOpen(true);
+  };
+
+  const handleSave = async () => {
     dispatch(updateProfile({
       fullName: form.fullName,
       phone: form.phone,
       email: form.email,
       address: form.address,
     }));
+    setConfirmOpen(false);
   };
 
   const handleCancel = () => {
@@ -122,21 +130,15 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* Success toast */}
-      {updateSuccess && (
-        <div className="flex items-center gap-2 bg-secondary-container text-on-secondary-container px-4 py-3 rounded-xl mb-4 text-sm font-medium animate-pulse">
-          <span className="material-symbols-outlined" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-          Cập nhật hồ sơ thành công!
-        </div>
-      )}
-
-      {/* Error message */}
-      {updateError && (
-        <div className="flex items-center gap-2 bg-error-container text-on-error-container px-4 py-3 rounded-xl mb-4 text-sm font-medium">
-          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>error</span>
-          {updateError}
-        </div>
-      )}
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmOpen}
+        title="Lưu thay đổi"
+        message="Bạn có chắc chắn muốn lưu thông tin hồ sơ đã thay đổi không?"
+        confirmText="Lưu"
+        onConfirm={handleSave}
+        onCancel={() => setConfirmOpen(false)}
+      />
 
       {/* Profile Card */}
       <div className="bg-surface-container-lowest rounded-2xl border border-surface-container-highest shadow-sm overflow-hidden">
@@ -250,7 +252,7 @@ export default function ProfilePage() {
           {isEditing && (
             <div className="flex items-center gap-3 pt-2">
               <button
-                onClick={handleSave}
+                onClick={requestSave}
                 disabled={updateLoading}
                 className="flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-lg text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 active:scale-[0.98] transition-all"
               >
@@ -272,6 +274,21 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+      
+      {updateSuccess && (
+        <Toast
+          message="Cập nhật hồ sơ thành công!"
+          type="success"
+          onClose={() => dispatch(clearUpdateStatus())}
+        />
+      )}
+      {updateError && (
+        <Toast
+          message={updateError}
+          type="error"
+          onClose={() => dispatch(clearUpdateStatus())}
+        />
+      )}
     </div>
   );
 }

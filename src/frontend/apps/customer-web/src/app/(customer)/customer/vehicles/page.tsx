@@ -10,6 +10,7 @@ import {
   clearActionError,
   Vehicle,
 } from '@/store/slices/vehicleSlice';
+import Toast from '@/components/shared/Toast';
 
 // ─────────────── Types ───────────────
 type VehicleFormData = {
@@ -576,10 +577,20 @@ export default function VehiclesPage() {
 
       {/* Success toast */}
       {successMsg && (
-        <div className="flex items-center gap-2 bg-secondary-container text-on-secondary-container px-4 py-3 rounded-xl mb-4 text-sm font-medium">
-          <span className="material-symbols-outlined" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-          {successMsg}
-        </div>
+        <Toast
+          message={successMsg}
+          type="success"
+          onClose={() => setSuccessMsg('')}
+        />
+      )}
+
+      {/* Error state */}
+      {error && !loading && (
+        <Toast
+          message={error}
+          type="error"
+          onClose={() => dispatch(clearActionError())}
+        />
       )}
 
       {/* Loading state */}
@@ -589,14 +600,6 @@ export default function VehiclesPage() {
             <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             <p className="text-sm text-on-surface-variant">Đang tải danh sách xe...</p>
           </div>
-        </div>
-      )}
-
-      {/* Error state */}
-      {error && !loading && (
-        <div className="flex items-center gap-2 bg-error-container text-on-error-container px-4 py-4 rounded-xl text-sm">
-          <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>error</span>
-          {error}
         </div>
       )}
 
