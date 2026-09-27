@@ -269,6 +269,10 @@ export class AuthController {
           phone: updated.phone,
           email: updated.email,
           address: updated.address,
+          isActive: updated.is_active,
+          createdAt: updated.created_at,
+          // Bổ sung roles để không bị crash hay lỗi ở frontend
+          roles: req.user!.roles,
         },
       });
     } catch (err: any) {

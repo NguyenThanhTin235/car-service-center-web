@@ -37,7 +37,7 @@ export class VehicleService {
       year: v.year,
       color: v.color,
       vehicleSize: v.vehicle_size,
-      isActive: v.is_active,
+      isActive: v.status === 'ACTIVE',
       createdAt: v.created_at,
     }));
   }
@@ -67,6 +67,7 @@ export class VehicleService {
         year: data.year,
         color: data.color,
         vehicle_size: data.vehicleSize || 'MEDIUM',
+        status: 'ACTIVE',
       },
     });
 
@@ -78,7 +79,7 @@ export class VehicleService {
       year: vehicle.year,
       color: vehicle.color,
       vehicleSize: vehicle.vehicle_size,
-      isActive: vehicle.is_active,
+      isActive: vehicle.status === 'ACTIVE',
       createdAt: vehicle.created_at,
     };
   }
@@ -115,7 +116,7 @@ export class VehicleService {
       year: updated.year,
       color: updated.color,
       vehicleSize: updated.vehicle_size,
-      isActive: updated.is_active,
+      isActive: updated.status === 'ACTIVE',
     };
   }
 
@@ -136,7 +137,7 @@ export class VehicleService {
     const appointmentCount = await prisma.appointment.count({
       where: { vehicle_id: vehicleId },
     });
-    const intakeCount = await prisma.intake.count({
+    const intakeCount = await prisma.intakeRecord.count({
       where: { vehicle_id: vehicleId },
     });
 
@@ -146,7 +147,7 @@ export class VehicleService {
       // Soft delete: vô hiệu hóa xe
       await prisma.vehicle.update({
         where: { id: vehicleId },
-        data: { is_active: false },
+        data: { status: 'INACTIVE' },
       });
       return { deleted: false, deactivated: true, message: 'Xe đã có lịch sử dịch vụ, đã được vô hiệu hóa thay vì xóa.' };
     } else {

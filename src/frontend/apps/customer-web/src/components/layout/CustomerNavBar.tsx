@@ -53,7 +53,7 @@ export default function CustomerNavBar() {
         <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-8 flex items-center justify-between h-full gap-4">
           
           {/* Logo & Brand */}
-          <Link href="/customer" className="flex items-center gap-2.5 group shrink-0">
+          <Link href="/" className="flex items-center gap-2.5 group shrink-0">
             <div className="w-9 h-9 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0 transition-transform group-hover:scale-105">
               <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>directions_car</span>
             </div>
