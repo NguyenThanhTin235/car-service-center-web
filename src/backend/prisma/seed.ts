@@ -289,6 +289,37 @@ async function main() {
     }
   }
 
+  // 9.5 CREATE INTAKE QUEUE DATA
+  console.log('📝 Creating QUEUED IntakeRecords for Intake Queue...');
+  for (let i = 5; i < 9; i++) {
+    // We can reuse the same customers and vehicles or alternate
+    const cust = customers[i % 5];
+    const veh = vehicles[(i % 5) * 2 + 1]; // Use the second vehicle of the customer
+    const adv = staffs[0];
+    
+    const arrivedTime = new Date();
+    arrivedTime.setMinutes(arrivedTime.getMinutes() - (i * 10)); // Subtract 10, 20, 30... mins
+    
+    const queueRecord = await prisma.intakeRecord.create({
+      data: {
+        customer_id: cust.id,
+        vehicle_id: veh.id,
+        intake_type: i % 2 === 0 ? IntakeType.TOW_IN : IntakeType.WALK_IN,
+        status: IntakeStatus.QUEUED,
+        arrived_at: arrivedTime,
+        created_by_id: adv.id
+      }
+    });
+    
+    // Add some requested services for the queued record
+    await prisma.intakeService.create({
+      data: {
+        intake_id: queueRecord.id,
+        service_template_id: serviceTemplates[i % 5].id,
+      }
+    });
+  }
+
   // 10. SYSTEM LOGS
   for (let i = 0; i < 5; i++) {
     await prisma.notification.create({

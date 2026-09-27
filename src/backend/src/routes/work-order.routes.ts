@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import {
   getIntakeQueueForAdvisor,
+  getWorkOrders,
   createWorkOrder,
   getWorkOrderById,
   updateWorkOrder
@@ -14,6 +15,9 @@ router.use(authenticate, authorize('SA'));
 
 // Lấy danh sách hàng đợi tiếp nhận (cho Advisor tạo WO)
 router.get('/intake-queue', getIntakeQueueForAdvisor);
+
+// Lấy danh sách phiếu công việc
+router.get('/', getWorkOrders);
 
 // Tạo phiếu công việc từ phiếu tiếp nhận
 router.post('/', createWorkOrder);

@@ -83,6 +83,7 @@ export class IntakeRepository {
           vehicle: { select: { id: true, license_plate: true, make: true, model: true, color: true, vehicle_size: true } },
           created_by: { select: { id: true, full_name: true } },
           services: { include: { service_template: true } },
+          work_order: { select: { id: true, wo_number: true } },
         },
         orderBy: { arrived_at: 'desc' },
       }),

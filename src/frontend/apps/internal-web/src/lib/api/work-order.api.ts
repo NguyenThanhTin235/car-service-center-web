@@ -31,6 +31,10 @@ export interface IntakeQueueItem {
     id: number;
     full_name: string;
   };
+  work_order?: {
+    id: number;
+    wo_number: string;
+  } | null;
 }
 
 export interface WorkOrder {
@@ -82,11 +86,25 @@ export interface ApiResponse<T> {
  * Lấy danh sách hàng đợi tiếp nhận (IntakeRecord status=QUEUED)
  */
 export async function getIntakeQueue(params?: {
+  status?: string;
   search?: string;
   page?: number;
   limit?: number;
 }): Promise<ApiResponse<IntakeQueueItem[]>> {
   const response = await api.get('/api/work-orders/intake-queue', { params });
+  return response.data;
+}
+
+/**
+ * Lấy danh sách phiếu công việc
+ */
+export async function getWorkOrders(params?: {
+  status?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<ApiResponse<WorkOrder[]>> {
+  const response = await api.get('/api/work-orders', { params });
   return response.data;
 }
 

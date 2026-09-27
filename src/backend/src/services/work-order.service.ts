@@ -112,19 +112,32 @@ export class WorkOrderService {
 
   /**
    * Lấy danh sách hàng đợi tiếp nhận cho Advisor
-   * (Chỉ lấy IntakeRecord có status = QUEUED)
    */
   async getIntakeQueueForAdvisor(filters: {
+    status?: any;
     search?: string;
     page?: number;
     limit?: number;
   }) {
     return intakeRepo.findAll({
-      status: 'QUEUED',
+      status: filters.status,
       search: filters.search,
       page: filters.page || 1,
-      limit: filters.limit || 20,
+      limit: filters.limit || 50,
     });
+  }
+
+  /**
+   * Lấy danh sách Work Order
+   */
+  async getWorkOrders(filters: {
+    status?: any;
+    advisorId?: number;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    return workOrderRepo.findAll(filters);
   }
 
   /**
