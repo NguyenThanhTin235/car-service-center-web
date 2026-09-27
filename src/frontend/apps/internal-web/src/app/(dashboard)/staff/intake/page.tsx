@@ -13,6 +13,7 @@ import api from '@/lib/axios';
 import IntakeQueueCard from '@/components/intake/IntakeQueueCard';
 import WalkInIntakeModal from '@/components/intake/WalkInIntakeModal';
 import TowInIntakeModal from '@/components/intake/TowInIntakeModal';
+import IntakeDetailModal from '@/components/intake/IntakeDetailModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import toast from 'react-hot-toast';
 
@@ -27,6 +28,7 @@ export default function IntakePage() {
   const [isWalkInModalOpen, setWalkInModalOpen] = useState(false);
   const [isTowInModalOpen, setTowInModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'QUEUED' | 'CONVERTED' | 'CANCELLED'>('QUEUED');
+  const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const [serviceTemplates, setServiceTemplates] = useState<Array<{id: number, name: string}>>([]);
@@ -272,20 +274,17 @@ export default function IntakePage() {
                   <th className="py-3 px-4 font-semibold">Biển số / Xe</th>
                   <th className="py-3 px-4 font-semibold">Khách hàng</th>
                   <th className="py-3 px-4 font-semibold">Dịch vụ yêu cầu</th>
-                  <th className="py-3 px-4 font-semibold">Ghi chú</th>
-                  {activeTab === 'QUEUED' && (
-                    <th className="py-3 px-4 font-semibold text-right">Hành động</th>
-                  )}
+                  <th className="py-3 px-4 font-semibold text-right">Hành động</th>
                 </tr>
               </thead>
               <tbody>
                 {queueLoading ? (
                   <tr>
-                    <td colSpan={6} className="text-center text-secondary py-10">Đang tải danh sách...</td>
+                    <td colSpan={5} className="text-center text-secondary py-10">Đang tải danh sách...</td>
                   </tr>
                 ) : queueRecords.filter(r => r.status === activeTab).length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center text-secondary py-10">Danh sách trống.</td>
+                    <td colSpan={5} className="text-center text-secondary py-10">Danh sách trống.</td>
                   </tr>
                 ) : (
                   (() => {
@@ -351,24 +350,25 @@ export default function IntakePage() {
                               <span className="text-body-sm text-secondary italic">Không có</span>
                             )}
                           </td>
-                          <td className="py-3 px-4 text-body-sm text-secondary">
-                            {record.intake_type === 'TOW_IN' && record.tow_company && (
-                              <div className="mb-1 text-tertiary font-semibold">Đơn vị kéo: {record.tow_company}</div>
-                            )}
-                            <span className="line-clamp-2">{record.notes || ''}</span>
-                          </td>
-                          {activeTab === 'QUEUED' && (
-                            <td className="py-3 px-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => setSelectedRecord(record)}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface hover:bg-surface-container-high text-on-surface-variant transition-colors border border-outline-variant shadow-sm"
+                                title="Xem chi tiết"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">visibility</span>
+                              </button>
+                              {activeTab === 'QUEUED' && (
                                 <button
                                   onClick={() => handleCancelIntake(record.id)}
-                                  className="px-3 py-1.5 bg-surface-container border border-outline-variant text-error rounded-md text-label-sm font-semibold hover:bg-error-container transition-colors shadow-sm"
+                                  className="px-3 py-1 bg-surface-container border border-outline-variant text-error rounded-md text-label-sm font-semibold hover:bg-error-container transition-colors shadow-sm"
                                 >
                                   Hủy
                                 </button>
-                              </div>
-                            </td>
-                          )}
+                              )}
+                            </div>
+                          </td>
                         </tr>
                       );
                     });
@@ -438,6 +438,12 @@ export default function IntakePage() {
         onConfirm={confirmAction?.onConfirm || (() => {})}
         onCancel={() => setConfirmAction(null)}
       />
+      {selectedRecord && (
+        <IntakeDetailModal
+          record={selectedRecord}
+          onClose={() => setSelectedRecord(null)}
+        />
+      )}
     </div>
   );
 }

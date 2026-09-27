@@ -17,6 +17,7 @@ export default function WalkInIntakeModal({ isOpen, onClose, onSubmit, loading, 
     customerId: '',
     vehicleId: '',
     notes: '',
+    vehicleCondition: '',
     // New customer/vehicle fields
     fullName: '',
     phone: '',
@@ -56,7 +57,9 @@ export default function WalkInIntakeModal({ isOpen, onClose, onSubmit, loading, 
     const payload: any = {
       intakeType: 'WALK_IN',
       arrivedAt: new Date().toISOString(),
-      notes: formData.notes,
+      notes: formData.vehicleCondition.trim() 
+        ? `[Tình trạng xe]: ${formData.vehicleCondition}\n\n[Ghi chú]: ${formData.notes}` 
+        : formData.notes,
       serviceTemplateIds: serviceIds.length > 0 ? serviceIds : undefined,
     };
 
@@ -243,6 +246,16 @@ export default function WalkInIntakeModal({ isOpen, onClose, onSubmit, loading, 
             </div>
 
             <div className="border-t border-outline-variant pt-4 mt-2">
+              <label className="block text-label-sm font-medium text-secondary mb-1">Mô tả tình trạng xe</label>
+              <textarea
+                name="vehicleCondition"
+                value={formData.vehicleCondition}
+                onChange={handleChange}
+                rows={3}
+                className="w-full px-3 py-2 border border-outline rounded-lg focus:ring-1 focus:ring-primary focus:border-primary bg-surface-container-lowest mb-4"
+                placeholder="Mô tả các vấn đề về tình trạng xe lúc tiếp nhận (trầy xước, móp méo...)"
+              />
+              
               <label className="block text-label-sm font-medium text-secondary mb-1">Ghi chú tiếp nhận</label>
               <textarea
                 name="notes"

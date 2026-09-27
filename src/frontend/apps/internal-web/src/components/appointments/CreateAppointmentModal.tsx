@@ -27,6 +27,7 @@ export default function CreateAppointmentModal({ onClose, onSuccess, selectedDat
   const [date, setDate] = useState<string>(selectedDate ? selectedDate.toISOString().split('T')[0] : '');
   const [time, setTime] = useState<string>(selectedTime || '');
   const [notes, setNotes] = useState<string>('');
+  const [vehicleCondition, setVehicleCondition] = useState<string>('');
   const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
 
   useEffect(() => {
@@ -93,13 +94,17 @@ export default function CreateAppointmentModal({ onClose, onSuccess, selectedDat
     setLoading(true);
     setError(null);
     try {
+      const finalNotes = vehicleCondition.trim() 
+        ? `[Tình trạng xe]: ${vehicleCondition}\n\n[Ghi chú]: ${notes}`
+        : notes;
+
       await dispatch(createAppointment({
         customer_id: Number(customerId),
         vehicle_id: Number(vehicleId),
         scheduled_date: new Date(date).toISOString(),
         scheduled_time: time,
         service_ids: selectedServiceIds,
-        notes
+        notes: finalNotes
       })).unwrap();
       if (onSuccess) onSuccess();
       onClose();
@@ -217,11 +222,21 @@ export default function CreateAppointmentModal({ onClose, onSuccess, selectedDat
             </div>
 
             <div className="flex flex-col gap-1.5">
+              <label className="text-label-md font-label-md font-semibold text-on-surface">Mô tả tình trạng xe</label>
+              <textarea 
+                value={vehicleCondition} 
+                onChange={(e) => setVehicleCondition(e.target.value)}
+                placeholder="Mô tả các vấn đề về tình trạng xe lúc tiếp nhận (trầy xước, móp méo...)"
+                className="p-3 h-20 bg-surface border border-outline-variant rounded-lg text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow resize-none"
+              ></textarea>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
               <label className="text-label-md font-label-md font-semibold text-on-surface">Ghi chú</label>
               <textarea 
                 value={notes} 
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ghi chú thêm về tình trạng xe..."
+                placeholder="Ghi chú thêm (khác)..."
                 className="p-3 h-20 bg-surface border border-outline-variant rounded-lg text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow resize-none"
               ></textarea>
             </div>

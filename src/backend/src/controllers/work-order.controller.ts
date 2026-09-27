@@ -10,12 +10,13 @@ const workOrderService = new WorkOrderService();
  */
 export const getIntakeQueueForAdvisor = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { search, page, limit } = req.query;
+    const { status, search, page, limit } = req.query;
 
     const result = await workOrderService.getIntakeQueueForAdvisor({
+      status: status as any,
       search: search as string | undefined,
       page: page ? parseInt(page as string) : 1,
-      limit: limit ? parseInt(limit as string) : 20,
+      limit: limit ? parseInt(limit as string) : 50,
     });
 
     res.json({
@@ -31,6 +32,40 @@ export const getIntakeQueueForAdvisor = async (req: Request, res: Response): Pro
       success: false,
       code: 500,
       message: error.message || 'Lỗi khi lấy danh sách hàng đợi',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * GET /api/work-orders
+ * Lấy danh sách phiếu công việc
+ */
+export const getWorkOrders = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { status, search, page, limit } = req.query;
+
+    const result = await workOrderService.getWorkOrders({
+      status: status as any,
+      search: search as string | undefined,
+      page: page ? parseInt(page as string) : 1,
+      limit: limit ? parseInt(limit as string) : 50,
+    });
+
+    res.json({
+      success: true,
+      code: 200,
+      message: 'Lấy danh sách phiếu công việc thành công',
+      data: result.data,
+      meta: { pagination: result.pagination },
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      code: 500,
+      message: error.message || 'Lỗi khi lấy danh sách phiếu công việc',
       data: null,
       timestamp: Math.floor(Date.now() / 1000),
     });
