@@ -105,4 +105,34 @@ export class JobTypeService {
     });
     return { isActive: !existing.is_active };
   }
+
+  /**
+   * UC-69: Xóa loại công việc
+   * - Hard delete nếu chưa có ràng buộc (templates, jobs, job_labours)
+   * - Từ chối xóa nếu đã có dữ liệu liên quan
+   */
+  async deleteJobType(id: number) {
+    const existing = await prisma.jobType.findUnique({ where: { id } });
+    if (!existing) throw new Error('Không tìm thấy loại công việc.');
+
+    const [templatesCount, jobsCount, laboursCount] = await Promise.all([
+      prisma.jobTemplate.count({ where: { job_type_id: id } }),
+      prisma.job.count({ where: { job_type_id: id } }),
+      prisma.jobLabour.count({ where: { job_type_id: id } }),
+    ]);
+
+    const totalRefs = templatesCount + jobsCount + laboursCount;
+    if (totalRefs > 0) {
+      const parts: string[] = [];
+      if (templatesCount > 0) parts.push(`${templatesCount} mẫu công việc`);
+      if (jobsCount > 0) parts.push(`${jobsCount} công việc thực tế`);
+      if (laboursCount > 0) parts.push(`${laboursCount} bản ghi nhân công`);
+      throw new Error(
+        `Không thể xóa loại công việc "${existing.name}" vì đang được sử dụng bởi: ${parts.join(', ')}.`
+      );
+    }
+
+    await prisma.jobType.delete({ where: { id } });
+    return { deleted: true };
+  }
 }

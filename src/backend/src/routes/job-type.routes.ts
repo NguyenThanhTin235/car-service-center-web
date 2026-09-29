@@ -4,6 +4,7 @@ import {
   createJobType,
   updateJobType,
   toggleJobType,
+  deleteJobType,
 } from '../controllers/job-type.controller';
 
 const router = Router();
@@ -19,5 +20,8 @@ router.put('/:id', updateJobType);
 
 // UC-65: Toggle active/inactive
 router.patch('/:id/toggle', toggleJobType);
+
+// UC-69: Xóa loại công việc (hard delete nếu không có ràng buộc)
+router.delete('/:id', deleteJobType);
 
 export default router;

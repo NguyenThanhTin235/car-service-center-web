@@ -51,3 +51,15 @@ export const toggleJobType = async (req: Request, res: Response) => {
     res.status(statusCode).json({ status: 'error', message: error.message });
   }
 };
+
+// UC-69: Xóa loại công việc (hard delete nếu không có ràng buộc)
+export const deleteJobType = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await svc.deleteJobType(parseInt(id as string));
+    res.json({ status: 'success', message: 'Xóa loại công việc thành công' });
+  } catch (error: any) {
+    const statusCode = error.message.includes('Không tìm thấy') ? 404 : 400;
+    res.status(statusCode).json({ status: 'error', message: error.message });
+  }
+};
