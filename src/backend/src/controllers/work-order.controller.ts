@@ -170,9 +170,9 @@ export const getWorkOrderById = async (req: Request, res: Response): Promise<voi
 export const updateWorkOrder = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { notes, current_km } = req.body;
+    const { notes } = req.body;
     
-    const workOrder = await workOrderService.updateWorkOrder(Number(id), { notes, current_km });
+    const workOrder = await workOrderService.updateWorkOrder(Number(id), { notes });
 
     res.json({
       success: true,

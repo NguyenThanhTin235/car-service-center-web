@@ -150,9 +150,9 @@ export class WorkOrderService {
   }
 
   /**
-   * Cập nhật thông tin phiếu công việc (Odometer, Ghi chú)
+   * Cập nhật thông tin phiếu công việc (Ghi chú)
    */
-  async updateWorkOrder(id: number, data: { notes?: string; current_km?: number | null }) {
+  async updateWorkOrder(id: number, data: { notes?: string }) {
     const wo = await prisma.workOrder.findUnique({ where: { id } });
     if (!wo) throw new Error('Không tìm thấy phiếu công việc.');
 
@@ -161,28 +161,6 @@ export class WorkOrderService {
         where: { id: wo.intake_record_id },
         data: { notes: data.notes }
       });
-    }
-
-    if (data.current_km !== undefined && data.current_km !== null) {
-      const checkIn = await prisma.checkIn.findUnique({ where: { work_order_id: id } });
-      if (checkIn) {
-        await prisma.checkIn.update({
-          where: { id: checkIn.id },
-          data: { mileage: data.current_km }
-        });
-      } else {
-        await prisma.checkIn.create({
-          data: {
-            work_order_id: id,
-            mileage: data.current_km,
-            fuel_level: 'EMPTY',
-            complaint: data.notes || '',
-            exterior_condition: '',
-            status: 'PENDING_CONFIRMATION',
-            created_by_id: wo.created_by_id
-          }
-        });
-      }
     }
 
     return prisma.workOrder.findUnique({

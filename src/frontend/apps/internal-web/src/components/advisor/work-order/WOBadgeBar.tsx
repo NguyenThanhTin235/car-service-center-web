@@ -12,10 +12,10 @@ type Props = {
 
 const STATUS_PIPELINE = [
   'Tiếp nhận',
+  'Lập kế hoạch',
   'Chờ duyệt',
   'Đã duyệt',
   'Đang sửa',
-  'Kiểm tra',
   'Chờ thanh toán',
   'Chờ giao xe',
   'Đóng'
@@ -23,20 +23,14 @@ const STATUS_PIPELINE = [
 
 const statusMap: Record<string, string> = {
   'DRAFT': 'Tiếp nhận',
-  'IN_PLANNING': 'Tiếp nhận',
-  'NEW_INTAKE': 'Tiếp nhận',
+  'IN_PLANNING': 'Lập kế hoạch',
   'PENDING_APPROVAL': 'Chờ duyệt',
   'APPROVED': 'Đã duyệt',
   'IN_PROGRESS': 'Đang sửa',
-  'REPAIRING': 'Đang sửa',
-  'QC': 'Kiểm tra',
   'BILLING_REQUESTED': 'Chờ thanh toán',
-  'PENDING_PAYMENT': 'Chờ thanh toán',
   'FINANCIAL_CLEARED': 'Chờ giao xe',
-  'READY': 'Chờ giao xe',
   'RELEASED': 'Đóng',
   'CLOSED': 'Đóng',
-  'COMPLETED': 'Đóng',
   'CANCELLED': 'Đã hủy'
 };
 

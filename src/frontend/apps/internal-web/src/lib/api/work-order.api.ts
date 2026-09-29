@@ -57,11 +57,32 @@ export interface WorkOrder {
     color: string | null;
     vehicle_size: string;
   };
+  check_in?: CheckIn | null;
+  intake_record?: {
+    id: number;
+    notes: string;
+  } | null;
   advisor: {
     id: number;
     full_name: string;
     phone: string;
   };
+  created_at: string;
+}
+
+export interface CheckIn {
+  id: number;
+  work_order_id: number;
+  mileage: number;
+  fuel_level: 'EMPTY' | 'QUARTER' | 'HALF' | 'THREE_QUARTER' | 'FULL';
+  complaint: string;
+  belongings: string | null;
+  exterior_condition: string;
+  status: 'PENDING_CONFIRMATION' | 'CONFIRMED' | 'REJECTED' | 'REVISION_REQUIRED';
+  rejection_reason?: string | null;
+  evidence_urls: string[] | null;
+  confirmed_by_customer_id?: number | null;
+  confirmed_at?: string | null;
   created_at: string;
 }
 
@@ -121,5 +142,29 @@ export async function createWorkOrder(intakeRecordId: number): Promise<ApiRespon
  */
 export async function getWorkOrderById(id: number): Promise<ApiResponse<WorkOrder>> {
   const response = await api.get(`/api/work-orders/${id}`);
+  return response.data;
+}
+
+/**
+ * Lấy thông tin CheckIn theo Work Order ID
+ */
+export async function getCheckIn(workOrderId: number): Promise<ApiResponse<CheckIn>> {
+  const response = await api.get(`/api/work-orders/${workOrderId}/check-in`);
+  return response.data;
+}
+
+/**
+ * Tạo mới hoặc cập nhật CheckIn
+ */
+export async function saveCheckIn(workOrderId: number, data: Partial<CheckIn>): Promise<ApiResponse<CheckIn>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/check-in`, data);
+  return response.data;
+}
+
+/**
+ * Xác nhận CheckIn (Khách hàng ký)
+ */
+export async function confirmCheckIn(workOrderId: number): Promise<ApiResponse<CheckIn>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/check-in/confirm`);
   return response.data;
 }

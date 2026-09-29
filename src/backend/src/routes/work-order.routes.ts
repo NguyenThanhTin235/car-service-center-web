@@ -7,6 +7,7 @@ import {
   getWorkOrderById,
   updateWorkOrder
 } from '../controllers/work-order.controller';
+import { CheckInController } from '../controllers/check-in.controller';
 
 const router = Router();
 
@@ -27,5 +28,10 @@ router.get('/:id', getWorkOrderById);
 
 // Cập nhật thông tin phiếu công việc (UC-29)
 router.put('/:id', updateWorkOrder);
+
+// TÌNH TRẠNG XE LÚC TIẾP NHẬN (UC-30)
+router.post('/:id/check-in', CheckInController.createOrUpdateCheckIn);
+router.get('/:id/check-in', CheckInController.getCheckIn);
+router.post('/:id/check-in/confirm', CheckInController.confirmCheckIn);
 
 export default router;

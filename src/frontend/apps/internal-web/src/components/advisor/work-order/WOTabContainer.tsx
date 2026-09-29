@@ -20,7 +20,14 @@ const TABS = [
   { id: 'history', number: 8, label: 'Lịch sử sửa chữa', component: TabServiceHistory },
 ];
 
-export default function WOTabContainer() {
+import { WorkOrder } from '@/lib/api/work-order.api';
+
+interface WOTabContainerProps {
+  workOrder: WorkOrder;
+  refetchWO: () => void;
+}
+
+export default function WOTabContainer({ workOrder, refetchWO }: WOTabContainerProps) {
   const [activeTab, setActiveTab] = useState('checkin');
 
   const ActiveComponent = TABS.find((t) => t.id === activeTab)?.component || TabCheckinInspection;
@@ -55,7 +62,7 @@ export default function WOTabContainer() {
 
       {/* Tab Content Area */}
       <div className="py-6">
-        <ActiveComponent />
+        <ActiveComponent workOrder={workOrder} refetchWO={refetchWO} />
       </div>
     </div>
   );
