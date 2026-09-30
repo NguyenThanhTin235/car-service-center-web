@@ -1204,81 +1204,9 @@
 ---
 
 ---
-
-## UC-70 – Thêm chính sách tính giá (Create Pricing Policy)
+## UC-70 – Thêm danh mục chung (Create System Catalog)
 
 | **Mã Use case**    | UC-70 |
-| ------------------ | ------ |
-| **Tên Use case**   | Thêm chính sách tính giá (Create Pricing Policy) |
-| **Mô tả**          | Quản trị viên tạo mới dữ liệu chính sách tính giá vào hệ thống để lưu trữ và quản lý. |
-| **Đối tượng**      | Quản trị viên |
-| **Tiền điều kiện** | Quản trị viên đã đăng nhập vào hệ thống và được cấp quyền thực hiện chức năng này. |
-| **Hậu điều kiện**  | Thành công: Dữ liệu chính sách tính giá mới được lưu vào hệ thống và hiển thị trong danh sách.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu không được thêm. |
-| **Luồng cơ bản**   | 1. Quản trị viên truy cập màn hình quản lý chính sách tính giá và chọn **Thêm mới**.<br>2. Hệ thống hiển thị biểu mẫu nhập thông tin chính sách tính giá.<br>3. Quản trị viên nhập đầy đủ các thông tin bắt buộc và các thông tin tùy chọn khác.<br>4. Quản trị viên nhấn **Lưu** hoặc **Xác nhận**.<br>5. Hệ thống kiểm tra tính hợp lệ của dữ liệu và đảm bảo không có sự trùng lặp (nếu có yêu cầu).<br>6. Hệ thống lưu dữ liệu chính sách tính giá mới, hiển thị thông báo thành công và cập nhật lại danh sách. |
-| **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình nhập liệu, quản trị viên chọn **Hủy**:<br>Hệ thống đóng biểu mẫu và quay lại màn hình trước đó mà không lưu thay đổi dữ liệu. |
-| **Luồng ngoại lệ** | Tại bước 5, nếu dữ liệu không hợp lệ, thiếu thông tin bắt buộc, hoặc vi phạm ràng buộc dữ liệu (ví dụ: trùng mã), hệ thống hiển thị thông báo lỗi chi tiết tại các trường tương ứng. Use case quay lại bước 3. |
-
----
-
----
-
-## UC-71 – Xem chính sách tính giá (View Pricing Policy)
-
-| **Mã Use case**    | UC-71 |
-| ------------------ | ------ |
-| **Tên Use case**   | Xem chính sách tính giá (View Pricing Policy) |
-| **Mô tả**          | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của chính sách tính giá đã có trong hệ thống. |
-| **Đối tượng**      | Quản trị viên |
-| **Tiền điều kiện** | Quản trị viên đã đăng nhập vào hệ thống và được cấp quyền thực hiện chức năng này. |
-| **Hậu điều kiện**  | Thành công: Danh sách và chi tiết chính sách tính giá được hiển thị chính xác theo yêu cầu.<br>Thất bại: Hệ thống thông báo lỗi nếu không thể tải dữ liệu. |
-| **Luồng cơ bản**   | 1. Quản trị viên truy cập màn hình quản lý chính sách tính giá.<br>2. Hệ thống tải và hiển thị danh sách chính sách tính giá hiện có.<br>3. Quản trị viên có thể nhập từ khóa vào ô tìm kiếm hoặc sử dụng các bộ lọc để thu hẹp kết quả.<br>4. Hệ thống cập nhật danh sách dựa trên tiêu chí tìm kiếm/lọc.<br>5. Quản trị viên chọn một bản ghi cụ thể trong danh sách.<br>6. Hệ thống hiển thị màn hình chi tiết của bản ghi đó với toàn bộ thông tin liên quan. |
-| **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Tại bước 2 hoặc 4, nếu không có dữ liệu nào khớp với tiêu chí, hệ thống hiển thị thông báo "Không tìm thấy dữ liệu phù hợp".<br><br>Tại bước 6, nếu bản ghi không tồn tại hoặc quản trị viên không có quyền xem, hệ thống hiển thị thông báo lỗi từ chối truy cập. |
-
----
-
----
-
-## UC-72 – Cập nhật chính sách tính giá (Update Pricing Policy)
-
-| **Mã Use case**    | UC-72 |
-| ------------------ | ------ |
-| **Tên Use case**   | Cập nhật chính sách tính giá (Update Pricing Policy) |
-| **Mô tả**          | Quản trị viên chỉnh sửa và cập nhật lại thông tin của chính sách tính giá hiện có trong hệ thống để đảm bảo dữ liệu luôn chính xác. |
-| **Đối tượng**      | Quản trị viên |
-| **Tiền điều kiện** | Quản trị viên đã đăng nhập, có quyền cập nhật và bản ghi chính sách tính giá cần chỉnh sửa đang tồn tại trong hệ thống. |
-| **Hậu điều kiện**  | Thành công: Thông tin mới của chính sách tính giá được lưu và cập nhật trong hệ thống.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu được giữ nguyên trạng thái cũ. |
-| **Luồng cơ bản**   | 1. Quản trị viên truy cập màn hình quản lý và mở chi tiết bản ghi chính sách tính giá cần chỉnh sửa.<br>2. Quản trị viên chọn **Cập nhật** hoặc **Chỉnh sửa**.<br>3. Hệ thống hiển thị biểu mẫu với các thông tin hiện tại của bản ghi.<br>4. Quản trị viên thay đổi các trường thông tin cần thiết.<br>5. Quản trị viên nhấn **Lưu** hoặc **Xác nhận**.<br>6. Hệ thống kiểm tra tính hợp lệ của dữ liệu mới.<br>7. Hệ thống lưu thay đổi, hiển thị thông báo cập nhật thành công và hiển thị lại thông tin đã được làm mới. |
-| **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình nhập liệu, quản trị viên chọn **Hủy**:<br>Hệ thống đóng biểu mẫu và quay lại màn hình trước đó mà không lưu thay đổi dữ liệu. |
-| **Luồng ngoại lệ** | Tại bước 6, nếu dữ liệu không hợp lệ hoặc vi phạm ràng buộc hệ thống (ví dụ: trùng mã), hệ thống hiển thị thông báo lỗi tương ứng và yêu cầu chỉnh sửa lại. Use case quay lại bước 4.<br><br>Tại bước 7, nếu bản ghi đã bị người dùng khác thay đổi (conflict) hoặc xóa trước đó, hệ thống thông báo lỗi đồng bộ dữ liệu. |
-
----
-
----
-
-## UC-73 – Xóa chính sách tính giá (Delete Pricing Policy)
-
-| **Mã Use case**    | UC-73 |
-| ------------------ | ------ |
-| **Tên Use case**   | Xóa chính sách tính giá (Delete Pricing Policy) |
-| **Mô tả**          | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi chính sách tính giá khỏi hệ thống khi không còn nhu cầu sử dụng hoặc lưu trữ. |
-| **Đối tượng**      | Quản trị viên |
-| **Tiền điều kiện** | Quản trị viên đã đăng nhập, có quyền xóa và bản ghi chính sách tính giá cần xử lý đang tồn tại trong hệ thống. |
-| **Hậu điều kiện**  | Thành công: Bản ghi chính sách tính giá bị vô hiệu hóa hoặc xóa thành công khỏi hệ thống.<br>Thất bại: Hệ thống thông báo lỗi, bản ghi được giữ nguyên. |
-| **Luồng cơ bản**   | 1. Quản trị viên truy cập màn hình quản lý và chọn bản ghi chính sách tính giá cần xử lý.<br>2. Quản trị viên chọn hành động **Xóa** hoặc **Hủy**.<br>3. Hệ thống hiển thị hộp thoại cảnh báo và yêu cầu xác nhận thao tác.<br>4. Quản trị viên nhấn **Xác nhận**.<br>5. Hệ thống kiểm tra các ràng buộc dữ liệu liên quan đến bản ghi (ví dụ: dữ liệu có đang được sử dụng ở chức năng khác không).<br>6. Hệ thống thực hiện xóa mềm (chuyển trạng thái sang Ngừng hoạt động/Đã hủy) hoặc xóa cứng bản ghi tùy theo quy định.<br>7. Hệ thống hiển thị thông báo thành công và cập nhật lại danh sách. |
-| **Luồng thay thế** | **[Hủy thao tác]** Tại bước 3, quản trị viên chọn **Hủy**:<br>3a. Hệ thống đóng hộp thoại cảnh báo và hủy bỏ thao tác xóa, giữ nguyên dữ liệu. |
-| **Luồng ngoại lệ** | Tại bước 5, nếu bản ghi đang có ràng buộc dữ liệu với các nghiệp vụ khác (ví dụ: đã phát sinh giao dịch, hóa đơn), hệ thống từ chối xóa và hiển thị thông báo lỗi giải thích lý do không thể xóa. |
-
----
-
----
-
-
----
-
-## UC-74 – Thêm danh mục chung (Create System Catalog)
-
-| **Mã Use case**    | UC-74 |
 | ------------------ | ------ |
 | **Tên Use case**   | Thêm danh mục chung (Create System Catalog) |
 | **Mô tả**          | Quản trị viên tạo mới dữ liệu danh mục chung vào hệ thống để lưu trữ và quản lý. |
@@ -1293,9 +1221,9 @@
 
 ---
 
-## UC-75 – Xem danh mục chung (View System Catalog)
+## UC-71 – Xem danh mục chung (View System Catalog)
 
-| **Mã Use case**    | UC-75 |
+| **Mã Use case**    | UC-71 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem danh mục chung (View System Catalog) |
 | **Mô tả**          | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của danh mục chung đã có trong hệ thống. |
@@ -1310,9 +1238,9 @@
 
 ---
 
-## UC-76 – Cập nhật danh mục chung (Update System Catalog)
+## UC-72 – Cập nhật danh mục chung (Update System Catalog)
 
-| **Mã Use case**    | UC-76 |
+| **Mã Use case**    | UC-72 |
 | ------------------ | ------ |
 | **Tên Use case**   | Cập nhật danh mục chung (Update System Catalog) |
 | **Mô tả**          | Quản trị viên chỉnh sửa và cập nhật lại thông tin của danh mục chung hiện có trong hệ thống để đảm bảo dữ liệu luôn chính xác. |
@@ -1327,9 +1255,9 @@
 
 ---
 
-## UC-77 – Xóa danh mục chung (Delete System Catalog)
+## UC-73 – Xóa danh mục chung (Delete System Catalog)
 
-| **Mã Use case**    | UC-77 |
+| **Mã Use case**    | UC-73 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xóa danh mục chung (Delete System Catalog) |
 | **Mô tả**          | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi danh mục chung khỏi hệ thống khi không còn nhu cầu sử dụng hoặc lưu trữ. |
@@ -1342,64 +1270,4 @@
 
 ---
 
-
-
-## UC-78 – Xem mẫu kiểm tra (View Inspection Template)
-
-| **Mã Use case**    | UC-78 |
-| ------------------ | ------ |
-| **Tên Use case**   | Xem mẫu kiểm tra (View Inspection Template) |
-| **Mô tả**          | Quản trị viên xem danh sách và chi tiết các mẫu kiểm tra cấu hình sẵn. |
-| **Đối tượng**      | Quản trị viên (Admin) / Quản lý (Manager) |
-| **Tiền điều kiện** | Người dùng đã đăng nhập và có quyền tương ứng. |
-| **Hậu điều kiện**  | Thành công: Hệ thống hiển thị danh sách các mẫu. |
-| **Luồng cơ bản**   | 1. Người dùng vào trang quản lý Mẫu kiểm tra.<br>2. Hệ thống hiển thị danh sách các mẫu.<br>3. Người dùng có thể nhấn vào một mẫu để xem chi tiết. |
-| **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Không có. |
-
----
-
-## UC-79 – Thêm mẫu kiểm tra (Create Inspection Template)
-
-| **Mã Use case**    | UC-79 |
-| ------------------ | ------ |
-| **Tên Use case**   | Thêm mẫu kiểm tra (Create Inspection Template) |
-| **Mô tả**          | Quản trị viên tạo mới một mẫu kiểm tra xe (gồm nhiều hạng mục) để kỹ thuật viên sử dụng. |
-| **Đối tượng**      | Quản trị viên (Admin) / Quản lý (Manager) |
-| **Tiền điều kiện** | Người dùng đã đăng nhập và có quyền tương ứng. |
-| **Hậu điều kiện**  | Thành công: Mẫu kiểm tra mới được lưu vào hệ thống. |
-| **Luồng cơ bản**   | 1. Người dùng nhấn **Thêm mới** trên trang quản lý Mẫu kiểm tra.<br>2. Hệ thống hiển thị form nhập liệu.<br>3. Người dùng nhập tên mẫu, mô tả và thêm các hạng mục kiểm tra cần thiết.<br>4. Người dùng nhấn **Lưu**.<br>5. Hệ thống lưu mẫu và hiển thị lại danh sách. |
-| **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Hệ thống báo lỗi nếu thiếu trường thông tin bắt buộc. |
-
----
-
-## UC-80 – Cập nhật mẫu kiểm tra (Update Inspection Template)
-
-| **Mã Use case**    | UC-80 |
-| ------------------ | ------ |
-| **Tên Use case**   | Cập nhật mẫu kiểm tra (Update Inspection Template) |
-| **Mô tả**          | Quản trị viên chỉnh sửa nội dung mẫu kiểm tra đã có. |
-| **Đối tượng**      | Quản trị viên (Admin) / Quản lý (Manager) |
-| **Tiền điều kiện** | Mẫu kiểm tra đã tồn tại. |
-| **Hậu điều kiện**  | Thành công: Mẫu kiểm tra được cập nhật. |
-| **Luồng cơ bản**   | 1. Người dùng chọn một mẫu kiểm tra và nhấn **Sửa**.<br>2. Hệ thống hiển thị form với dữ liệu cũ.<br>3. Người dùng thay đổi thông tin (tên, thêm/xóa hạng mục).<br>4. Người dùng nhấn **Lưu**.<br>5. Hệ thống cập nhật dữ liệu. |
-| **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Hệ thống báo lỗi nếu thiếu trường thông tin bắt buộc. |
-
----
-
-## UC-81 – Xóa mẫu kiểm tra (Delete Inspection Template)
-
-| **Mã Use case**    | UC-81 |
-| ------------------ | ------ |
-| **Tên Use case**   | Xóa mẫu kiểm tra (Delete Inspection Template) |
-| **Mô tả**          | Quản trị viên xóa một mẫu kiểm tra không còn sử dụng. |
-| **Đối tượng**      | Quản trị viên (Admin) / Quản lý (Manager) |
-| **Tiền điều kiện** | Mẫu kiểm tra đã tồn tại và chưa được sử dụng trong phiếu công việc nào. |
-| **Hậu điều kiện**  | Thành công: Mẫu kiểm tra bị xóa khỏi hệ thống. |
-| **Luồng cơ bản**   | 1. Người dùng chọn một mẫu kiểm tra và nhấn **Xóa**.<br>2. Hệ thống yêu cầu xác nhận.<br>3. Người dùng xác nhận xóa.<br>4. Hệ thống xóa mẫu và cập nhật danh sách. |
-| **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Nếu mẫu kiểm tra đã từng được sử dụng (ràng buộc khóa ngoại), hệ thống báo lỗi không thể xóa, chỉ có thể vô hiệu hóa. |
-
----
+
