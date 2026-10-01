@@ -320,6 +320,77 @@ async function main() {
     });
   }
 
+  // 9.6 CREATE WEEKLY APPOINTMENTS
+  console.log('📅 Creating appointments for this week...');
+  const customer1 = customers[0];
+  const vehicle1 = vehicles[0];
+
+  const now = new Date();
+  const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  
+  const monday = new Date(todayUTC);
+  monday.setUTCDate(todayUTC.getUTCDate() - (todayUTC.getUTCDay() === 0 ? 7 : todayUTC.getUTCDay()) + 1); // Monday
+  
+  const wednesday = new Date(monday);
+  wednesday.setUTCDate(monday.getUTCDate() + 2); // Wednesday
+
+  const friday = new Date(monday);
+  friday.setUTCDate(monday.getUTCDate() + 4); // Friday
+
+  const time1 = new Date(Date.UTC(1970, 0, 1, 2, 0)); // 02:00 UTC = 09:00 VN
+  await prisma.appointment.create({
+    data: {
+      customer_id: customer1.id,
+      vehicle_id: vehicle1.id,
+      scheduled_date: monday,
+      scheduled_time: time1,
+      status: AppointmentStatus.CONFIRMED,
+      notes: 'Khách yêu cầu làm nhanh',
+      created_by_id: staffs[0].id,
+      services: {
+        create: [
+          { service_template_id: serviceTemplates[0].id }
+        ]
+      }
+    }
+  });
+
+  const time2 = new Date(Date.UTC(1970, 0, 1, 7, 0)); // 07:00 UTC = 14:00 VN
+  await prisma.appointment.create({
+    data: {
+      customer_id: customer1.id,
+      vehicle_id: vehicle1.id,
+      scheduled_date: wednesday,
+      scheduled_time: time2,
+      status: AppointmentStatus.REQUESTED,
+      notes: 'Lần đầu đến xưởng',
+      created_by_id: staffs[0].id,
+      services: {
+        create: [
+          { service_template_id: serviceTemplates[0].id },
+          ...(serviceTemplates[1] ? [{ service_template_id: serviceTemplates[1].id }] : [])
+        ]
+      }
+    }
+  });
+
+  const time3 = new Date(Date.UTC(1970, 0, 1, 3, 30)); // 03:30 UTC = 10:30 VN
+  await prisma.appointment.create({
+    data: {
+      customer_id: customer1.id,
+      vehicle_id: vehicle1.id,
+      scheduled_date: friday,
+      scheduled_time: time3,
+      status: AppointmentStatus.RESCHEDULED,
+      created_by_id: staffs[0].id,
+      services: {
+        create: [
+          { service_template_id: serviceTemplates[1] ? serviceTemplates[1].id : serviceTemplates[0].id }
+        ]
+      }
+    }
+  });
+
   // 10. SYSTEM LOGS
   for (let i = 0; i < 5; i++) {
     await prisma.notification.create({

@@ -16,9 +16,12 @@ import TowInIntakeModal from '@/components/intake/TowInIntakeModal';
 import IntakeDetailModal from '@/components/intake/IntakeDetailModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import toast from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
+import ReadOnlyROModal from '@/components/intake/ReadOnlyROModal';
 
 export default function IntakePage() {
   const dispatch = useAppDispatch();
+  const router = useRouter();
   
   // State from Redux
   const { records: queueRecords, loading: queueLoading } = useAppSelector((state) => state.intake);
@@ -29,6 +32,7 @@ export default function IntakePage() {
   const [isTowInModalOpen, setTowInModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'QUEUED' | 'CONVERTED' | 'CANCELLED'>('QUEUED');
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
+  const [viewingROId, setViewingROId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const [serviceTemplates, setServiceTemplates] = useState<Array<{id: number, name: string}>>([]);
@@ -367,6 +371,15 @@ export default function IntakePage() {
                                   Hủy
                                 </button>
                               )}
+                              {activeTab === 'CONVERTED' && record.work_order && (
+                                <button
+                                  onClick={() => setViewingROId(record.work_order?.id || null)}
+                                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary border border-primary text-on-primary hover:bg-primary/90 transition-colors shadow-sm"
+                                  title="Xem Phiếu Công Việc (RO)"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -443,6 +456,11 @@ export default function IntakePage() {
           record={selectedRecord}
           onClose={() => setSelectedRecord(null)}
         />
+      )}
+
+      {/* READ-ONLY WO MODAL */}
+      {viewingROId && (
+        <ReadOnlyROModal workOrderId={viewingROId} onClose={() => setViewingROId(null)} />
       )}
     </div>
   );
