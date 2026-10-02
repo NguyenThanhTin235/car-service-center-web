@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { WorkOrder, saveCheckIn, confirmCheckIn } from '@/lib/api/work-order.api';
+import React, { useState, useEffect, useRef } from 'react';
+import { WorkOrder, saveCheckIn, confirmCheckIn, addServiceToWO, removeServiceFromWO, getServiceCatalog, ServiceTemplateOption } from '@/lib/api/work-order.api';
 import toast from 'react-hot-toast';
 import EvidenceUploader from './EvidenceUploader';
 
@@ -10,16 +10,129 @@ interface TabCheckinProps {
 }
 
 export default function TabCheckinInspection({ workOrder, refetchWO }: TabCheckinProps) {
-  // Dummy tags
-  const [jobTypes, setJobTypes] = useState<string[]>(['Bảo dưỡng', 'Sửa chữa Gầm/Điện', 'Đồng sơn', 'Bảo hiểm']);
-  const [customerReported, setCustomerReported] = useState<string[]>(['Đèn báo lỗi', 'Móp méo thân xe (sau)']);
+  const [jobTypes, setJobTypes] = useState<string[]>([]);
+  const [customerReported, setCustomerReported] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (workOrder?.intake_record?.services) {
+      const uniqueCategories = Array.from(
+        new Set(workOrder.intake_record.services.map(s => s.service_template.category?.name).filter(Boolean))
+      ) as string[];
+      setJobTypes(uniqueCategories);
+    }
+    // You can parse specific tags from notes if needed, but for now we leave customerReported empty 
+    // since the notes are displayed below in the UI anyway.
+  }, [workOrder]);
 
   const toggleJobType = (type: string) => {
     setJobTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
   };
   const toggleCustomerReported = (type: string) => {
+    if (!type.trim()) return;
     setCustomerReported(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
   };
+
+  const COMMON_COMPLAINTS = [
+    'Đèn báo lỗi động cơ', 
+    'Tiếng kêu lạ dưới gầm', 
+    'Điều hòa không lạnh', 
+    'Rò rỉ nhớt', 
+    'Vô lăng rung lắc', 
+    'Động cơ quá nhiệt',
+    'Phanh không ăn',
+    'Móp méo thân xe'
+  ];
+  const [isAddingComplaint, setIsAddingComplaint] = useState(false);
+  const [complaintSearch, setComplaintSearch] = useState('');
+  const complaintDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (complaintDropdownRef.current && !complaintDropdownRef.current.contains(e.target as Node)) {
+        setIsAddingComplaint(false);
+        setComplaintSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Add/Remove Service state
+  const [isAdding, setIsAdding] = useState(false);
+  const [catalog, setCatalog] = useState<ServiceTemplateOption[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [submittingService, setSubmittingService] = useState(false);
+  const [removingServiceId, setRemovingServiceId] = useState<number | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Load catalog when dropdown opens
+  useEffect(() => {
+    if (isAdding && catalog.length === 0) {
+      loadCatalog();
+    }
+  }, [isAdding]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsAdding(false);
+        setSearchTerm('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const loadCatalog = async () => {
+    try {
+      setLoadingCatalog(true);
+      const data = await getServiceCatalog();
+      setCatalog(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error('Không thể tải danh mục dịch vụ');
+    } finally {
+      setLoadingCatalog(false);
+    }
+  };
+
+  const handleAddService = async (templateId: number) => {
+    if (!workOrder || submittingService) return;
+    try {
+      setSubmittingService(true);
+      const res = await addServiceToWO(workOrder.id, templateId);
+      if (res.success) {
+        if (refetchWO) refetchWO();
+      } else {
+        toast.error(res.message || 'Lỗi khi thêm dịch vụ');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Lỗi khi thêm dịch vụ');
+    } finally {
+      setSubmittingService(false);
+    }
+  };
+
+  const handleRemoveService = async (woServiceId: number) => {
+    if (!workOrder || removingServiceId) return;
+    try {
+      setRemovingServiceId(woServiceId);
+      const res = await removeServiceFromWO(workOrder.id, woServiceId);
+      if (res.success) {
+        if (refetchWO) refetchWO();
+      } else {
+        toast.error(res.message || 'Lỗi khi xóa dịch vụ');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Lỗi khi xóa dịch vụ');
+    } finally {
+      setRemovingServiceId(null);
+    }
+  };
+
+  const existingTemplateIds = workOrder?.services?.map((s) => s.service_template_id).filter((id): id is number => id !== null) || [];
+  const filteredCatalog = catalog.filter((t) => !existingTemplateIds.includes(t.id) && t.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   // Form state for Check-in
   const [mileage, setMileage] = useState<string>('');
@@ -40,10 +153,17 @@ export default function TabCheckinInspection({ workOrder, refetchWO }: TabChecki
       const ci = workOrder.check_in;
       setMileage(ci.mileage.toString());
       setFuelLevel(ci.fuel_level);
-      setComplaint(ci.complaint);
       setExteriorCondition(ci.exterior_condition);
       setBelongings(ci.belongings || '');
       setEvidenceUrls(ci.evidence_urls || []);
+      
+      try {
+        const parsed = JSON.parse(ci.complaint);
+        if (parsed.tags) setCustomerReported(parsed.tags);
+        if (parsed.notes) setComplaint(parsed.notes);
+      } catch {
+        setComplaint(ci.complaint);
+      }
       
       // If it's already confirmed or pending confirmation, show read-only view by default
       if (ci.status === 'CONFIRMED' || ci.status === 'PENDING_CONFIRMATION') {
@@ -72,7 +192,10 @@ export default function TabCheckinInspection({ workOrder, refetchWO }: TabChecki
       toast.error('Vui lòng nhập số km hợp lệ');
       return;
     }
-    const finalComplaint = complaint.trim() || 'Không có ghi nhận từ lễ tân';
+    const finalComplaint = JSON.stringify({
+      tags: customerReported,
+      notes: complaint.trim()
+    });
 
     if (!exteriorCondition.trim()) {
       toast.error('Vui lòng ghi nhận tình trạng xe (ngoại thất)');
@@ -149,43 +272,178 @@ export default function TabCheckinInspection({ workOrder, refetchWO }: TabChecki
       {/* Pill Selectors */}
       {!isReadOnly && (
         <div className="grid grid-cols-2 gap-12">
-        {/* Job Request / Type */}
+        {/* Job Request / Type (Dynamic Services) */}
         <div>
           <h3 className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3">YÊU CẦU / LOẠI CÔNG VIỆC</h3>
-          <div className="flex flex-wrap gap-2">
-            {['Bảo dưỡng', 'Sửa chữa Gầm/Điện', 'Đồng sơn', 'Bảo hiểm', 'Chăm sóc xe', 'Khác'].map(type => {
-                const isSelected = jobTypes.includes(type);
-                return (
+          <div className="flex flex-wrap gap-2 items-center">
+            {workOrder?.services?.map(svc => (
+              <div key={svc.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-surface-container-high border-outline text-on-surface text-body-sm font-medium transition-colors hover:bg-surface-container-highest">
+                <span className="material-symbols-outlined text-[16px] text-primary">build</span>
+                {svc.name}
+                {!isReadOnly && (
                   <button
-                    key={type}
-                    onClick={() => toggleJobType(type)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-body-sm font-medium transition-colors ${isSelected ? 'bg-surface-container-high border-outline text-on-surface' : 'bg-surface-container-lowest border-outline-variant text-on-surface-variant hover:bg-surface-container-low'}`}
+                    onClick={() => handleRemoveService(svc.id)}
+                    disabled={removingServiceId === svc.id}
+                    className="flex items-center justify-center text-on-surface-variant hover:text-error transition-colors disabled:opacity-50 ml-1"
+                    title="Xóa dịch vụ"
                   >
-                    {isSelected && <span className="material-symbols-outlined text-[16px]">check</span>}
-                    {type}
+                    <span className="material-symbols-outlined text-[16px]">{removingServiceId === svc.id ? 'progress_activity' : 'close'}</span>
                   </button>
-                );
-              })}
+                )}
+              </div>
+            ))}
+            
+            {!isReadOnly && (
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setIsAdding(!isAdding)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-dashed border-primary text-primary text-body-sm font-medium hover:bg-primary/5 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">add</span> Thêm dịch vụ
+                </button>
+
+                {/* Dropdown Catalog */}
+                {isAdding && (
+                  <div className="absolute left-0 top-full mt-2 w-80 bg-surface-container-lowest rounded-xl shadow-lg border border-outline-variant z-50 overflow-hidden">
+                    <div className="p-3 border-b border-outline-variant/40">
+                      <div className="relative">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-on-surface-variant">search</span>
+                        <input
+                          type="text"
+                          placeholder="Tìm dịch vụ..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="w-full pl-10 pr-3 py-2 text-body-sm bg-surface-container-low border border-outline-variant rounded-lg focus:outline-none focus:border-primary transition-colors"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto styled-scrollbar">
+                      {loadingCatalog ? (
+                        <div className="p-6 text-center text-on-surface-variant text-body-sm flex items-center justify-center gap-2">
+                          <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span> Đang tải...
+                        </div>
+                      ) : filteredCatalog.length > 0 ? (
+                        <ul className="py-1">
+                          {filteredCatalog.map((template) => (
+                            <li key={template.id}>
+                              <button
+                                onClick={() => handleAddService(template.id)}
+                                disabled={submittingService}
+                                className="w-full text-left px-4 py-3 hover:bg-surface-container-low focus:bg-surface-container-low outline-none transition-colors disabled:opacity-50"
+                              >
+                                <span className="font-medium text-body-sm text-on-surface block truncate">{template.name}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="p-6 text-center text-on-surface-variant text-body-sm">Không tìm thấy dịch vụ phù hợp</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {workOrder?.services?.length === 0 && isReadOnly && (
+              <span className="text-body-sm text-outline italic">Không có dịch vụ nào được chọn</span>
+            )}
           </div>
         </div>
 
-        {/* Customer Reported */}
+        {/* Customer Reported (Dynamic Tags) */}
         <div>
           <h3 className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3">KHÁCH HÀNG BÁO</h3>
-          <div className="flex flex-wrap gap-2">
-            {['Đèn báo lỗi', 'Móp méo thân xe (sau)', 'Tiếng kêu lạ', 'Điều hòa', 'Rò rỉ nhớt'].map(type => {
-                const isSelected = customerReported.includes(type);
-                return (
+          <div className="flex flex-wrap gap-2 items-center">
+            {customerReported.map(cr => (
+              <div key={cr} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-surface-container-high border-outline text-on-surface text-body-sm font-medium transition-colors hover:bg-surface-container-highest">
+                <span className="material-symbols-outlined text-[16px] text-primary">chat</span>
+                {cr}
+                {!isReadOnly && (
                   <button
-                    key={type}
-                    onClick={() => toggleCustomerReported(type)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-body-sm font-medium transition-colors ${isSelected ? 'bg-surface-container-high border-outline text-on-surface' : 'bg-surface-container-lowest border-outline-variant text-on-surface-variant hover:bg-surface-container-low'}`}
+                    onClick={() => toggleCustomerReported(cr)}
+                    className="flex items-center justify-center text-on-surface-variant hover:text-error transition-colors ml-1"
+                    title="Xóa"
                   >
-                    {isSelected && <span className="material-symbols-outlined text-[16px]">check</span>}
-                    {type}
+                    <span className="material-symbols-outlined text-[16px]">close</span>
                   </button>
-                );
-              })}
+                )}
+              </div>
+            ))}
+            
+            {!isReadOnly && (
+              <div className="relative" ref={complaintDropdownRef}>
+                <button
+                  onClick={() => setIsAddingComplaint(!isAddingComplaint)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-dashed border-primary text-primary text-body-sm font-medium hover:bg-primary/5 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">add</span> Thêm báo lỗi
+                </button>
+
+                {/* Dropdown Catalog */}
+                {isAddingComplaint && (
+                  <div className="absolute left-0 top-full mt-2 w-80 bg-surface-container-lowest rounded-xl shadow-lg border border-outline-variant z-50 overflow-hidden">
+                    <div className="p-3 border-b border-outline-variant/40">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Gõ để tìm hoặc thêm mới..."
+                          value={complaintSearch}
+                          onChange={(e) => setComplaintSearch(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && complaintSearch.trim()) {
+                              toggleCustomerReported(complaintSearch.trim());
+                              setComplaintSearch('');
+                            }
+                          }}
+                          className="flex-1 px-3 py-2 text-body-sm bg-surface-container-low border border-outline-variant rounded-lg focus:outline-none focus:border-primary transition-colors"
+                          autoFocus
+                        />
+                        <button 
+                          onClick={() => {
+                            if (complaintSearch.trim()) {
+                              toggleCustomerReported(complaintSearch.trim());
+                              setComplaintSearch('');
+                            }
+                          }}
+                          className="bg-primary text-white px-3 py-2 rounded-lg text-label-sm font-bold hover:bg-primary/90 transition-colors"
+                        >
+                          Thêm
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto styled-scrollbar">
+                      {COMMON_COMPLAINTS.filter(c => !customerReported.includes(c) && c.toLowerCase().includes(complaintSearch.toLowerCase())).length > 0 ? (
+                        <ul className="py-1">
+                          {COMMON_COMPLAINTS.filter(c => !customerReported.includes(c) && c.toLowerCase().includes(complaintSearch.toLowerCase())).map((c) => (
+                            <li key={c}>
+                              <button
+                                onClick={() => {
+                                  toggleCustomerReported(c);
+                                  setComplaintSearch('');
+                                }}
+                                className="w-full text-left px-4 py-3 hover:bg-surface-container-low focus:bg-surface-container-low outline-none transition-colors"
+                              >
+                                <span className="font-medium text-body-sm text-on-surface block truncate">{c}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="p-6 text-center text-on-surface-variant text-body-sm">
+                          {complaintSearch ? 'Nhấn Thêm để tạo lỗi mới' : 'Tất cả lỗi phổ biến đã được thêm'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {customerReported.length === 0 && isReadOnly && (
+              <span className="text-body-sm text-outline italic">Không có ghi nhận</span>
+            )}
           </div>
         </div>
       </div>
@@ -215,17 +473,30 @@ export default function TabCheckinInspection({ workOrder, refetchWO }: TabChecki
         <div className="p-6">
           {isReadOnly ? (
             <div className="grid grid-cols-2 gap-x-12 gap-y-6">
-              <div className="col-span-2 flex gap-2 mb-2">
-                {jobTypes.map(t => (
-                  <span key={t} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-[#856404] bg-[#FFF3CD] text-[#856404] text-label-sm font-medium">
-                    <span className="material-symbols-outlined text-[14px]">check</span> {t}
-                  </span>
-                ))}
-                {customerReported.map(t => (
-                  <span key={t} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-outline-variant bg-surface text-on-surface-variant text-label-sm font-medium">
-                    {t}
-                  </span>
-                ))}
+              <div className="col-span-2 flex flex-col gap-3 mb-4">
+                {jobTypes.length > 0 && (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-body-sm text-on-surface-variant font-medium w-[120px]">Yêu cầu dịch vụ:</span>
+                    {jobTypes.map(t => (
+                      <span key={t} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-[#856404] bg-[#FFF3CD] text-[#856404] text-label-sm font-medium">
+                        <span className="material-symbols-outlined text-[14px]">check</span> {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {customerReported.length > 0 && (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-body-sm text-on-surface-variant font-medium w-[120px]">Khách hàng báo:</span>
+                    {customerReported.map(t => (
+                      <span key={t} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-outline-variant bg-surface text-on-surface-variant text-label-sm font-medium">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {jobTypes.length === 0 && customerReported.length === 0 && (
+                  <span className="text-body-sm text-outline italic">Không có ghi nhận yêu cầu / báo lỗi.</span>
+                )}
               </div>
               
               <div className="flex flex-col gap-6">

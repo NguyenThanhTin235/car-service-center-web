@@ -244,7 +244,7 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
               <tr className="border-b border-outline-variant/60 bg-surface-container-low/50">
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider w-10">#</th>
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Thông tin xe & Biển số</th>
-                <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Hạng mục dịch vụ đã xong</th>
+                <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Loại dịch vụ</th>
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Khách hàng</th>
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Thời gian chờ</th>
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider text-right">Hành động</th>
@@ -287,15 +287,23 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                       </div>
                     </td>
 
-                    {/* Services */}
+                    {/* Services / Service Categories */}
                     <td className="px-5 py-4">
-                      <div className="flex flex-col gap-0.5">
+                      <div className="flex flex-col items-start gap-1.5">
                         {item.services.length > 0 ? (
-                          item.services.map((s) => (
-                            <span key={s.id} className="text-body-sm font-body-sm text-on-surface">
-                              {s.service_template.name}
-                            </span>
-                          ))
+                          (() => {
+                            const uniqueCategories = Array.from(
+                              new Set(item.services.map((s) => s.service_template.category?.name).filter(Boolean))
+                            );
+                            if (uniqueCategories.length === 0) {
+                              return <span className="text-body-sm font-body-sm text-outline italic">Chưa phân loại</span>;
+                            }
+                            return uniqueCategories.map((catName, idx) => (
+                              <span key={idx} className="inline-flex px-2 py-0.5 rounded text-label-sm font-medium bg-secondary/10 text-secondary border border-secondary/20">
+                                {catName}
+                              </span>
+                            ));
+                          })()
                         ) : (
                           <span className="text-body-sm font-body-sm text-outline italic">Chưa xác định</span>
                         )}

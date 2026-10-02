@@ -5,7 +5,9 @@ import {
   getWorkOrders,
   createWorkOrder,
   getWorkOrderById,
-  updateWorkOrder
+  updateWorkOrder,
+  addServiceToWO,
+  removeServiceFromWO
 } from '../controllers/work-order.controller';
 import { CheckInController } from '../controllers/check-in.controller';
 
@@ -33,5 +35,9 @@ router.put('/:id', authorize('SA', 'ADMIN'), updateWorkOrder);
 router.post('/:id/check-in', authorize('SA', 'ADMIN'), CheckInController.createOrUpdateCheckIn);
 router.get('/:id/check-in', authorize('SA', 'DESK STAFF', 'ADMIN'), CheckInController.getCheckIn);
 router.post('/:id/check-in/confirm', authorize('SA', 'ADMIN'), CheckInController.confirmCheckIn);
+
+// QUẢN LÝ DỊCH VỤ TRONG WO (UC-31, UC-32)
+router.post('/:id/services', authorize('SA', 'ADMIN'), addServiceToWO);
+router.delete('/:id/services/:serviceId', authorize('SA', 'ADMIN'), removeServiceFromWO);
 
 export default router;

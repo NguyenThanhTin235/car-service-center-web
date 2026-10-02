@@ -25,6 +25,10 @@ export interface IntakeQueueItem {
     service_template: {
       id: number;
       name: string;
+      category?: {
+        id: number;
+        name: string;
+      };
     };
   }[];
   created_by: {
@@ -61,7 +65,18 @@ export interface WorkOrder {
   intake_record?: {
     id: number;
     notes: string;
+    services?: {
+      id: number;
+      service_template: {
+        id: number;
+        name: string;
+        category?: {
+          name: string;
+        };
+      };
+    }[];
   } | null;
+  services?: WoService[];
   advisor: {
     id: number;
     full_name: string;
@@ -167,4 +182,71 @@ export async function saveCheckIn(workOrderId: number, data: Partial<CheckIn>): 
 export async function confirmCheckIn(workOrderId: number): Promise<ApiResponse<CheckIn>> {
   const response = await api.post(`/api/work-orders/${workOrderId}/check-in/confirm`);
   return response.data;
+}
+
+// ==========================================
+// WO SERVICE (UC-31, UC-32)
+// ==========================================
+
+export interface WoService {
+  id: number;
+  work_order_id: number;
+  service_template_id: number | null;
+  name: string;
+  pricing_type: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  service_template?: {
+    id: number;
+    name: string;
+    category_id: number;
+    pricing_type: string;
+    fixed_price: number | null;
+    category?: {
+      id: number;
+      name: string;
+    };
+  } | null;
+}
+
+export interface ServiceTemplateOption {
+  id: number;
+  name: string;
+  pricing_type: string;
+}
+
+/**
+ * UC-31: Thêm dịch vụ vào Work Order
+ */
+export async function addServiceToWO(
+  workOrderId: number,
+  serviceTemplateId: number
+): Promise<ApiResponse<WoService>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/services`, {
+    serviceTemplateId,
+  });
+  return response.data;
+}
+
+/**
+ * UC-32: Xóa dịch vụ khỏi Work Order
+ */
+export async function removeServiceFromWO(
+  workOrderId: number,
+  woServiceId: number
+): Promise<ApiResponse<null>> {
+  const response = await api.delete(
+    `/api/work-orders/${workOrderId}/services/${woServiceId}`
+  );
+  return response.data;
+}
+
+/**
+ * Lấy danh mục dịch vụ (ServiceTemplate) để chọn khi thêm
+ */
+export async function getServiceCatalog(): Promise<ServiceTemplateOption[]> {
+  const response = await api.get('/api/services');
+  return response.data?.data || response.data;
 }

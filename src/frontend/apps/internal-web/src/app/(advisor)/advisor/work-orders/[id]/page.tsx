@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import WOSubHeader from '@/components/advisor/work-order/WOSubHeader';
 import WOBadgeBar from '@/components/advisor/work-order/WOBadgeBar';
@@ -26,14 +26,19 @@ export default function WorkOrderDetailPage() {
   const [prevId, setPrevId] = useState<number | null>(null);
   const [nextId, setNextId] = useState<number | null>(null);
 
+  const initialLoadDone = useRef(false);
+
   const fetchWO = useCallback(async () => {
     if (!id) return;
     try {
-      setLoading(true);
+      if (!initialLoadDone.current) {
+        setLoading(true);
+      }
       // Fetch current WO
       const res = await getWorkOrderById(id);
       if (res.success && res.data) {
         setWorkOrder(res.data);
+        initialLoadDone.current = true;
       } else {
         toast.error(res.message || 'Không tìm thấy phiếu công việc');
         router.push('/advisor/intake-queue');
@@ -56,7 +61,12 @@ export default function WorkOrderDetailPage() {
       toast.error('Lỗi khi tải phiếu công việc');
       router.push('/advisor/intake-queue');
     } finally {
-      setLoading(false);
+      if (!initialLoadDone.current) {
+        setLoading(false);
+      } else {
+        // If it was a background refetch, we still need to ensure loading is false
+        setLoading(false);
+      }
     }
   }, [id, router]);
 

@@ -171,4 +171,134 @@ export class WorkOrderService {
       }
     });
   }
+
+  // ==========================================
+  // UC-31: Thêm hạng mục dịch vụ vào Work Order
+  // ==========================================
+
+  /**
+   * Thêm một dịch vụ từ danh mục (ServiceTemplate) vào Work Order
+   *
+   * Business Rules:
+   * 1. WO phải tồn tại và đang mở (status ≠ CLOSED, CANCELLED, RELEASED)
+   * 2. ServiceTemplate phải tồn tại và active
+   * 3. Không được thêm trùng lặp cùng service_template_id trong WO
+   * 4. Tự động copy name, pricing_type từ ServiceTemplate
+   * 5. sort_order = max hiện tại + 1
+   */
+  async addService(workOrderId: number, serviceTemplateId: number) {
+    // 1. Kiểm tra WO tồn tại
+    const wo = await prisma.workOrder.findUnique({ where: { id: workOrderId } });
+    if (!wo) throw new Error('Không tìm thấy phiếu công việc.');
+
+    // 2. Kiểm tra WO đang mở
+    const closedStatuses = ['CLOSED', 'CANCELLED', 'RELEASED'];
+    if (closedStatuses.includes(wo.status)) {
+      throw new Error(`Phiếu công việc đã ${wo.status === 'CLOSED' ? 'đóng' : wo.status === 'CANCELLED' ? 'hủy' : 'giao xe'}. Không thể thêm dịch vụ.`);
+    }
+
+    // 3. Kiểm tra ServiceTemplate tồn tại và active
+    const template = await prisma.serviceTemplate.findUnique({
+      where: { id: serviceTemplateId },
+    });
+    if (!template) throw new Error('Không tìm thấy dịch vụ trong danh mục.');
+    if (!template.is_active) throw new Error('Dịch vụ này đã bị vô hiệu hóa.');
+
+    // 4. Kiểm tra trùng lặp
+    const existing = await prisma.woService.findFirst({
+      where: {
+        work_order_id: workOrderId,
+        service_template_id: serviceTemplateId,
+      },
+    });
+    if (existing) throw new Error(`Dịch vụ "${template.name}" đã có trong phiếu công việc.`);
+
+    // 5. Tính sort_order mới
+    const maxSort = await prisma.woService.aggregate({
+      where: { work_order_id: workOrderId },
+      _max: { sort_order: true },
+    });
+    const nextSortOrder = (maxSort._max.sort_order ?? 0) + 1;
+
+    // 6. Tạo WoService
+    const woService = await prisma.woService.create({
+      data: {
+        work_order_id: workOrderId,
+        service_template_id: serviceTemplateId,
+        name: template.name,
+        pricing_type: template.pricing_type,
+        status: 'PENDING',
+        sort_order: nextSortOrder,
+      },
+      include: {
+        service_template: {
+          select: {
+            id: true,
+            name: true,
+            category_id: true,
+            pricing_type: true,
+            fixed_price: true,
+            category: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    return woService;
+  }
+
+  // ==========================================
+  // UC-32: Xóa hạng mục dịch vụ khỏi Work Order
+  // ==========================================
+
+  /**
+   * Xóa một dịch vụ khỏi Work Order
+   *
+   * Business Rules:
+   * 1. WO phải tồn tại và đang mở
+   * 2. WoService phải tồn tại và thuộc về WO này
+   * 3. Không xóa nếu WoService đã có Job, Inspection hoặc QuotationLine liên kết
+   */
+  async removeService(workOrderId: number, woServiceId: number) {
+    // 1. Kiểm tra WO tồn tại
+    const wo = await prisma.workOrder.findUnique({ where: { id: workOrderId } });
+    if (!wo) throw new Error('Không tìm thấy phiếu công việc.');
+
+    // 2. Kiểm tra WO đang mở
+    const closedStatuses = ['CLOSED', 'CANCELLED', 'RELEASED'];
+    if (closedStatuses.includes(wo.status)) {
+      throw new Error(`Phiếu công việc đã ${wo.status === 'CLOSED' ? 'đóng' : wo.status === 'CANCELLED' ? 'hủy' : 'giao xe'}. Không thể xóa dịch vụ.`);
+    }
+
+    // 3. Kiểm tra WoService tồn tại và thuộc WO
+    const woService = await prisma.woService.findUnique({
+      where: { id: woServiceId },
+      include: {
+        jobs: { select: { id: true }, take: 1 },
+        inspections: { select: { id: true }, take: 1 },
+        quotation_lines: { select: { id: true }, take: 1 },
+      },
+    });
+
+    if (!woService) throw new Error('Không tìm thấy hạng mục dịch vụ.');
+    if (woService.work_order_id !== workOrderId) {
+      throw new Error('Hạng mục dịch vụ không thuộc phiếu công việc này.');
+    }
+
+    // 4. Kiểm tra ràng buộc con
+    if (woService.jobs.length > 0) {
+      throw new Error(`Không thể xóa dịch vụ "${woService.name}" vì đã có công việc (Job) liên kết. Vui lòng xóa Job trước.`);
+    }
+    if (woService.inspections.length > 0) {
+      throw new Error(`Không thể xóa dịch vụ "${woService.name}" vì đã có bản kiểm tra (Inspection) liên kết.`);
+    }
+    if (woService.quotation_lines.length > 0) {
+      throw new Error(`Không thể xóa dịch vụ "${woService.name}" vì đã có dòng báo giá (Quotation) liên kết.`);
+    }
+
+    // 5. Xóa WoService
+    await prisma.woService.delete({ where: { id: woServiceId } });
+
+    return { deleted: true, serviceName: woService.name };
+  }
 }
