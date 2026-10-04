@@ -1,9 +1,8 @@
 import Joi from 'joi';
 
 export const createAppointmentSchema = Joi.object({
-  customer_id: Joi.number().required().messages({
+  customer_id: Joi.number().optional().messages({
     'number.base': 'Mã khách hàng phải là số',
-    'any.required': 'Vui lòng chọn khách hàng',
   }),
   vehicle_id: Joi.number().required().messages({
     'number.base': 'Mã xe phải là số',

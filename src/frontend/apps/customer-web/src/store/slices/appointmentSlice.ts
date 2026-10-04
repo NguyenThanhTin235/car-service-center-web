@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/axios';
 
-export interface ServiceTemplate {
+export interface Service {
   id: number;
   name: string;
 }
@@ -18,12 +18,7 @@ export interface Appointment {
   notes: string | null;
   customer?: { id: number; full_name: string; phone: string };
   vehicle?: { id: number; license_plate: string; make: string; model: string };
-  services?: {
-    id?: number;
-    appointment_id?: number;
-    service_template_id?: number;
-    service_template?: ServiceTemplate;
-  }[];
+  services?: Service[];
 }
 
 export interface AppointmentState {

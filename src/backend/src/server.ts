@@ -1,6 +1,7 @@
 import app from './app';
 import dotenv from 'dotenv';
 import { connectRedis } from './utils/redis.util';
+import { startAppointmentReminderJob } from './jobs/appointment-reminder.job';
 
 dotenv.config();
 
@@ -13,6 +14,9 @@ const start = async () => {
   } catch (error) {
     console.warn('[Warning] Failed to connect to Redis, some cache/OTP features might not work.', error);
   }
+
+  // Khởi động các Job chạy nền
+  startAppointmentReminderJob();
 
   app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
