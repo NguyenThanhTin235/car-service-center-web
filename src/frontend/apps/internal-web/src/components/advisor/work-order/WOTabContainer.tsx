@@ -20,6 +20,14 @@ const TABS = [
   { id: 'history', number: 8, label: 'Lịch sử sửa chữa', component: TabServiceHistory },
 ];
 
+import { WorkOrder } from '@/lib/api/work-order.api';
+
+interface WOTabContainerProps {
+  workOrder: WorkOrder;
+  refetchWO: () => void;
+}
+
+export default function WOTabContainer({ workOrder, refetchWO }: WOTabContainerProps) {
 export default function WOTabContainer({ isReadOnly = false }: { isReadOnly?: boolean }) {
   const [activeTab, setActiveTab] = useState('checkin');
 
@@ -54,9 +62,8 @@ export default function WOTabContainer({ isReadOnly = false }: { isReadOnly?: bo
       </div>
 
       {/* Tab Content Area */}
-      <div className={`py-6 relative ${isReadOnly ? 'pointer-events-none select-none opacity-90' : ''}`}>
-        {isReadOnly && <div className="absolute inset-0 z-50 bg-transparent" title="Chế độ chỉ xem" />}
-        <ActiveComponent isReadOnly={isReadOnly} />
+      <div className="py-6">
+        <ActiveComponent workOrder={workOrder} refetchWO={refetchWO} />
       </div>
     </div>
   );

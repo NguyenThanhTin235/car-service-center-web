@@ -49,16 +49,16 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
         {/* Body */}
         <div className="p-6 overflow-y-auto flex flex-col gap-6">
           {/* Status Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-surface-container-low p-3 rounded-lg border border-outline-variant/30 gap-3">
-            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-container-low p-3 rounded-lg border border-outline-variant/30">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-on-surface-variant">schedule</span>
                 <span className="text-label-md font-bold text-on-surface">Giờ đến: {new Date(record.arrived_at).toLocaleString('vi-VN')}</span>
               </div>
-              <div className="hidden sm:block w-px h-4 bg-outline-variant/50 shrink-0"></div>
-              <span className="px-2 py-0.5 bg-primary-container text-on-primary-container rounded text-label-sm font-bold uppercase shrink-0 whitespace-nowrap">{getTypeName(record.intake_type)}</span>
+              <div className="hidden sm:block w-px h-4 bg-outline-variant/50"></div>
+              <span className="px-2 py-0.5 bg-primary-container text-on-primary-container rounded text-label-sm font-bold uppercase whitespace-nowrap">{getTypeName(record.intake_type)}</span>
             </div>
-            <div className="shrink-0">
+            <div className="flex-shrink-0">
               <span className="px-3 py-1 bg-surface-variant text-on-surface-variant rounded-full text-label-sm font-bold whitespace-nowrap">
                 Trạng thái: {getStatusName(record.status)}
               </span>

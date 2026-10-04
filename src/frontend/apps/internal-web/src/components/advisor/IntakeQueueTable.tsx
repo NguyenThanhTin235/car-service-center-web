@@ -194,6 +194,13 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
   const router = useRouter();
   const [loadingId, setLoadingId] = useState<number | null>(null);
   const [selectedIntake, setSelectedIntake] = useState<IntakeQueueItem | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(6);
+
+  // Reset to page 1 when items change (e.g. tab changes)
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [items]);
 
   const handleCreateWorkOrder = async (intakeId: number) => {
     setLoadingId(intakeId);
@@ -223,9 +230,13 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
     );
   }
 
+  const totalPages = Math.ceil(items.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedItems = items.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <>
-      <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/60 overflow-hidden">
+      <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/60 overflow-hidden flex flex-col">
         {/* Table Header */}
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -233,14 +244,14 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
               <tr className="border-b border-outline-variant/60 bg-surface-container-low/50">
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider w-10">#</th>
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Thông tin xe & Biển số</th>
-                <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Hạng mục dịch vụ đã xong</th>
+                <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Loại dịch vụ</th>
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Khách hàng</th>
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Thời gian chờ</th>
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider text-right">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/40">
-              {items.map((item, index) => {
+              {paginatedItems.map((item, index) => {
                 const waitTime = calcWaitTime(item.arrived_at);
                 const intakeTypeBadge = getIntakeTypeBadge(item.intake_type);
                 const isLoading = loadingId === item.id;
@@ -253,7 +264,7 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                   >
                     {/* Row Number */}
                     <td className="px-5 py-4 text-body-sm font-body-sm text-on-surface-variant">
-                      {String(index + 1).padStart(2, '0')}
+                      {String(startIndex + index + 1).padStart(2, '0')}
                     </td>
 
                     {/* Vehicle Info */}
@@ -276,15 +287,23 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                       </div>
                     </td>
 
-                    {/* Services */}
+                    {/* Services / Service Categories */}
                     <td className="px-5 py-4">
-                      <div className="flex flex-col gap-0.5">
+                      <div className="flex flex-col items-start gap-1.5">
                         {item.services.length > 0 ? (
-                          item.services.map((s) => (
-                            <span key={s.id} className="text-body-sm font-body-sm text-on-surface">
-                              {s.service_template.name}
-                            </span>
-                          ))
+                          (() => {
+                            const uniqueCategories = Array.from(
+                              new Set(item.services.map((s) => s.service_template.category?.name).filter(Boolean))
+                            );
+                            if (uniqueCategories.length === 0) {
+                              return <span className="text-body-sm font-body-sm text-outline italic">Chưa phân loại</span>;
+                            }
+                            return uniqueCategories.map((catName, idx) => (
+                              <span key={idx} className="inline-flex px-2 py-0.5 rounded text-label-sm font-medium bg-secondary/10 text-secondary border border-secondary/20">
+                                {catName}
+                              </span>
+                            ));
+                          })()
                         ) : (
                           <span className="text-body-sm font-body-sm text-outline italic">Chưa xác định</span>
                         )}
@@ -370,15 +389,47 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
         {/* Footer */}
         <div className="px-5 py-3 border-t border-outline-variant/40 flex items-center justify-between bg-surface-container-low/30">
           <span className="text-label-sm font-label-sm text-on-surface-variant">
-            Hiển thị 1 - {items.length} trên tổng số {items.length} xe đang chờ
+            Hiển thị {startIndex + 1} - {Math.min(startIndex + itemsPerPage, items.length)} trên tổng số {items.length} xe
           </span>
-          <div className="flex items-center gap-2 text-label-sm font-label-sm text-on-surface-variant">
-            <span>Số dòng:</span>
-            <select className="bg-surface-container-lowest border border-outline-variant rounded px-2 py-0.5 text-label-sm font-label-sm text-on-surface">
-              <option>6</option>
-              <option>10</option>
-              <option>20</option>
-            </select>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 text-label-sm font-label-sm text-on-surface-variant">
+              <span>Số dòng:</span>
+              <select 
+                value={itemsPerPage} 
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-surface-container-lowest border border-outline-variant rounded px-2 py-0.5 text-label-sm font-label-sm text-on-surface"
+              >
+                <option value={6}>6</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+            
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button 
+                  disabled={currentPage === 1} 
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  className="p-1 rounded-full hover:bg-surface-container disabled:opacity-50 text-on-surface-variant transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                </button>
+                <span className="text-label-md font-semibold text-on-surface px-2">
+                  {currentPage} / {totalPages}
+                </span>
+                <button 
+                  disabled={currentPage === totalPages} 
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  className="p-1 rounded-full hover:bg-surface-container disabled:opacity-50 text-on-surface-variant transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

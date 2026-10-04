@@ -12,11 +12,26 @@ const workOrderInclude = {
       intake_type: true,
       arrived_at: true,
       notes: true,
-      services: { include: { service_template: { select: { id: true, name: true } } } },
+      services: { include: { service_template: { select: { id: true, name: true, category: { select: { name: true } } } } } },
     },
   },
   appointment: { select: { id: true, scheduled_date: true, scheduled_time: true } },
   check_in: true,
+  services: {
+    include: {
+      service_template: {
+        select: {
+          id: true,
+          name: true,
+          category_id: true,
+          pricing_type: true,
+          fixed_price: true,
+          category: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: { sort_order: 'asc' as const },
+  },
 } satisfies Prisma.WorkOrderInclude;
 
 export interface WorkOrderFilters {

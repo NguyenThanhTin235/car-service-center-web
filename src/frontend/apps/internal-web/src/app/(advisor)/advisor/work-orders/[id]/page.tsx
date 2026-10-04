@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import WOSubHeader from '@/components/advisor/work-order/WOSubHeader';
 import WOBadgeBar from '@/components/advisor/work-order/WOBadgeBar';
@@ -26,45 +26,53 @@ export default function WorkOrderDetailPage() {
   const [prevId, setPrevId] = useState<number | null>(null);
   const [nextId, setNextId] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (!id) return;
-    
-    const fetchWO = async () => {
-      try {
-        setLoading(true);
-        // Fetch current WO
-        const res = await getWorkOrderById(id);
-        if (res.success && res.data) {
-          setWorkOrder(res.data);
-        } else {
-          toast.error(res.message || 'Không tìm thấy phiếu công việc');
-          router.push('/advisor/intake-queue');
-          return;
-        }
+  const initialLoadDone = useRef(false);
 
-        // Fetch all WOs to determine index and prev/next
-        // This is a naive implementation for demo purposes
-        const listRes = await getWorkOrders({ limit: 100 });
-        if (listRes.success && listRes.data) {
-          const list = listRes.data;
-          setTotalCount(list.length);
-          const idx = list.findIndex(wo => wo.id === id);
-          if (idx !== -1) {
-            setCurrentIndex(idx + 1); // 1-based index
-            setPrevId(idx > 0 ? list[idx - 1].id : null);
-            setNextId(idx < list.length - 1 ? list[idx + 1].id : null);
-          }
-        }
-      } catch (err: any) {
-        toast.error('Lỗi khi tải phiếu công việc');
+  const fetchWO = useCallback(async () => {
+    if (!id) return;
+    try {
+      if (!initialLoadDone.current) {
+        setLoading(true);
+      }
+      // Fetch current WO
+      const res = await getWorkOrderById(id);
+      if (res.success && res.data) {
+        setWorkOrder(res.data);
+        initialLoadDone.current = true;
+      } else {
+        toast.error(res.message || 'Không tìm thấy phiếu công việc');
         router.push('/advisor/intake-queue');
-      } finally {
+        return;
+      }
+
+      // Fetch all WOs to determine index and prev/next
+      const listRes = await getWorkOrders({ limit: 100 });
+      if (listRes.success && listRes.data) {
+        const list = listRes.data;
+        setTotalCount(list.length);
+        const idx = list.findIndex(wo => wo.id === id);
+        if (idx !== -1) {
+          setCurrentIndex(idx + 1); // 1-based index
+          setPrevId(idx > 0 ? list[idx - 1].id : null);
+          setNextId(idx < list.length - 1 ? list[idx + 1].id : null);
+        }
+      }
+    } catch (err: any) {
+      toast.error('Lỗi khi tải phiếu công việc');
+      router.push('/advisor/intake-queue');
+    } finally {
+      if (!initialLoadDone.current) {
+        setLoading(false);
+      } else {
+        // If it was a background refetch, we still need to ensure loading is false
         setLoading(false);
       }
-    };
-    
-    fetchWO();
+    }
   }, [id, router]);
+
+  useEffect(() => {
+    fetchWO();
+  }, [fetchWO]);
 
   const dummyOverview = {
     checkInTime: workOrder ? new Date(workOrder.created_at).toLocaleString('vi-VN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '...',
@@ -146,7 +154,7 @@ export default function WorkOrderDetailPage() {
           />
 
           {/* 8 Tabs */}
-          <WOTabContainer />
+          <WOTabContainer workOrder={workOrder} refetchWO={fetchWO} />
         </div>
 
         {/* Toggle Button */}
