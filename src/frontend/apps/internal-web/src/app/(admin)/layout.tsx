@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 const NAV_ITEMS = [
   { href: '/accounts', icon: 'manage_accounts', label: 'Tài khoản & Phân quyền', section: 'admin' },
   { href: '/employees', icon: 'engineering', label: 'Nhân viên', section: 'admin' },
-  { 
-    icon: 'build_circle', label: 'Danh mục', section: 'catalog',
+  {
+    icon: 'build_circle', label: 'Dịch vụ', section: 'catalog',
     children: [
       { href: '/services', label: 'Dịch vụ' },
       { href: '/service-categories', label: 'Danh mục dịch vụ' },

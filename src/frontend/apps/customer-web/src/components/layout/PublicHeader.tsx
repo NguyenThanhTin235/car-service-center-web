@@ -10,6 +10,7 @@ import { getDashboardPathByRole } from '@/utils/roleRedirect';
 export default function PublicHeader() {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const [mounted, setMounted] = React.useState(false);
+  const [profileOpen, setProfileOpen] = React.useState(false);
 
   React.useEffect(() => {
     setMounted(true);
@@ -47,21 +48,48 @@ export default function PublicHeader() {
               <div className="w-24 h-9 bg-surface-container-low animate-pulse rounded-lg"></div>
             ) : isAuthenticated && user ? (
               <>
-                <Link
-                  href={getDashboardPathByRole(user.roles)}
-                  className="flex items-center gap-3"
-                >
-                  <div className="relative">
-                    <div className="w-9 h-9 rounded-full bg-primary-fixed flex items-center justify-center text-primary-container font-bold shadow-sm">
+                <div className="relative flex items-center">
+                  <button
+                    onClick={() => setProfileOpen(!profileOpen)}
+                    className="flex items-center gap-2 p-1 rounded-lg hover:bg-surface-container-low transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-primary-fixed flex items-center justify-center text-primary-container font-bold text-sm border border-outline-variant shadow-sm relative">
                       {user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
+                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-tertiary ring-2 ring-surface-container-lowest"></span>
                     </div>
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-tertiary ring-2 ring-surface-container-lowest"></span>
-                  </div>
-                  <div className="hidden lg:flex flex-col text-left">
-                    <span className="font-label-md text-label-md text-on-surface">{user.fullName || 'Tài khoản'}</span>
-                  </div>
-                </Link>
-                <LogoutButton className="text-sm font-semibold text-red-600 hover:text-red-800 transition-colors" />
+                    <div className="hidden lg:flex flex-col text-left">
+                      <span className="font-label-md text-label-md text-on-surface">{user.fullName || 'Tài khoản'}</span>
+                    </div>
+                    <span className="material-symbols-outlined text-on-surface-variant hidden lg:block" style={{ fontSize: '18px' }}>
+                      expand_more
+                    </span>
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {profileOpen && (
+                    <div className="absolute top-full right-0 mt-1 w-52 bg-surface-container-lowest border border-surface-container-highest rounded-xl shadow-lg z-50 py-1 overflow-hidden">
+                      <div className="px-4 py-3 border-b border-surface-container-high">
+                        <p className="text-sm font-semibold text-on-surface truncate">{user.fullName || 'Tài khoản'}</p>
+                        <p className="text-xs text-on-surface-variant truncate">{user.email}</p>
+                      </div>
+                      <Link
+                        href={user?.roles?.includes('CUSTOMER') ? '/customer/profile' : getDashboardPathByRole(user?.roles || [])}
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: '18px' }}>manage_accounts</span>
+                        Hồ sơ của tôi
+                      </Link>
+                      <div className="px-4 py-2 hover:bg-red-50 cursor-pointer text-red-600 transition-colors">
+                        <LogoutButton iconOnly={false} className="w-full text-left" />
+                      </div>
+                    </div>
+                  )}
+                  {/* Backdrop for profile dropdown */}
+                  {profileOpen && (
+                    <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
+                  )}
+                </div>
               </>
             ) : (
               <>

@@ -20,4 +20,7 @@ export const jobTypeApi = {
 
   toggle: (id: number) =>
     api.patch(`/api/job-types/${id}/toggle`),
+
+  delete: (id: number) =>
+    api.delete(`/api/job-types/${id}`),
 };

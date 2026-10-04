@@ -525,10 +525,10 @@ _Bảng 2-6: Use Case baseline – Quản trị viên (Administrator)_
 | UC-71 | **Xem danh mục chung (View System Catalog)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của danh mục chung ... |
 | UC-72 | **Cập nhật danh mục chung (Update System Catalog)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của danh mục chung hiện có ... |
 | UC-73 | **Xóa danh mục chung (Delete System Catalog)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi danh mục chung khỏi hệ t... |
-| UC-74 | **Xem mẫu kiểm tra (View Inspection Template)** | Must | Quản trị viên xem danh sách và chi tiết các mẫu kiểm tra cấu hình sẵn. |
-| UC-75 | **Thêm mẫu kiểm tra (Create Inspection Template)** | Must | Quản trị viên tạo mới một mẫu kiểm tra xe (gồm nhiều hạng mục) để kỹ thuật vi... |
-| UC-76 | **Cập nhật mẫu kiểm tra (Update Inspection Template)** | Must | Quản trị viên chỉnh sửa nội dung mẫu kiểm tra đã có. |
-| UC-77 | **Xóa mẫu kiểm tra (Delete Inspection Template)** | Must | Quản trị viên xóa một mẫu kiểm tra không còn sử dụng. |
+| UC-70 | **Xem mẫu kiểm tra (View Inspection Template)** | Must | Quản trị viên xem danh sách và chi tiết các mẫu kiểm tra cấu hình sẵn. |
+| UC-71 | **Thêm mẫu kiểm tra (Create Inspection Template)** | Must | Quản trị viên tạo mới một mẫu kiểm tra xe (gồm nhiều hạng mục) để kỹ thuật vi... |
+| UC-72 | **Cập nhật mẫu kiểm tra (Update Inspection Template)** | Must | Quản trị viên chỉnh sửa nội dung mẫu kiểm tra đã có. |
+| UC-73 | **Xóa mẫu kiểm tra (Delete Inspection Template)** | Must | Quản trị viên xóa một mẫu kiểm tra không còn sử dụng. |
 
 ## 2.4. Tiêu chí hoàn thành Tiểu luận
 
