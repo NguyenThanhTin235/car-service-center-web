@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import CustomerFormModal from '@/components/customers/CustomerFormModal';
 import CustomerDetailModal from '@/components/customers/CustomerDetailModal';
+import ConfirmModal from '@/components/shared/ConfirmModal';
+import { toast } from 'react-hot-toast';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { useSelector } from 'react-redux';
@@ -22,13 +24,17 @@ export default function CustomersPage() {
   // Modals state
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'delete' | 'restore' | 'hard_delete' | null>(null);
+  const [customerToProcess, setCustomerToProcess] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active');
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null); // Dùng chung cho View & Edit
 
-  const fetchCustomers = async (searchQuery = '', page = 1) => {
+  const fetchCustomers = async (searchQuery = '', page = 1, tabStatus = activeTab) => {
     try {
       setLoading(true);
       const res = await axios.get('http://localhost:5000/api/customers', {
-        params: { search: searchQuery, page, limit: 5 },
+        params: { search: searchQuery, page, limit: 5, status: tabStatus },
         withCredentials: true,
       });
       setCustomers(res.data.data);
@@ -46,25 +52,56 @@ export default function CustomersPage() {
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      fetchCustomers(search, 1);
+      fetchCustomers(search, 1, activeTab);
     }, 500); // Debounce 500ms
     
     return () => clearTimeout(debounceTimer);
-  }, [search]);
+  }, [search, activeTab]);
 
   const handleSaveCustomer = async (data: any, id?: number) => {
     try {
       if (id) {
         // Edit Mode
         await axios.put(`http://localhost:5000/api/customers/${id}`, data, { withCredentials: true });
+        toast.success("Cập nhật hồ sơ khách hàng thành công!");
       } else {
         // Create Mode
         await axios.post('http://localhost:5000/api/customers', data, { withCredentials: true });
+        toast.success("Thêm khách hàng thành công!");
       }
-      await fetchCustomers(search, currentPage); // Refresh sau khi lưu
+      await fetchCustomers(search, currentPage, activeTab); // Refresh sau khi lưu
     } catch (error: any) {
       console.error('Lỗi khi lưu khách hàng', error);
+      toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi lưu khách hàng');
       throw error;
+    }
+  };
+
+  const openConfirm = (id: number, action: 'delete' | 'restore' | 'hard_delete') => {
+    setCustomerToProcess(id);
+    setConfirmAction(action);
+    setIsConfirmOpen(true);
+  };
+
+  const executeConfirmAction = async () => {
+    if (!customerToProcess || !confirmAction) return;
+    try {
+      if (confirmAction === 'delete') {
+        await axios.delete(`http://localhost:5000/api/customers/${customerToProcess}`, { withCredentials: true });
+        toast.success("Vô hiệu hóa khách hàng thành công!");
+      } else if (confirmAction === 'restore') {
+        await axios.patch(`http://localhost:5000/api/customers/${customerToProcess}/restore`, {}, { withCredentials: true });
+        toast.success("Khôi phục khách hàng thành công!");
+      } else if (confirmAction === 'hard_delete') {
+        await axios.delete(`http://localhost:5000/api/customers/${customerToProcess}/hard`, { withCredentials: true });
+        toast.success("Đã xóa vĩnh viễn khách hàng!");
+      }
+      setIsConfirmOpen(false);
+      await fetchCustomers(search, currentPage, activeTab);
+    } catch (error: any) {
+      console.error(`Lỗi khi ${confirmAction} khách hàng`, error);
+      toast.error(error.response?.data?.message || 'Có lỗi xảy ra!');
+      setIsConfirmOpen(false);
     }
   };
 
@@ -73,7 +110,7 @@ export default function CustomersPage() {
       setLoading(true);
       // Fetch all for the report
       const res = await axios.get('http://localhost:5000/api/customers', {
-        params: { search, limit: 10000 },
+        params: { search, limit: 10000, status: activeTab },
         withCredentials: true,
       });
       const exportData = res.data.data;
@@ -191,6 +228,27 @@ export default function CustomersPage() {
 
   return (
     <>
+      <ConfirmModal
+        isOpen={isConfirmOpen}
+        title={
+          confirmAction === 'delete' ? "Xác nhận vô hiệu hóa" :
+          confirmAction === 'restore' ? "Xác nhận khôi phục" : "Xác nhận xóa vĩnh viễn"
+        }
+        message={
+          confirmAction === 'delete' ? "Bạn có chắc chắn muốn vô hiệu hóa khách hàng này không? Dữ liệu lịch sử giao dịch (phiếu công việc, hóa đơn...) vẫn sẽ được giữ lại." :
+          confirmAction === 'restore' ? "Bạn có muốn khôi phục lại hồ sơ của khách hàng này không?" :
+          "Bạn có chắc chắn muốn xóa vĩnh viễn khách hàng này không? Mọi thông tin phương tiện sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác."
+        }
+        confirmText={
+          confirmAction === 'delete' ? "Vô hiệu hóa" :
+          confirmAction === 'restore' ? "Khôi phục" : "Xóa vĩnh viễn"
+        }
+        cancelText="Hủy"
+        isDestructive={confirmAction !== 'restore'}
+        onConfirm={executeConfirmAction}
+        onCancel={() => setIsConfirmOpen(false)}
+      />
+
       <CustomerFormModal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
@@ -204,8 +262,9 @@ export default function CustomersPage() {
         customerData={selectedCustomer}
       />
 
-      {/* Breadcrumb & Top Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 w-full h-full">
+        {/* Breadcrumb & Top Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-3">
             <h1 className="text-headline-lg font-headline-lg text-on-surface">Quản lý Khách hàng & Phương tiện</h1>
@@ -219,7 +278,7 @@ export default function CustomersPage() {
         </div>
         <div className="flex items-center gap-2.5 self-start md:self-auto">
           <button 
-            onClick={() => fetchCustomers(search, currentPage)}
+            onClick={() => fetchCustomers(search, currentPage, activeTab)}
             className="h-9 px-3.5 rounded-lg border border-outline-variant bg-surface-container-lowest hover:bg-surface-container-low text-on-surface text-label-md font-label-md font-medium flex items-center gap-2 shadow-sm transition-all active:scale-[0.98]">
             <span className="material-symbols-outlined text-[18px]">sync</span>
             <span>Đồng bộ CRM</span>
@@ -250,8 +309,23 @@ export default function CustomersPage() {
 
       {/* Main Table Container Card */}
       <div className="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm flex flex-col overflow-hidden">
-        {/* Filter Toolbar */}
-        <div className="p-4 border-b border-outline-variant flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white">
+        {/* Tabs & Filter Toolbar */}
+        <div className="bg-white border-b border-outline-variant">
+          <div className="flex gap-6 px-4 pt-4 border-b border-outline-variant">
+            <button
+              onClick={() => { setActiveTab('active'); setSearch(''); setCurrentPage(1); }}
+              className={`pb-3 text-label-md font-bold transition-colors border-b-2 ${activeTab === 'active' ? 'text-primary border-primary' : 'text-secondary border-transparent hover:text-on-surface hover:border-outline-variant'}`}
+            >
+              Đang hoạt động
+            </button>
+            <button
+              onClick={() => { setActiveTab('deleted'); setSearch(''); setCurrentPage(1); }}
+              className={`pb-3 text-label-md font-bold transition-colors border-b-2 ${activeTab === 'deleted' ? 'text-error border-error' : 'text-secondary border-transparent hover:text-on-surface hover:border-outline-variant'}`}
+            >
+              Đã vô hiệu hóa
+            </button>
+          </div>
+          <div className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5 flex-1">
             <div className="relative min-w-[260px] max-w-sm flex-1">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
@@ -274,6 +348,7 @@ export default function CustomersPage() {
             </button>
           </div>
         </div>
+      </div>
 
         {/* Customer Data Table */}
         <div className="overflow-x-auto w-full min-h-[300px]">
@@ -355,12 +430,28 @@ export default function CustomersPage() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-1 opacity-80 group-hover:opacity-100">
-                        <button onClick={() => openViewModal(c)} className="w-8 h-8 rounded-lg hover:bg-surface-container flex items-center justify-center text-primary" title="Xem hồ sơ">
-                          <span className="material-symbols-outlined text-[18px]">visibility</span>
-                        </button>
-                        <button onClick={() => openEditModal(c)} className="w-8 h-8 rounded-lg hover:bg-surface-container flex items-center justify-center text-secondary hover:text-on-surface" title="Chỉnh sửa">
-                          <span className="material-symbols-outlined text-[18px]">edit</span>
-                        </button>
+                        {activeTab === 'active' ? (
+                          <>
+                            <button onClick={() => openViewModal(c)} className="w-8 h-8 rounded-lg hover:bg-surface-container flex items-center justify-center text-primary" title="Xem hồ sơ">
+                              <span className="material-symbols-outlined text-[18px]">visibility</span>
+                            </button>
+                            <button onClick={() => openEditModal(c)} className="w-8 h-8 rounded-lg hover:bg-surface-container flex items-center justify-center text-secondary hover:text-on-surface" title="Chỉnh sửa">
+                              <span className="material-symbols-outlined text-[18px]">edit</span>
+                            </button>
+                            <button onClick={() => openConfirm(c.id, 'delete')} className="w-8 h-8 rounded-lg hover:bg-red-100 flex items-center justify-center text-secondary hover:text-red-600 transition-colors" title="Vô hiệu hóa">
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => openConfirm(c.id, 'restore')} className="w-8 h-8 rounded-lg hover:bg-emerald-100 flex items-center justify-center text-secondary hover:text-emerald-600 transition-colors" title="Khôi phục">
+                              <span className="material-symbols-outlined text-[18px]">restore</span>
+                            </button>
+                            <button onClick={() => openConfirm(c.id, 'hard_delete')} className="w-8 h-8 rounded-lg hover:bg-red-100 flex items-center justify-center text-secondary hover:text-red-600 transition-colors" title="Xóa vĩnh viễn">
+                              <span className="material-symbols-outlined text-[18px]">delete_forever</span>
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -379,7 +470,7 @@ export default function CustomersPage() {
             <div className="flex items-center gap-2">
               <button 
                 disabled={currentPage === 1}
-                onClick={() => fetchCustomers(search, currentPage - 1)}
+                onClick={() => fetchCustomers(search, currentPage - 1, activeTab)}
                 className="h-8 px-3 rounded border border-outline-variant bg-surface text-label-sm font-semibold hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Trước
@@ -388,7 +479,7 @@ export default function CustomersPage() {
                 {Array.from({ length: totalPages }).map((_, idx) => (
                   <button
                     key={idx}
-                    onClick={() => fetchCustomers(search, idx + 1)}
+                    onClick={() => fetchCustomers(search, idx + 1, activeTab)}
                     className={`w-8 h-8 rounded border flex items-center justify-center text-label-sm font-semibold transition-colors ${
                       currentPage === idx + 1
                         ? 'border-primary bg-primary text-on-primary'
@@ -401,7 +492,7 @@ export default function CustomersPage() {
               </div>
               <button 
                 disabled={currentPage === totalPages}
-                onClick={() => fetchCustomers(search, currentPage + 1)}
+                onClick={() => fetchCustomers(search, currentPage + 1, activeTab)}
                 className="h-8 px-3 rounded border border-outline-variant bg-surface text-label-sm font-semibold hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Sau
@@ -409,6 +500,7 @@ export default function CustomersPage() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </>
   );

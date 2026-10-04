@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { WorkOrderService } from '../services/work-order.service';
 import { createWorkOrderSchema } from '../dtos/work-order.dto';
+import { addWoServiceSchema } from '../dtos/wo-service.dto';
 
 const workOrderService = new WorkOrderService();
 
@@ -170,9 +171,9 @@ export const getWorkOrderById = async (req: Request, res: Response): Promise<voi
 export const updateWorkOrder = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { notes, current_km } = req.body;
+    const { notes } = req.body;
     
-    const workOrder = await workOrderService.updateWorkOrder(Number(id), { notes, current_km });
+    const workOrder = await workOrderService.updateWorkOrder(Number(id), { notes });
 
     res.json({
       success: true,
@@ -186,6 +187,103 @@ export const updateWorkOrder = async (req: Request, res: Response): Promise<void
       success: false,
       code: 400,
       message: error.message || 'Lỗi khi cập nhật phiếu công việc',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * POST /api/work-orders/:id/services
+ * UC-31: Thêm hạng mục dịch vụ vào Work Order
+ */
+export const addServiceToWO = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+
+    // Validate body
+    const { error, value } = addWoServiceSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+      const errors: Record<string, string> = {};
+      error.details.forEach((detail) => {
+        const key = detail.path.join('.');
+        errors[key] = detail.message;
+      });
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Dữ liệu không hợp lệ',
+        data: null,
+        errors,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const woService = await workOrderService.addService(workOrderId, value.serviceTemplateId);
+
+    res.status(201).json({
+      success: true,
+      code: 201,
+      message: 'Thêm dịch vụ thành công',
+      data: woService,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    let statusCode = 400;
+    if (error.message.includes('Không tìm thấy')) statusCode = 404;
+    else if (error.message.includes('đã có trong') || error.message.includes('đã bị vô hiệu')) statusCode = 409;
+    else if (error.message.includes('đã đóng') || error.message.includes('đã hủy') || error.message.includes('đã giao xe')) statusCode = 422;
+
+    res.status(statusCode).json({
+      success: false,
+      code: statusCode,
+      message: error.message || 'Lỗi khi thêm dịch vụ',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * DELETE /api/work-orders/:id/services/:serviceId
+ * UC-32: Xóa hạng mục dịch vụ khỏi Work Order
+ */
+export const removeServiceFromWO = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const woServiceId = Number(req.params.serviceId);
+
+    if (isNaN(woServiceId) || woServiceId <= 0) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Mã dịch vụ không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const result = await workOrderService.removeService(workOrderId, woServiceId);
+
+    res.json({
+      success: true,
+      code: 200,
+      message: `Đã xóa dịch vụ "${result.serviceName}" khỏi phiếu công việc`,
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    let statusCode = 400;
+    if (error.message.includes('Không tìm thấy')) statusCode = 404;
+    else if (error.message.includes('Không thể xóa') || error.message.includes('không thuộc')) statusCode = 422;
+    else if (error.message.includes('đã đóng') || error.message.includes('đã hủy') || error.message.includes('đã giao xe')) statusCode = 422;
+
+    res.status(statusCode).json({
+      success: false,
+      code: statusCode,
+      message: error.message || 'Lỗi khi xóa dịch vụ',
       data: null,
       timestamp: Math.floor(Date.now() / 1000),
     });

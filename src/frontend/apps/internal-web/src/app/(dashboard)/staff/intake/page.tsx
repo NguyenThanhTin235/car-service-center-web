@@ -15,10 +15,14 @@ import WalkInIntakeModal from '@/components/intake/WalkInIntakeModal';
 import TowInIntakeModal from '@/components/intake/TowInIntakeModal';
 import IntakeDetailModal from '@/components/intake/IntakeDetailModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import StaffWorkOrderDetailModal from '@/components/work-order/StaffWorkOrderDetailModal';
 import toast from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
+import ReadOnlyROModal from '@/components/intake/ReadOnlyROModal';
 
 export default function IntakePage() {
   const dispatch = useAppDispatch();
+  const router = useRouter();
   
   // State from Redux
   const { records: queueRecords, loading: queueLoading } = useAppSelector((state) => state.intake);
@@ -29,8 +33,11 @@ export default function IntakePage() {
   const [isTowInModalOpen, setTowInModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'QUEUED' | 'CONVERTED' | 'CANCELLED'>('QUEUED');
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
+  const [viewingROId, setViewingROId] = useState<number | null>(null);
+  const [selectedWorkOrderId, setSelectedWorkOrderId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+  const [searchQuery, setSearchQuery] = useState('');
   const [serviceTemplates, setServiceTemplates] = useState<Array<{id: number, name: string}>>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   
@@ -234,11 +241,24 @@ export default function IntakePage() {
 
         {/* DANH SÁCH TIẾP NHẬN (Bottom) */}
         <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm flex flex-col">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
             <h2 className="text-headline-md font-bold text-on-surface flex items-center gap-2">
               <span className="material-symbols-outlined text-primary">format_list_bulleted</span>
               Danh sách tiếp nhận
             </h2>
+            <div className="relative max-w-sm w-full">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+              <input
+                type="text"
+                placeholder="Tìm biển số, khách hàng, SĐT..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1); // Reset page on search
+                }}
+                className="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-lg text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+              />
+            </div>
           </div>
           
           {/* Tabs */}
@@ -260,7 +280,7 @@ export default function IntakePage() {
                 {tab === 'CONVERTED' && 'Đã chuyển RO'}
                 {tab === 'CANCELLED' && 'Đã hủy'}
                 <span className="ml-2 bg-surface-container-high text-on-surface px-1.5 py-0.5 rounded-full text-label-sm">
-                  {queueRecords.filter(r => r.status === tab).length}
+                  {queueRecords.filter(r => r.status === tab && (!searchQuery || r.vehicle?.license_plate?.toLowerCase().includes(searchQuery.toLowerCase()) || r.customer?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || r.customer?.phone?.includes(searchQuery))).length}
                 </span>
               </button>
             ))}
@@ -282,13 +302,22 @@ export default function IntakePage() {
                   <tr>
                     <td colSpan={5} className="text-center text-secondary py-10">Đang tải danh sách...</td>
                   </tr>
-                ) : queueRecords.filter(r => r.status === activeTab).length === 0 ? (
+                ) : queueRecords.filter(r => r.status === activeTab && (!searchQuery || r.vehicle?.license_plate?.toLowerCase().includes(searchQuery.toLowerCase()) || r.customer?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || r.customer?.phone?.includes(searchQuery))).length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center text-secondary py-10">Danh sách trống.</td>
+                    <td colSpan={5} className="text-center text-secondary py-10">
+                      {searchQuery ? 'Không tìm thấy kết quả phù hợp.' : 'Danh sách trống.'}
+                    </td>
                   </tr>
                 ) : (
                   (() => {
-                    const filteredRecords = queueRecords.filter(r => r.status === activeTab);
+                    const filteredRecords = queueRecords.filter(r => {
+                      if (r.status !== activeTab) return false;
+                      if (!searchQuery) return true;
+                      const q = searchQuery.toLowerCase();
+                      return r.vehicle?.license_plate?.toLowerCase().includes(q) ||
+                             r.customer?.full_name?.toLowerCase().includes(q) ||
+                             r.customer?.phone?.includes(q);
+                    });
                     const paginatedRecords = filteredRecords.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
                     return paginatedRecords.map((record) => {
                       const getTypeStyles = (type: string) => {
@@ -367,6 +396,30 @@ export default function IntakePage() {
                                   Hủy
                                 </button>
                               )}
+                              {activeTab === 'CONVERTED' && record.work_order && (
+                                <button
+                                  onClick={() => setViewingROId(record.work_order?.id || null)}
+                                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary border border-primary text-on-primary hover:bg-primary/90 transition-colors shadow-sm"
+                                  title="Xem Phiếu Công Việc (RO)"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+                              {activeTab === 'CONVERTED' && (
+                                <button
+                                  onClick={() => {
+                                    // Mở modal hiển thị chi tiết phiếu công việc
+                                    const woId = (record as any).work_order?.id || (record as any).work_order_id; // giả định backend trả về
+                                    if (woId) {
+                                      setSelectedWorkOrderId(woId);
+                                    } else {
+                                      toast.error('Phiếu công việc chưa được đồng bộ, vui lòng thử lại sau.');
+                                    }
+                                  }}
+                                  className="flex items-center gap-1 px-3 py-1 bg-primary text-on-primary rounded-md text-label-sm font-semibold hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">receipt_long</span>
+                                  Xem Phiếu
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -442,6 +495,16 @@ export default function IntakePage() {
         <IntakeDetailModal
           record={selectedRecord}
           onClose={() => setSelectedRecord(null)}
+        />
+      )}
+
+      {/* READ-ONLY WO MODAL */}
+      {viewingROId && (
+        <ReadOnlyROModal workOrderId={viewingROId} onClose={() => setViewingROId(null)} />
+      {selectedWorkOrderId && (
+        <StaffWorkOrderDetailModal
+          workOrderId={selectedWorkOrderId}
+          onClose={() => setSelectedWorkOrderId(null)}
         />
       )}
     </div>

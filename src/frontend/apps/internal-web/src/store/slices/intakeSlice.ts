@@ -41,6 +41,10 @@ export interface IntakeRecord {
       name: string;
     };
   }>;
+  work_order?: {
+    id: number;
+    wo_number: string;
+  };
 }
 
 interface IntakeState {
