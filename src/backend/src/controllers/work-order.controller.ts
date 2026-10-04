@@ -220,7 +220,7 @@ export const addServiceToWO = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    const woService = await workOrderService.addService(workOrderId, value.serviceTemplateId);
+    const woService = await workOrderService.addService(workOrderId, value.serviceId);
 
     res.status(201).json({
       success: true,

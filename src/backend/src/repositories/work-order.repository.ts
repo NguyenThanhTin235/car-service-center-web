@@ -12,14 +12,14 @@ const workOrderInclude = {
       intake_type: true,
       arrived_at: true,
       notes: true,
-      services: { include: { service_template: { select: { id: true, name: true, category: { select: { name: true } } } } } },
+      services: { include: { service: { select: { id: true, name: true, category: { select: { name: true } } } } } },
     },
   },
   appointment: { select: { id: true, scheduled_date: true, scheduled_time: true } },
   check_in: true,
   services: {
     include: {
-      service_template: {
+      service: {
         select: {
           id: true,
           name: true,

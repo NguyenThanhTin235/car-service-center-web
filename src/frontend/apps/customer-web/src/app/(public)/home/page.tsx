@@ -8,7 +8,7 @@ interface ServiceCategory {
   id: number;
   name: string;
   description: string | null;
-  _count: { templates: number };
+  _count: { services: number };
 }
 
 interface ServiceTemplate {
@@ -241,7 +241,7 @@ export default function HomePage() {
                         : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-low border border-surface-container-highest'
                     }`}
                   >
-                    {cat.name} ({cat._count.templates})
+                    {cat.name} ({cat._count.services})
                   </button>
                 ))}
               </div>

@@ -405,12 +405,12 @@ model ServiceCategory {
   is_active   Boolean @default(true)
   sort_order  Int     @default(0)
 
-  templates ServiceTemplate[]
+  services Service[]
 
   @@map("service_categories")
 }
 
-model ServiceTemplate {
+model Service {
   id           Int         @id @default(autoincrement())
   category_id  Int
   name         String      @db.VarChar(150)
@@ -429,18 +429,18 @@ model ServiceTemplate {
   intake_services IntakeService[]
   wo_services     WoService[]
 
-  @@map("service_templates")
+  @@map("services")
 }
 
 model VehicleSizePrice {
-  id                  Int         @id @default(autoincrement())
-  service_template_id Int
-  vehicle_size        VehicleSize
-  price               Decimal     @db.Decimal(12, 2)
+  id           Int         @id @default(autoincrement())
+  service_id   Int
+  vehicle_size VehicleSize
+  price        Decimal     @db.Decimal(12, 2)
 
-  service_template ServiceTemplate @relation(fields: [service_template_id], references: [id])
+  service Service @relation(fields: [service_id], references: [id])
 
-  @@unique([service_template_id, vehicle_size])
+  @@unique([service_id, vehicle_size])
   @@map("vehicle_size_prices")
 }
 
@@ -448,7 +448,6 @@ model JobType {
   id          Int     @id @default(autoincrement())
   name        String  @db.VarChar(150)
   description String? @db.Text
-  hourly_rate Decimal @db.Decimal(12, 2)
   is_active   Boolean @default(true)
 
   templates   JobTemplate[]
@@ -459,17 +458,18 @@ model JobType {
 }
 
 model JobTemplate {
-  id                  Int     @id @default(autoincrement())
-  job_type_id         Int
-  service_template_id Int?
-  name                String  @db.VarChar(150)
-  estimated_hours     Decimal @db.Decimal(5, 2)
-  requires_qc         Boolean @default(true)
+  id              Int     @id @default(autoincrement())
+  job_type_id     Int
+  service_id      Int?
+  name            String  @db.VarChar(150)
+  price           Decimal @db.Decimal(12, 2)
+  estimated_hours Decimal? @db.Decimal(5, 2)
+  requires_qc     Boolean @default(true)
 
-  job_type         JobType           @relation(fields: [job_type_id], references: [id])
-  service_template ServiceTemplate?  @relation(fields: [service_template_id], references: [id])
-  parts            JobTemplatePart[]
-  jobs             Job[]
+  job_type   JobType           @relation(fields: [job_type_id], references: [id])
+  service    Service?          @relation(fields: [service_id], references: [id])
+  parts      JobTemplatePart[]
+  jobs       Job[]
 
   @@map("job_templates")
 }
@@ -491,16 +491,16 @@ model JobTemplatePart {
 // ==========================================
 
 model InspectionTemplate {
-  id                  Int                    @id @default(autoincrement())
-  service_template_id Int?
-  template_type       InspectionTemplateType
-  name                String                 @db.VarChar(150)
-  is_active           Boolean                @default(true)
+  id            Int                    @id @default(autoincrement())
+  service_id    Int?
+  template_type InspectionTemplateType
+  name          String                 @db.VarChar(150)
+  is_active     Boolean                @default(true)
 
-  service_template ServiceTemplate?         @relation(fields: [service_template_id], references: [id])
-  items            InspectionTemplateItem[]
-  inspections      Inspection[]
-  qc_records       QcRecord[]
+  service      Service?                 @relation(fields: [service_id], references: [id])
+  items        InspectionTemplateItem[]
+  inspections  Inspection[]
+  qc_records   QcRecord[]
 
   @@map("inspection_templates")
 }
@@ -546,12 +546,12 @@ model Appointment {
 }
 
 model AppointmentService {
-  id                  Int @id @default(autoincrement())
-  appointment_id      Int
-  service_template_id Int
+  id             Int @id @default(autoincrement())
+  appointment_id Int
+  service_id     Int
 
-  appointment      Appointment     @relation(fields: [appointment_id], references: [id])
-  service_template ServiceTemplate @relation(fields: [service_template_id], references: [id])
+  appointment Appointment @relation(fields: [appointment_id], references: [id])
+  service     Service     @relation(fields: [service_id], references: [id])
 
   @@map("appointment_services")
 }
@@ -578,12 +578,12 @@ model IntakeRecord {
 }
 
 model IntakeService {
-  id                  Int @id @default(autoincrement())
-  intake_id           Int
-  service_template_id Int
+  id         Int @id @default(autoincrement())
+  intake_id  Int
+  service_id Int
 
-  intake           IntakeRecord    @relation(fields: [intake_id], references: [id])
-  service_template ServiceTemplate @relation(fields: [service_template_id], references: [id])
+  intake  IntakeRecord @relation(fields: [intake_id], references: [id])
+  service Service      @relation(fields: [service_id], references: [id])
 
   @@map("intake_services")
 }
@@ -648,23 +648,23 @@ model CheckIn {
 }
 
 model WoService {
-  id                  Int           @id @default(autoincrement())
-  work_order_id       Int
-  service_template_id Int?
-  name                String        @db.VarChar(255)
-  pricing_type        PricingType
-  status              ServiceStatus @default(PENDING)
-  sort_order          Int           @default(0)
-  created_at          DateTime      @default(now())
-  updated_at          DateTime      @default(now()) @updatedAt
+  id            Int           @id @default(autoincrement())
+  work_order_id Int
+  service_id    Int?
+  name          String        @db.VarChar(255)
+  pricing_type  PricingType
+  status        ServiceStatus @default(PENDING)
+  sort_order    Int           @default(0)
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @default(now()) @updatedAt
 
-  work_order       WorkOrder        @relation(fields: [work_order_id], references: [id])
-  service_template ServiceTemplate? @relation(fields: [service_template_id], references: [id])
-  inspections      Inspection[]
-  jobs             Job[]
-  qc_records       QcRecord[]
-  quotation_lines  QuotationLine[]
-  invoice_lines    InvoiceLine[]
+  work_order      WorkOrder       @relation(fields: [work_order_id], references: [id])
+  service         Service?        @relation(fields: [service_id], references: [id])
+  inspections     Inspection[]
+  jobs            Job[]
+  qc_records      QcRecord[]
+  quotation_lines QuotationLine[]
+  invoice_lines   InvoiceLine[]
 
   @@map("wo_services")
 }
@@ -782,12 +782,8 @@ model JobLabour {
   job_type_id     Int
   description     String?  @db.Text
   employee_id     Int?
-  estimated_hours Decimal  @db.Decimal(5, 2)
-  billable_hours  Decimal? @db.Decimal(5, 2)
-  hourly_rate     Decimal  @db.Decimal(12, 2)
-  // amount is calculated logic: IFNULL(billable_hours, estimated_hours) * hourly_rate
-  // In Prisma we usually omit generated columns or define them as raw SQL on migration
-  // Let's keep it here but we'll have to manage it in DB layer
+  estimated_hours Decimal? @db.Decimal(5, 2)
+  price           Decimal  @db.Decimal(12, 2)
   created_at      DateTime @default(now())
   updated_at      DateTime @default(now()) @updatedAt
 

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, VehicleSize } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -8,7 +8,7 @@ export interface CreateVehicleDto {
   model: string;
   year?: number;
   color?: string;
-  vehicleSize?: 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL';
+  vehicleSize?: VehicleSize;
 }
 
 export interface UpdateVehicleDto {
@@ -16,7 +16,7 @@ export interface UpdateVehicleDto {
   model?: string;
   year?: number;
   color?: string;
-  vehicleSize?: 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL';
+  vehicleSize?: VehicleSize;
 }
 
 export class VehicleService {

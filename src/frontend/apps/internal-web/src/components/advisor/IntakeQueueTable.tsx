@@ -119,7 +119,7 @@ function IntakeDetailModal({ intake, onClose, onCreateWO, onViewWO, isLoading }:
               {intake.services.length > 0 ? (
                 <ul className="list-disc list-inside text-body-md text-on-surface flex flex-col gap-1">
                   {intake.services.map(s => (
-                    <li key={s.id}>{s.service_template.name}</li>
+                    <li key={s.id}>{s.service?.name || 'Dịch vụ'}</li>
                   ))}
                 </ul>
               ) : (
@@ -293,7 +293,7 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                         {item.services.length > 0 ? (
                           (() => {
                             const uniqueCategories = Array.from(
-                              new Set(item.services.map((s) => s.service_template.category?.name).filter(Boolean))
+                              new Set(item.services.map((s) => s.service?.category?.name).filter(Boolean))
                             );
                             if (uniqueCategories.length === 0) {
                               return <span className="text-body-sm font-body-sm text-outline italic">Chưa phân loại</span>;

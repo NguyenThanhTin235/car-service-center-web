@@ -70,7 +70,7 @@ export class AppointmentService {
           vehicle: { select: { id: true, license_plate: true, make: true, model: true } },
           services: {
             include: {
-              service_template: { select: { id: true, name: true, pricing_type: true } }
+              service: { select: { id: true, name: true, pricing_type: true } }
             }
           }
         },
@@ -87,7 +87,7 @@ export class AppointmentService {
       // Provide an easy string for scheduled_time (originally stored as DateTime @db.Time)
       // Node.js Prisma returns time as a Date object set to 1970-01-01
       scheduled_time_str: apt.scheduled_time.toISOString().substring(11, 16),
-      services: apt.services.map((s: any) => s.service_template)
+      services: apt.services.map((s: any) => s.service)
     }));
 
     return {
@@ -112,7 +112,7 @@ export class AppointmentService {
         vehicle: true,
         services: {
           include: {
-            service_template: true
+            service: true
           }
         },
         created_by: { select: { id: true, full_name: true } }
@@ -125,7 +125,7 @@ export class AppointmentService {
     return {
       ...aptAny,
       scheduled_time_str: aptAny.scheduled_time.toISOString().substring(11, 16),
-      services: aptAny.services.map((s: any) => s.service_template)
+      services: aptAny.services.map((s: any) => s.service)
     };
   }
 
@@ -194,7 +194,7 @@ export class AppointmentService {
       if (data.service_ids && data.service_ids.length > 0) {
         const serviceData = data.service_ids.map(serviceId => ({
           appointment_id: appointment.id,
-          service_template_id: serviceId
+          service_id: serviceId
         }));
 
         await tx.appointmentService.createMany({
@@ -390,7 +390,7 @@ export class AppointmentService {
         include: {
           customer: { select: { id: true, full_name: true, phone: true } },
           vehicle: { select: { id: true, license_plate: true, make: true, model: true } },
-          services: { include: { service_template: { select: { id: true, name: true } } } },
+          services: { include: { service: { select: { id: true, name: true } } } },
         },
       });
 
@@ -409,7 +409,7 @@ export class AppointmentService {
           customer: { select: { id: true, full_name: true, phone: true } },
           vehicle: { select: { id: true, license_plate: true, make: true, model: true } },
           created_by: { select: { id: true, full_name: true } },
-          services: { include: { service_template: true } },
+          services: { include: { service: true } },
         },
       });
 
@@ -418,7 +418,7 @@ export class AppointmentService {
         await tx.intakeService.createMany({
           data: updatedAppointment.services.map((svc) => ({
             intake_id: intakeRecord.id,
-            service_template_id: svc.service_template_id,
+            service_id: svc.service_id,
           })),
         });
         
@@ -429,7 +429,7 @@ export class AppointmentService {
             customer: { select: { id: true, full_name: true, phone: true } },
             vehicle: { select: { id: true, license_plate: true, make: true, model: true } },
             created_by: { select: { id: true, full_name: true } },
-            services: { include: { service_template: true } },
+            services: { include: { service: true } },
           }
         });
         return { appointment: updatedAppointment, intakeRecord: finalIntakeRecord };

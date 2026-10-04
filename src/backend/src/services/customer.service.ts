@@ -235,7 +235,7 @@ export class CustomerService {
         data: {
           full_name: data.fullName !== undefined ? data.fullName : undefined,
           phone: data.phone !== undefined ? data.phone : undefined,
-          email: data.email !== undefined ? data.email : undefined,
+          email: (data.email !== undefined && data.email !== "") ? data.email : (data.email === "" ? `${data.phone || user.phone}@placeholder.com` : undefined),
           address: data.address !== undefined ? data.address : undefined,
         },
       });
@@ -249,6 +249,15 @@ export class CustomerService {
         
         const vehiclesToDelete = existingVehicleIds.filter(vId => !incomingVehicleIds.includes(vId));
         if (vehiclesToDelete.length > 0) {
+          // Check for dependencies
+          const linkedWorkOrders = await tx.workOrder.count({ where: { vehicle_id: { in: vehiclesToDelete } } });
+          const linkedAppointments = await tx.appointment.count({ where: { vehicle_id: { in: vehiclesToDelete } } });
+          const linkedIntakes = await tx.intakeRecord.count({ where: { vehicle_id: { in: vehiclesToDelete } } });
+
+          if (linkedWorkOrders > 0 || linkedAppointments > 0 || linkedIntakes > 0) {
+            throw new Error('Không thể xóa phương tiện vì đã có lịch hẹn hoặc hồ sơ sửa chữa liên kết. Vui lòng không xóa xe này để đảm bảo toàn vẹn dữ liệu.');
+          }
+
           await tx.vehicle.deleteMany({
             where: { id: { in: vehiclesToDelete } }
           });

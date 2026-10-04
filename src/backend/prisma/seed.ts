@@ -106,33 +106,34 @@ async function main() {
     'Dịch vụ khác 2'
   ];
 
-  const serviceTemplates = [];
+  const services = [];
   for (let i = 0; i < 10; i++) {
-    const st = await prisma.serviceTemplate.create({
+    const st = await prisma.service.create({
       data: { category_id: serviceCategories[i % 5].id, name: serviceNames[i], pricing_type: PricingType.VEHICLE_SIZE }
     });
-    serviceTemplates.push(st);
+    services.push(st);
     
     // VehicleSizePrice
     for (const size of sizes) {
-      await prisma.vehicleSizePrice.create({ data: { service_template_id: st.id, vehicle_size: size, price: 50000 * (i + 1) } });
+      await prisma.vehicleSizePrice.create({ data: { service_id: st.id, vehicle_size: size, price: 50000 * (i + 1) } });
     }
   }
 
+  const jobTypeNames = ['Sửa chữa cơ khí', 'Sửa chữa điện - điện tử', 'Sửa chữa gầm', 'Sơn xe', 'Đồng thân vỏ'];
   const jobTypes = [];
-  for (let i = 1; i <= 5; i++) jobTypes.push(await prisma.jobType.create({ data: { name: `Phòng Kỹ Thuật ${i}`, hourly_rate: 50000 * i } }));
+  for (let i = 0; i < 5; i++) jobTypes.push(await prisma.jobType.create({ data: { name: jobTypeNames[i] } }));
 
   const jobTemplates = [];
   for (let i = 1; i <= 10; i++) {
     jobTemplates.push(await prisma.jobTemplate.create({
-      data: { job_type_id: jobTypes[i % 5].id, service_template_id: serviceTemplates[i - 1].id, name: `Công việc mẫu ${i}`, estimated_hours: 1.5, requires_qc: true }
+      data: { job_type_id: jobTypes[i % 5].id, service_id: services[i - 1].id, name: `Công việc mẫu ${i}`, price: 150000, estimated_hours: 1.5, requires_qc: true }
     }));
   }
 
   const inspTemplates = [];
   for (let i = 1; i <= 5; i++) {
     const it = await prisma.inspectionTemplate.create({
-      data: { service_template_id: serviceTemplates[i - 1].id, template_type: InspectionTemplateType.INSPECTION, name: `Mẫu kiểm tra ${i}` }
+      data: { service_id: services[i - 1].id, template_type: InspectionTemplateType.INSPECTION, name: `Mẫu kiểm tra ${i}` }
     });
     inspTemplates.push(it);
     for (let j = 1; j <= 5; j++) {
@@ -194,7 +195,7 @@ async function main() {
         created_by_id: adv.id 
       }
     });
-    await prisma.appointmentService.create({ data: { appointment_id: appt.id, service_template_id: serviceTemplates[i].id } });
+    await prisma.appointmentService.create({ data: { appointment_id: appt.id, service_id: services[i].id } });
 
     // IntakeRecord (only if ARRIVED)
     let intake = null;
@@ -227,7 +228,7 @@ async function main() {
 
       // WoService
       const wos = await prisma.woService.create({
-        data: { work_order_id: wo.id, service_template_id: serviceTemplates[i].id, name: `Dịch vụ ${i}`, pricing_type: PricingType.FIXED, status: ServiceStatus.COMPLETED }
+        data: { work_order_id: wo.id, service_id: services[i].id, name: `Dịch vụ ${i}`, pricing_type: PricingType.FIXED, status: ServiceStatus.COMPLETED }
       });
 
       // Job, JobLabour, JobPart
@@ -236,7 +237,7 @@ async function main() {
       });
       
       await prisma.jobLabour.create({
-        data: { job_id: job.id, job_type_id: jobTypes[i].id, employee_id: tech.employee?.id, estimated_hours: 1, billable_hours: 1, hourly_rate: 100000 }
+        data: { job_id: job.id, job_type_id: jobTypes[i].id, employee_id: tech.employee?.id, estimated_hours: 1, price: 100000 }
       });
 
       const jPart = await prisma.jobPart.create({
@@ -315,7 +316,7 @@ async function main() {
     await prisma.intakeService.create({
       data: {
         intake_id: queueRecord.id,
-        service_template_id: serviceTemplates[i % 5].id,
+        service_id: services[i % 5].id,
       }
     });
   }
@@ -349,7 +350,7 @@ async function main() {
       created_by_id: staffs[0].id,
       services: {
         create: [
-          { service_template_id: serviceTemplates[0].id }
+          { service_id: services[0].id }
         ]
       }
     }
@@ -367,8 +368,8 @@ async function main() {
       created_by_id: staffs[0].id,
       services: {
         create: [
-          { service_template_id: serviceTemplates[0].id },
-          ...(serviceTemplates[1] ? [{ service_template_id: serviceTemplates[1].id }] : [])
+          { service_id: services[0].id },
+          ...(services[1] ? [{ service_id: services[1].id }] : [])
         ]
       }
     }
@@ -385,7 +386,7 @@ async function main() {
       created_by_id: staffs[0].id,
       services: {
         create: [
-          { service_template_id: serviceTemplates[1] ? serviceTemplates[1].id : serviceTemplates[0].id }
+          { service_id: services[1] ? services[1].id : services[0].id }
         ]
       }
     }

@@ -71,7 +71,6 @@ export default function CustomersPage() {
       }
       await fetchCustomers(search, currentPage, activeTab); // Refresh sau khi lưu
     } catch (error: any) {
-      console.error('Lỗi khi lưu khách hàng', error);
       toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi lưu khách hàng');
       throw error;
     }
@@ -99,7 +98,6 @@ export default function CustomersPage() {
       setIsConfirmOpen(false);
       await fetchCustomers(search, currentPage, activeTab);
     } catch (error: any) {
-      console.error(`Lỗi khi ${confirmAction} khách hàng`, error);
       toast.error(error.response?.data?.message || 'Có lỗi xảy ra!');
       setIsConfirmOpen(false);
     }

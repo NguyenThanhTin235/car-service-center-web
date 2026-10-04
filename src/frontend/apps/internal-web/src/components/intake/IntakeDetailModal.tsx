@@ -104,7 +104,7 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
               {record.services && record.services.length > 0 ? (
                 <ul className="list-disc list-inside text-body-md text-on-surface flex flex-col gap-1">
                   {record.services.map((s: any) => (
-                    <li key={s.id}>{s.service_template?.name}</li>
+                    <li key={s.id}>{s.service?.name || 'Dịch vụ'}</li>
                   ))}
                 </ul>
               ) : (

@@ -22,7 +22,7 @@ export interface IntakeQueueItem {
   };
   services: {
     id: number;
-    service_template: {
+    service: {
       id: number;
       name: string;
       category?: {
@@ -67,7 +67,7 @@ export interface WorkOrder {
     notes: string;
     services?: {
       id: number;
-      service_template: {
+      service: {
         id: number;
         name: string;
         category?: {
@@ -88,12 +88,7 @@ export interface WorkOrder {
     id: number;
     status: string;
   } | null;
-  services?: {
-    id: number;
-    name: string;
-    pricing_type: string;
-    status: string;
-  }[] | null;
+
 }
 
 export interface CheckIn {
@@ -202,14 +197,14 @@ export async function confirmCheckIn(workOrderId: number): Promise<ApiResponse<C
 export interface WoService {
   id: number;
   work_order_id: number;
-  service_template_id: number | null;
+  service_id: number | null;
   name: string;
   pricing_type: string;
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
   sort_order: number;
   created_at: string;
   updated_at: string;
-  service_template?: {
+  service?: {
     id: number;
     name: string;
     category_id: number;
@@ -233,10 +228,10 @@ export interface ServiceTemplateOption {
  */
 export async function addServiceToWO(
   workOrderId: number,
-  serviceTemplateId: number
+  serviceId: number
 ): Promise<ApiResponse<WoService>> {
   const response = await api.post(`/api/work-orders/${workOrderId}/services`, {
-    serviceTemplateId,
+    serviceId,
   });
   return response.data;
 }

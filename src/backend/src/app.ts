@@ -14,7 +14,7 @@ import workOrderRoutes from './routes/work-order.routes';
 import userRoutes from './routes/user.routes';
 import employeeRoutes from './routes/employee.routes';
 import serviceCategoryRoutes from './routes/service-category.routes';
-import serviceTemplateRoutes from './routes/service-template.routes';
+
 import jobTypeRoutes from './routes/job-type.routes';
 import catalogRoutes from './routes/system-catalog.routes';
 import vehicleRoutes from './routes/vehicle.routes';
@@ -58,7 +58,7 @@ app.use('/api/work-orders', workOrderRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/service-categories', serviceCategoryRoutes);
-app.use('/api/service-templates', serviceTemplateRoutes);
+
 app.use('/api/job-types', jobTypeRoutes);
 app.use('/api/catalogs', catalogRoutes);
 app.use('/api/vehicles', vehicleRoutes);

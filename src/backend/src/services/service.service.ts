@@ -2,7 +2,7 @@ import { PrismaClient, PricingType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export interface CreateServiceTemplateDto {
+export interface CreateServiceDto {
   categoryId: number;
   name: string;
   description?: string;
@@ -11,7 +11,7 @@ export interface CreateServiceTemplateDto {
   sizePrices?: { vehicleSize: string; price: number }[];
 }
 
-export interface UpdateServiceTemplateDto {
+export interface UpdateServiceDto {
   categoryId?: number;
   name?: string;
   description?: string;
@@ -21,19 +21,19 @@ export interface UpdateServiceTemplateDto {
   sizePrices?: { vehicleSize: string; price: number }[];
 }
 
-export class ServiceTemplateService {
+export class ServiceService {
   /**
    * UC-59: Lấy danh sách danh mục dịch vụ
    */
-  async getServiceTemplates(search?: string, categoryId?: number, page = 1, limit = 10) {
+  async getServices(search?: string, categoryId?: number, page = 1, limit = 10) {
     const where: any = {};
     if (search) where.name = { contains: search };
     if (categoryId) where.category_id = categoryId;
 
     const skip = (page - 1) * limit;
     const [totalRecords, templates] = await Promise.all([
-      prisma.serviceTemplate.count({ where }),
-      prisma.serviceTemplate.findMany({
+      prisma.service.count({ where }),
+      prisma.service.findMany({
         where,
         skip,
         take: limit,
@@ -81,12 +81,12 @@ export class ServiceTemplateService {
   /**
    * UC-58: Tạo danh mục dịch vụ mới
    */
-  async createServiceTemplate(data: CreateServiceTemplateDto) {
+  async createService(data: CreateServiceDto) {
     const category = await prisma.serviceCategory.findUnique({ where: { id: data.categoryId } });
     if (!category) throw new Error('Không tìm thấy danh mục cha.');
 
     return prisma.$transaction(async (tx) => {
-      const template = await tx.serviceTemplate.create({
+      const template = await tx.service.create({
         data: {
           category_id: data.categoryId,
           name: data.name,
@@ -99,7 +99,7 @@ export class ServiceTemplateService {
       if (data.pricingType === 'VEHICLE_SIZE' && data.sizePrices && data.sizePrices.length > 0) {
         await tx.vehicleSizePrice.createMany({
           data: data.sizePrices.map((s) => ({
-            service_template_id: template.id,
+            service_id: template.id,
             vehicle_size: s.vehicleSize as any,
             price: s.price,
           })),
@@ -107,7 +107,7 @@ export class ServiceTemplateService {
         });
       }
 
-      return tx.serviceTemplate.findUnique({
+      return tx.service.findUnique({
         where: { id: template.id },
         include: { category: true, size_prices: true },
       });
@@ -117,12 +117,12 @@ export class ServiceTemplateService {
   /**
    * UC-60: Cập nhật danh mục dịch vụ
    */
-  async updateServiceTemplate(id: number, data: UpdateServiceTemplateDto) {
-    const existing = await prisma.serviceTemplate.findUnique({ where: { id } });
+  async updateService(id: number, data: UpdateServiceDto) {
+    const existing = await prisma.service.findUnique({ where: { id } });
     if (!existing) throw new Error('Không tìm thấy danh mục dịch vụ.');
 
     return prisma.$transaction(async (tx) => {
-      await tx.serviceTemplate.update({
+      await tx.service.update({
         where: { id },
         data: {
           category_id: data.categoryId,
@@ -135,11 +135,11 @@ export class ServiceTemplateService {
       });
 
       if (data.sizePrices !== undefined) {
-        await tx.vehicleSizePrice.deleteMany({ where: { service_template_id: id } });
+        await tx.vehicleSizePrice.deleteMany({ where: { service_id: id } });
         if (data.sizePrices.length > 0) {
           await tx.vehicleSizePrice.createMany({
             data: data.sizePrices.map((s) => ({
-              service_template_id: id,
+              service_id: id,
               vehicle_size: s.vehicleSize as any,
               price: s.price,
             })),
@@ -148,7 +148,7 @@ export class ServiceTemplateService {
         }
       }
 
-      return tx.serviceTemplate.findUnique({
+      return tx.service.findUnique({
         where: { id },
         include: { category: true, size_prices: true },
       });
@@ -158,11 +158,11 @@ export class ServiceTemplateService {
   /**
    * UC-61: Vô hiệu hóa / Khôi phục danh mục dịch vụ (soft delete)
    */
-  async toggleServiceTemplate(id: number) {
-    const existing = await prisma.serviceTemplate.findUnique({ where: { id } });
+  async toggleService(id: number) {
+    const existing = await prisma.service.findUnique({ where: { id } });
     if (!existing) throw new Error('Không tìm thấy danh mục dịch vụ.');
 
-    await prisma.serviceTemplate.update({
+    await prisma.service.update({
       where: { id },
       data: { is_active: !existing.is_active },
     });

@@ -141,7 +141,9 @@ export default function StaffWorkOrderDetailModal({ workOrderId, onClose }: Staf
                 />
 
                 {/* 8 Tabs */}
-                <WOTabContainer isReadOnly={true} />
+                {workOrder && (
+            <WOTabContainer workOrder={workOrder} refetchWO={() => {}} isReadOnly={true} />
+          )}
               </div>
 
             </div>

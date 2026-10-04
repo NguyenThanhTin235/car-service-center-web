@@ -35,10 +35,14 @@ export interface IntakeRecord {
   services?: Array<{
     id: number;
     intake_id: number;
-    service_template_id: number;
-    service_template: {
+    service_id: number;
+    service: {
       id: number;
       name: string;
+      category?: {
+        id: number;
+        name: string;
+      };
     };
   }>;
   work_order?: {

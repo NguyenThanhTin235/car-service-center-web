@@ -37,6 +37,7 @@ export class WorkOrderService {
         include: {
           customer: { select: { id: true } },
           vehicle: { select: { id: true } },
+          services: { include: { service: true } },
         },
       });
 
@@ -99,6 +100,25 @@ export class WorkOrderService {
         status: 'DRAFT',
         created_by_id: advisorId,
       });
+
+      // 7.5. Copy dịch vụ yêu cầu từ Intake -> WoService
+      if (intake.services && intake.services.length > 0) {
+        let sortOrder = 0;
+        for (const is of intake.services) {
+          if (is.service) {
+            await tx.woService.create({
+              data: {
+                work_order_id: workOrder.id,
+                service_id: is.service.id,
+                name: is.service.name,
+                pricing_type: is.service.pricing_type,
+                status: 'PENDING',
+                sort_order: ++sortOrder,
+              }
+            });
+          }
+        }
+      }
 
       // 8. Cập nhật IntakeRecord → CONVERTED
       await tx.intakeRecord.update({
@@ -177,16 +197,16 @@ export class WorkOrderService {
   // ==========================================
 
   /**
-   * Thêm một dịch vụ từ danh mục (ServiceTemplate) vào Work Order
+   * Thêm một dịch vụ từ danh mục (Service) vào Work Order
    *
    * Business Rules:
    * 1. WO phải tồn tại và đang mở (status ≠ CLOSED, CANCELLED, RELEASED)
-   * 2. ServiceTemplate phải tồn tại và active
-   * 3. Không được thêm trùng lặp cùng service_template_id trong WO
-   * 4. Tự động copy name, pricing_type từ ServiceTemplate
+   * 2. Service phải tồn tại và active
+   * 3. Không được thêm trùng lặp cùng service_id trong WO
+   * 4. Tự động copy name, pricing_type từ Service
    * 5. sort_order = max hiện tại + 1
    */
-  async addService(workOrderId: number, serviceTemplateId: number) {
+  async addService(workOrderId: number, serviceId: number) {
     // 1. Kiểm tra WO tồn tại
     const wo = await prisma.workOrder.findUnique({ where: { id: workOrderId } });
     if (!wo) throw new Error('Không tìm thấy phiếu công việc.');
@@ -197,9 +217,9 @@ export class WorkOrderService {
       throw new Error(`Phiếu công việc đã ${wo.status === 'CLOSED' ? 'đóng' : wo.status === 'CANCELLED' ? 'hủy' : 'giao xe'}. Không thể thêm dịch vụ.`);
     }
 
-    // 3. Kiểm tra ServiceTemplate tồn tại và active
-    const template = await prisma.serviceTemplate.findUnique({
-      where: { id: serviceTemplateId },
+    // 3. Kiểm tra Service tồn tại và active
+    const template = await prisma.service.findUnique({
+      where: { id: serviceId },
     });
     if (!template) throw new Error('Không tìm thấy dịch vụ trong danh mục.');
     if (!template.is_active) throw new Error('Dịch vụ này đã bị vô hiệu hóa.');
@@ -208,7 +228,7 @@ export class WorkOrderService {
     const existing = await prisma.woService.findFirst({
       where: {
         work_order_id: workOrderId,
-        service_template_id: serviceTemplateId,
+        service_id: serviceId,
       },
     });
     if (existing) throw new Error(`Dịch vụ "${template.name}" đã có trong phiếu công việc.`);
@@ -224,14 +244,14 @@ export class WorkOrderService {
     const woService = await prisma.woService.create({
       data: {
         work_order_id: workOrderId,
-        service_template_id: serviceTemplateId,
+        service_id: serviceId,
         name: template.name,
         pricing_type: template.pricing_type,
         status: 'PENDING',
         sort_order: nextSortOrder,
       },
       include: {
-        service_template: {
+        service: {
           select: {
             id: true,
             name: true,

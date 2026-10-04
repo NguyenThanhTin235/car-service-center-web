@@ -246,7 +246,7 @@ async function main() {
   }
   console.log('   ✅ 8 ServiceCategories');
 
-  // 2.5 ServiceTemplates + VehicleSizePrices
+  // 2.5 Services + VehicleSizePrices
   const serviceData: { catIdx: number; name: string; pricingType: PricingType; fixedPrice?: number; basePrice: number }[] = [
     // Cat 0: Bảo dưỡng định kỳ
     { catIdx: 0, name: 'Thay dầu máy', pricingType: PricingType.VEHICLE_SIZE, basePrice: 350000 },
@@ -286,9 +286,9 @@ async function main() {
     [VehicleSize.TRUCK]: 1.6,
   };
 
-  const serviceTemplates: any[] = [];
+  const services: any[] = [];
   for (const sd of serviceData) {
-    const st = await prisma.serviceTemplate.create({
+    const st = await prisma.service.create({
       data: {
         category_id: serviceCategories[sd.catIdx].id,
         name: sd.name,
@@ -296,32 +296,32 @@ async function main() {
         fixed_price: sd.fixedPrice || null,
       }
     });
-    serviceTemplates.push(st);
+    services.push(st);
 
     // VehicleSizePrices
     if (sd.pricingType === PricingType.VEHICLE_SIZE) {
       for (const size of Object.values(VehicleSize)) {
         await prisma.vehicleSizePrice.create({
-          data: { service_template_id: st.id, vehicle_size: size, price: Math.round(sd.basePrice * sizeMultipliers[size]) }
+          data: { service_id: st.id, vehicle_size: size, price: Math.round(sd.basePrice * sizeMultipliers[size]) }
         });
       }
     }
   }
-  console.log('   ✅ 20 ServiceTemplates + VehicleSizePrices');
+  console.log('   ✅ 20 Services + VehicleSizePrices');
 
   // 2.6 JobTypes
   const jobTypeData = [
-    { name: 'Phòng Cơ khí', rate: 150000 },
-    { name: 'Phòng Điện - Điện tử', rate: 180000 },
-    { name: 'Phòng Gầm', rate: 140000 },
-    { name: 'Phòng Sơn', rate: 200000 },
-    { name: 'Phòng Đồng', rate: 170000 },
-    { name: 'Phòng Nội thất', rate: 120000 },
-    { name: 'Phòng Điều hòa', rate: 160000 },
-    { name: 'Phòng Tổng hợp', rate: 130000 },
+    { name: 'Sửa chữa cơ khí', rate: 150000 },
+    { name: 'Sửa chữa điện - điện tử', rate: 180000 },
+    { name: 'Sửa chữa gầm', rate: 140000 },
+    { name: 'Sơn xe', rate: 200000 },
+    { name: 'Đồng thân vỏ', rate: 170000 },
+    { name: 'Chăm sóc nội thất', rate: 120000 },
+    { name: 'Sửa chữa điều hòa', rate: 160000 },
+    { name: 'Công việc tổng hợp', rate: 130000 },
   ];
   const jobTypes: any[] = [];
-  for (const jt of jobTypeData) jobTypes.push(await prisma.jobType.create({ data: { name: jt.name, hourly_rate: jt.rate } }));
+  for (const jt of jobTypeData) jobTypes.push(await prisma.jobType.create({ data: { name: jt.name } }));
   console.log('   ✅ 8 JobTypes');
 
   // 2.7 JobTemplates
@@ -371,8 +371,9 @@ async function main() {
     jobTemplates.push(await prisma.jobTemplate.create({
       data: {
         job_type_id: jobTypes[jd.jtIdx].id,
-        service_template_id: serviceTemplates[jd.stIdx].id,
+        service_id: services[jd.stIdx].id,
         name: jd.name,
+        price: jd.hours * jobTypeData[jd.jtIdx].rate,
         estimated_hours: jd.hours,
         requires_qc: true,
       }
@@ -410,7 +411,7 @@ async function main() {
   for (const itd of inspTemplateData) {
     const it = await prisma.inspectionTemplate.create({
       data: {
-        service_template_id: serviceTemplates[itd.stIdx].id,
+        service_id: services[itd.stIdx].id,
         template_type: itd.type,
         name: itd.name,
       }
@@ -803,10 +804,10 @@ async function main() {
       const usedServiceIds = new Set<number>();
       for (let s = 0; s < numServices; s++) {
         let stIdx: number;
-        do { stIdx = randomBetween(0, serviceTemplates.length - 1); } while (usedServiceIds.has(stIdx));
+        do { stIdx = randomBetween(0, services.length - 1); } while (usedServiceIds.has(stIdx));
         usedServiceIds.add(stIdx);
         await prisma.appointmentService.create({
-          data: { appointment_id: appt.id, service_template_id: serviceTemplates[stIdx].id }
+          data: { appointment_id: appt.id, service_id: services[stIdx].id }
         });
       }
       apptIdx++;
@@ -862,10 +863,10 @@ async function main() {
       const usedSvcIds = new Set<number>();
       for (let s = 0; s < numServices; s++) {
         let stIdx: number;
-        do { stIdx = randomBetween(0, serviceTemplates.length - 1); } while (usedSvcIds.has(stIdx));
+        do { stIdx = randomBetween(0, services.length - 1); } while (usedSvcIds.has(stIdx));
         usedSvcIds.add(stIdx);
         await prisma.intakeService.create({
-          data: { intake_id: ir.id, service_template_id: serviceTemplates[stIdx].id }
+          data: { intake_id: ir.id, service_id: services[stIdx].id }
         });
       }
       intakeIdx++;
@@ -961,7 +962,7 @@ async function main() {
       const usedWoServiceIds = new Set<number>();
       for (let s = 0; s < numWoServices; s++) {
         let stIdx: number;
-        do { stIdx = randomBetween(0, serviceTemplates.length - 1); } while (usedWoServiceIds.has(stIdx));
+        do { stIdx = randomBetween(0, services.length - 1); } while (usedWoServiceIds.has(stIdx));
         usedWoServiceIds.add(stIdx);
 
         const svcStatus = woStatus === WorkOrderStatus.DRAFT || woStatus === WorkOrderStatus.IN_PLANNING
@@ -973,7 +974,7 @@ async function main() {
         const wos = await prisma.woService.create({
           data: {
             work_order_id: wo.id,
-            service_template_id: serviceTemplates[stIdx].id,
+            service_id: services[stIdx].id,
             name: serviceData[stIdx].name,
             pricing_type: serviceData[stIdx].pricingType,
             status: svcStatus,
@@ -1036,8 +1037,7 @@ async function main() {
                 employee_id: tech.employee?.id,
                 description: `Thợ thực hiện: ${mjt.name}`,
                 estimated_hours: mjt.hours,
-                billable_hours: (jobStatus === JobStatus.COMPLETED || jobStatus === JobStatus.PASSED) ? mjt.hours : null,
-                hourly_rate: jobTypeData[mjt.jtIdx].rate,
+                price: mjt.hours * jobTypeData[mjt.jtIdx].rate,
               }
             });
 
@@ -1070,7 +1070,7 @@ async function main() {
           // Find matching inspection template
           const matchingIT = inspTemplates.find((_, idx) =>
             inspTemplateData[idx].type === InspectionTemplateType.INSPECTION &&
-            inspTemplateData[idx].stIdx < serviceTemplates.length
+            inspTemplateData[idx].stIdx < services.length
           );
 
           if (matchingIT) {
@@ -1383,7 +1383,7 @@ async function main() {
   console.log(`   - 5 Roles, 15 SystemCatalogs, 12 Skills`);
   console.log(`   - 30 Customers, 20 Staff/Employees`);
   console.log(`   - ${vehicles.length} Vehicles`);
-  console.log(`   - 8 ServiceCategories, 20 ServiceTemplates, 8 JobTypes, 30 JobTemplates`);
+  console.log(`   - 8 ServiceCategories, 20 Services, 8 JobTypes, 30 JobTemplates`);
   console.log(`   - ${inventoryItems.length} InventoryItems, 10 Suppliers`);
   console.log(`   - ${appointments.length} Appointments, ${intakeRecords.length} IntakeRecords`);
   console.log(`   - ${woIndex} WorkOrders (full lifecycle)`);

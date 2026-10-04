@@ -62,7 +62,7 @@ export default function TowInIntakeModal({ isOpen, onClose, onSubmit, loading, s
       notes: formData.vehicleCondition.trim() 
         ? `[Tình trạng xe]: ${formData.vehicleCondition}\n\n[Ghi chú]: ${formData.notes}` 
         : formData.notes,
-      serviceTemplateIds: serviceIds.length > 0 ? serviceIds : undefined,
+      serviceIds: serviceIds.length > 0 ? serviceIds : undefined,
     };
 
     if (isNewCustomer) {

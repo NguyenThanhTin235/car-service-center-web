@@ -17,7 +17,7 @@
 | 6 | Identity & Access | employee_skills | Bảng 6 |
 | 7 | Customer & Vehicle | vehicles | Bảng 7 |
 | 8 | Service Catalog & Pricing | service_categories | Bảng 8 |
-| 9 | Service Catalog & Pricing | service_templates | Bảng 9 |
+| 9 | Service Catalog & Pricing | services | Bảng 9 |
 | 10 | Service Catalog & Pricing | vehicle_size_prices | Bảng 10 |
 | 11 | Service Catalog & Pricing | job_types | Bảng 11 |
 | 12 | Service Catalog & Pricing | job_templates | Bảng 12 |
@@ -200,7 +200,7 @@
 
 ## 5.2.9. Mẫu dịch vụ
 
-**service_templates**(id, category_id, name, description, pricing_type, fixed_price, is_active, created_at, updated_at)
+**services**(id, category_id, name, description, pricing_type, fixed_price, is_active, created_at, updated_at)
 
 | STT | Thuộc tính | Kiểu | Miền giá trị | Ý nghĩa | Ghi chú |
 |-----|-----------|------|-------------|---------|---------|
@@ -219,15 +219,15 @@
 
 ## 5.2.10. Giá theo kích thước xe
 
-**vehicle_size_prices**(id, service_template_id, vehicle_size, price)
+**vehicle_size_prices**(id, service_id, vehicle_size, price)
 
 | STT | Thuộc tính | Kiểu | Miền giá trị | Ý nghĩa | Ghi chú |
 |-----|-----------|------|-------------|---------|---------|
 | 1 | id | INT | Khóa chính, tự tăng | Mã giá | |
-| 2 | service_template_id | INT | Khóa ngoại → service_templates(id), không rỗng | Mã mẫu dịch vụ | |
+| 2 | service_id | INT | Khóa ngoại → services(id), không rỗng | Mã mẫu dịch vụ | |
 | 3 | vehicle_size | ENUM | 'SMALL', 'MEDIUM', 'LARGE', 'SUV', 'TRUCK' | Kích thước xe | |
 | 4 | price | DECIMAL(12,2) | Không rỗng | Giá dịch vụ | |
-| | | | UNIQUE(service_template_id, vehicle_size) | | Mỗi kích thước xe chỉ có 1 mức giá |
+| | | | UNIQUE(service_id, vehicle_size) | | Mỗi kích thước xe chỉ có 1 mức giá |
 
 
 ---
@@ -249,13 +249,13 @@
 
 ## 5.2.12. Mẫu công việc
 
-**job_templates**(id, job_type_id, service_template_id, name, estimated_hours, requires_qc)
+**job_templates**(id, job_type_id, service_id, name, estimated_hours, requires_qc)
 
 | STT | Thuộc tính | Kiểu | Miền giá trị | Ý nghĩa | Ghi chú |
 |-----|-----------|------|-------------|---------|---------|
 | 1 | id | INT | Khóa chính, tự tăng | Mã mẫu công việc | |
 | 2 | job_type_id | INT | Khóa ngoại → job_types(id), không rỗng | Mã loại công việc | |
-| 3 | service_template_id | INT | Khóa ngoại → service_templates(id), cho phép rỗng | Mã mẫu dịch vụ | Sinh Job từ mẫu dịch vụ |
+| 3 | service_id | INT | Khóa ngoại → services(id), cho phép rỗng | Mã mẫu dịch vụ | Sinh Job từ mẫu dịch vụ |
 | 4 | name | VARCHAR(150) | Không rỗng | Tên mẫu công việc | |
 | 5 | estimated_hours | DECIMAL(5,2) | Không rỗng | Số giờ dự kiến | |
 | 6 | requires_qc | BOOLEAN | Mặc định TRUE | Yêu cầu kiểm định chất lượng | |
@@ -283,12 +283,12 @@
 
 ## 5.2.14. Mẫu kiểm tra
 
-**inspection_templates**(id, service_template_id, template_type, name, is_active)
+**inspection_templates**(id, service_id, template_type, name, is_active)
 
 | STT | Thuộc tính | Kiểu | Miền giá trị | Ý nghĩa | Ghi chú |
 |-----|-----------|------|-------------|---------|---------|
 | 1 | id | INT | Khóa chính, tự tăng | Mã mẫu kiểm tra | |
-| 2 | service_template_id | INT | Khóa ngoại → service_templates(id), cho phép rỗng | Mã mẫu dịch vụ | NULL = áp dụng chung |
+| 2 | service_id | INT | Khóa ngoại → services(id), cho phép rỗng | Mã mẫu dịch vụ | NULL = áp dụng chung |
 | 3 | template_type | ENUM | 'INSPECTION', 'QC' | Loại mẫu | Kiểm tra ban đầu vs Kiểm định chất lượng |
 | 4 | name | VARCHAR(150) | Không rỗng | Tên mẫu kiểm tra | |
 | 5 | is_active | BOOLEAN | Mặc định TRUE | Trạng thái hoạt động | |
@@ -340,13 +340,13 @@ Bảng này lưu trữ thông tin lịch hẹn do khách hàng (hoặc nhân vi�
 
 ## 5.2.17. Dịch vụ mong muốn khi đặt lịch
 
-**appointment_services**(id, appointment_id, service_template_id)
+**appointment_services**(id, appointment_id, service_id)
 
 | STT | Thuộc tính | Kiểu | Miền giá trị | Ý nghĩa | Ghi chú |
 |-----|-----------|------|-------------|---------|---------|
 | 1 | id | INT | Khóa chính, tự tăng | Mã dịch vụ lịch hẹn | |
 | 2 | appointment_id | INT | Khóa ngoại → appointments(id), không rỗng | Mã lịch hẹn | |
-| 3 | service_template_id | INT | Khóa ngoại → service_templates(id), không rỗng | Mã mẫu dịch vụ | |
+| 3 | service_id | INT | Khóa ngoại → services(id), không rỗng | Mã mẫu dịch vụ | |
 
 
 ---
@@ -375,7 +375,7 @@ Bảng này ghi nhận sự kiện khách hàng mang xe trực tiếp đến xư
 
 ## 5.2.19. Dịch vụ tiếp nhận
 
-**intake_services**(id, intake_id, service_template_id)
+**intake_services**(id, intake_id, service_id)
 
 Bảng này lưu trữ các dịch vụ dự kiến mà khách hàng yêu cầu lúc tạo Phiếu tiếp nhận (Intake). Sau khi Intake được chuyển đổi (Converted) thành Work Order, các dịch vụ này sẽ được copy sang thành các chi tiết dịch vụ của Phiếu công việc (`wo_services`).
 
@@ -383,7 +383,7 @@ Bảng này lưu trữ các dịch vụ dự kiến mà khách hàng yêu cầu 
 |-----|-----------|------|-------------|---------|---------|
 | 1 | id | INT | Khóa chính, tự tăng | Mã dịch vụ tiếp nhận | |
 | 2 | intake_id | INT | Khóa ngoại → intake_records(id), không rỗng | Mã phiếu tiếp nhận | |
-| 3 | service_template_id | INT | Khóa ngoại → service_templates(id), không rỗng | Mã mẫu dịch vụ | |
+| 3 | service_id | INT | Khóa ngoại → services(id), không rỗng | Mã mẫu dịch vụ | |
 
 
 ---
@@ -438,13 +438,13 @@ Bảng này lưu trữ các dịch vụ dự kiến mà khách hàng yêu cầu 
 
 ## 5.2.22. Dịch vụ trong phiếu công việc
 
-**wo_services**(id, work_order_id, service_template_id, name, pricing_type, status, sort_order, created_at, updated_at)
+**wo_services**(id, work_order_id, service_id, name, pricing_type, status, sort_order, created_at, updated_at)
 
 | STT | Thuộc tính | Kiểu | Miền giá trị | Ý nghĩa | Ghi chú |
 |-----|-----------|------|-------------|---------|---------|
 | 1 | id | INT | Khóa chính, tự tăng | Mã dịch vụ trong phiếu | |
 | 2 | work_order_id | INT | Khóa ngoại → work_orders(id), không rỗng | Mã phiếu công việc | |
-| 3 | service_template_id | INT | Khóa ngoại → service_templates(id), cho phép rỗng | Mã mẫu dịch vụ | NULL = custom service |
+| 3 | service_id | INT | Khóa ngoại → services(id), cho phép rỗng | Mã mẫu dịch vụ | NULL = custom service |
 | 4 | name | VARCHAR(255) | Không rỗng | Tên dịch vụ | Snapshot tên từ template |
 | 5 | pricing_type | ENUM | 'FIXED', 'VEHICLE_SIZE', 'LABOUR_PARTS' | Loại tính giá | Snapshot |
 | 6 | status | ENUM | 'PENDING', 'IN_PROGRESS', 'COMPLETED'; mặc định 'PENDING' | Trạng thái dịch vụ | QC Pass → COMPLETED |

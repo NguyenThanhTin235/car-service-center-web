@@ -115,7 +115,7 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
 
   // Filter catalog: exclude already-added services
   const existingTemplateIds = services
-    .map((s) => s.service_template_id)
+    .map((s) => s.service_id)
     .filter((id): id is number => id !== null);
 
   const filteredCatalog = catalog.filter(
@@ -267,7 +267,7 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
                       <span className="text-body-sm font-medium text-on-surface">{svc.name}</span>
                     </td>
                     <td className="px-4 py-3.5 text-body-sm text-on-surface-variant">
-                      {svc.service_template?.category?.name || '—'}
+                      {svc.service?.category?.name || '—'}
                     </td>
                     <td className="px-4 py-3.5">
                       <span className="text-body-sm text-on-surface-variant">

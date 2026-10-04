@@ -371,7 +371,7 @@ export default function IntakePage() {
                               <div className="flex flex-col items-start gap-1">
                                 {record.services.map(s => (
                                   <span key={s.id} className="bg-surface-container-high text-on-surface-variant text-[11px] px-2 py-0.5 rounded border border-outline-variant whitespace-nowrap">
-                                    {s.service_template?.name}
+                                    {s.service?.name || 'Dịch vụ'}
                                   </span>
                                 ))}
                               </div>
@@ -403,21 +403,6 @@ export default function IntakePage() {
                                   title="Xem Phiếu Công Việc (RO)"
                                 >
                                   <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-                              {activeTab === 'CONVERTED' && (
-                                <button
-                                  onClick={() => {
-                                    // Mở modal hiển thị chi tiết phiếu công việc
-                                    const woId = (record as any).work_order?.id || (record as any).work_order_id; // giả định backend trả về
-                                    if (woId) {
-                                      setSelectedWorkOrderId(woId);
-                                    } else {
-                                      toast.error('Phiếu công việc chưa được đồng bộ, vui lòng thử lại sau.');
-                                    }
-                                  }}
-                                  className="flex items-center gap-1 px-3 py-1 bg-primary text-on-primary rounded-md text-label-sm font-semibold hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm"
-                                >
-                                  <span className="material-symbols-outlined text-[16px]">receipt_long</span>
-                                  Xem Phiếu
                                 </button>
                               )}
                             </div>
@@ -501,11 +486,6 @@ export default function IntakePage() {
       {/* READ-ONLY WO MODAL */}
       {viewingROId && (
         <ReadOnlyROModal workOrderId={viewingROId} onClose={() => setViewingROId(null)} />
-      {selectedWorkOrderId && (
-        <StaffWorkOrderDetailModal
-          workOrderId={selectedWorkOrderId}
-          onClose={() => setSelectedWorkOrderId(null)}
-        />
       )}
     </div>
   );

@@ -7,25 +7,23 @@ import EvidenceUploader from './EvidenceUploader';
 interface TabCheckinProps {
   workOrder?: WorkOrder;
   refetchWO?: () => void;
+  isReadOnly?: boolean;
 }
 
-export default function TabCheckinInspection({ workOrder, refetchWO }: TabCheckinProps) {
+export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly: propIsReadOnly = false }: TabCheckinProps) {
   const [jobTypes, setJobTypes] = useState<string[]>([]);
   const [customerReported, setCustomerReported] = useState<string[]>([]);
 
   useEffect(() => {
     if (workOrder?.intake_record?.services) {
       const uniqueCategories = Array.from(
-        new Set(workOrder.intake_record.services.map(s => s.service_template.category?.name).filter(Boolean))
+        new Set(workOrder.intake_record.services.map((s: any) => s.service?.category?.name).filter(Boolean))
       ) as string[];
       setJobTypes(uniqueCategories);
     }
     // You can parse specific tags from notes if needed, but for now we leave customerReported empty 
     // since the notes are displayed below in the UI anyway.
   }, [workOrder]);
-export default function TabCheckinInspection({ isReadOnly = false }: { isReadOnly?: boolean }) {
-  const [jobTypes, setJobTypes] = useState<string[]>(['Bảo dưỡng', 'Sửa chữa Gầm/Điện', 'Đồng sơn', 'Bảo hiểm']);
-  const [customerReported, setCustomerReported] = useState<string[]>(['Đèn báo lỗi', 'Móp méo thân xe (sau)']);
 
   const toggleJobType = (type: string) => {
     setJobTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
@@ -134,7 +132,7 @@ export default function TabCheckinInspection({ isReadOnly = false }: { isReadOnl
     }
   };
 
-  const existingTemplateIds = workOrder?.services?.map((s) => s.service_template_id).filter((id): id is number => id !== null) || [];
+  const existingTemplateIds = workOrder?.services?.map((s) => s.service_id).filter((id): id is number => id !== null) || [];
   const filteredCatalog = catalog.filter((t) => !existingTemplateIds.includes(t.id) && t.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   // Form state for Check-in
@@ -249,7 +247,7 @@ export default function TabCheckinInspection({ isReadOnly = false }: { isReadOnl
   };
 
   const isConfirmed = workOrder?.check_in?.status === 'CONFIRMED';
-  const isReadOnly = !isEditing || isConfirmed;
+  const isReadOnly = propIsReadOnly || !isEditing || isConfirmed;
   const showRejectReason = workOrder?.check_in?.status === 'REJECTED' || workOrder?.check_in?.status === 'REVISION_REQUIRED';
 
   return (
