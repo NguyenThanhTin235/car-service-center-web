@@ -20,7 +20,7 @@ const TABS = [
   { id: 'history', number: 8, label: 'Lịch sử sửa chữa', component: TabServiceHistory },
 ];
 
-export default function WOTabContainer() {
+export default function WOTabContainer({ isReadOnly = false }: { isReadOnly?: boolean }) {
   const [activeTab, setActiveTab] = useState('checkin');
 
   const ActiveComponent = TABS.find((t) => t.id === activeTab)?.component || TabCheckinInspection;
@@ -54,8 +54,9 @@ export default function WOTabContainer() {
       </div>
 
       {/* Tab Content Area */}
-      <div className="py-6">
-        <ActiveComponent />
+      <div className={`py-6 relative ${isReadOnly ? 'pointer-events-none select-none opacity-90' : ''}`}>
+        {isReadOnly && <div className="absolute inset-0 z-50 bg-transparent" title="Chế độ chỉ xem" />}
+        <ActiveComponent isReadOnly={isReadOnly} />
       </div>
     </div>
   );

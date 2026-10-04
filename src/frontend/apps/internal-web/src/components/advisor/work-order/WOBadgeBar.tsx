@@ -44,20 +44,20 @@ export default function WOBadgeBar({ licensePlate, vehicleClass, vehicleName, cu
   const mappedStatus = statusMap[statusBadge] || statusBadge;
 
   return (
-    <div className="flex items-center justify-between px-6 py-2 border-b border-outline-variant bg-surface-container-lowest">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center justify-between px-6 py-3 border-b border-outline-variant bg-surface-container-lowest gap-6 overflow-x-auto styled-scrollbar">
+      <div className="flex items-center gap-3 shrink-0 whitespace-nowrap">
         {/* License Plate */}
-        <span className="px-2.5 py-1 border border-outline-variant rounded text-label-md font-bold font-code-mono text-on-surface shadow-sm uppercase">
+        <span className="px-2.5 py-1 border border-outline-variant rounded text-label-md font-bold font-code-mono text-on-surface shadow-sm uppercase whitespace-nowrap">
           {licensePlate}
         </span>
         
         {/* Vehicle Class (PHV, Normal, etc) */}
-        <span className="px-2 py-1 bg-tertiary-fixed text-on-tertiary-fixed rounded text-label-sm font-bold uppercase tracking-wide">
+        <span className="px-2 py-1 bg-tertiary-fixed text-on-tertiary-fixed rounded text-label-sm font-bold uppercase tracking-wide whitespace-nowrap">
           {vehicleClass}
         </span>
         
         {/* Vehicle Name & Customer */}
-        <div className="flex items-center gap-2 text-body-md">
+        <div className="flex items-center gap-2 text-body-md whitespace-nowrap">
           <span className="font-semibold text-on-surface">{vehicleName}</span>
           <span className="text-outline font-bold">·</span>
           <span className="text-on-surface-variant">{customerName}</span>
@@ -65,7 +65,7 @@ export default function WOBadgeBar({ licensePlate, vehicleClass, vehicleName, cu
       </div>
       
       {/* Status Pipeline */}
-      <div className="flex-shrink-0 ml-4">
+      <div className="flex-shrink-0">
         <ChevronPipeline statuses={STATUS_PIPELINE} currentStatus={mappedStatus} />
       </div>
     </div>

@@ -10,22 +10,22 @@ import {
 
 const router = Router();
 
-// Tất cả route yêu cầu đăng nhập + quyền SA (Cố vấn dịch vụ)
-router.use(authenticate, authorize('SA'));
+// Tất cả route yêu cầu đăng nhập
+router.use(authenticate);
 
 // Lấy danh sách hàng đợi tiếp nhận (cho Advisor tạo WO)
-router.get('/intake-queue', getIntakeQueueForAdvisor);
+router.get('/intake-queue', authorize('SA'), getIntakeQueueForAdvisor);
 
 // Lấy danh sách phiếu công việc
-router.get('/', getWorkOrders);
+router.get('/', authorize('SA', 'DESK STAFF'), getWorkOrders);
 
 // Tạo phiếu công việc từ phiếu tiếp nhận
-router.post('/', createWorkOrder);
+router.post('/', authorize('SA'), createWorkOrder);
 
 // Lấy chi tiết phiếu công việc
-router.get('/:id', getWorkOrderById);
+router.get('/:id', authorize('SA', 'DESK STAFF'), getWorkOrderById);
 
 // Cập nhật thông tin phiếu công việc (UC-29)
-router.put('/:id', updateWorkOrder);
+router.put('/:id', authorize('SA'), updateWorkOrder);
 
 export default router;

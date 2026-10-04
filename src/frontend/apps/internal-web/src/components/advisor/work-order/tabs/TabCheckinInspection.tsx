@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 
-export default function TabCheckinInspection() {
+export default function TabCheckinInspection({ isReadOnly = false }: { isReadOnly?: boolean }) {
   const [jobTypes, setJobTypes] = useState<string[]>(['Bảo dưỡng', 'Sửa chữa Gầm/Điện', 'Đồng sơn', 'Bảo hiểm']);
   const [customerReported, setCustomerReported] = useState<string[]>(['Đèn báo lỗi', 'Móp méo thân xe (sau)']);
 
@@ -194,32 +194,43 @@ export default function TabCheckinInspection() {
           </div>
 
           {/* Right: Sign-off control */}
-          <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-xl overflow-hidden shadow-sm">
-            <div className="flex items-center justify-between bg-surface-container-low px-4 py-3 border-b border-outline-variant/40">
+          <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-xl overflow-hidden shadow-sm h-full flex flex-col">
+            <div className="flex items-center justify-between bg-surface-container-low px-4 py-3 border-b border-outline-variant/40 shrink-0">
               <div className="flex items-center gap-4">
                 <span className="font-bold text-body-md text-on-surface">Ký xác nhận</span>
-                <div className="flex bg-surface-container-highest rounded text-body-sm overflow-hidden">
-                  <button className="px-3 py-1 bg-[#62475E] text-white font-medium">Trực tiếp</button>
-                  <button className="px-3 py-1 text-on-surface-variant font-medium hover:bg-surface-container-low">Link từ xa</button>
-                </div>
+                {!isReadOnly && (
+                  <div className="flex bg-surface-container-highest rounded text-body-sm overflow-hidden">
+                    <button className="px-3 py-1 bg-[#62475E] text-white font-medium">Trực tiếp</button>
+                    <button className="px-3 py-1 text-on-surface-variant font-medium hover:bg-surface-container-low">Link từ xa</button>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-1.5 text-body-sm text-on-surface-variant font-bold">
                 <div className="w-2 h-2 rounded-full bg-outline"></div> Nháp
               </div>
             </div>
-            <div className="p-6">
-              <p className="text-body-sm text-on-surface-variant mb-6">
-                Khách hàng đang ở quầy lễ tân. Đưa họ máy tính bảng — họ sẽ xem phần tổng hợp, đánh dấu đồng ý và ký tên. Cố vấn chứng kiến nhưng không được ký thay họ.
-              </p>
-              
-              <button className="bg-[#62475E] hover:bg-[#4E394A] text-white px-4 py-2 rounded font-bold text-label-md flex items-center gap-2 transition-colors mb-6 shadow-sm">
-                <span className="material-symbols-outlined text-[18px]">draw</span> Đưa cho khách / mở màn hình ký
-              </button>
-              
-              <div className="flex items-center gap-2 text-outline text-body-sm">
-                <span className="material-symbols-outlined text-[18px]">print</span>
-                <span>In bản thỏa thuận <span className="opacity-70">(Chỉ khả dụng sau khi khách ký)</span></span>
-              </div>
+            <div className="p-6 flex-1 flex flex-col justify-center">
+              {isReadOnly ? (
+                <div className="flex flex-col items-center justify-center text-outline h-full py-4">
+                  <span className="material-symbols-outlined text-[48px] mb-2 opacity-50">edit_document</span>
+                  <span className="text-body-md italic text-center">Chưa có chữ ký của khách hàng</span>
+                </div>
+              ) : (
+                <>
+                  <p className="text-body-sm text-on-surface-variant mb-6">
+                    Khách hàng đang ở quầy lễ tân. Đưa họ máy tính bảng — họ sẽ xem phần tổng hợp, đánh dấu đồng ý và ký tên. Cố vấn chứng kiến nhưng không được ký thay họ.
+                  </p>
+                  
+                  <button className="bg-[#62475E] hover:bg-[#4E394A] text-white px-4 py-2 rounded font-bold text-label-md flex items-center gap-2 transition-colors mb-6 shadow-sm w-fit">
+                    <span className="material-symbols-outlined text-[18px]">draw</span> Đưa cho khách / mở màn hình ký
+                  </button>
+                  
+                  <div className="flex items-center gap-2 text-outline text-body-sm mt-auto">
+                    <span className="material-symbols-outlined text-[18px]">print</span>
+                    <span>In bản thỏa thuận <span className="opacity-70">(Chỉ khả dụng sau khi khách ký)</span></span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
