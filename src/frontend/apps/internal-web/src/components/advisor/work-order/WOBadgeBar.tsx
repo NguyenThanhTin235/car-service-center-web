@@ -41,7 +41,7 @@ export default function WOBadgeBar({ licensePlate, vehicleClass, vehicleName, cu
     <div className="flex flex-col gap-3 px-6 py-3 border-b border-outline-variant bg-surface-container-lowest overflow-hidden">
       <div className="flex flex-wrap items-center gap-3">
         {/* License Plate */}
-        <span className="px-2.5 py-1 border border-outline-variant rounded text-label-md font-bold font-code-mono text-on-surface shadow-sm uppercase">
+        <span className="px-2.5 py-1 border border-outline-variant rounded text-label-md font-bold font-code-mono text-on-surface shadow-sm uppercase whitespace-nowrap">
           {licensePlate}
         </span>
         

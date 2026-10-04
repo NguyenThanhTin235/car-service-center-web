@@ -38,7 +38,7 @@ export class CustomerService {
   /**
    * Lấy danh sách khách hàng (tìm kiếm theo tên, sđt, biển số)
    */
-  async getCustomers(searchQuery?: string, page: number = 1, limit: number = 10) {
+  async getCustomers(searchQuery?: string, page: number = 1, limit: number = 10, status: 'active' | 'deleted' | 'all' = 'active') {
     let whereClause: Prisma.UserWhereInput = {
       roles: {
         some: {
@@ -48,6 +48,12 @@ export class CustomerService {
         },
       },
     };
+
+    if (status === 'active') {
+      whereClause.is_active = true;
+    } else if (status === 'deleted') {
+      whereClause.is_active = false;
+    }
 
     if (searchQuery) {
       whereClause = {
@@ -290,4 +296,96 @@ export class CustomerService {
       return updatedUser;
     });
   }
+
+  /**
+   * Xóa mềm khách hàng (UC-25)
+   */
+  async softDeleteCustomer(id: number) {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) throw new Error('Không tìm thấy khách hàng.');
+    if (!user.is_active) throw new Error('Khách hàng này đã bị xóa hoặc vô hiệu hóa từ trước.');
+
+    // 1. Kiểm tra Work Order chưa hoàn thành
+    const activeWO = await prisma.workOrder.findFirst({
+      where: {
+        customer_id: id,
+        status: {
+          notIn: ['CLOSED', 'CANCELLED']
+        }
+      }
+    });
+    if (activeWO) {
+      throw new Error(`Không thể xóa do khách hàng đang có phiếu công việc chưa hoàn thành (Mã: ${activeWO.wo_number}).`);
+    }
+
+    // 2. Kiểm tra Invoice chưa thanh toán
+    const pendingInvoice = await prisma.invoice.findFirst({
+      where: {
+        work_order: { customer_id: id },
+        status: {
+          in: ['DRAFT', 'ISSUED']
+        }
+      }
+    });
+    if (pendingInvoice) {
+      throw new Error(`Không thể xóa do khách hàng đang có hóa đơn chưa thanh toán (Mã: ${pendingInvoice.invoice_number}).`);
+    }
+
+    // 3. Kiểm tra Appointment (Lịch hẹn) đang mở
+    const activeAppointment = await prisma.appointment.findFirst({
+      where: {
+        customer_id: id,
+        status: {
+          in: ['REQUESTED', 'CONFIRMED', 'RESCHEDULED', 'ARRIVED']
+        }
+      }
+    });
+    if (activeAppointment) {
+      throw new Error('Không thể xóa do khách hàng đang có lịch hẹn chưa xử lý.');
+    }
+
+    // Nếu không vướng ràng buộc, thực hiện xóa mềm (chuyển is_active = false)
+    return await prisma.user.update({
+      where: { id },
+      data: { is_active: false }
+    });
+  }
+
+  /**
+   * Khôi phục khách hàng đã xóa mềm
+   */
+  async restoreCustomer(id: number) {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) throw new Error('Không tìm thấy khách hàng.');
+    if (user.is_active) throw new Error('Khách hàng này đang hoạt động.');
+
+    return await prisma.user.update({
+      where: { id },
+      data: { is_active: true }
+    });
+  }
+
+  /**
+   * Xóa vĩnh viễn khách hàng (Chỉ dành cho khách hàng chưa có bất kỳ dữ liệu liên kết nào)
+   */
+  async hardDeleteCustomer(id: number) {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) throw new Error('Không tìm thấy khách hàng.');
+
+    // Xóa vĩnh viễn thì phải xóa Role của user trước, sau đó xóa Vehicle, rồi mới xóa User.
+    // Dùng transaction để đảm bảo toàn vẹn.
+    return await prisma.$transaction(async (tx) => {
+      // Xóa xe của khách hàng
+      await tx.vehicle.deleteMany({ where: { customer_id: id } });
+      
+      // Xóa roles của khách hàng
+      await tx.userRole.deleteMany({ where: { user_id: id } });
+
+      // Xóa user
+      return await tx.user.delete({ where: { id } });
+    }).catch((error) => {
+      throw new Error('Không thể xóa vĩnh viễn khách hàng vì có dữ liệu liên quan (hóa đơn, lịch hẹn...).');
+    });
+  }
 }
+

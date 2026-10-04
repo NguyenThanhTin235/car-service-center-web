@@ -23,6 +23,9 @@ export default function TabCheckinInspection({ workOrder, refetchWO }: TabChecki
     // You can parse specific tags from notes if needed, but for now we leave customerReported empty 
     // since the notes are displayed below in the UI anyway.
   }, [workOrder]);
+export default function TabCheckinInspection({ isReadOnly = false }: { isReadOnly?: boolean }) {
+  const [jobTypes, setJobTypes] = useState<string[]>(['Bảo dưỡng', 'Sửa chữa Gầm/Điện', 'Đồng sơn', 'Bảo hiểm']);
+  const [customerReported, setCustomerReported] = useState<string[]>(['Đèn báo lỗi', 'Móp méo thân xe (sau)']);
 
   const toggleJobType = (type: string) => {
     setJobTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);

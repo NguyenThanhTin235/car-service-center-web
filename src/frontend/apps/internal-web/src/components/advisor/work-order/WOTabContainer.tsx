@@ -28,6 +28,7 @@ interface WOTabContainerProps {
 }
 
 export default function WOTabContainer({ workOrder, refetchWO }: WOTabContainerProps) {
+export default function WOTabContainer({ isReadOnly = false }: { isReadOnly?: boolean }) {
   const [activeTab, setActiveTab] = useState('checkin');
 
   const ActiveComponent = TABS.find((t) => t.id === activeTab)?.component || TabCheckinInspection;
