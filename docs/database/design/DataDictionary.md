@@ -1,4 +1,4 @@
-# TỪ ĐIỂN DỮ LIỆU – HỆ THỐNG QUẢN LÝ TRUNG TÂM DỊCH VỤ Ô TÔ
+﻿# TỪ ĐIỂN DỮ LIỆU – HỆ THỐNG QUẢN LÝ TRUNG TÂM DỊCH VỤ Ô TÔ
 
 > **DBMS:** MySQL 8.x · **ORM:** Prisma · **Khóa chính:** INT AUTO_INCREMENT  
 > **Phiên bản:** 1.0 · **Cập nhật:** 2026-09-08
@@ -62,7 +62,7 @@
 
 ---
 
-## 3.1.1. Người dùng
+## 5.2.1. Người dùng
 
 **users**(id, email, phone, password_hash, full_name, address, user_type, is_active, otp_code, otp_expires_at, created_at, updated_at)
 
@@ -80,11 +80,10 @@
 | 11 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 12 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 1. Người dùng (users)*
 
 ---
 
-## 3.1.2. Vai trò
+## 5.2.2. Vai trò
 
 **roles**(id, name, description)
 
@@ -94,11 +93,10 @@
 | 2 | name | VARCHAR(50) | Duy nhất, không rỗng | Tên vai trò | CUSTOMER, FRONT_DESK, SERVICE_ADVISOR, SERVICE_MANAGER, ADMIN |
 | 3 | description | VARCHAR(255) | Cho phép rỗng | Mô tả vai trò | |
 
-*Bảng 2. Vai trò (roles)*
 
 ---
 
-## 3.1.3. Phân quyền người dùng
+## 5.2.3. Phân quyền người dùng
 
 **user_roles**(id, user_id, role_id)
 
@@ -109,11 +107,10 @@
 | 3 | role_id | INT | Khóa ngoại → roles(id), không rỗng | Mã vai trò | |
 | | | | UNIQUE(user_id, role_id) | | Một người dùng có thể có nhiều vai trò |
 
-*Bảng 3. Phân quyền người dùng (user_roles)*
 
 ---
 
-## 3.1.4. Nhân viên
+## 5.2.4. Nhân viên
 
 **employees**(id, user_id, full_name, position, is_active, created_at, updated_at)
 
@@ -127,11 +124,10 @@
 | 6 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 7 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 4. Nhân viên (employees)*
 
 ---
 
-## 3.1.5. Kỹ năng
+## 5.2.5. Kỹ năng
 
 **skills**(id, name, is_active)
 
@@ -141,11 +137,10 @@
 | 2 | name | VARCHAR(100) | Không rỗng | Tên kỹ năng | Ví dụ: Engine Repair, Brake System |
 | 3 | is_active | BOOLEAN | Mặc định TRUE | Trạng thái hoạt động | |
 
-*Bảng 5. Kỹ năng (skills)*
 
 ---
 
-## 3.1.6. Kỹ năng nhân viên
+## 5.2.6. Kỹ năng nhân viên
 
 **employee_skills**(id, employee_id, skill_id)
 
@@ -156,7 +151,6 @@
 | 3 | skill_id | INT | Khóa ngoại → skills(id), không rỗng | Mã kỹ năng | |
 | | | | UNIQUE(employee_id, skill_id) | | Mỗi kỹ năng chỉ gán 1 lần cho 1 nhân viên |
 
-*Bảng 6. Kỹ năng nhân viên (employee_skills)*
 
 ---
 
@@ -164,7 +158,7 @@
 
 ---
 
-## 3.2.1. Phương tiện
+## 5.2.7. Phương tiện
 
 **vehicles**(id, customer_id, license_plate, make, model, year, color, vehicle_size, status, created_at, updated_at)
 
@@ -182,7 +176,6 @@
 | 10 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 11 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 7. Phương tiện (vehicles)*
 
 ---
 
@@ -190,7 +183,7 @@
 
 ---
 
-## 3.3.1. Danh mục dịch vụ
+## 5.2.8. Danh mục dịch vụ
 
 **service_categories**(id, name, description, is_active, sort_order)
 
@@ -202,11 +195,10 @@
 | 4 | is_active | BOOLEAN | Mặc định TRUE | Trạng thái hoạt động | |
 | 5 | sort_order | INT | Mặc định 0 | Thứ tự hiển thị | |
 
-*Bảng 8. Danh mục dịch vụ (service_categories)*
 
 ---
 
-## 3.3.2. Mẫu dịch vụ
+## 5.2.9. Mẫu dịch vụ
 
 **service_templates**(id, category_id, name, description, pricing_type, fixed_price, is_active, created_at, updated_at)
 
@@ -222,11 +214,10 @@
 | 8 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 9 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 9. Mẫu dịch vụ (service_templates)*
 
 ---
 
-## 3.3.3. Giá theo kích thước xe
+## 5.2.10. Giá theo kích thước xe
 
 **vehicle_size_prices**(id, service_template_id, vehicle_size, price)
 
@@ -238,11 +229,10 @@
 | 4 | price | DECIMAL(12,2) | Không rỗng | Giá dịch vụ | |
 | | | | UNIQUE(service_template_id, vehicle_size) | | Mỗi kích thước xe chỉ có 1 mức giá |
 
-*Bảng 10. Giá theo kích thước xe (vehicle_size_prices)*
 
 ---
 
-## 3.3.4. Loại công việc
+## 5.2.11. Loại công việc
 
 **job_types**(id, name, description, hourly_rate, is_active)
 
@@ -254,11 +244,10 @@
 | 4 | hourly_rate | DECIMAL(12,2) | Không rỗng | Đơn giá nhân công theo giờ | CT-PRICE01: Labour Amount = Hours × Rate |
 | 5 | is_active | BOOLEAN | Mặc định TRUE | Trạng thái hoạt động | |
 
-*Bảng 11. Loại công việc (job_types)*
 
 ---
 
-## 3.3.5. Mẫu công việc
+## 5.2.12. Mẫu công việc
 
 **job_templates**(id, job_type_id, service_template_id, name, estimated_hours, requires_qc)
 
@@ -271,11 +260,10 @@
 | 5 | estimated_hours | DECIMAL(5,2) | Không rỗng | Số giờ dự kiến | |
 | 6 | requires_qc | BOOLEAN | Mặc định TRUE | Yêu cầu kiểm định chất lượng | |
 
-*Bảng 12. Mẫu công việc (job_templates)*
 
 ---
 
-## 3.3.6. Phụ tùng mặc định của mẫu công việc
+## 5.2.13. Phụ tùng mặc định của mẫu công việc
 
 **job_template_parts**(id, job_template_id, item_id, default_quantity)
 
@@ -286,7 +274,6 @@
 | 3 | item_id | INT | Khóa ngoại → inventory_items(id), không rỗng | Mã mặt hàng kho | |
 | 4 | default_quantity | DECIMAL(10,2) | Không rỗng | Số lượng mặc định | |
 
-*Bảng 13. Phụ tùng mặc định của mẫu công việc (job_template_parts)*
 
 ---
 
@@ -294,7 +281,7 @@
 
 ---
 
-## 3.4.1. Mẫu kiểm tra
+## 5.2.14. Mẫu kiểm tra
 
 **inspection_templates**(id, service_template_id, template_type, name, is_active)
 
@@ -306,11 +293,10 @@
 | 4 | name | VARCHAR(150) | Không rỗng | Tên mẫu kiểm tra | |
 | 5 | is_active | BOOLEAN | Mặc định TRUE | Trạng thái hoạt động | |
 
-*Bảng 14. Mẫu kiểm tra (inspection_templates)*
 
 ---
 
-## 3.4.2. Hạng mục mẫu kiểm tra
+## 5.2.15. Hạng mục mẫu kiểm tra
 
 **inspection_template_items**(id, template_id, name, is_required, sort_order)
 
@@ -322,7 +308,6 @@
 | 4 | is_required | BOOLEAN | Mặc định TRUE | Bắt buộc hay không | |
 | 5 | sort_order | INT | Mặc định 0 | Thứ tự hiển thị | |
 
-*Bảng 15. Hạng mục mẫu kiểm tra (inspection_template_items)*
 
 ---
 
@@ -330,9 +315,11 @@
 
 ---
 
-## 3.5.1. Lịch hẹn
+## 5.2.16. Lịch hẹn
 
 **appointments**(id, customer_id, vehicle_id, scheduled_date, scheduled_time, status, cancel_reason, notes, created_by_id, created_at, updated_at)
+
+Bảng này lưu trữ thông tin lịch hẹn do khách hàng (hoặc nhân viên tạo thay). Dựa trên lịch hẹn, xưởng sẽ sắp xếp nhân lực. Trạng thái (status) chạy qua vòng đời: REQUESTED -> CONFIRMED -> ARRIVED (khi xe thực sự có mặt tại xưởng) hoặc CANCELLED/RESCHEDULED.
 
 | STT | Thuộc tính | Kiểu | Miền giá trị | Ý nghĩa | Ghi chú |
 |-----|-----------|------|-------------|---------|---------|
@@ -348,11 +335,10 @@
 | 10 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 11 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 16. Lịch hẹn (appointments)*
 
 ---
 
-## 3.5.2. Dịch vụ mong muốn khi đặt lịch
+## 5.2.17. Dịch vụ mong muốn khi đặt lịch
 
 **appointment_services**(id, appointment_id, service_template_id)
 
@@ -362,27 +348,43 @@
 | 2 | appointment_id | INT | Khóa ngoại → appointments(id), không rỗng | Mã lịch hẹn | |
 | 3 | service_template_id | INT | Khóa ngoại → service_templates(id), không rỗng | Mã mẫu dịch vụ | |
 
-*Bảng 17. Dịch vụ mong muốn khi đặt lịch (appointment_services)*
 
 ---
 
-## 3.5.3. Phiếu tiếp nhận
+## 5.2.18. Phiếu tiếp nhận
 
-**intake_records**(id, customer_id, vehicle_id, intake_type, arrived_at, tow_company, notes, created_by_id, created_at)
+**intake_records**(id, customer_id, vehicle_id, intake_type, status, arrived_at, tow_company, notes, created_by_id, created_at)
+
+Bảng này ghi nhận sự kiện khách hàng mang xe trực tiếp đến xưởng (WALK_IN) hoặc xe được kéo tới (TOW_IN), cũng như tiếp nhận từ một Lịch hẹn (APPOINTMENT) đã tới xưởng. Đây là bước đệm để Lễ tân (Front Desk) hoặc Cố vấn (Advisor) xử lý trước khi tạo chính thức Phiếu công việc (Work Order). Khi tiếp nhận được chuyển thành Work Order, trạng thái sẽ thành 'CONVERTED'.
 
 | STT | Thuộc tính | Kiểu | Miền giá trị | Ý nghĩa | Ghi chú |
 |-----|-----------|------|-------------|---------|---------|
 | 1 | id | INT | Khóa chính, tự tăng | Mã phiếu tiếp nhận | |
 | 2 | customer_id | INT | Khóa ngoại → users(id), không rỗng | Mã khách hàng | |
 | 3 | vehicle_id | INT | Khóa ngoại → vehicles(id), không rỗng | Mã phương tiện | |
-| 4 | intake_type | ENUM | 'WALK_IN', 'TOW_IN' | Loại tiếp nhận | Walk-in hoặc Tow-in |
-| 5 | arrived_at | DATETIME | Không rỗng | Thời điểm xe đến | |
-| 6 | tow_company | VARCHAR(255) | Cho phép rỗng | Tên người/đơn vị bàn giao | Chỉ dùng cho Tow-in |
-| 7 | notes | TEXT | Cho phép rỗng | Nhu cầu dịch vụ | |
-| 8 | created_by_id | INT | Khóa ngoại → users(id), không rỗng | Nhân viên quầy tạo | |
-| 9 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
+| 4 | intake_type | ENUM | 'WALK_IN', 'TOW_IN', 'APPOINTMENT' | Loại tiếp nhận | Hình thức xe đến xưởng |
+| 5 | status | ENUM | 'QUEUED', 'CONVERTED', 'CANCELLED' | Trạng thái tiếp nhận | Mặc định QUEUED |
+| 6 | arrived_at | DATETIME | Không rỗng | Thời điểm xe đến | |
+| 7 | tow_company | VARCHAR(255) | Cho phép rỗng | Tên người/đơn vị bàn giao | Chỉ dùng cho Tow-in |
+| 8 | notes | TEXT | Cho phép rỗng | Nhu cầu dịch vụ | |
+| 9 | created_by_id | INT | Khóa ngoại → users(id), không rỗng | Nhân viên quầy tạo | |
+| 10 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 
-*Bảng 18. Phiếu tiếp nhận (intake_records)*
+
+---
+
+## 5.2.19. Dịch vụ tiếp nhận
+
+**intake_services**(id, intake_id, service_template_id)
+
+Bảng này lưu trữ các dịch vụ dự kiến mà khách hàng yêu cầu lúc tạo Phiếu tiếp nhận (Intake). Sau khi Intake được chuyển đổi (Converted) thành Work Order, các dịch vụ này sẽ được copy sang thành các chi tiết dịch vụ của Phiếu công việc (`wo_services`).
+
+| STT | Thuộc tính | Kiểu | Miền giá trị | Ý nghĩa | Ghi chú |
+|-----|-----------|------|-------------|---------|---------|
+| 1 | id | INT | Khóa chính, tự tăng | Mã dịch vụ tiếp nhận | |
+| 2 | intake_id | INT | Khóa ngoại → intake_records(id), không rỗng | Mã phiếu tiếp nhận | |
+| 3 | service_template_id | INT | Khóa ngoại → service_templates(id), không rỗng | Mã mẫu dịch vụ | |
+
 
 ---
 
@@ -390,7 +392,7 @@
 
 ---
 
-## 3.6.1. Phiếu công việc
+## 5.2.20. Phiếu công việc
 
 **work_orders**(id, wo_number, customer_id, vehicle_id, advisor_id, appointment_id, intake_record_id, status, created_by_id, created_at, updated_at)
 
@@ -408,11 +410,10 @@
 | 10 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 11 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 19. Phiếu công việc (work_orders)*
 
 ---
 
-## 3.6.2. Ghi nhận tình trạng xe
+## 5.2.21. Ghi nhận tình trạng xe
 
 **check_ins**(id, work_order_id, mileage, fuel_level, complaint, belongings, exterior_condition, confirmed_by_customer_id, confirmed_at, evidence_urls, created_by_id, created_at, updated_at)
 
@@ -432,11 +433,10 @@
 | 12 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 13 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 20. Ghi nhận tình trạng xe (check_ins)*
 
 ---
 
-## 3.6.3. Dịch vụ trong phiếu công việc
+## 5.2.22. Dịch vụ trong phiếu công việc
 
 **wo_services**(id, work_order_id, service_template_id, name, pricing_type, status, sort_order, created_at, updated_at)
 
@@ -452,11 +452,10 @@
 | 8 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 9 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 21. Dịch vụ trong phiếu công việc (wo_services)*
 
 ---
 
-## 3.6.4. Phiếu kiểm tra xe
+## 5.2.23. Phiếu kiểm tra xe
 
 **inspections**(id, work_order_id, wo_service_id, template_id, status, created_by_id, created_at, updated_at)
 
@@ -471,11 +470,10 @@
 | 7 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 8 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 22. Phiếu kiểm tra xe (inspections)*
 
 ---
 
-## 3.6.5. Kết quả kiểm tra từng hạng mục
+## 5.2.24. Kết quả kiểm tra từng hạng mục
 
 **inspection_results**(id, inspection_id, template_item_id, item_name, result, notes)
 
@@ -488,11 +486,10 @@
 | 5 | result | ENUM | 'PASS', 'FAIL', 'MONITOR' | Kết quả kiểm tra | Đạt / Không đạt / Cần theo dõi |
 | 6 | notes | TEXT | Cho phép rỗng | Ghi chú | |
 
-*Bảng 23. Kết quả kiểm tra từng hạng mục (inspection_results)*
 
 ---
 
-## 3.6.6. Phát hiện vấn đề
+## 5.2.25. Phát hiện vấn đề
 
 **findings**(id, inspection_id, description, severity, recommendation, evidence_urls, is_visible_to_customer, created_by_id, created_at, updated_at)
 
@@ -509,11 +506,10 @@
 | 9 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 10 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 24. Phát hiện vấn đề (findings)*
 
 ---
 
-## 3.6.7. Công việc
+## 5.2.26. Công việc
 
 **jobs**(id, wo_service_id, job_type_id, job_template_id, name, description, estimated_hours, actual_hours, status, result_notes, is_rework, parent_job_id, created_by_id, started_at, completed_at, created_at, updated_at)
 
@@ -537,11 +533,10 @@
 | 16 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 17 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 25. Công việc (jobs)*
 
 ---
 
-## 3.6.8. Liên kết phát hiện – công việc
+## 5.2.27. Liên kết phát hiện – công việc
 
 **job_findings**(id, job_id, finding_id)
 
@@ -552,11 +547,10 @@
 | 3 | finding_id | INT | Khóa ngoại → findings(id), không rỗng | Mã phát hiện | |
 | | | | UNIQUE(job_id, finding_id) | | Finding ↔ Job quan hệ N:M |
 
-*Bảng 26. Liên kết phát hiện – công việc (job_findings)*
 
 ---
 
-## 3.6.9. Dòng nhân công
+## 5.2.28. Dòng nhân công
 
 **job_labours**(id, job_id, labour_type, description, employee_id, estimated_hours, billable_hours, hourly_rate, amount, created_at, updated_at)
 
@@ -574,11 +568,10 @@
 | 10 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 11 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 27. Dòng nhân công (job_labours)*
 
 ---
 
-## 3.6.10. Dòng phụ tùng/vật tư
+## 5.2.29. Dòng phụ tùng/vật tư
 
 **job_parts**(id, job_id, item_id, planned_quantity, used_quantity, unit_price, amount, created_at, updated_at)
 
@@ -594,7 +587,6 @@
 | 8 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 9 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 28. Dòng phụ tùng/vật tư (job_parts)*
 
 ---
 
@@ -602,7 +594,7 @@
 
 ---
 
-## 3.7.1. Báo giá
+## 5.2.30. Báo giá
 
 **quotations**(id, work_order_id, quotation_number, quotation_type, status, subtotal, discount_amount, tax_rate, tax_amount, grand_total, approved_at, approved_by_id, reject_reason, created_by_id, created_at, updated_at)
 
@@ -625,11 +617,10 @@
 | 15 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 16 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 29. Báo giá (quotations)*
 
 ---
 
-## 3.7.2. Dòng báo giá
+## 5.2.31. Dòng báo giá
 
 **quotation_lines**(id, quotation_id, line_type, wo_service_id, job_id, job_labour_id, job_part_id, description, quantity, snapshot_unit_price, amount, sort_order)
 
@@ -648,7 +639,6 @@
 | 11 | amount | DECIMAL(12,2) | Không rỗng | Thành tiền | = quantity × snapshot_unit_price |
 | 12 | sort_order | INT | Mặc định 0 | Thứ tự hiển thị | |
 
-*Bảng 30. Dòng báo giá (quotation_lines)*
 
 ---
 
@@ -656,7 +646,7 @@
 
 ---
 
-## 3.8.1. Phiếu kiểm định chất lượng
+## 5.2.32. Phiếu kiểm định chất lượng
 
 **qc_records**(id, wo_service_id, template_id, overall_result, notes, inspector_id, created_at)
 
@@ -670,11 +660,10 @@
 | 6 | inspector_id | INT | Khóa ngoại → users(id), không rỗng | Người kiểm định | |
 | 7 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 
-*Bảng 31. Phiếu kiểm định chất lượng (qc_records)*
 
 ---
 
-## 3.8.2. Hạng mục kiểm định chất lượng
+## 5.2.33. Hạng mục kiểm định chất lượng
 
 **qc_items**(id, qc_record_id, template_item_id, item_name, result, notes)
 
@@ -687,7 +676,6 @@
 | 5 | result | ENUM | 'PASS', 'FAIL' | Kết quả | Đạt / Không đạt |
 | 6 | notes | TEXT | Cho phép rỗng | Ghi chú | |
 
-*Bảng 32. Hạng mục kiểm định chất lượng (qc_items)*
 
 ---
 
@@ -695,7 +683,7 @@
 
 ---
 
-## 3.9.1. Nhà cung cấp
+## 5.2.34. Nhà cung cấp
 
 **suppliers**(id, name, contact_person, phone, email, address, is_active, created_at, updated_at)
 
@@ -711,11 +699,10 @@
 | 8 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 9 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 33. Nhà cung cấp (suppliers)*
 
 ---
 
-## 3.9.2. Mặt hàng kho
+## 5.2.35. Mặt hàng kho
 
 **inventory_items**(id, sku, name, item_type, uom_id, selling_price, average_cost, on_hand, reorder_level, is_active, created_at, updated_at)
 
@@ -734,11 +721,10 @@
 | 11 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 12 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 34. Mặt hàng kho (inventory_items)*
 
 ---
 
-## 3.9.3. Phiếu nhập kho
+## 5.2.36. Phiếu nhập kho
 
 **goods_receipts**(id, receipt_number, supplier_id, receipt_type, reference_no, received_date, notes, created_by_id, created_at)
 
@@ -754,11 +740,10 @@
 | 8 | created_by_id | INT | Khóa ngoại → users(id), không rỗng | Người tạo | |
 | 9 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 
-*Bảng 35. Phiếu nhập kho (goods_receipts)*
 
 ---
 
-## 3.9.4. Chi tiết phiếu nhập kho
+## 5.2.37. Chi tiết phiếu nhập kho
 
 **goods_receipt_items**(id, receipt_id, item_id, quantity, unit_cost)
 
@@ -770,11 +755,10 @@
 | 4 | quantity | DECIMAL(10,2) | Không rỗng | Số lượng nhận | |
 | 5 | unit_cost | DECIMAL(12,4) | Không rỗng | Đơn giá mua vào | |
 
-*Bảng 36. Chi tiết phiếu nhập kho (goods_receipt_items)*
 
 ---
 
-## 3.9.5. Lịch sử kho (Stock Card)
+## 5.2.38. Lịch sử kho (Stock Card)
 
 **stock_movements**(id, item_id, movement_type, reference_type, reference_id, job_id, quantity, unit_cost, balance_after, notes, created_by_id, created_at)
 
@@ -793,11 +777,10 @@
 | 11 | created_by_id | INT | Khóa ngoại → users(id), không rỗng | Người thực hiện | |
 | 12 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 
-*Bảng 37. Lịch sử kho (stock_movements)*
 
 ---
 
-## 3.9.6. Phiếu điều chỉnh kho
+## 5.2.39. Phiếu điều chỉnh kho
 
 **stock_adjustments**(id, item_id, adjustment_quantity, reason, status, requested_by_id, approved_by_id, approved_at, reject_reason, created_at)
 
@@ -814,7 +797,6 @@
 | 9 | reject_reason | TEXT | Cho phép rỗng | Lý do từ chối | |
 | 10 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 
-*Bảng 38. Phiếu điều chỉnh kho (stock_adjustments)*
 
 ---
 
@@ -822,7 +804,7 @@
 
 ---
 
-## 3.10.1. Yêu cầu thanh toán
+## 5.2.40. Yêu cầu thanh toán
 
 **billing_requests**(id, work_order_id, status, requested_by_id, created_at)
 
@@ -834,11 +816,10 @@
 | 4 | requested_by_id | INT | Khóa ngoại → users(id), không rỗng | Cố vấn dịch vụ gửi | |
 | 5 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 
-*Bảng 39. Yêu cầu thanh toán (billing_requests)*
 
 ---
 
-## 3.10.2. Hóa đơn
+## 5.2.41. Hóa đơn
 
 **invoices**(id, work_order_id, invoice_number, status, subtotal, discount_amount, tax_amount, total_amount, amount_due, issued_at, created_by_id, created_at, updated_at)
 
@@ -858,11 +839,10 @@
 | 12 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 | 13 | updated_at | DATETIME | Tự cập nhật | Thời điểm cập nhật cuối | |
 
-*Bảng 40. Hóa đơn (invoices)*
 
 ---
 
-## 3.10.3. Dòng hóa đơn
+## 5.2.42. Dòng hóa đơn
 
 **invoice_lines**(id, invoice_id, line_type, quotation_line_id, wo_service_id, job_id, description, quantity, unit_price, amount, sort_order)
 
@@ -880,11 +860,10 @@
 | 10 | amount | DECIMAL(12,2) | Không rỗng | Thành tiền | |
 | 11 | sort_order | INT | Mặc định 0 | Thứ tự hiển thị | |
 
-*Bảng 41. Dòng hóa đơn (invoice_lines)*
 
 ---
 
-## 3.10.4. Thanh toán
+## 5.2.43. Thanh toán
 
 **payments**(id, invoice_id, payment_method, amount, transaction_ref, status, paid_at, received_by_id, created_at)
 
@@ -900,11 +879,10 @@
 | 8 | received_by_id | INT | Khóa ngoại → users(id), không rỗng | Nhân viên quầy nhận | |
 | 9 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 
-*Bảng 42. Thanh toán (payments)*
 
 ---
 
-## 3.10.5. Bàn giao xe
+## 5.2.44. Bàn giao xe
 
 **vehicle_releases**(id, work_order_id, release_notes, released_by_id, released_at, confirmed_by_customer_id, confirmed_at)
 
@@ -918,7 +896,6 @@
 | 6 | confirmed_by_customer_id | INT | Khóa ngoại → users(id), cho phép rỗng | Khách hàng xác nhận | UC-14 |
 | 7 | confirmed_at | DATETIME | Cho phép rỗng | Thời điểm xác nhận | |
 
-*Bảng 43. Bàn giao xe (vehicle_releases)*
 
 ---
 
@@ -926,7 +903,7 @@
 
 ---
 
-## 3.11.1. Danh mục hệ thống
+## 5.2.45. Danh mục hệ thống
 
 **system_catalogs**(id, catalog_type, name, description, is_active, sort_order)
 
@@ -940,11 +917,10 @@
 | 6 | sort_order | INT | Mặc định 0 | Thứ tự hiển thị | |
 | | | | UNIQUE(catalog_type, name) | | Không trùng tên trong cùng loại |
 
-*Bảng 44. Danh mục hệ thống (system_catalogs)*
 
 ---
 
-## 3.11.2. Thông báo
+## 5.2.46. Thông báo
 
 **notifications**(id, user_id, notification_type, title, message, entity_type, entity_id, is_read, read_at, created_at)
 
@@ -961,11 +937,10 @@
 | 9 | read_at | DATETIME | Cho phép rỗng | Thời điểm đánh dấu đã đọc | |
 | 10 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm tạo | |
 
-*Bảng 45. Thông báo (notifications)*
 
 ---
 
-## 3.11.3. Nhật ký thay đổi
+## 5.2.47. Nhật ký thay đổi
 
 **audit_logs**(id, user_id, action, entity_type, entity_id, before_data, after_data, ip_address, user_agent, created_at)
 
@@ -982,4 +957,3 @@
 | 9 | user_agent | VARCHAR(500) | Cho phép rỗng | Thông tin trình duyệt | |
 | 10 | created_at | DATETIME | Mặc định CURRENT_TIMESTAMP | Thời điểm ghi nhật ký | |
 
-*Bảng 46. Nhật ký thay đổi (audit_logs)*

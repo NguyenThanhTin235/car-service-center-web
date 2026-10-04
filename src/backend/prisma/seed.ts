@@ -19,10 +19,10 @@ async function main() {
   console.log('✅ Database cleared.');
 
   // 2. CREATE ROLES
-  const rolesData = ['ADMIN', 'MANAGER', 'DESK STAFF', 'QC', 'CUSTOMER'];
+  const rolesData = ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA', 'CUSTOMER'];
   const createdRoles = [];
   for (const r of rolesData) createdRoles.push(await prisma.role.create({ data: { name: r } }));
-  const [roleAdmin, roleManager, roleDeskStaff, roleQC, roleCustomer] = createdRoles;
+  const [roleAdmin, roleManager, roleDeskStaff, roleSA, roleCustomer] = createdRoles;
 
   // 3. CREATE SYSTEM CATALOGS
   const uomCatalog = await prisma.systemCatalog.create({ data: { catalog_type: CatalogType.UOM, name: 'Cái' } });
@@ -44,14 +44,18 @@ async function main() {
 
   const staffs = [];
   const positions = [EmployeePosition.ADVISOR, EmployeePosition.QC_STAFF, EmployeePosition.TECHNICIAN, EmployeePosition.DETAILER, EmployeePosition.OTHER];
-  const staffRoles = [roleAdmin, roleManager, roleDeskStaff, roleQC, roleDeskStaff];
-  for (let i = 1; i <= 10; i++) {
+  const staffRoles = [roleAdmin, roleManager, roleDeskStaff, roleSA, roleDeskStaff];
+  const rolePrefixes = ['admin', 'manager', 'deskstaff', 'sa', 'staff'];
+  
+  for (let i = 0; i < 10; i++) {
+    const roleObj = staffRoles[i % staffRoles.length];
+    const prefix = rolePrefixes[i % rolePrefixes.length];
     staffs.push(await prisma.user.create({
       data: {
-        email: `staff${i}@carservice.com`, phone: `08111111${i.toString().padStart(2, '0')}`,
-        password_hash: passwordHash, full_name: `Nhân Viên ${i}`,
-        roles: { create: { role_id: staffRoles[i % staffRoles.length].id } },
-        employee: { create: { full_name: `Nhân Viên ${i}`, position: positions[i % positions.length] } }
+        email: `${prefix}${Math.floor(i / 5) + 1}@carservice.com`, phone: `08111111${(i + 1).toString().padStart(2, '0')}`,
+        password_hash: passwordHash, full_name: `Nhân Viên ${i + 1}`,
+        roles: { create: { role_id: roleObj.id } },
+        employee: { create: { full_name: `Nhân Viên ${i + 1}`, position: positions[i % positions.length] } }
       },
       include: { employee: true }
     }));
@@ -89,16 +93,29 @@ async function main() {
   const serviceCategories = [];
   for (let i = 1; i <= 5; i++) serviceCategories.push(await prisma.serviceCategory.create({ data: { name: `Danh mục Dịch vụ ${i}` } }));
 
+  const serviceNames = [
+    'Bảo dưỡng định kỳ',
+    'Sửa chữa động cơ và hộp số',
+    'Chăm sóc nội thất',
+    'Hệ thống phanh',
+    'Sửa chữa lốp xe',
+    'Sửa chữa hệ thống điện',
+    'Sửa chữa hệ thống chiếu sáng',
+    'Sữa chữa điều hòa',
+    'Dịch vụ khác 1',
+    'Dịch vụ khác 2'
+  ];
+
   const serviceTemplates = [];
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 0; i < 10; i++) {
     const st = await prisma.serviceTemplate.create({
-      data: { category_id: serviceCategories[i % 5].id, name: `Dịch vụ mẫu ${i}`, pricing_type: PricingType.VEHICLE_SIZE }
+      data: { category_id: serviceCategories[i % 5].id, name: serviceNames[i], pricing_type: PricingType.VEHICLE_SIZE }
     });
     serviceTemplates.push(st);
     
     // VehicleSizePrice
     for (const size of sizes) {
-      await prisma.vehicleSizePrice.create({ data: { service_template_id: st.id, vehicle_size: size, price: 50000 * i } });
+      await prisma.vehicleSizePrice.create({ data: { service_template_id: st.id, vehicle_size: size, price: 50000 * (i + 1) } });
     }
   }
 
@@ -166,110 +183,141 @@ async function main() {
     const qc = staffs[3]; 
 
     // Appointment
+    const isConfirmed = i >= 3; // 2 last appointments will be CONFIRMED for testing
     const appt = await prisma.appointment.create({
-      data: { customer_id: cust.id, vehicle_id: veh.id, scheduled_date: new Date(), scheduled_time: new Date(), status: AppointmentStatus.ARRIVED, created_by_id: adv.id }
+      data: { 
+        customer_id: cust.id, 
+        vehicle_id: veh.id, 
+        scheduled_date: new Date(), 
+        scheduled_time: new Date(), 
+        status: isConfirmed ? AppointmentStatus.CONFIRMED : AppointmentStatus.ARRIVED, 
+        created_by_id: adv.id 
+      }
     });
     await prisma.appointmentService.create({ data: { appointment_id: appt.id, service_template_id: serviceTemplates[i].id } });
 
-    // IntakeRecord
-    const intake = await prisma.intakeRecord.create({
-      data: { customer_id: cust.id, vehicle_id: veh.id, intake_type: IntakeType.WALK_IN, status: IntakeStatus.CONVERTED, arrived_at: new Date(), created_by_id: adv.id }
-    });
-
-    // Fake specific statuses based on i
-    let woStatus: WorkOrderStatus = WorkOrderStatus.DRAFT;
-    let jobStatus: JobStatus = JobStatus.PLANNED;
-    let partStatus: PartAllocationStatus = PartAllocationStatus.PLANNED;
-    let invStatus: InvoiceStatus = InvoiceStatus.DRAFT;
-
-    if (i === 1) { woStatus = WorkOrderStatus.IN_PROGRESS; jobStatus = JobStatus.IN_PROGRESS; partStatus = PartAllocationStatus.ISSUED; }
-    if (i === 2) { woStatus = WorkOrderStatus.PENDING_APPROVAL; }
-    if (i === 3) { woStatus = WorkOrderStatus.RELEASED; jobStatus = JobStatus.REWORK; partStatus = PartAllocationStatus.USED; }
-    if (i === 4) { woStatus = WorkOrderStatus.CLOSED; jobStatus = JobStatus.COMPLETED; invStatus = InvoiceStatus.PAID; }
-
-    // WorkOrder
-    const wo = await prisma.workOrder.create({
-      data: { wo_number: `WO-${i+1}`, customer_id: cust.id, vehicle_id: veh.id, advisor_id: adv.id, source_type: WorkOrderSourceType.APPOINTMENT, appointment_id: appt.id, intake_record_id: intake.id, status: woStatus, created_by_id: adv.id }
-    });
-
-    // CheckIn
-    await prisma.checkIn.create({
-      data: { work_order_id: wo.id, mileage: 10000, fuel_level: FuelLevel.HALF, complaint: `Lỗi ${i}`, exterior_condition: 'Bình thường', status: CheckInStatus.CONFIRMED, created_by_id: adv.id, confirmed_by_customer_id: cust.id, confirmed_at: new Date(), evidence_urls: [DEFAULT_IMAGE] }
-    });
-
-    // WoService
-    const wos = await prisma.woService.create({
-      data: { work_order_id: wo.id, service_template_id: serviceTemplates[i].id, name: `Dịch vụ ${i}`, pricing_type: PricingType.FIXED, status: ServiceStatus.COMPLETED }
-    });
-
-    // Job, JobLabour, JobPart
-    const job = await prisma.job.create({
-      data: { wo_service_id: wos.id, job_type_id: jobTypes[i].id, job_template_id: jobTemplates[i].id, name: `Job ${i}`, estimated_hours: 1, status: jobStatus, created_by_id: tech.id }
-    });
-    
-    await prisma.jobLabour.create({
-      data: { job_id: job.id, job_type_id: jobTypes[i].id, employee_id: tech.employee?.id, estimated_hours: 1, billable_hours: 1, hourly_rate: 100000 }
-    });
-
-    const jPart = await prisma.jobPart.create({
-      data: { job_id: job.id, item_id: inventoryItems[i].id, status: partStatus, planned_quantity: 1, issued_quantity: 1, unit_price: 200000 }
-    });
-
-    // Inspection, Result & Finding
-    const insp = await prisma.inspection.create({
-      data: { work_order_id: wo.id, wo_service_id: wos.id, template_id: inspTemplates[i].id, status: InspectionStatus.COMPLETED, created_by_id: tech.id }
-    });
-
-    const inspItems = await prisma.inspectionTemplateItem.findMany({ where: { template_id: inspTemplates[i].id } });
-    if (inspItems.length > 0) {
-      await prisma.inspectionResult.create({
-        data: { inspection_id: insp.id, template_item_id: inspItems[0].id, item_name: inspItems[0].name, result: InspectionResultValue.PASS }
+    // IntakeRecord (only if ARRIVED)
+    let intake = null;
+    if (!isConfirmed) {
+      intake = await prisma.intakeRecord.create({
+        data: { customer_id: cust.id, vehicle_id: veh.id, intake_type: IntakeType.WALK_IN, status: IntakeStatus.CONVERTED, arrived_at: new Date(), created_by_id: adv.id }
       });
     }
 
-    const finding = await prisma.finding.create({
-      data: { inspection_id: insp.id, status: (i > 2 ? FindingStatus.RESOLVED : FindingStatus.NEW), description: `Finding ${i}`, severity: Severity.MEDIUM, marker_type: MarkerType.OTHER, evidence_urls: [DEFAULT_IMAGE], created_by_id: tech.id }
-    });
+    if (intake) {
+      // Fake specific statuses based on i
+      let woStatus: WorkOrderStatus = WorkOrderStatus.DRAFT;
+      let jobStatus: JobStatus = JobStatus.PLANNED;
+      let partStatus: PartAllocationStatus = PartAllocationStatus.PLANNED;
+      let invStatus: InvoiceStatus = InvoiceStatus.DRAFT;
 
-    await prisma.jobFinding.create({ data: { job_id: job.id, finding_id: finding.id } });
+      if (i === 1) { woStatus = WorkOrderStatus.IN_PROGRESS; jobStatus = JobStatus.IN_PROGRESS; partStatus = PartAllocationStatus.ISSUED; }
+      if (i === 2) { woStatus = WorkOrderStatus.PENDING_APPROVAL; }
+      // i === 3 and i === 4 won't enter this block because intake is null for them.
 
-    // QcRecord & QcItem
-    const qcr = await prisma.qcRecord.create({
-      data: { wo_service_id: wos.id, overall_result: (i === 3 ? QcResult.FAIL : QcResult.PASS), inspector_id: qc.id }
-    });
-    await prisma.qcItem.create({
-      data: { qc_record_id: qcr.id, item_name: 'Kiểm tra cơ bản', result: (i === 3 ? QcResult.FAIL : QcResult.PASS) }
-    });
-
-    // Invoicing
-
-    if (i >= 2) {
-      const quo = await prisma.quotation.create({
-        data: { work_order_id: wo.id, quotation_number: `Q-${i}`, quotation_type: QuotationType.PRIMARY, status: QuotationStatus.APPROVED, subtotal: 300000, grand_total: 300000, created_by_id: adv.id,
-          lines: { create: { wo_service_id: wos.id, line_type: LineType.PACKAGE, description: `Gói ${i}`, quantity: 1, snapshot_unit_price: 300000, amount: 300000 } }
-        }
-      });
-    }
-
-    if (i >= 3) {
-      const inv = await prisma.invoice.create({
-        data: { work_order_id: wo.id, invoice_number: `INV-${i}`, status: invStatus, subtotal: 300000, total_amount: 300000, amount_due: 0, created_by_id: adv.id,
-          lines: { create: { line_type: LineType.PACKAGE, description: `Hóa đơn ${i}`, quantity: 1, unit_price: 300000, amount: 300000 } }
-        }
+      // WorkOrder
+      const wo = await prisma.workOrder.create({
+        data: { wo_number: `WO-${i+1}`, customer_id: cust.id, vehicle_id: veh.id, advisor_id: adv.id, source_type: WorkOrderSourceType.APPOINTMENT, appointment_id: appt.id, intake_record_id: intake.id, status: woStatus, created_by_id: adv.id }
       });
 
-      if (invStatus === InvoiceStatus.PAID) {
-        await prisma.payment.create({
-          data: { invoice_id: inv.id, payment_method: PaymentMethod.CASH, amount: 300000, transaction_ref: `TXN-${i}`, status: PaymentStatus.SUCCESS, paid_at: new Date(), received_by_id: adv.id }
+      // CheckIn
+      await prisma.checkIn.create({
+        data: { work_order_id: wo.id, mileage: 10000, fuel_level: FuelLevel.HALF, complaint: `Lỗi ${i}`, exterior_condition: 'Bình thường', status: CheckInStatus.CONFIRMED, created_by_id: adv.id, confirmed_by_customer_id: cust.id, confirmed_at: new Date(), evidence_urls: [DEFAULT_IMAGE] }
+      });
+
+      // WoService
+      const wos = await prisma.woService.create({
+        data: { work_order_id: wo.id, service_template_id: serviceTemplates[i].id, name: `Dịch vụ ${i}`, pricing_type: PricingType.FIXED, status: ServiceStatus.COMPLETED }
+      });
+
+      // Job, JobLabour, JobPart
+      const job = await prisma.job.create({
+        data: { wo_service_id: wos.id, job_type_id: jobTypes[i].id, job_template_id: jobTemplates[i].id, name: `Job ${i}`, estimated_hours: 1, status: jobStatus, created_by_id: tech.id }
+      });
+      
+      await prisma.jobLabour.create({
+        data: { job_id: job.id, job_type_id: jobTypes[i].id, employee_id: tech.employee?.id, estimated_hours: 1, billable_hours: 1, hourly_rate: 100000 }
+      });
+
+      const jPart = await prisma.jobPart.create({
+        data: { job_id: job.id, item_id: inventoryItems[i].id, status: partStatus, planned_quantity: 1, issued_quantity: 1, unit_price: 200000 }
+      });
+
+      // Inspection, Result & Finding
+      const insp = await prisma.inspection.create({
+        data: { work_order_id: wo.id, wo_service_id: wos.id, template_id: inspTemplates[i].id, status: InspectionStatus.COMPLETED, created_by_id: tech.id }
+      });
+
+      const inspItems = await prisma.inspectionTemplateItem.findMany({ where: { template_id: inspTemplates[i].id } });
+      if (inspItems.length > 0) {
+        await prisma.inspectionResult.create({
+          data: { inspection_id: insp.id, template_item_id: inspItems[0].id, item_name: inspItems[0].name, result: InspectionResultValue.PASS }
+        });
+      }
+
+      const finding = await prisma.finding.create({
+        data: { inspection_id: insp.id, status: FindingStatus.NEW, description: `Finding ${i}`, severity: Severity.MEDIUM, marker_type: MarkerType.OTHER, evidence_urls: [DEFAULT_IMAGE], created_by_id: tech.id }
+      });
+
+      await prisma.jobFinding.create({ data: { job_id: job.id, finding_id: finding.id } });
+
+      // QcRecord & QcItem
+      const qcr = await prisma.qcRecord.create({
+        data: { wo_service_id: wos.id, overall_result: QcResult.PASS, inspector_id: qc.id }
+      });
+      await prisma.qcItem.create({
+        data: { qc_record_id: qcr.id, item_name: 'Kiểm tra cơ bản', result: QcResult.PASS }
+      });
+
+      // Invoicing
+
+      if (i >= 2) {
+        const quo = await prisma.quotation.create({
+          data: { work_order_id: wo.id, quotation_number: `Q-${i}`, quotation_type: QuotationType.PRIMARY, status: QuotationStatus.APPROVED, subtotal: 300000, grand_total: 300000, created_by_id: adv.id,
+            lines: { create: { wo_service_id: wos.id, line_type: LineType.PACKAGE, description: `Gói ${i}`, quantity: 1, snapshot_unit_price: 300000, amount: 300000 } }
+          }
+        });
+      }
+
+      if (i >= 2) {
+        const inv = await prisma.invoice.create({
+          data: { work_order_id: wo.id, invoice_number: `INV-${i}`, status: invStatus, subtotal: 300000, total_amount: 300000, amount_due: 0, created_by_id: adv.id,
+            lines: { create: { line_type: LineType.PACKAGE, description: `Hóa đơn ${i}`, quantity: 1, unit_price: 300000, amount: 300000 } }
+          }
         });
       }
     }
+  }
 
-    if (i >= 3 && woStatus === WorkOrderStatus.CLOSED || woStatus === WorkOrderStatus.RELEASED) {
-      await prisma.vehicleRelease.create({
-        data: { work_order_id: wo.id, released_by_id: adv.id, released_at: new Date(), confirmed_by_customer_id: cust.id, confirmed_at: new Date() }
-      });
-    }
+  // 9.5 CREATE INTAKE QUEUE DATA
+  console.log('📝 Creating QUEUED IntakeRecords for Intake Queue...');
+  for (let i = 5; i < 9; i++) {
+    // We can reuse the same customers and vehicles or alternate
+    const cust = customers[i % 5];
+    const veh = vehicles[(i % 5) * 2 + 1]; // Use the second vehicle of the customer
+    const adv = staffs[0];
+    
+    const arrivedTime = new Date();
+    arrivedTime.setMinutes(arrivedTime.getMinutes() - (i * 10)); // Subtract 10, 20, 30... mins
+    
+    const queueRecord = await prisma.intakeRecord.create({
+      data: {
+        customer_id: cust.id,
+        vehicle_id: veh.id,
+        intake_type: i % 2 === 0 ? IntakeType.TOW_IN : IntakeType.WALK_IN,
+        status: IntakeStatus.QUEUED,
+        arrived_at: arrivedTime,
+        created_by_id: adv.id
+      }
+    });
+    
+    // Add some requested services for the queued record
+    await prisma.intakeService.create({
+      data: {
+        intake_id: queueRecord.id,
+        service_template_id: serviceTemplates[i % 5].id,
+      }
+    });
   }
 
   // 10. SYSTEM LOGS
@@ -277,9 +325,11 @@ async function main() {
     await prisma.notification.create({
       data: { user_id: customers[i].id, notification_type: NotificationType.GENERAL, title: 'Welcome', message: 'Welcome to Car Service Center' }
     });
-    await prisma.auditLog.create({
-      data: { user_id: staffs[0].id, action: AuditAction.CREATE, entity_type: 'WORK_ORDER', entity_id: i + 1 }
-    });
+    if (i < 4) {
+      await prisma.auditLog.create({
+        data: { user_id: staffs[0].id, action: AuditAction.CREATE, entity_type: 'WORK_ORDER', entity_id: i + 1 }
+      });
+    }
   }
 
   console.log('✅ MASSIVE FULL Seed Data completed successfully! All tables seeded.');

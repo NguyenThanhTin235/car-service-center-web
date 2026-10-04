@@ -30,10 +30,17 @@ docs/
 │       ├── DataDictionary.md        # Từ điển dữ liệu chi tiết cho từng cột/bảng.
 │       ├── schema.sql               # File export SQL thuần.
 │       └── schema.prisma            # File Prisma Schema gốc (để backup/tham chiếu).
+├── diagrams/
+│   └── sequence/                    # Sơ đồ tuần tự (Sequence diagrams) cho các vai trò (admin, staff, customer...)
+├── phases/                          # Kế hoạch phát triển theo từng giai đoạn
+├── plan/                            # Kế hoạch chi tiết (plan.md)
 ├── requirements/
 │   ├── Requirement.md               # Tài liệu đặc tả yêu cầu, FR/NFR, quy tắc nghiệp vụ.
-│   ├── UseCasev2.md                 # Mô tả các luồng Use Case chi tiết (phiên bản 2.0).
+│   ├── UseCase.md                   # Mô tả các luồng Use Case chi tiết.
 │   └── ObjectStatus.md              # Tài liệu định nghĩa chi tiết vòng đời và trạng thái các đối tượng.
+├── UI/                              # Tài liệu & thiết kế UI cho các portal (auth, admin, manager, staff, qc, cus)
+│   ├── DESIGN_SYSTEM.md             # Hệ thống thiết kế chuẩn
+│   └── UI_DESIGN_PLAN.md            # Kế hoạch thiết kế giao diện
 └── DirectoryStructure.md            # (Là file này) Cấu trúc thư mục.
 ```
 
@@ -46,56 +53,46 @@ Xây dựng theo mô hình MVC kết hợp Repository Pattern trên nền **Expr
 ```text
 src/backend/
 ├── prisma/
-│   ├── migrations/                  # Lịch sử các bản cập nhật schema DB.
 │   └── schema.prisma                # Định nghĩa các model Database cho Prisma.
 ├── src/
-│   ├── config/                      # Cấu hình biến môi trường, Redis, Cloudinary, DB connection.
-│   ├── constants/                   # Các hằng số (Enums, HTTP Status Codes, Messages).
 │   ├── controllers/                 # [Controller] Nhận HTTP Request, gọi Service và trả về Response.
-│   ├── dtos/                        # Data Transfer Objects (Định dạng dữ liệu giao tiếp).
-│   ├── errors/                      # Các class Custom Error (VD: NotFoundError, ValidationError).
-│   ├── loggers/                     # Cấu hình ghi log hệ thống (Winston/Pino).
-│   ├── middlewares/                 # Các hàm can thiệp Request (AuthGuard, RateLimiter, ErrorHandler).
-│   ├── models/                      # Định nghĩa Models logic (nếu không dùng thuần Prisma).
-│   ├── repositories/                # [Repository] Chứa các truy vấn tương tác trực tiếp với Database.
+│   ├── middlewares/                 # Các hàm can thiệp Request (Auth, ErrorHandler).
 │   ├── routes/                      # [Router] Định tuyến URL tới các Controllers.
 │   ├── services/                    # [Service] Chứa Business Logic cốt lõi (tính toán, xử lý nghiệp vụ).
-│   ├── utils/                       # Các hàm Helper dùng chung (format date, hash password...).
+│   ├── utils/                       # Các hàm Helper dùng chung (jwt, prisma instance...).
 │   ├── validations/                 # Validation Schema (Joi/Zod) để validate input.
 │   ├── app.ts                       # Khởi tạo Express, nạp middlewares và routes (Không listen port).
 │   └── server.ts                    # Entry point: Nạp env, khởi chạy HTTP Server (Listen port).
 ├── .env                             # Biến môi trường (chứa DATABASE_URL, SECRET_KEY...).
+├── .env.example                     # File mẫu biến môi trường.
 ├── package.json                     # Quản lý dependencies (express, prisma, typescript...).
 └── tsconfig.json                    # Cấu hình biên dịch TypeScript.
 ```
 
 ---
 
-## 📂 3. Frontend Web (`src/frontend/`)
+## 📂 3. Frontend Web (`src/frontend/` - Monorepo)
 
-Xây dựng theo chuẩn **Next.js (App Router)** với **Tailwind CSS** và **Redux Toolkit**.
+Xây dựng theo chuẩn **Next.js (App Router)** với **Tailwind CSS** và **Redux Toolkit**. 
+Sử dụng cấu trúc **Monorepo (npm workspaces)** để tách biệt Web cho Khách hàng và Web Nội bộ, nhưng vẫn tái sử dụng được UI Components.
 
 ```text
 src/frontend/
-├── src/
-│   ├── app/                         # [Next.js App Router] Chứa các Pages và Layouts.
-│   │   ├── (auth)/                  # Route group cho các trang đăng nhập/đăng ký.
-│   │   ├── (dashboard)/             # Route group cho khu vực quản trị/nhân viên.
-│   │   ├── layout.tsx               # Root layout.
-│   │   └── page.tsx                 # Trang chủ (Landing page).
-│   ├── components/                  # [UI] Chứa các React Components dùng chung (Button, Modal, Table...).
-│   ├── hooks/                       # Các Custom React Hooks (useAuth, useFetch...).
-│   ├── lib/                         # Chứa các config thư viện (Axios client, Konva helpers...).
-│   ├── store/                       # [Redux] Quản lý global state.
-│   │   ├── slices/                  # Các Redux Toolkit slices (authSlice, cartSlice...).
-│   │   └── store.ts                 # File cấu hình Redux Store chính.
-│   ├── types/                       # Định nghĩa các TypeScript Interfaces/Types cho Frontend.
-│   └── utils/                       # Hàm helper tiện ích cho Frontend.
-├── public/                          # Chứa các file tĩnh (Hình ảnh, Icons, Fonts).
-├── next.config.ts                   # Cấu hình Next.js.
-├── tailwind.config.ts               # Cấu hình Tailwind CSS (Màu sắc, Font, Spacing).
-├── package.json                     # Quản lý dependencies Frontend.
-└── tsconfig.json                    # Cấu hình biên dịch TypeScript cho Frontend.
+├── apps/
+│   ├── customer-web/                # [Port 3000] Web dành cho Khách hàng & Guest.
+│   │   ├── src/app/(auth)/          # Đăng nhập, đăng ký cho khách.
+│   │   ├── src/app/(customer)/      # Lịch sử dịch vụ, tiến độ sửa chữa, lịch hẹn.
+│   │   ├── src/app/(public)/        # Trang chủ, thông tin công khai.
+│   │   └── package.json             # App-specific dependencies.
+│   └── internal-web/                # [Port 3001] Web dành cho Nhân viên, QC, Quản lý, Admin.
+│       ├── src/app/(auth)/          # Đăng nhập nhân viên.
+│       ├── src/app/(dashboard)/     # Quản lý dịch vụ, kho, duyệt báo giá.
+│       └── package.json             # App-specific dependencies.
+├── packages/                        # Chứa các thư viện/components dùng chung.
+│   ├── shared/ui/                   # UI components (Button, Modal, Table...).
+│   └── shared/lib/                  # Tiện ích chung, Axios client, cấu hình Redux.
+├── package.json                     # Root workspace cấu hình npm workspaces.
+└── package-lock.json                # Lockfile duy nhất cho toàn bộ Monorepo.
 ```
 
 ---

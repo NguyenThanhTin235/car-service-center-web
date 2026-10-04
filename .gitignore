@@ -5,3 +5,6 @@ dist/
 .next/
 src/backend/node_modules/
 docs/UI/
+docs/plan/
+docs/diagrams/
+docs/requirements/rev_uc/

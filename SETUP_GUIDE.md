@@ -61,28 +61,42 @@ npm run dev
 
 ---
 
-## 3. Thiết lập & Khởi chạy Frontend (Next.js)
+## 3. Thiết lập & Khởi chạy Frontend (Next.js Monorepo)
 
-Frontend nằm trong thư mục `src/frontend`.
+Dự án hiện tại đã được tách thành 2 ứng dụng riêng biệt chạy song song để tăng tính bảo mật:
+- **Customer Web**: Dành cho khách hàng (port `3000`).
+- **Internal Web**: Dành cho nhân viên quản trị (port `3001`).
+
+Cả hai ứng dụng nằm trong thư mục `src/frontend/apps`.
 
 ### Bước 3.1: Cài đặt thư viện
-Mở một Tab Terminal mới (Vẫn phải giữ Terminal backend đang chạy), đi tới thư mục frontend:
+Mở một Tab Terminal mới (Vẫn phải giữ Terminal backend đang chạy), đi tới thư mục frontend root:
 ```bash
 cd "src/frontend"
 npm install
 ```
 
-### Bước 3.2: Thiết lập biến môi trường (.env.local)
-Tạo file `.env.local` trong thư mục `src/frontend` với nội dung:
+### Bước 3.2: Thiết lập biến môi trường
+Tạo file `.env` ở **bên trong từng thư mục app**:
+
+1. Mở thư mục `src/frontend/apps/customer-web` và tạo file `.env`:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+```
+
+2. Mở thư mục `src/frontend/apps/internal-web` và tạo file `.env`:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
 ```
 
 ### Bước 3.3: Chạy giao diện Web
+Đứng tại thư mục gốc của frontend (`src/frontend`), chạy lệnh:
 ```bash
 npm run dev
 ```
-✅ Web sẽ khởi động và có thể truy cập bằng trình duyệt tại: `http://localhost:3000`.
+✅ Lệnh này sẽ dùng `concurrently` để chạy song song cả 2 website. Bạn có thể truy cập bằng trình duyệt tại:
+- Web Khách Hàng: `http://localhost:3000`
+- Web Quản Trị (Nhân Viên): `http://localhost:3001` (Sẽ tự động chuyển hướng sang trang đăng nhập)
 
 ---
 
