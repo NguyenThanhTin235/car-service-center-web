@@ -8,3 +8,5 @@ docs/UI/
 docs/plan/
 docs/diagrams/
 docs/requirements/rev_uc/
+src/frontend/apps/customer-web/test-results
+src/frontend/apps/customer-web/playwright-report
