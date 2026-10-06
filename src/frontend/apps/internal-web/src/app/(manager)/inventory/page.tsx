@@ -2,23 +2,33 @@
 
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store';
-import { fetchInventoryItems, toggleInventoryItem, InventoryItem } from '@/store/slices/inventorySlice';
-import api from '@/lib/axios';
+import {
+  fetchInventoryItems,
+  toggleInventoryItem,
+  fetchPartCategories,
+  fetchBrands,
+  fetchUoms,
+  InventoryItem,
+} from '@/store/slices/inventorySlice';
 import { PartItemModal } from './components/PartItemModal';
+import { PartCategoryModal } from './components/PartCategoryModal';
 import { GoodsReceiptModal } from './components/GoodsReceiptModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import Toast from '@/components/shared/Toast';
 
 export default function InventoryPage() {
   const dispatch = useAppDispatch();
-  const { items, pagination, loading, suppliers } = useAppSelector(state => state.inventory);
+  const { items, pagination, loading, categories, brands, uoms } = useAppSelector(state => state.inventory);
 
   const [search, setSearch] = useState('');
   const [itemType, setItemType] = useState('all');
+  const [categoryId, setCategoryId] = useState('all');
   const [stockStatus, setStockStatus] = useState('all');
   
   const [isPartModalOpen, setIsPartModalOpen] = useState(false);
   const [selectedPart, setSelectedPart] = useState<InventoryItem | null>(null);
+
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   
@@ -27,34 +37,26 @@ export default function InventoryPage() {
   
   const [toast, setToast] = useState<{show: boolean, type: 'success' | 'error', message: string}>({ show: false, type: 'success', message: '' });
 
-  // UOMs
-  const [uoms, setUoms] = useState<{id: number, name: string}[]>([]);
-
   useEffect(() => {
     loadData();
-    fetchUoms();
+    dispatch(fetchPartCategories());
+    dispatch(fetchBrands());
+    dispatch(fetchUoms());
   }, []);
 
   const loadData = () => {
     dispatch(fetchInventoryItems({
       search: search || undefined,
       itemType: itemType !== 'all' ? itemType : undefined,
+      partCategoryId: categoryId !== 'all' ? parseInt(categoryId) : undefined,
       page: 1, limit: 50
     }));
-  };
-
-  const fetchUoms = async () => {
-    try {
-      const res = await api.get('/api/system-catalogs', { params: { catalogType: 'UOM' } });
-      setUoms(res.data.data);
-    } catch (error) {
-      console.error('Failed to load UOMs', error);
-    }
   };
 
   const handleFilterReset = () => {
     setSearch('');
     setItemType('all');
+    setCategoryId('all');
     setStockStatus('all');
     setTimeout(() => {
       dispatch(fetchInventoryItems({ page: 1, limit: 50 }));
@@ -149,6 +151,18 @@ export default function InventoryPage() {
               </div>
             </div>
           </div>
+
+          <div className="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/60 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between text-outline mb-2">
+              <span className="text-label-sm font-label-sm uppercase tracking-wider">Danh mục phụ tùng</span>
+              <div className="p-2 rounded-lg bg-surface-container-low text-primary">
+                <span className="material-symbols-outlined text-[20px]">account_tree</span>
+              </div>
+            </div>
+            <div>
+              <div className="text-numeric-metric font-numeric-metric text-on-surface">{categories.length} <span className="text-label-md font-normal text-outline">loại · {brands.length} hãng</span></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -165,7 +179,7 @@ export default function InventoryPage() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && loadData()}
-                placeholder="Tìm theo mã SKU, tên phụ tùng..."
+                placeholder="Tìm theo SKU, danh mục, thương hiệu..."
                 className="w-full h-9 pl-9 pr-3 text-body-sm bg-surface-container-lowest border border-[#D8DADF] rounded-md focus:border-primary-container focus:ring-1 outline-none"
               />
             </div>
@@ -180,6 +194,18 @@ export default function InventoryPage() {
               <option value="CONSUMABLE">Vật tư tiêu hao</option>
               <option value="CHEMICAL">Hóa chất</option>
               <option value="ACCESSORY">Phụ kiện</option>
+            </select>
+
+            <select 
+              id="inventory-filter-category"
+              value={categoryId}
+              onChange={e => setCategoryId(e.target.value)}
+              className="h-9 px-3 text-label-sm bg-surface-container-lowest border border-[#D8DADF] rounded-md outline-none max-w-[220px]"
+            >
+              <option value="all">Danh mục: Tất cả</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
             </select>
 
             <select 
@@ -203,7 +229,11 @@ export default function InventoryPage() {
           </div>
           
           <div className="flex items-center gap-2 self-end lg:self-center">
-            <button onClick={handleAddPart} className="h-9 px-3.5 flex items-center gap-2 bg-surface-container-lowest text-on-surface border border-outline-variant hover:bg-surface-container-low rounded-md text-label-md font-medium shadow-sm transition-colors">
+            <button id="btn-add-part-category" onClick={() => setIsCategoryModalOpen(true)} className="h-9 px-3.5 flex items-center gap-2 bg-surface-container-lowest text-on-surface border border-outline-variant hover:bg-surface-container-low rounded-md text-label-md font-medium shadow-sm transition-colors">
+              <span className="material-symbols-outlined text-[18px]">create_new_folder</span>
+              Thêm Danh mục
+            </button>
+            <button id="btn-add-part" onClick={handleAddPart} className="h-9 px-3.5 flex items-center gap-2 bg-surface-container-lowest text-on-surface border border-outline-variant hover:bg-surface-container-low rounded-md text-label-md font-medium shadow-sm transition-colors">
               <span className="material-symbols-outlined text-[18px]">add</span>
               Thêm Phụ tùng
             </button>
@@ -222,7 +252,8 @@ export default function InventoryPage() {
             <thead>
               <tr className="bg-surface-container-low border-b border-[#E4E6EB] text-label-sm text-outline h-10">
                 <th className="py-2.5 px-4 font-semibold uppercase">Mã SKU</th>
-                <th className="py-2.5 px-4 font-semibold uppercase min-w-[240px]">Tên vật tư</th>
+                <th className="py-2.5 px-4 font-semibold uppercase min-w-[240px]">Danh mục / Vật tư</th>
+                <th className="py-2.5 px-4 font-semibold uppercase">Thương hiệu</th>
                 <th className="py-2.5 px-4 font-semibold uppercase">Phân loại</th>
                 <th className="py-2.5 px-4 font-semibold uppercase text-right">Giá vốn TB</th>
                 <th className="py-2.5 px-4 font-semibold uppercase text-right">Giá bán</th>
@@ -232,17 +263,26 @@ export default function InventoryPage() {
             </thead>
             <tbody className="divide-y divide-[#E4E6EB] text-body-md">
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-8">Đang tải...</td></tr>
+                <tr><td colSpan={8} className="text-center py-8">Đang tải...</td></tr>
               ) : filteredItems.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-8">Không có dữ liệu</td></tr>
+                <tr><td colSpan={8} className="text-center py-8">Không có dữ liệu</td></tr>
               ) : filteredItems.map(item => {
                 const isLowStock = item.onHand < item.reorderLevel;
                 return (
                   <tr key={item.id} className={`hover:bg-[#F0F2F5] transition-colors ${isLowStock ? 'bg-[#FEF2F2] border-l-4 border-l-error' : ''}`}>
                     <td className="py-3 px-4 font-medium text-on-surface">{item.sku}</td>
                     <td className="py-3 px-4">
-                      <div className="font-medium text-on-surface">{item.name}</div>
-                      <div className="text-body-sm text-outline">ĐVT: {item.uom?.name}</div>
+                      <div className="font-medium text-on-surface">{item.partCategory?.name ?? item.name}</div>
+                      <div className="text-body-sm text-outline">{item.partCategory?.code} · ĐVT: {item.uom?.name}</div>
+                    </td>
+                    <td className="py-3 px-4">
+                      {item.brand ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-label-sm font-medium bg-primary-container/10 text-primary">
+                          {item.brand.name}
+                        </span>
+                      ) : (
+                        <span className="text-outline">—</span>
+                      )}
                     </td>
                     <td className="py-3 px-4">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-label-sm font-medium bg-surface-container-high text-on-surface-variant">
@@ -294,6 +334,14 @@ export default function InventoryPage() {
         onClose={() => setIsPartModalOpen(false)} 
         item={selectedPart}
         onSuccess={loadData}
+        categoryOptions={categories}
+        brandOptions={brands}
+      />
+
+      <PartCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        onSuccess={() => dispatch(fetchPartCategories())}
         uomOptions={uoms}
       />
 

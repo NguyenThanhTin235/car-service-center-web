@@ -14,11 +14,6 @@ datasource db {
 // ENUMS
 // ==========================================
 
-enum UserType {
-  CUSTOMER
-  STAFF
-}
-
 enum EmployeePosition {
   TECHNICIAN
   DETAILER
@@ -54,6 +49,7 @@ enum InspectionTemplateType {
 enum AppointmentStatus {
   REQUESTED
   CONFIRMED
+  RESCHEDULED
   ARRIVED
   CANCELLED
 }
@@ -61,6 +57,7 @@ enum AppointmentStatus {
 enum IntakeType {
   WALK_IN
   TOW_IN
+  APPOINTMENT
 }
 
 enum IntakeStatus {
@@ -76,11 +73,16 @@ enum WorkOrderSourceType {
 }
 
 enum WorkOrderStatus {
-  OPEN
+  DRAFT
+  IN_PLANNING
+  PENDING_APPROVAL
+  APPROVED
   IN_PROGRESS
-  PENDING_PAYMENT
+  BILLING_REQUESTED
+  FINANCIAL_CLEARED
   RELEASED
   CLOSED
+  CANCELLED
 }
 
 enum FuelLevel {
@@ -122,6 +124,12 @@ enum Severity {
   CRITICAL
 }
 
+enum FindingStatus {
+  NEW
+  LINKED_TO_JOB
+  RESOLVED
+}
+
 enum MarkerType {
   DAMAGE
   RUST
@@ -135,6 +143,16 @@ enum JobStatus {
   PLANNED
   IN_PROGRESS
   COMPLETED
+  REWORK
+  PASSED
+}
+
+enum PartAllocationStatus {
+  PLANNED
+  RESERVED
+  ISSUED
+  USED
+  RETURNED
 }
 
 enum QuotationType {
@@ -194,15 +212,11 @@ enum AdjustmentStatus {
   REJECTED
 }
 
-enum BillingRequestStatus {
-  PENDING
-  PROCESSED
-}
-
 enum InvoiceStatus {
   DRAFT
   ISSUED
   PAID
+  CANCELLED
 }
 
 enum PaymentMethod {
@@ -222,6 +236,7 @@ enum CatalogType {
   CANCEL_REASON
   ADJUST_REASON
   TERMS
+  BRAND // Thương hiệu phụ tùng (Vd: Bosch, Denso, Toyota OEM...)
 }
 
 enum NotificationType {
@@ -256,7 +271,6 @@ model User {
   password_hash    String    @db.VarChar(255)
   full_name        String    @db.VarChar(150)
   address          String?   @db.Text
-  user_type        UserType
   is_active        Boolean   @default(true)
   otp_hash         String?   @db.VarChar(255)
   otp_attempts     Int       @default(0)
@@ -265,56 +279,54 @@ model User {
   created_at       DateTime  @default(now())
   updated_at       DateTime  @default(now()) @updatedAt
 
-  roles            UserRole[]
-  employee         Employee?
-  vehicles         Vehicle[]
-  appointments     Appointment[]
-  created_appointments Appointment[] @relation("CreatedAppointments")
-  intake_records   IntakeRecord[]
-  created_intake_records IntakeRecord[] @relation("CreatedIntakes")
-  work_orders      WorkOrder[] @relation("CustomerWO")
-  advisor_work_orders WorkOrder[] @relation("AdvisorWO")
-  created_work_orders WorkOrder[] @relation("CreatedWO")
-  check_ins        CheckIn[] @relation("CreatedCheckIn")
-  confirmed_check_ins CheckIn[] @relation("ConfirmedCheckIn")
-  inspections      Inspection[]
-  findings         Finding[]
-  jobs             Job[]
-  quotations       Quotation[] @relation("CreatedQuotation")
-  approved_quotations Quotation[] @relation("ApprovedQuotation")
-  qc_records       QcRecord[]
-  receipts         GoodsReceipt[]
-  movements        StockMovement[]
-  adjustments_requested StockAdjustment[] @relation("RequestedAdjustment")
-  adjustments_approved StockAdjustment[] @relation("ApprovedAdjustment")
-  billing_requests BillingRequest[]
-  invoices         Invoice[]
-  payments         Payment[]
-  released_vehicles VehicleRelease[] @relation("ReleasedBy")
-  confirmed_releases VehicleRelease[] @relation("ConfirmedBy")
-  notifications    Notification[]
-  audit_logs       AuditLog[]
+  roles                  UserRole[]
+  employee               Employee?
+  vehicles               Vehicle[]
+  appointments           Appointment[]
+  created_appointments   Appointment[]     @relation("CreatedAppointments")
+  intake_records         IntakeRecord[]
+  created_intake_records IntakeRecord[]    @relation("CreatedIntakes")
+  work_orders            WorkOrder[]       @relation("CustomerWO")
+  advisor_work_orders    WorkOrder[]       @relation("AdvisorWO")
+  created_work_orders    WorkOrder[]       @relation("CreatedWO")
+  check_ins              CheckIn[]         @relation("CreatedCheckIn")
+  confirmed_check_ins    CheckIn[]         @relation("ConfirmedCheckIn")
+  inspections            Inspection[]
+  findings               Finding[]
+  jobs                   Job[]
+  quotations             Quotation[]       @relation("CreatedQuotation")
+  approved_quotations    Quotation[]       @relation("ApprovedQuotation")
+  qc_records             QcRecord[]
+  receipts               GoodsReceipt[]
+  movements              StockMovement[]
+  adjustments_requested  StockAdjustment[] @relation("RequestedAdjustment")
+  adjustments_approved   StockAdjustment[] @relation("ApprovedAdjustment")
+  invoices               Invoice[]
+  payments               Payment[]
+  released_vehicles      VehicleRelease[]  @relation("ReleasedBy")
+  confirmed_releases     VehicleRelease[]  @relation("ConfirmedBy")
+  notifications          Notification[]
+  audit_logs             AuditLog[]
 
   @@map("users")
 }
 
 model Role {
-  id          Int        @id @default(autoincrement())
-  name        String     @unique @db.VarChar(50)
-  description String?    @db.VarChar(255)
-  
-  users       UserRole[]
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(50)
+
+  users UserRole[]
 
   @@map("roles")
 }
 
 model UserRole {
-  id      Int  @id @default(autoincrement())
+  id      Int @id @default(autoincrement())
   user_id Int
   role_id Int
-  
-  user    User @relation(fields: [user_id], references: [id])
-  role    Role @relation(fields: [role_id], references: [id])
+
+  user User @relation(fields: [user_id], references: [id])
+  role Role @relation(fields: [role_id], references: [id])
 
   @@unique([user_id, role_id])
   @@map("user_roles")
@@ -329,30 +341,30 @@ model Employee {
   created_at DateTime         @default(now())
   updated_at DateTime         @default(now()) @updatedAt
 
-  user       User?            @relation(fields: [user_id], references: [id])
-  skills     EmployeeSkill[]
+  user        User?           @relation(fields: [user_id], references: [id])
+  skills      EmployeeSkill[]
   job_labours JobLabour[]
 
   @@map("employees")
 }
 
 model Skill {
-  id        Int             @id @default(autoincrement())
-  name      String          @db.VarChar(100)
-  is_active Boolean         @default(true)
-  
+  id        Int     @id @default(autoincrement())
+  name      String  @db.VarChar(100)
+  is_active Boolean @default(true)
+
   employees EmployeeSkill[]
 
   @@map("skills")
 }
 
 model EmployeeSkill {
-  id          Int      @id @default(autoincrement())
+  id          Int @id @default(autoincrement())
   employee_id Int
   skill_id    Int
-  
-  employee    Employee @relation(fields: [employee_id], references: [id])
-  skill       Skill    @relation(fields: [skill_id], references: [id])
+
+  employee Employee @relation(fields: [employee_id], references: [id])
+  skill    Skill    @relation(fields: [skill_id], references: [id])
 
   @@unique([employee_id, skill_id])
   @@map("employee_skills")
@@ -375,10 +387,10 @@ model Vehicle {
   created_at    DateTime      @default(now())
   updated_at    DateTime      @default(now()) @updatedAt
 
-  customer      User          @relation(fields: [customer_id], references: [id])
-  appointments  Appointment[]
+  customer       User           @relation(fields: [customer_id], references: [id])
+  appointments   Appointment[]
   intake_records IntakeRecord[]
-  work_orders   WorkOrder[]
+  work_orders    WorkOrder[]
 
   @@map("vehicles")
 }
@@ -388,88 +400,89 @@ model Vehicle {
 // ==========================================
 
 model ServiceCategory {
-  id          Int               @id @default(autoincrement())
-  name        String            @db.VarChar(100)
-  description String?           @db.Text
-  is_active   Boolean           @default(true)
-  sort_order  Int               @default(0)
-  
-  templates   ServiceTemplate[]
+  id          Int     @id @default(autoincrement())
+  name        String  @db.VarChar(100)
+  description String? @db.Text
+  is_active   Boolean @default(true)
+  sort_order  Int     @default(0)
+
+  services Service[]
 
   @@map("service_categories")
 }
 
-model ServiceTemplate {
-  id             Int                 @id @default(autoincrement())
-  category_id    Int
-  name           String              @db.VarChar(150)
-  description    String?             @db.Text
-  pricing_type   PricingType
-  fixed_price    Decimal?            @db.Decimal(12,2)
-  is_active      Boolean             @default(true)
-  created_at     DateTime            @default(now())
-  updated_at     DateTime            @default(now()) @updatedAt
+model Service {
+  id           Int         @id @default(autoincrement())
+  category_id  Int
+  name         String      @db.VarChar(150)
+  description  String?     @db.Text
+  pricing_type PricingType
+  fixed_price  Decimal?    @db.Decimal(12, 2)
+  is_active    Boolean     @default(true)
+  created_at   DateTime    @default(now())
+  updated_at   DateTime    @default(now()) @updatedAt
 
-  category       ServiceCategory     @relation(fields: [category_id], references: [id])
-  size_prices    VehicleSizePrice[]
-  job_templates  JobTemplate[]
+  category        ServiceCategory      @relation(fields: [category_id], references: [id])
+  size_prices     VehicleSizePrice[]
+  job_templates   JobTemplate[]
   inspection_tpls InspectionTemplate[]
-  appt_services  AppointmentService[]
-  wo_services    WoService[]
+  appt_services   AppointmentService[]
+  intake_services IntakeService[]
+  wo_services     WoService[]
 
-  @@map("service_templates")
+  @@map("services")
 }
 
 model VehicleSizePrice {
-  id                  Int             @id @default(autoincrement())
-  service_template_id Int
-  vehicle_size        VehicleSize
-  price               Decimal         @db.Decimal(12,2)
-  
-  service_template    ServiceTemplate @relation(fields: [service_template_id], references: [id])
+  id           Int         @id @default(autoincrement())
+  service_id   Int
+  vehicle_size VehicleSize
+  price        Decimal     @db.Decimal(12, 2)
 
-  @@unique([service_template_id, vehicle_size])
+  service Service @relation(fields: [service_id], references: [id])
+
+  @@unique([service_id, vehicle_size])
   @@map("vehicle_size_prices")
 }
 
 model JobType {
-  id            Int           @id @default(autoincrement())
-  name          String        @db.VarChar(150)
-  description   String?       @db.Text
-  hourly_rate   Decimal       @db.Decimal(12,2)
-  is_active     Boolean       @default(true)
-  
-  templates     JobTemplate[]
-  jobs          Job[]
-  job_labours   JobLabour[]
+  id          Int     @id @default(autoincrement())
+  name        String  @db.VarChar(150)
+  description String? @db.Text
+  is_active   Boolean @default(true)
+
+  templates   JobTemplate[]
+  jobs        Job[]
+  job_labours JobLabour[]
 
   @@map("job_types")
 }
 
 model JobTemplate {
-  id                  Int               @id @default(autoincrement())
-  job_type_id         Int
-  service_template_id Int?
-  name                String            @db.VarChar(150)
-  estimated_hours     Decimal           @db.Decimal(5,2)
-  requires_qc         Boolean           @default(true)
-  
-  job_type            JobType           @relation(fields: [job_type_id], references: [id])
-  service_template    ServiceTemplate?  @relation(fields: [service_template_id], references: [id])
-  parts               JobTemplatePart[]
-  jobs                Job[]
+  id              Int     @id @default(autoincrement())
+  job_type_id     Int
+  service_id      Int?
+  name            String  @db.VarChar(150)
+  price           Decimal @db.Decimal(12, 2)
+  estimated_hours Decimal? @db.Decimal(5, 2)
+  requires_qc     Boolean @default(true)
+
+  job_type   JobType           @relation(fields: [job_type_id], references: [id])
+  service    Service?          @relation(fields: [service_id], references: [id])
+  parts      JobTemplatePart[]
+  jobs       Job[]
 
   @@map("job_templates")
 }
 
 model JobTemplatePart {
-  id               Int           @id @default(autoincrement())
+  id               Int     @id @default(autoincrement())
   job_template_id  Int
   item_id          Int
-  default_quantity Decimal       @db.Decimal(10,2)
-  
-  job_template     JobTemplate   @relation(fields: [job_template_id], references: [id])
-  item             InventoryItem @relation(fields: [item_id], references: [id])
+  default_quantity Decimal @db.Decimal(10, 2)
+
+  job_template JobTemplate   @relation(fields: [job_template_id], references: [id])
+  item         InventoryItem @relation(fields: [item_id], references: [id])
 
   @@map("job_template_parts")
 }
@@ -479,30 +492,30 @@ model JobTemplatePart {
 // ==========================================
 
 model InspectionTemplate {
-  id                  Int                      @id @default(autoincrement())
-  service_template_id Int?
-  template_type       InspectionTemplateType
-  name                String                   @db.VarChar(150)
-  is_active           Boolean                  @default(true)
-  
-  service_template    ServiceTemplate?         @relation(fields: [service_template_id], references: [id])
-  items               InspectionTemplateItem[]
-  inspections         Inspection[]
-  qc_records          QcRecord[]
+  id            Int                    @id @default(autoincrement())
+  service_id    Int?
+  template_type InspectionTemplateType
+  name          String                 @db.VarChar(150)
+  is_active     Boolean                @default(true)
+
+  service      Service?                 @relation(fields: [service_id], references: [id])
+  items        InspectionTemplateItem[]
+  inspections  Inspection[]
+  qc_records   QcRecord[]
 
   @@map("inspection_templates")
 }
 
 model InspectionTemplateItem {
-  id            Int                @id @default(autoincrement())
-  template_id   Int
-  name          String             @db.VarChar(255)
-  is_required   Boolean            @default(true)
-  sort_order    Int                @default(0)
-  
-  template      InspectionTemplate @relation(fields: [template_id], references: [id])
-  results       InspectionResult[]
-  qc_items      QcItem[]
+  id          Int     @id @default(autoincrement())
+  template_id Int
+  name        String  @db.VarChar(255)
+  is_required Boolean @default(true)
+  sort_order  Int     @default(0)
+
+  template InspectionTemplate @relation(fields: [template_id], references: [id])
+  results  InspectionResult[]
+  qc_items QcItem[]
 
   @@map("inspection_template_items")
 }
@@ -512,34 +525,34 @@ model InspectionTemplateItem {
 // ==========================================
 
 model Appointment {
-  id             Int                 @id @default(autoincrement())
+  id             Int               @id @default(autoincrement())
   customer_id    Int
   vehicle_id     Int
-  scheduled_date DateTime            @db.Date
-  scheduled_time DateTime            @db.Time
-  status         AppointmentStatus   @default(REQUESTED)
-  cancel_reason  String?             @db.Text
-  notes          String?             @db.Text
+  scheduled_date DateTime          @db.Date
+  scheduled_time DateTime          @db.Time
+  status         AppointmentStatus @default(REQUESTED)
+  cancel_reason  String?           @db.Text
+  notes          String?           @db.Text
   created_by_id  Int?
-  created_at     DateTime            @default(now())
-  updated_at     DateTime            @default(now()) @updatedAt
+  created_at     DateTime          @default(now())
+  updated_at     DateTime          @default(now()) @updatedAt
 
-  customer       User                @relation(fields: [customer_id], references: [id])
-  created_by     User?               @relation("CreatedAppointments", fields: [created_by_id], references: [id])
-  vehicle        Vehicle             @relation(fields: [vehicle_id], references: [id])
-  services       AppointmentService[]
-  work_order     WorkOrder?
+  customer   User                 @relation(fields: [customer_id], references: [id])
+  created_by User?                @relation("CreatedAppointments", fields: [created_by_id], references: [id])
+  vehicle    Vehicle              @relation(fields: [vehicle_id], references: [id])
+  services   AppointmentService[]
+  work_order WorkOrder?
 
   @@map("appointments")
 }
 
 model AppointmentService {
-  id                  Int             @id @default(autoincrement())
-  appointment_id      Int
-  service_template_id Int
-  
-  appointment         Appointment     @relation(fields: [appointment_id], references: [id])
-  service_template    ServiceTemplate @relation(fields: [service_template_id], references: [id])
+  id             Int @id @default(autoincrement())
+  appointment_id Int
+  service_id     Int
+
+  appointment Appointment @relation(fields: [appointment_id], references: [id])
+  service     Service     @relation(fields: [service_id], references: [id])
 
   @@map("appointment_services")
 }
@@ -556,12 +569,24 @@ model IntakeRecord {
   created_by_id Int
   created_at    DateTime     @default(now())
 
-  customer      User         @relation(fields: [customer_id], references: [id])
-  created_by    User         @relation("CreatedIntakes", fields: [created_by_id], references: [id])
-  vehicle       Vehicle      @relation(fields: [vehicle_id], references: [id])
-  work_order    WorkOrder?
+  customer   User       @relation(fields: [customer_id], references: [id])
+  created_by User       @relation("CreatedIntakes", fields: [created_by_id], references: [id])
+  vehicle    Vehicle    @relation(fields: [vehicle_id], references: [id])
+  work_order WorkOrder?
+  services   IntakeService[]
 
   @@map("intake_records")
+}
+
+model IntakeService {
+  id         Int @id @default(autoincrement())
+  intake_id  Int
+  service_id Int
+
+  intake  IntakeRecord @relation(fields: [intake_id], references: [id])
+  service Service      @relation(fields: [service_id], references: [id])
+
+  @@map("intake_services")
 }
 
 // ==========================================
@@ -577,25 +602,24 @@ model WorkOrder {
   source_type      WorkOrderSourceType
   appointment_id   Int?                @unique
   intake_record_id Int?                @unique
-  status           WorkOrderStatus     @default(OPEN)
+  status           WorkOrderStatus     @default(DRAFT)
   created_by_id    Int
   created_at       DateTime            @default(now())
   updated_at       DateTime            @default(now()) @updatedAt
 
-  customer         User                @relation("CustomerWO", fields: [customer_id], references: [id])
-  vehicle          Vehicle             @relation(fields: [vehicle_id], references: [id])
-  advisor          User                @relation("AdvisorWO", fields: [advisor_id], references: [id])
-  created_by       User                @relation("CreatedWO", fields: [created_by_id], references: [id])
-  appointment      Appointment?        @relation(fields: [appointment_id], references: [id])
-  intake_record    IntakeRecord?       @relation(fields: [intake_record_id], references: [id])
-  
-  check_in         CheckIn?
-  services         WoService[]
-  inspections      Inspection[]
-  quotations       Quotation[]
-  billing_request  BillingRequest?
-  invoice          Invoice?
-  release          VehicleRelease?
+  customer      User          @relation("CustomerWO", fields: [customer_id], references: [id])
+  vehicle       Vehicle       @relation(fields: [vehicle_id], references: [id])
+  advisor       User          @relation("AdvisorWO", fields: [advisor_id], references: [id])
+  created_by    User          @relation("CreatedWO", fields: [created_by_id], references: [id])
+  appointment   Appointment?  @relation(fields: [appointment_id], references: [id])
+  intake_record IntakeRecord? @relation(fields: [intake_record_id], references: [id])
+
+  check_in    CheckIn?
+  services    WoService[]
+  inspections Inspection[]
+  quotations  Quotation[]
+  invoice     Invoice?
+  release     VehicleRelease?
 
   @@map("work_orders")
 }
@@ -612,70 +636,70 @@ model CheckIn {
   rejection_reason         String?       @db.Text
   confirmed_by_customer_id Int?
   confirmed_at             DateTime?
-  evidence_urls            Json?         // Array of URLs
+  evidence_urls            Json? // Array of URLs
   created_by_id            Int
   created_at               DateTime      @default(now())
   updated_at               DateTime      @default(now()) @updatedAt
 
-  work_order               WorkOrder     @relation(fields: [work_order_id], references: [id])
-  confirmed_by             User?         @relation("ConfirmedCheckIn", fields: [confirmed_by_customer_id], references: [id])
-  created_by               User          @relation("CreatedCheckIn", fields: [created_by_id], references: [id])
+  work_order   WorkOrder @relation(fields: [work_order_id], references: [id])
+  confirmed_by User?     @relation("ConfirmedCheckIn", fields: [confirmed_by_customer_id], references: [id])
+  created_by   User      @relation("CreatedCheckIn", fields: [created_by_id], references: [id])
 
   @@map("check_ins")
 }
 
 model WoService {
-  id                  Int              @id @default(autoincrement())
-  work_order_id       Int
-  service_template_id Int?
-  name                String           @db.VarChar(255)
-  pricing_type        PricingType
-  status              ServiceStatus    @default(PENDING)
-  sort_order          Int              @default(0)
-  created_at          DateTime         @default(now())
-  updated_at          DateTime         @default(now()) @updatedAt
+  id            Int           @id @default(autoincrement())
+  work_order_id Int
+  service_id    Int?
+  name          String        @db.VarChar(255)
+  pricing_type  PricingType
+  status        ServiceStatus @default(PENDING)
+  sort_order    Int           @default(0)
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @default(now()) @updatedAt
 
-  work_order          WorkOrder        @relation(fields: [work_order_id], references: [id])
-  service_template    ServiceTemplate? @relation(fields: [service_template_id], references: [id])
-  inspections         Inspection[]
-  jobs                Job[]
-  qc_records          QcRecord[]
-  quotation_lines     QuotationLine[]
-  invoice_lines       InvoiceLine[]
+  work_order      WorkOrder       @relation(fields: [work_order_id], references: [id])
+  service         Service?        @relation(fields: [service_id], references: [id])
+  inspections     Inspection[]
+  jobs            Job[]
+  qc_records      QcRecord[]
+  quotation_lines QuotationLine[]
+  invoice_lines   InvoiceLine[]
 
   @@map("wo_services")
 }
 
 model Inspection {
-  id            Int               @id @default(autoincrement())
+  id            Int              @id @default(autoincrement())
   work_order_id Int
   wo_service_id Int?
   template_id   Int?
-  status        InspectionStatus  @default(IN_PROGRESS)
+  status        InspectionStatus @default(IN_PROGRESS)
   created_by_id Int
-  created_at    DateTime          @default(now())
-  updated_at    DateTime          @default(now()) @updatedAt
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @default(now()) @updatedAt
 
-  work_order    WorkOrder         @relation(fields: [work_order_id], references: [id])
-  wo_service    WoService?        @relation(fields: [wo_service_id], references: [id])
-  template      InspectionTemplate? @relation(fields: [template_id], references: [id])
-  created_by    User              @relation(fields: [created_by_id], references: [id])
-  results       InspectionResult[]
-  findings      Finding[]
+  work_order WorkOrder           @relation(fields: [work_order_id], references: [id])
+  wo_service WoService?          @relation(fields: [wo_service_id], references: [id])
+  template   InspectionTemplate? @relation(fields: [template_id], references: [id])
+  created_by User                @relation(fields: [created_by_id], references: [id])
+  results    InspectionResult[]
+  findings   Finding[]
 
   @@map("inspections")
 }
 
 model InspectionResult {
-  id               Int                    @id @default(autoincrement())
+  id               Int                   @id @default(autoincrement())
   inspection_id    Int
   template_item_id Int?
-  item_name        String                 @db.VarChar(255)
+  item_name        String                @db.VarChar(255)
   result           InspectionResultValue
-  notes            String?                @db.Text
+  notes            String?               @db.Text
 
-  inspection       Inspection             @relation(fields: [inspection_id], references: [id])
-  template_item    InspectionTemplateItem? @relation(fields: [template_item_id], references: [id])
+  inspection    Inspection              @relation(fields: [inspection_id], references: [id])
+  template_item InspectionTemplateItem? @relation(fields: [template_item_id], references: [id])
 
   @@map("inspection_results")
 }
@@ -683,6 +707,7 @@ model InspectionResult {
 model Finding {
   id                     Int           @id @default(autoincrement())
   inspection_id          Int
+  status                 FindingStatus @default(NEW)
   description            String        @db.Text
   severity               Severity      @default(MEDIUM)
   recommendation         String?       @db.Text
@@ -695,101 +720,98 @@ model Finding {
   created_at             DateTime      @default(now())
   updated_at             DateTime      @default(now()) @updatedAt
 
-  inspection             Inspection    @relation(fields: [inspection_id], references: [id])
-  created_by             User          @relation(fields: [created_by_id], references: [id])
-  job_findings           JobFinding[]
+  inspection   Inspection   @relation(fields: [inspection_id], references: [id])
+  created_by   User         @relation(fields: [created_by_id], references: [id])
+  job_findings JobFinding[]
 
   @@map("findings")
 }
 
 model Job {
-  id                       Int         @id @default(autoincrement())
+  id                       Int       @id @default(autoincrement())
   wo_service_id            Int
   job_type_id              Int?
   job_template_id          Int?
-  name                     String      @db.VarChar(255)
-  description              String?     @db.Text
-  estimated_hours          Decimal?    @db.Decimal(5,2)
-  actual_hours             Decimal?    @db.Decimal(5,2)
-  status                   JobStatus   @default(PLANNED)
-  result_notes             String?     @db.Text
-  is_rework                Boolean     @default(false)
+  name                     String    @db.VarChar(255)
+  description              String?   @db.Text
+  estimated_hours          Decimal?  @db.Decimal(5, 2)
+  actual_hours             Decimal?  @db.Decimal(5, 2)
+  status                   JobStatus @default(PLANNED)
+  result_notes             String?   @db.Text
+  is_rework                Boolean   @default(false)
   parent_job_id            Int?
   rework_source_qc_item_id Int?
   created_by_id            Int
   started_at               DateTime?
   completed_at             DateTime?
-  created_at               DateTime    @default(now())
-  updated_at               DateTime    @default(now()) @updatedAt
+  created_at               DateTime  @default(now())
+  updated_at               DateTime  @default(now()) @updatedAt
 
-  wo_service               WoService   @relation(fields: [wo_service_id], references: [id])
-  job_type                 JobType?    @relation(fields: [job_type_id], references: [id])
-  job_template             JobTemplate? @relation(fields: [job_template_id], references: [id])
-  parent_job               Job?        @relation("ReworkJob", fields: [parent_job_id], references: [id])
-  child_jobs               Job[]       @relation("ReworkJob")
-  rework_qc_item           QcItem?     @relation(fields: [rework_source_qc_item_id], references: [id])
-  created_by               User        @relation(fields: [created_by_id], references: [id])
-  
-  findings                 JobFinding[]
-  labours                  JobLabour[]
-  parts                    JobPart[]
-  stock_movements          StockMovement[]
-  quotation_lines          QuotationLine[]
-  invoice_lines            InvoiceLine[]
+  wo_service     WoService    @relation(fields: [wo_service_id], references: [id])
+  job_type       JobType?     @relation(fields: [job_type_id], references: [id])
+  job_template   JobTemplate? @relation(fields: [job_template_id], references: [id])
+  parent_job     Job?         @relation("ReworkJob", fields: [parent_job_id], references: [id])
+  child_jobs     Job[]        @relation("ReworkJob")
+  rework_qc_item QcItem?      @relation(fields: [rework_source_qc_item_id], references: [id])
+  created_by     User         @relation(fields: [created_by_id], references: [id])
+
+  findings        JobFinding[]
+  labours         JobLabour[]
+  parts           JobPart[]
+  stock_movements StockMovement[]
+  quotation_lines QuotationLine[]
+  invoice_lines   InvoiceLine[]
 
   @@map("jobs")
 }
 
 model JobFinding {
-  id         Int     @id @default(autoincrement())
+  id         Int @id @default(autoincrement())
   job_id     Int
   finding_id Int
 
-  job        Job     @relation(fields: [job_id], references: [id])
-  finding    Finding @relation(fields: [finding_id], references: [id])
+  job     Job     @relation(fields: [job_id], references: [id])
+  finding Finding @relation(fields: [finding_id], references: [id])
 
   @@unique([job_id, finding_id])
   @@map("job_findings")
 }
 
 model JobLabour {
-  id              Int       @id @default(autoincrement())
+  id              Int      @id @default(autoincrement())
   job_id          Int
   job_type_id     Int
-  description     String?   @db.Text
+  description     String?  @db.Text
   employee_id     Int?
-  estimated_hours Decimal   @db.Decimal(5,2)
-  billable_hours  Decimal?  @db.Decimal(5,2)
-  hourly_rate     Decimal   @db.Decimal(12,2)
-  // amount is calculated logic: IFNULL(billable_hours, estimated_hours) * hourly_rate
-  // In Prisma we usually omit generated columns or define them as raw SQL on migration
-  // Let's keep it here but we'll have to manage it in DB layer
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @default(now()) @updatedAt
+  estimated_hours Decimal? @db.Decimal(5, 2)
+  price           Decimal  @db.Decimal(12, 2)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @default(now()) @updatedAt
 
-  job             Job       @relation(fields: [job_id], references: [id])
-  job_type        JobType   @relation(fields: [job_type_id], references: [id])
-  employee        Employee? @relation(fields: [employee_id], references: [id])
+  job             Job             @relation(fields: [job_id], references: [id])
+  job_type        JobType         @relation(fields: [job_type_id], references: [id])
+  employee        Employee?       @relation(fields: [employee_id], references: [id])
   quotation_lines QuotationLine[]
 
   @@map("job_labours")
 }
 
 model JobPart {
-  id                Int           @id @default(autoincrement())
+  id                Int                  @id @default(autoincrement())
   job_id            Int
   item_id           Int
-  planned_quantity  Decimal       @db.Decimal(10,2)
-  issued_quantity   Decimal       @default(0) @db.Decimal(10,2)
-  returned_quantity Decimal       @default(0) @db.Decimal(10,2)
-  unit_price        Decimal       @db.Decimal(12,2)
-  created_at        DateTime      @default(now())
-  updated_at        DateTime      @default(now()) @updatedAt
+  status            PartAllocationStatus @default(PLANNED)
+  planned_quantity  Decimal              @db.Decimal(10, 2)
+  issued_quantity   Decimal              @default(0) @db.Decimal(10, 2)
+  returned_quantity Decimal              @default(0) @db.Decimal(10, 2)
+  unit_price        Decimal              @db.Decimal(12, 2)
+  created_at        DateTime             @default(now())
+  updated_at        DateTime             @default(now()) @updatedAt
 
-  job               Job           @relation(fields: [job_id], references: [id])
-  item              InventoryItem @relation(fields: [item_id], references: [id])
-  movements         StockMovement[]
-  quotation_lines   QuotationLine[]
+  job             Job             @relation(fields: [job_id], references: [id])
+  item            InventoryItem   @relation(fields: [item_id], references: [id])
+  movements       StockMovement[]
+  quotation_lines QuotationLine[]
 
   @@map("job_parts")
 }
@@ -805,11 +827,11 @@ model Quotation {
   quotation_type      QuotationType   @default(PRIMARY)
   parent_quotation_id Int?
   status              QuotationStatus @default(DRAFT)
-  subtotal            Decimal         @default(0) @db.Decimal(12,2)
-  discount_amount     Decimal         @default(0) @db.Decimal(12,2)
-  tax_rate            Decimal         @default(0.1000) @db.Decimal(5,4)
-  tax_amount          Decimal         @default(0) @db.Decimal(12,2)
-  grand_total         Decimal         @default(0) @db.Decimal(12,2)
+  subtotal            Decimal         @default(0) @db.Decimal(12, 2)
+  discount_amount     Decimal         @default(0) @db.Decimal(12, 2)
+  tax_rate            Decimal         @default(0.1000) @db.Decimal(5, 4)
+  tax_amount          Decimal         @default(0) @db.Decimal(12, 2)
+  grand_total         Decimal         @default(0) @db.Decimal(12, 2)
   sent_at             DateTime?
   approved_at         DateTime?
   approved_by_id      Int?
@@ -820,36 +842,36 @@ model Quotation {
   created_at          DateTime        @default(now())
   updated_at          DateTime        @default(now()) @updatedAt
 
-  work_order          WorkOrder       @relation(fields: [work_order_id], references: [id])
-  parent_quotation    Quotation?      @relation("QuotationSupplements", fields: [parent_quotation_id], references: [id])
-  child_quotations    Quotation[]     @relation("QuotationSupplements")
-  approved_by         User?           @relation("ApprovedQuotation", fields: [approved_by_id], references: [id])
-  created_by          User            @relation("CreatedQuotation", fields: [created_by_id], references: [id])
-  lines               QuotationLine[]
+  work_order       WorkOrder       @relation(fields: [work_order_id], references: [id])
+  parent_quotation Quotation?      @relation("QuotationSupplements", fields: [parent_quotation_id], references: [id])
+  child_quotations Quotation[]     @relation("QuotationSupplements")
+  approved_by      User?           @relation("ApprovedQuotation", fields: [approved_by_id], references: [id])
+  created_by       User            @relation("CreatedQuotation", fields: [created_by_id], references: [id])
+  lines            QuotationLine[]
 
   @@map("quotations")
 }
 
 model QuotationLine {
-  id                  Int          @id @default(autoincrement())
+  id                  Int      @id @default(autoincrement())
   quotation_id        Int
   line_type           LineType
   wo_service_id       Int?
   job_id              Int?
   job_labour_id       Int?
   job_part_id         Int?
-  description         String       @db.VarChar(500)
-  quantity            Decimal      @db.Decimal(10,2)
-  snapshot_unit_price Decimal      @db.Decimal(12,2)
-  amount              Decimal      @db.Decimal(12,2)
-  sort_order          Int          @default(0)
+  description         String   @db.VarChar(500)
+  quantity            Decimal  @db.Decimal(10, 2)
+  snapshot_unit_price Decimal  @db.Decimal(12, 2)
+  amount              Decimal  @db.Decimal(12, 2)
+  sort_order          Int      @default(0)
 
-  quotation           Quotation    @relation(fields: [quotation_id], references: [id])
-  wo_service          WoService?   @relation(fields: [wo_service_id], references: [id])
-  job                 Job?         @relation(fields: [job_id], references: [id])
-  job_labour          JobLabour?   @relation(fields: [job_labour_id], references: [id])
-  job_part            JobPart?     @relation(fields: [job_part_id], references: [id])
-  invoice_lines       InvoiceLine[]
+  quotation     Quotation     @relation(fields: [quotation_id], references: [id])
+  wo_service    WoService?    @relation(fields: [wo_service_id], references: [id])
+  job           Job?          @relation(fields: [job_id], references: [id])
+  job_labour    JobLabour?    @relation(fields: [job_labour_id], references: [id])
+  job_part      JobPart?      @relation(fields: [job_part_id], references: [id])
+  invoice_lines InvoiceLine[]
 
   @@map("quotation_lines")
 }
@@ -859,33 +881,33 @@ model QuotationLine {
 // ==========================================
 
 model QcRecord {
-  id             Int                 @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   wo_service_id  Int
   template_id    Int?
   overall_result QcResult
-  notes          String?             @db.Text
+  notes          String?  @db.Text
   inspector_id   Int
-  created_at     DateTime            @default(now())
+  created_at     DateTime @default(now())
 
-  wo_service     WoService           @relation(fields: [wo_service_id], references: [id])
-  template       InspectionTemplate? @relation(fields: [template_id], references: [id])
-  inspector      User                @relation(fields: [inspector_id], references: [id])
-  items          QcItem[]
+  wo_service WoService           @relation(fields: [wo_service_id], references: [id])
+  template   InspectionTemplate? @relation(fields: [template_id], references: [id])
+  inspector  User                @relation(fields: [inspector_id], references: [id])
+  items      QcItem[]
 
   @@map("qc_records")
 }
 
 model QcItem {
-  id               Int                     @id @default(autoincrement())
+  id               Int      @id @default(autoincrement())
   qc_record_id     Int
   template_item_id Int?
-  item_name        String                  @db.VarChar(255)
+  item_name        String   @db.VarChar(255)
   result           QcResult
-  notes            String?                 @db.Text
+  notes            String?  @db.Text
 
-  qc_record        QcRecord                @relation(fields: [qc_record_id], references: [id])
-  template_item    InspectionTemplateItem? @relation(fields: [template_item_id], references: [id])
-  rework_jobs      Job[]
+  qc_record     QcRecord                @relation(fields: [qc_record_id], references: [id])
+  template_item InspectionTemplateItem? @relation(fields: [template_item_id], references: [id])
+  rework_jobs   Job[]
 
   @@map("qc_items")
 }
@@ -895,72 +917,93 @@ model QcItem {
 // ==========================================
 
 model Supplier {
-  id             Int            @id @default(autoincrement())
-  name           String         @db.VarChar(255)
-  contact_person String?        @db.VarChar(150)
-  phone          String?        @db.VarChar(20)
-  email          String?        @db.VarChar(255)
-  address        String?        @db.Text
-  is_active      Boolean        @default(true)
-  created_at     DateTime       @default(now())
-  updated_at     DateTime       @default(now()) @updatedAt
+  id             Int      @id @default(autoincrement())
+  name           String   @db.VarChar(255)
+  contact_person String?  @db.VarChar(150)
+  phone          String?  @db.VarChar(20)
+  email          String?  @db.VarChar(255)
+  address        String?  @db.Text
+  is_active      Boolean  @default(true)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @default(now()) @updatedAt
 
-  receipts       GoodsReceipt[]
+  receipts GoodsReceipt[]
 
   @@map("suppliers")
 }
 
-model InventoryItem {
-  id            Int                @id @default(autoincrement())
-  sku           String             @unique @db.VarChar(50)
-  name          String             @db.VarChar(255)
-  item_type     ItemType
-  uom_id        Int
-  selling_price Decimal            @db.Decimal(12,2)
-  average_cost  Decimal            @default(0) @db.Decimal(12,4)
-  on_hand       Decimal            @default(0) @db.Decimal(10,2)
-  reorder_level Decimal            @default(0) @db.Decimal(10,2)
-  is_active     Boolean            @default(true)
-  created_at    DateTime           @default(now())
-  updated_at    DateTime           @default(now()) @updatedAt
+// Danh mục/Loại phụ tùng chung (Master). Ví dụ: Lọc gió động cơ
+model PartCategory {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique @db.VarChar(50) // Ví dụ: LOC-GIO
+  name        String   @db.VarChar(255) // Ví dụ: Lọc gió động cơ
+  item_type   ItemType
+  uom_id      Int
+  description String?  @db.Text
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
-  uom           SystemCatalog      @relation(fields: [uom_id], references: [id])
+  uom             SystemCatalog   @relation("UomToPartCategory", fields: [uom_id], references: [id])
+  inventory_items InventoryItem[]
+
+  @@map("part_categories")
+}
+
+// Phụ tùng thực tế theo Hãng (Variant). Ví dụ: Lọc gió Denso
+model InventoryItem {
+  id               Int      @id @default(autoincrement())
+  part_category_id Int
+  sku              String   @unique @db.VarChar(50) // Ví dụ: LOC-GIO-DENSO-001
+  brand_id         Int?
+
+  selling_price Decimal @db.Decimal(15, 2)
+  average_cost  Decimal @default(0) @db.Decimal(15, 2)
+  on_hand       Int     @default(0)
+  reorder_level Int     @default(0)
+
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  part_category      PartCategory       @relation(fields: [part_category_id], references: [id])
+  brand              SystemCatalog?     @relation("BrandToInventory", fields: [brand_id], references: [id])
   job_template_parts JobTemplatePart[]
-  job_parts     JobPart[]
-  receipt_items GoodsReceiptItem[]
-  movements     StockMovement[]
-  adjustments   StockAdjustment[]
+  job_parts          JobPart[]
+  receipt_items      GoodsReceiptItem[]
+  movements          StockMovement[]
+  adjustments        StockAdjustment[]
 
   @@map("inventory_items")
 }
 
 model GoodsReceipt {
-  id             Int                @id @default(autoincrement())
-  receipt_number String             @unique @db.VarChar(30)
+  id             Int         @id @default(autoincrement())
+  receipt_number String      @unique @db.VarChar(30)
   supplier_id    Int?
   receipt_type   ReceiptType
-  reference_no   String?            @db.VarChar(100)
-  received_date  DateTime           @db.Date
-  notes          String?            @db.Text
+  reference_no   String?     @db.VarChar(100)
+  received_date  DateTime    @db.Date
+  notes          String?     @db.Text
   created_by_id  Int
-  created_at     DateTime           @default(now())
+  created_at     DateTime    @default(now())
 
-  supplier       Supplier?          @relation(fields: [supplier_id], references: [id])
-  created_by     User               @relation(fields: [created_by_id], references: [id])
-  items          GoodsReceiptItem[]
+  supplier   Supplier?          @relation(fields: [supplier_id], references: [id])
+  created_by User               @relation(fields: [created_by_id], references: [id])
+  items      GoodsReceiptItem[]
 
   @@map("goods_receipts")
 }
 
 model GoodsReceiptItem {
-  id         Int           @id @default(autoincrement())
+  id         Int     @id @default(autoincrement())
   receipt_id Int
   item_id    Int
-  quantity   Decimal       @db.Decimal(10,2)
-  unit_cost  Decimal       @db.Decimal(12,4)
+  quantity   Decimal @db.Decimal(10, 2)
+  unit_cost  Decimal @db.Decimal(12, 4)
 
-  receipt    GoodsReceipt  @relation(fields: [receipt_id], references: [id])
-  item       InventoryItem @relation(fields: [item_id], references: [id])
+  receipt GoodsReceipt  @relation(fields: [receipt_id], references: [id])
+  item    InventoryItem @relation(fields: [item_id], references: [id])
 
   @@map("goods_receipt_items")
 }
@@ -974,19 +1017,19 @@ model StockMovement {
   source_movement_id Int?
   job_id             Int?
   job_part_id        Int?
-  quantity           Decimal       @db.Decimal(10,2)
-  unit_cost          Decimal       @db.Decimal(12,4)
-  balance_after      Decimal       @db.Decimal(10,2)
+  quantity           Decimal       @db.Decimal(10, 2)
+  unit_cost          Decimal       @db.Decimal(12, 4)
+  balance_after      Decimal       @db.Decimal(10, 2)
   notes              String?       @db.Text
   created_by_id      Int
   created_at         DateTime      @default(now())
 
-  item               InventoryItem @relation(fields: [item_id], references: [id])
-  source_movement    StockMovement? @relation("MovementLink", fields: [source_movement_id], references: [id])
-  child_movements    StockMovement[] @relation("MovementLink")
-  job                Job?          @relation(fields: [job_id], references: [id])
-  job_part           JobPart?      @relation(fields: [job_part_id], references: [id])
-  created_by         User          @relation(fields: [created_by_id], references: [id])
+  item            InventoryItem   @relation(fields: [item_id], references: [id])
+  source_movement StockMovement?  @relation("MovementLink", fields: [source_movement_id], references: [id])
+  child_movements StockMovement[] @relation("MovementLink")
+  job             Job?            @relation(fields: [job_id], references: [id])
+  job_part        JobPart?        @relation(fields: [job_part_id], references: [id])
+  created_by      User            @relation(fields: [created_by_id], references: [id])
 
   @@map("stock_movements")
 }
@@ -994,7 +1037,7 @@ model StockMovement {
 model StockAdjustment {
   id                  Int              @id @default(autoincrement())
   item_id             Int
-  adjustment_quantity Decimal          @db.Decimal(10,2)
+  adjustment_quantity Decimal          @db.Decimal(10, 2)
   reason              String           @db.Text
   status              AdjustmentStatus @default(PENDING)
   requested_by_id     Int
@@ -1003,9 +1046,9 @@ model StockAdjustment {
   reject_reason       String?          @db.Text
   created_at          DateTime         @default(now())
 
-  item                InventoryItem    @relation(fields: [item_id], references: [id])
-  requested_by        User             @relation("RequestedAdjustment", fields: [requested_by_id], references: [id])
-  approved_by         User?            @relation("ApprovedAdjustment", fields: [approved_by_id], references: [id])
+  item         InventoryItem @relation(fields: [item_id], references: [id])
+  requested_by User          @relation("RequestedAdjustment", fields: [requested_by_id], references: [id])
+  approved_by  User?         @relation("ApprovedAdjustment", fields: [approved_by_id], references: [id])
 
   @@map("stock_adjustments")
 }
@@ -1014,59 +1057,46 @@ model StockAdjustment {
 // MODELS: BILLING & PAYMENT
 // ==========================================
 
-model BillingRequest {
-  id              Int                  @id @default(autoincrement())
-  work_order_id   Int                  @unique
-  status          BillingRequestStatus @default(PENDING)
-  requested_by_id Int
-  created_at      DateTime             @default(now())
-
-  work_order      WorkOrder            @relation(fields: [work_order_id], references: [id])
-  requested_by    User                 @relation(fields: [requested_by_id], references: [id])
-
-  @@map("billing_requests")
-}
-
 model Invoice {
   id              Int           @id @default(autoincrement())
   work_order_id   Int           @unique
   invoice_number  String        @unique @db.VarChar(30)
   status          InvoiceStatus @default(DRAFT)
-  subtotal        Decimal       @db.Decimal(12,2)
-  discount_amount Decimal       @default(0) @db.Decimal(12,2)
-  tax_amount      Decimal       @default(0) @db.Decimal(12,2)
-  total_amount    Decimal       @db.Decimal(12,2)
-  amount_due      Decimal       @db.Decimal(12,2)
+  subtotal        Decimal       @db.Decimal(12, 2)
+  discount_amount Decimal       @default(0) @db.Decimal(12, 2)
+  tax_amount      Decimal       @default(0) @db.Decimal(12, 2)
+  total_amount    Decimal       @db.Decimal(12, 2)
+  amount_due      Decimal       @db.Decimal(12, 2)
   issued_at       DateTime?
   created_by_id   Int
   created_at      DateTime      @default(now())
   updated_at      DateTime      @default(now()) @updatedAt
 
-  work_order      WorkOrder     @relation(fields: [work_order_id], references: [id])
-  created_by      User          @relation(fields: [created_by_id], references: [id])
-  lines           InvoiceLine[]
-  payments        Payment[]
+  work_order WorkOrder     @relation(fields: [work_order_id], references: [id])
+  created_by User          @relation(fields: [created_by_id], references: [id])
+  lines      InvoiceLine[]
+  payments   Payment[]
 
   @@map("invoices")
 }
 
 model InvoiceLine {
-  id                Int            @id @default(autoincrement())
+  id                Int      @id @default(autoincrement())
   invoice_id        Int
   line_type         LineType
   quotation_line_id Int?
   wo_service_id     Int?
   job_id            Int?
-  description       String         @db.VarChar(500)
-  quantity          Decimal        @db.Decimal(10,2)
-  unit_price        Decimal        @db.Decimal(12,2)
-  amount            Decimal        @db.Decimal(12,2)
-  sort_order        Int            @default(0)
+  description       String   @db.VarChar(500)
+  quantity          Decimal  @db.Decimal(10, 2)
+  unit_price        Decimal  @db.Decimal(12, 2)
+  amount            Decimal  @db.Decimal(12, 2)
+  sort_order        Int      @default(0)
 
-  invoice           Invoice        @relation(fields: [invoice_id], references: [id])
-  quotation_line    QuotationLine? @relation(fields: [quotation_line_id], references: [id])
-  wo_service        WoService?     @relation(fields: [wo_service_id], references: [id])
-  job               Job?           @relation(fields: [job_id], references: [id])
+  invoice        Invoice        @relation(fields: [invoice_id], references: [id])
+  quotation_line QuotationLine? @relation(fields: [quotation_line_id], references: [id])
+  wo_service     WoService?     @relation(fields: [wo_service_id], references: [id])
+  job            Job?           @relation(fields: [job_id], references: [id])
 
   @@map("invoice_lines")
 }
@@ -1075,7 +1105,7 @@ model Payment {
   id               Int           @id @default(autoincrement())
   invoice_id       Int
   payment_method   PaymentMethod
-  amount           Decimal       @db.Decimal(12,2)
+  amount           Decimal       @db.Decimal(12, 2)
   transaction_ref  String?       @unique @db.VarChar(255)
   gateway_provider String?       @db.VarChar(50)
   payment_payload  Json?
@@ -1084,8 +1114,8 @@ model Payment {
   received_by_id   Int?
   created_at       DateTime      @default(now())
 
-  invoice          Invoice       @relation(fields: [invoice_id], references: [id])
-  received_by      User?         @relation(fields: [received_by_id], references: [id])
+  invoice     Invoice @relation(fields: [invoice_id], references: [id])
+  received_by User?   @relation(fields: [received_by_id], references: [id])
 
   @@map("payments")
 }
@@ -1099,9 +1129,9 @@ model VehicleRelease {
   confirmed_by_customer_id Int?
   confirmed_at             DateTime?
 
-  work_order               WorkOrder @relation(fields: [work_order_id], references: [id])
-  released_by              User      @relation("ReleasedBy", fields: [released_by_id], references: [id])
-  confirmed_by             User?     @relation("ConfirmedBy", fields: [confirmed_by_customer_id], references: [id])
+  work_order   WorkOrder @relation(fields: [work_order_id], references: [id])
+  released_by  User      @relation("ReleasedBy", fields: [released_by_id], references: [id])
+  confirmed_by User?     @relation("ConfirmedBy", fields: [confirmed_by_customer_id], references: [id])
 
   @@map("vehicle_releases")
 }
@@ -1111,14 +1141,15 @@ model VehicleRelease {
 // ==========================================
 
 model SystemCatalog {
-  id          Int         @id @default(autoincrement())
+  id           Int         @id @default(autoincrement())
   catalog_type CatalogType
-  name        String      @db.VarChar(150)
-  description String?     @db.Text
-  is_active   Boolean     @default(true)
-  sort_order  Int         @default(0)
+  name         String      @db.VarChar(150)
+  description  String?     @db.Text
+  is_active    Boolean     @default(true)
+  sort_order   Int         @default(0)
 
-  items       InventoryItem[]
+  part_categories PartCategory[]  @relation("UomToPartCategory")
+  brand_items     InventoryItem[] @relation("BrandToInventory")
 
   @@unique([catalog_type, name])
   @@map("system_catalogs")
@@ -1136,7 +1167,7 @@ model Notification {
   read_at           DateTime?
   created_at        DateTime         @default(now())
 
-  user              User             @relation(fields: [user_id], references: [id])
+  user User @relation(fields: [user_id], references: [id])
 
   @@map("notifications")
 }
@@ -1153,7 +1184,7 @@ model AuditLog {
   user_agent  String?     @db.VarChar(500)
   created_at  DateTime    @default(now())
 
-  user        User?       @relation(fields: [user_id], references: [id])
+  user User? @relation(fields: [user_id], references: [id])
 
   @@map("audit_logs")
 }

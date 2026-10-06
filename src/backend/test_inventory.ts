@@ -25,18 +25,28 @@ async function runTest() {
        await prisma.goodsReceiptItem.deleteMany({ where: { item_id: existing.id } });
        await prisma.inventoryItem.delete({ where: { id: existing.id } });
     }
+    await prisma.partCategory.deleteMany({ where: { code: 'TEST-LOC-GIO' } });
 
-    // 2. Tạo mới Inventory Item (UC-44)
-    console.log('1. Đang tạo phụ tùng mới...');
-    const newItem = await inventoryService.createItem({
-      sku: 'TEST-SKU-001',
+    // 2a. Tạo danh mục phụ tùng chung (Master)
+    console.log('1a. Đang tạo danh mục phụ tùng...');
+    const category = await inventoryService.createCategory({
+      code: 'TEST-LOC-GIO',
       name: 'Lọc gió Test',
       itemType: 'PART',
       uomId: currentUom!.id,
+    });
+    const brand = await prisma.systemCatalog.findFirst({ where: { catalog_type: 'BRAND' } });
+
+    // 2b. Tạo phụ tùng theo hãng (Variant) (UC-44)
+    console.log('1b. Đang tạo phụ tùng mới...');
+    const newItem = await inventoryService.createItem({
+      sku: 'TEST-SKU-001',
+      partCategoryId: category!.id,
+      brandId: brand?.id ?? null,
       sellingPrice: 150000,
       reorderLevel: 5
     });
-    console.log('=> Đã tạo thành công:', newItem!.sku);
+    console.log('=> Đã tạo thành công:', newItem!.sku, '-', newItem!.name);
 
     // 3. Sửa phụ tùng (UC-46)
     console.log('2. Đang cập nhật phụ tùng...');

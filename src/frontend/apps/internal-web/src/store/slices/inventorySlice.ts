@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction, isAnyOf } from '@reduxjs/toolkit';
 import api from '@/lib/axios';
 
 export interface Uom {
@@ -6,11 +6,37 @@ export interface Uom {
   name: string;
 }
 
+export type ItemType = 'PART' | 'CONSUMABLE' | 'CHEMICAL' | 'ACCESSORY';
+
+export interface Brand {
+  id: number;
+  name: string;
+}
+
+// Danh mục phụ tùng chung (Master)
+export interface PartCategory {
+  id: number;
+  code: string;
+  name: string;
+  itemType: ItemType;
+  uomId: number;
+  uom?: Uom;
+  description?: string | null;
+  isActive: boolean;
+  variantCount?: number;
+  createdAt?: string;
+}
+
+// Phụ tùng thực tế theo hãng (Variant)
 export interface InventoryItem {
   id: number;
   sku: string;
-  name: string;
-  itemType: 'PART' | 'MATERIAL' | 'CONSUMABLE' | 'CHEMICAL' | 'ACCESSORY';
+  name: string; // Suy ra từ Category + Brand
+  partCategoryId: number;
+  partCategory: Pick<PartCategory, 'id' | 'code' | 'name' | 'itemType'> | null;
+  brandId: number | null;
+  brand: Brand | null;
+  itemType: ItemType;
   uomId: number;
   uom: Uom;
   sellingPrice: number;
@@ -19,6 +45,24 @@ export interface InventoryItem {
   reorderLevel: number;
   isActive: boolean;
   createdAt: string;
+}
+
+export interface InventoryItemPayload {
+  sku?: string;
+  partCategoryId?: number;
+  brandId?: number | null;
+  sellingPrice?: number;
+  reorderLevel?: number;
+  isActive?: boolean;
+}
+
+export interface PartCategoryPayload {
+  code?: string;
+  name?: string;
+  itemType?: ItemType;
+  uomId?: number;
+  description?: string;
+  isActive?: boolean;
 }
 
 export interface Supplier {
@@ -73,6 +117,10 @@ interface InventoryState {
 
   suppliers: Supplier[];
 
+  categories: PartCategory[];
+  brands: Brand[];
+  uoms: Uom[];
+
   actionLoading: boolean;
   actionError: string | null;
 }
@@ -86,13 +134,77 @@ const initialState: InventoryState = {
   receiptsPagination: null,
   receiptsLoading: false,
   suppliers: [],
+  categories: [],
+  brands: [],
+  uoms: [],
   actionLoading: false,
   actionError: null,
 };
 
+export const fetchPartCategories = createAsyncThunk(
+  'inventory/fetchCategories',
+  async (params: { search?: string; itemType?: string; page?: number; limit?: number } | void, { rejectWithValue }) => {
+    const p = params || {};
+    try {
+      const response = await api.get('/api/part-categories', { params: { limit: 500, ...p } });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải danh mục phụ tùng');
+    }
+  }
+);
+
+export const createPartCategory = createAsyncThunk(
+  'inventory/createCategory',
+  async (data: PartCategoryPayload, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/api/part-categories', data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Lỗi khi thêm danh mục');
+    }
+  }
+);
+
+export const updatePartCategory = createAsyncThunk(
+  'inventory/updateCategory',
+  async ({ id, data }: { id: number; data: PartCategoryPayload }, { rejectWithValue }) => {
+    try {
+      const response = await api.put(`/api/part-categories/${id}`, data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Lỗi khi cập nhật danh mục');
+    }
+  }
+);
+
+export const fetchBrands = createAsyncThunk(
+  'inventory/fetchBrands',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/api/inventory/brands');
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải thương hiệu');
+    }
+  }
+);
+
+export const fetchUoms = createAsyncThunk(
+  'inventory/fetchUoms',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/api/inventory/uoms');
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải đơn vị tính');
+    }
+  }
+);
+
 export const fetchInventoryItems = createAsyncThunk(
   'inventory/fetchItems',
-  async (params: { search?: string; itemType?: string; page?: number; limit?: number }, { rejectWithValue }) => {
+  async (params: { search?: string; itemType?: string; partCategoryId?: number; brandId?: number; page?: number; limit?: number }, { rejectWithValue }) => {
     try {
       const response = await api.get('/api/inventory-items', { params });
       return response.data;
@@ -104,7 +216,7 @@ export const fetchInventoryItems = createAsyncThunk(
 
 export const createInventoryItem = createAsyncThunk(
   'inventory/createItem',
-  async (data: Partial<InventoryItem>, { rejectWithValue }) => {
+  async (data: InventoryItemPayload, { rejectWithValue }) => {
     try {
       const response = await api.post('/api/inventory-items', data);
       return response.data;
@@ -116,7 +228,7 @@ export const createInventoryItem = createAsyncThunk(
 
 export const updateInventoryItem = createAsyncThunk(
   'inventory/updateItem',
-  async ({ id, data }: { id: number; data: Partial<InventoryItem> }, { rejectWithValue }) => {
+  async ({ id, data }: { id: number; data: InventoryItemPayload }, { rejectWithValue }) => {
     try {
       const response = await api.put(`/api/inventory-items/${id}`, data);
       return response.data;
@@ -251,6 +363,28 @@ const inventorySlice = createSlice({
       // Fetch Suppliers
       .addCase(fetchSuppliers.fulfilled, (state, action) => {
         state.suppliers = action.payload.data;
+      })
+
+      // Categories / Brands / UOMs
+      .addCase(fetchPartCategories.fulfilled, (state, action) => {
+        state.categories = action.payload.data.categories;
+      })
+      .addCase(fetchBrands.fulfilled, (state, action) => {
+        state.brands = action.payload.data;
+      })
+      .addCase(fetchUoms.fulfilled, (state, action) => {
+        state.uoms = action.payload.data;
+      })
+      .addMatcher(isAnyOf(createPartCategory.pending, updatePartCategory.pending), (state) => {
+        state.actionLoading = true;
+        state.actionError = null;
+      })
+      .addMatcher(isAnyOf(createPartCategory.fulfilled, updatePartCategory.fulfilled), (state) => {
+        state.actionLoading = false;
+      })
+      .addMatcher(isAnyOf(createPartCategory.rejected, updatePartCategory.rejected), (state, action) => {
+        state.actionLoading = false;
+        state.actionError = action.payload as string;
       });
   },
 });

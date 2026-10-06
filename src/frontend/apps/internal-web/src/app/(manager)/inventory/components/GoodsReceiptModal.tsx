@@ -75,8 +75,10 @@ export function GoodsReceiptModal({ isOpen, onClose, onSuccess, inventoryItems }
       return;
     }
     for (let i = 0; i < lines.length; i++) {
-      if (!lines[i].itemId || parseFloat(lines[i].quantity) <= 0 || parseFloat(lines[i].unitCost) < 0) {
-        setToast({ show: true, type: 'error', message: `Dòng ${i+1} không hợp lệ (Mặt hàng trống hoặc SL <= 0)` });
+      const qty = parseFloat(lines[i].quantity);
+      const cost = parseFloat(lines[i].unitCost);
+      if (!lines[i].itemId || qty <= 0 || !Number.isInteger(qty) || cost < 0) {
+        setToast({ show: true, type: 'error', message: `Dòng ${i+1} không hợp lệ (Mặt hàng trống hoặc SL phải là số nguyên dương)` });
         return;
       }
     }
@@ -183,7 +185,9 @@ export function GoodsReceiptModal({ isOpen, onClose, onSuccess, inventoryItems }
               </button>
             </div>
             <div className="p-4 space-y-3 bg-surface-container-lowest max-h-60 overflow-y-auto">
-              {lines.map((line, index) => (
+              {lines.map((line, index) => {
+                const selectedItem = inventoryItems.find(item => item.id.toString() === line.itemId);
+                return (
                 <div key={index} className="flex flex-wrap md:flex-nowrap gap-3 items-end p-3 bg-surface border border-outline-variant/50 rounded-lg">
                   <div className="flex-1 min-w-[200px]">
                     <label className="block text-label-sm text-outline mb-1">Mặt hàng SKU</label>
@@ -199,14 +203,16 @@ export function GoodsReceiptModal({ isOpen, onClose, onSuccess, inventoryItems }
                       ))}
                     </select>
                   </div>
-                  <div className="w-24">
-                    <label className="block text-label-sm text-outline mb-1">Số lượng</label>
+                  <div className="w-28">
+                    <label className="block text-label-sm text-outline mb-1 whitespace-nowrap overflow-hidden text-ellipsis" title={selectedItem?.uom?.name ? `ĐVT: ${selectedItem.uom.name}` : 'Số lượng'}>
+                      SL {selectedItem?.uom?.name ? `(${selectedItem.uom.name})` : ''}
+                    </label>
                     <input 
                       type="number" 
                       value={line.quantity}
                       onChange={(e) => handleLineChange(index, 'quantity', e.target.value)}
                       className="w-full h-9 px-2 text-body-sm rounded-md border border-outline-variant bg-surface-container-lowest text-right"
-                      min="1" step="0.1" required
+                      min="1" step="1" required
                     />
                   </div>
                   <div className="w-32">
@@ -233,7 +239,7 @@ export function GoodsReceiptModal({ isOpen, onClose, onSuccess, inventoryItems }
                     <span className="material-symbols-outlined text-[20px]">delete</span>
                   </button>
                 </div>
-              ))}
+              )})}
               
               <div className="flex justify-end pt-4 px-2">
                 <span className="text-headline-sm font-semibold">Tổng cộng: <span className="text-primary-container">{calculateTotal().toLocaleString()} ₫</span></span>
