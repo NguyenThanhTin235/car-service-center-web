@@ -11,7 +11,7 @@ import {
   InventoryItem,
 } from '@/store/slices/inventorySlice';
 import { PartItemModal } from './components/PartItemModal';
-import { PartCategoryModal } from './components/PartCategoryModal';
+
 import { GoodsReceiptModal } from './components/GoodsReceiptModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import Toast from '@/components/shared/Toast';
@@ -28,7 +28,7 @@ export default function InventoryPage() {
   const [isPartModalOpen, setIsPartModalOpen] = useState(false);
   const [selectedPart, setSelectedPart] = useState<InventoryItem | null>(null);
 
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+
   
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   
@@ -152,17 +152,7 @@ export default function InventoryPage() {
             </div>
           </div>
 
-          <div className="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/60 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between text-outline mb-2">
-              <span className="text-label-sm font-label-sm uppercase tracking-wider">Danh mục phụ tùng</span>
-              <div className="p-2 rounded-lg bg-surface-container-low text-primary">
-                <span className="material-symbols-outlined text-[20px]">account_tree</span>
-              </div>
-            </div>
-            <div>
-              <div className="text-numeric-metric font-numeric-metric text-on-surface">{categories.length} <span className="text-label-md font-normal text-outline">loại · {brands.length} hãng</span></div>
-            </div>
-          </div>
+
         </div>
       </div>
 
@@ -229,10 +219,7 @@ export default function InventoryPage() {
           </div>
           
           <div className="flex items-center gap-2 self-end lg:self-center">
-            <button id="btn-add-part-category" onClick={() => setIsCategoryModalOpen(true)} className="h-9 px-3.5 flex items-center gap-2 bg-surface-container-lowest text-on-surface border border-outline-variant hover:bg-surface-container-low rounded-md text-label-md font-medium shadow-sm transition-colors">
-              <span className="material-symbols-outlined text-[18px]">create_new_folder</span>
-              Thêm Danh mục
-            </button>
+
             <button id="btn-add-part" onClick={handleAddPart} className="h-9 px-3.5 flex items-center gap-2 bg-surface-container-lowest text-on-surface border border-outline-variant hover:bg-surface-container-low rounded-md text-label-md font-medium shadow-sm transition-colors">
               <span className="material-symbols-outlined text-[18px]">add</span>
               Thêm Phụ tùng
@@ -338,12 +325,7 @@ export default function InventoryPage() {
         brandOptions={brands}
       />
 
-      <PartCategoryModal
-        isOpen={isCategoryModalOpen}
-        onClose={() => setIsCategoryModalOpen(false)}
-        onSuccess={() => dispatch(fetchPartCategories())}
-        uomOptions={uoms}
-      />
+
 
       <GoodsReceiptModal 
         isOpen={isReceiptModalOpen}

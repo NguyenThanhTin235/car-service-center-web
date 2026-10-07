@@ -13,6 +13,13 @@ import {
 import Modal from '@/components/shared/Modal';
 import Toast from '@/components/shared/Toast';
 
+function generateCodeFromName(name: string): string {
+  if (!name) return '';
+  const noAccents = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
+  return noAccents.toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+}
+
+
 interface PartCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -110,7 +117,14 @@ export function PartCategoryModal({ isOpen, onClose, category, onSuccess, uomOpt
                 id="part-category-name"
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!category) {
+                    setFormData({ ...formData, name: val, code: generateCodeFromName(val) });
+                  } else {
+                    setFormData({ ...formData, name: val });
+                  }
+                }}
                 className={inputClass}
                 placeholder="VD: Lọc gió động cơ"
                 required

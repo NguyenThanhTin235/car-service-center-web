@@ -67,6 +67,24 @@ export function PartItemModal({ isOpen, onClose, item, onSuccess, categoryOption
     }
   }, [isOpen, item, dispatch]);
 
+  useEffect(() => {
+    if (isOpen && !item) {
+      const cat = categoryOptions.find(c => c.id.toString() === formData.partCategoryId);
+      const br = brandOptions.find(b => b.id.toString() === formData.brandId);
+      
+      if (cat) {
+        let newSku = cat.code;
+        if (br) {
+          const brandSlug = br.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+          newSku = `${newSku}-${brandSlug}`;
+        }
+        setFormData(prev => ({ ...prev, sku: newSku }));
+      } else {
+        setFormData(prev => ({ ...prev, sku: '' }));
+      }
+    }
+  }, [formData.partCategoryId, formData.brandId, isOpen, item, categoryOptions, brandOptions]);
+
   const selectedCategory = useMemo(
     () => categoryOptions.find((c) => c.id.toString() === formData.partCategoryId),
     [categoryOptions, formData.partCategoryId],

@@ -10,7 +10,13 @@ export const metadata: Metadata = {
 
 const NAV_ITEMS = [
   { href: '/dashboard', icon: 'dashboard', label: 'Bảng điều khiển' },
-  { href: '/inventory', icon: 'inventory_2', label: 'Kho phụ tùng' },
+  {
+    icon: 'inventory_2', label: 'Quản lý vật tư',
+    children: [
+      { href: '/part-categories', label: 'Danh mục phụ tùng' },
+      { href: '/inventory', label: 'Kho phụ tùng' },
+    ]
+  },
 ];
 
 export default function ManagerLayout({ children }: { children: React.ReactNode }) {
@@ -43,12 +49,32 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
               {/* Nav section */}
               <div style={{ padding: '0.75rem 0' }}>
                 <nav style={{ padding: '0 0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  {NAV_ITEMS.map((item) => (
-                    <a key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#424656] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[13px] font-medium transition-colors no-underline">
-                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{item.icon}</span>
-                      <span>{item.label}</span>
-                    </a>
-                  ))}
+                  {NAV_ITEMS.map((item, idx) => {
+                    if (item.children) {
+                      return (
+                        <details key={idx} className="group" open>
+                          <summary className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#424656] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[13px] font-medium transition-colors cursor-pointer list-none select-none">
+                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{item.icon}</span>
+                            <span className="flex-1">{item.label}</span>
+                            <span className="material-symbols-outlined transition-transform group-open:-rotate-180" style={{ fontSize: '18px' }}>expand_more</span>
+                          </summary>
+                          <div className="flex flex-col gap-1 pl-10 mt-1 mb-1">
+                            {item.children.map(child => (
+                              <a key={child.href} href={child.href} className="px-3 py-1.5 rounded-lg text-[#727687] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[12px] font-medium transition-colors no-underline">
+                                {child.label}
+                              </a>
+                            ))}
+                          </div>
+                        </details>
+                      );
+                    }
+                    return (
+                      <a key={item.href || idx} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#424656] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[13px] font-medium transition-colors no-underline">
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{item.icon}</span>
+                        <span>{item.label}</span>
+                      </a>
+                    );
+                  })}
                 </nav>
               </div>
             </div>
