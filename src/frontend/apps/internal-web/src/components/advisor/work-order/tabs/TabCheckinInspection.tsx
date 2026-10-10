@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { WorkOrder, saveCheckIn, confirmCheckIn, addServiceToWO, removeServiceFromWO, getServiceCatalog, ServiceTemplateOption } from '@/lib/api/work-order.api';
 import toast from 'react-hot-toast';
 import EvidenceUploader from './EvidenceUploader';
+import VehicleInspectionPanel from './VehicleInspectionPanel';
 
 interface TabCheckinProps {
   workOrder?: WorkOrder;
@@ -652,6 +653,14 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
         </div>
       </div>
 
+      {/* Vehicle Inspection Interactive Diagram (UC-33) */}
+      {workOrder && (
+        <VehicleInspectionPanel
+          workOrder={workOrder}
+          isReadOnly={propIsReadOnly || ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '')}
+        />
+      )}
+
       {/* Customer Sign-off */}
       {workOrder?.check_in && (
         <div>
@@ -704,6 +713,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
           </div>
         </div>
       )}
+
       {/* Image Preview Modal */}
       {previewImage && (
         <div 
