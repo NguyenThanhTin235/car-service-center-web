@@ -1,7 +1,7 @@
 # ĐẶC TẢ USE CASE – HỆ THỐNG QUẢN LÝ TRUNG TÂM DỊCH VỤ Ô TÔ
 
-> **Phiên bản:** 3.0 
-> **Cập nhật:** 2026-09-15
+> **Phiên bản:** 3.1
+> **Cập nhật:** 2026-10-10
 
 ---
 
@@ -12,10 +12,9 @@
 | **Khách vãng lai (Guest)** | UC-01 → UC-03 | 3 use case |
 | **Khách hàng (Customer)** | UC-04 → UC-16 | 13 use case |
 | **Nhân viên quầy dịch vụ (Front Desk Staff)** | UC-17 → UC-28 | 12 use case |
-| **Cố vấn dịch vụ (Service Advisor)** | UC-29 → UC-46 | 18 use case |
-| **Quản lý dịch vụ (Service Manager)** | UC-47 → UC-53 | 7 use case |
-| **Quản trị viên (Administrator)** | UC-54 → UC-81 | 28 use case |
-| **Tổng cộng** | **UC-01 → UC-81** | **81 use case** |
+| **Cố vấn dịch vụ (Service Advisor)** | UC-29 → UC-49 | 21 use case |
+| **Quản trị viên (Administrator)** | UC-50 → UC-73 | 24 use case |
+| **Tổng cộng** | **UC-01 → UC-73** | **73 use case** |
 
 ---
 
@@ -311,11 +310,9 @@
 | **Đối tượng**      | Nhân viên quầy dịch vụ |
 | **Tiền điều kiện** | Nhân viên quầy dịch vụ đã đăng nhập vào hệ thống và được cấp quyền thực hiện chức năng này. |
 | **Hậu điều kiện**  | Thành công: Dữ liệu lịch hẹn mới được lưu vào hệ thống và hiển thị trong danh sách.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu không được thêm. |
-| **Luồng cơ bản**   | 1. Nhân viên quầy dịch vụ truy cập màn hình quản lý lịch hẹn và chọn **Thêm mới**.<br>2. Hệ thống hiển thị biểu mẫu nhập thông tin lịch hẹn.<br>3. Nhân viên quầy dịch vụ nhập đầy đủ các thông tin bắt buộc và các thông tin tùy chọn khác.<br>4. Nhân viên quầy dịch vụ nhấn **Lưu** hoặc **Xác nhận**.<br>5. Hệ thống kiểm tra tính hợp lệ của dữ liệu và đảm bảo không có sự trùng lặp (nếu có yêu cầu).<br>6. Hệ thống lưu dữ liệu lịch hẹn mới, hiển thị thông báo thành công và cập nhật lại danh sách. |
+| **Luồng cơ bản**   | 1. Nhân viên quầy dịch vụ truy cập màn hình quản lý lịch hẹn và chọn **Thêm lịch hẹn mới**.<br>2. Hệ thống hiển thị biểu mẫu nhập thông tin lịch hẹn.<br>3. Nhân viên quầy dịch vụ nhập đầy đủ các thông tin bắt buộc và các thông tin tùy chọn khác.<br>4. Nhân viên quầy dịch vụ nhấn **Lưu lịch hẹn**.<br>5. Hệ thống kiểm tra tính hợp lệ của dữ liệu và đảm bảo không có sự trùng lặp (nếu có yêu cầu).<br>6. Hệ thống lưu dữ liệu lịch hẹn mới, hiển thị thông báo thành công và cập nhật lại danh sách. |
 | **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình nhập liệu, nhân viên quầy dịch vụ chọn **Hủy**:<br>Hệ thống đóng biểu mẫu và quay lại màn hình trước đó mà không lưu thay đổi dữ liệu. |
 | **Luồng ngoại lệ** | Tại bước 5, nếu dữ liệu không hợp lệ, thiếu thông tin bắt buộc, hoặc vi phạm ràng buộc dữ liệu (ví dụ: trùng mã), hệ thống hiển thị thông báo lỗi chi tiết tại các trường tương ứng. Use case quay lại bước 3. |
-
----
 
 ---
 
@@ -345,7 +342,7 @@
 | **Đối tượng**      | Nhân viên quầy dịch vụ |
 | **Tiền điều kiện** | Nhân viên quầy dịch vụ đã đăng nhập, có quyền cập nhật và bản ghi lịch hẹn cần chỉnh sửa đang tồn tại trong hệ thống. |
 | **Hậu điều kiện**  | Thành công: Thông tin mới của lịch hẹn được lưu và cập nhật trong hệ thống.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu được giữ nguyên trạng thái cũ. |
-| **Luồng cơ bản**   | 1. Nhân viên quầy dịch vụ truy cập màn hình quản lý và mở chi tiết bản ghi lịch hẹn cần chỉnh sửa.<br>2. Nhân viên quầy dịch vụ chọn **Cập nhật** hoặc **Chỉnh sửa**.<br>3. Hệ thống hiển thị biểu mẫu với các thông tin hiện tại của bản ghi.<br>4. Nhân viên quầy dịch vụ thay đổi các trường thông tin cần thiết.<br>5. Nhân viên quầy dịch vụ nhấn **Lưu** hoặc **Xác nhận**.<br>6. Hệ thống kiểm tra tính hợp lệ của dữ liệu mới.<br>7. Hệ thống lưu thay đổi, hiển thị thông báo cập nhật thành công và hiển thị lại thông tin đã được làm mới. |
+| **Luồng cơ bản**   | 1. Nhân viên quầy dịch vụ truy cập màn hình quản lý và mở chi tiết bản ghi lịch hẹn cần chỉnh sửa.<br>2. Nhân viên quầy dịch vụ chọn **Đổi giờ hẹn**.<br>3. Hệ thống hiển thị biểu mẫu với các thông tin hiện tại của bản ghi.<br>4. Nhân viên quầy dịch vụ thay đổi các trường thông tin cần thiết.<br>5. Nhân viên quầy dịch vụ nhấn **Cập nhật**.<br>6. Hệ thống kiểm tra tính hợp lệ của dữ liệu mới.<br>7. Hệ thống lưu thay đổi, hiển thị thông báo cập nhật thành công và hiển thị lại thông tin đã được làm mới. |
 | **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình nhập liệu, nhân viên quầy dịch vụ chọn **Hủy**:<br>Hệ thống đóng biểu mẫu và quay lại màn hình trước đó mà không lưu thay đổi dữ liệu. |
 | **Luồng ngoại lệ** | Tại bước 6, nếu dữ liệu không hợp lệ hoặc vi phạm ràng buộc hệ thống (ví dụ: trùng mã), hệ thống hiển thị thông báo lỗi tương ứng và yêu cầu chỉnh sửa lại. Use case quay lại bước 4.<br><br>Tại bước 7, nếu bản ghi đã bị người dùng khác thay đổi (conflict) hoặc xóa trước đó, hệ thống thông báo lỗi đồng bộ dữ liệu. |
 
@@ -362,8 +359,8 @@
 | **Đối tượng**      | Nhân viên quầy dịch vụ |
 | **Tiền điều kiện** | Nhân viên quầy dịch vụ đã đăng nhập, có quyền xóa và bản ghi lịch hẹn cần xử lý đang tồn tại trong hệ thống. |
 | **Hậu điều kiện**  | Thành công: Bản ghi lịch hẹn bị vô hiệu hóa hoặc xóa thành công khỏi hệ thống.<br>Thất bại: Hệ thống thông báo lỗi, bản ghi được giữ nguyên. |
-| **Luồng cơ bản**   | 1. Nhân viên quầy dịch vụ truy cập màn hình quản lý và chọn bản ghi lịch hẹn cần xử lý.<br>2. Nhân viên quầy dịch vụ chọn hành động **Xóa** hoặc **Hủy**.<br>3. Hệ thống hiển thị hộp thoại cảnh báo và yêu cầu xác nhận thao tác.<br>4. Nhân viên quầy dịch vụ nhấn **Xác nhận**.<br>5. Hệ thống kiểm tra các ràng buộc dữ liệu liên quan đến bản ghi (ví dụ: dữ liệu có đang được sử dụng ở chức năng khác không).<br>6. Hệ thống thực hiện xóa mềm (chuyển trạng thái sang Ngừng hoạt động/Đã hủy) hoặc xóa cứng bản ghi tùy theo quy định.<br>7. Hệ thống hiển thị thông báo thành công và cập nhật lại danh sách. |
-| **Luồng thay thế** | **[Hủy thao tác]** Tại bước 3, nhân viên quầy dịch vụ chọn **Hủy**:<br>3a. Hệ thống đóng hộp thoại cảnh báo và hủy bỏ thao tác xóa, giữ nguyên dữ liệu. |
+| **Luồng cơ bản**   | 1. Nhân viên quầy dịch vụ truy cập màn hình quản lý và chọn bản ghi lịch hẹn cần xử lý.<br>2. Nhân viên quầy dịch vụ chọn hành động **Hủy hẹn**.<br>3. Hệ thống hiển thị hộp thoại cảnh báo, yêu cầu chọn lý do hủy và xác nhận thao tác.<br>4. Nhân viên quầy dịch vụ chọn lý do hủy và nhấn **Xác nhận**.<br>5. Hệ thống kiểm tra các ràng buộc dữ liệu liên quan đến bản ghi (ví dụ: dữ liệu có đang được sử dụng ở chức năng khác không).<br>6. Hệ thống thực hiện cập nhật lý do, xóa mềm (chuyển trạng thái sang Ngừng hoạt động/Đã hủy) hoặc xóa cứng bản ghi tùy theo quy định.<br>7. Hệ thống hiển thị thông báo thành công và cập nhật lại danh sách. |
+| **Luồng thay thế** | **[Hủy thao tác]** Tại bước 3, nhân viên quầy dịch vụ chọn **Quay lại**:<br>3a. Hệ thống đóng hộp thoại cảnh báo và hủy bỏ thao tác xóa, giữ nguyên dữ liệu. |
 | **Luồng ngoại lệ** | Tại bước 5, nếu bản ghi đang có ràng buộc dữ liệu với các nghiệp vụ khác (ví dụ: đã phát sinh giao dịch, hóa đơn), hệ thống từ chối xóa và hiển thị thông báo lỗi giải thích lý do không thể xóa. |
 
 ---
@@ -396,11 +393,12 @@
 | **Đối tượng**      | Nhân viên quầy dịch vụ |
 | **Tiền điều kiện** | Nhân viên quầy dịch vụ đã đăng nhập vào hệ thống và được cấp quyền thực hiện chức năng này. |
 | **Hậu điều kiện**  | Thành công: Dữ liệu hồ sơ khách hàng mới được lưu vào hệ thống và hiển thị trong danh sách.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu không được thêm. |
-| **Luồng cơ bản**   | 1. Nhân viên quầy dịch vụ truy cập màn hình quản lý hồ sơ khách hàng và chọn **Thêm mới**.<br>2. Hệ thống hiển thị biểu mẫu nhập thông tin hồ sơ khách hàng.<br>3. Nhân viên quầy dịch vụ nhập đầy đủ các thông tin bắt buộc và các thông tin tùy chọn khác.<br>4. Nhân viên quầy dịch vụ nhấn **Lưu** hoặc **Xác nhận**.<br>5. Hệ thống kiểm tra tính hợp lệ của dữ liệu và đảm bảo không có sự trùng lặp (nếu có yêu cầu).<br>6. Hệ thống lưu dữ liệu hồ sơ khách hàng mới, hiển thị thông báo thành công và cập nhật lại danh sách. |
-| **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình nhập liệu, nhân viên quầy dịch vụ chọn **Hủy**:<br>Hệ thống đóng biểu mẫu và quay lại màn hình trước đó mà không lưu thay đổi dữ liệu. |
+| **Luồng cơ bản**   | 1. Nhân viên quầy dịch vụ truy cập màn hình quản lý hồ sơ khách hàng và chọn **Thêm mới**.<br>2. Hệ thống hiển thị biểu mẫu nhập thông tin hồ sơ khách hàng.<br>3. Nhân viên quầy dịch vụ nhập đầy đủ các thông tin bắt buộc và các thông tin tùy chọn khác.<br>4. Nhân viên quầy dịch vụ nhấn **Lưu khách hàng**.<br>5. Hệ thống kiểm tra tính hợp lệ của dữ liệu và đảm bảo không có sự trùng lặp (nếu có yêu cầu).<br>6. Hệ thống lưu dữ liệu hồ sơ khách hàng mới, hiển thị thông báo thành công và cập nhật lại danh sách. |
+| **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình nhập liệu, nhân viên quầy dịch vụ chọn **Hủy bỏ**:<br>Hệ thống đóng biểu mẫu và quay lại màn hình trước đó mà không lưu thay đổi dữ liệu. |
 | **Luồng ngoại lệ** | Tại bước 5, nếu dữ liệu không hợp lệ, thiếu thông tin bắt buộc, hoặc vi phạm ràng buộc dữ liệu (ví dụ: trùng mã), hệ thống hiển thị thông báo lỗi chi tiết tại các trường tương ứng. Use case quay lại bước 3. |
 
 ---
+
 
 ---
 
@@ -430,8 +428,8 @@
 | **Đối tượng**      | Nhân viên quầy dịch vụ |
 | **Tiền điều kiện** | Nhân viên quầy dịch vụ đã đăng nhập, có quyền cập nhật và bản ghi hồ sơ khách hàng cần chỉnh sửa đang tồn tại trong hệ thống. |
 | **Hậu điều kiện**  | Thành công: Thông tin mới của hồ sơ khách hàng được lưu và cập nhật trong hệ thống.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu được giữ nguyên trạng thái cũ. |
-| **Luồng cơ bản**   | 1. Nhân viên quầy dịch vụ truy cập màn hình quản lý và mở chi tiết bản ghi hồ sơ khách hàng cần chỉnh sửa.<br>2. Nhân viên quầy dịch vụ chọn **Cập nhật** hoặc **Chỉnh sửa**.<br>3. Hệ thống hiển thị biểu mẫu với các thông tin hiện tại của bản ghi.<br>4. Nhân viên quầy dịch vụ thay đổi các trường thông tin cần thiết.<br>5. Nhân viên quầy dịch vụ nhấn **Lưu** hoặc **Xác nhận**.<br>6. Hệ thống kiểm tra tính hợp lệ của dữ liệu mới.<br>7. Hệ thống lưu thay đổi, hiển thị thông báo cập nhật thành công và hiển thị lại thông tin đã được làm mới. |
-| **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình nhập liệu, nhân viên quầy dịch vụ chọn **Hủy**:<br>Hệ thống đóng biểu mẫu và quay lại màn hình trước đó mà không lưu thay đổi dữ liệu. |
+| **Luồng cơ bản**   | 1. Nhân viên quầy dịch vụ truy cập màn hình quản lý và mở chi tiết bản ghi hồ sơ khách hàng cần chỉnh sửa.<br>2. Nhân viên quầy dịch vụ chọn **Chỉnh sửa**.<br>3. Hệ thống hiển thị biểu mẫu với các thông tin hiện tại của bản ghi.<br>4. Nhân viên quầy dịch vụ thay đổi các trường thông tin cần thiết.<br>5. Nhân viên quầy dịch vụ nhấn **Lưu thay đổi**.<br>6. Hệ thống kiểm tra tính hợp lệ của dữ liệu mới.<br>7. Hệ thống lưu thay đổi, hiển thị thông báo cập nhật thành công và hiển thị lại thông tin đã được làm mới. |
+| **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình nhập liệu, nhân viên quầy dịch vụ chọn **Hủy bỏ**:<br>Hệ thống đóng biểu mẫu và quay lại màn hình trước đó mà không lưu thay đổi dữ liệu. |
 | **Luồng ngoại lệ** | Tại bước 6, nếu dữ liệu không hợp lệ hoặc vi phạm ràng buộc hệ thống (ví dụ: trùng mã), hệ thống hiển thị thông báo lỗi tương ứng và yêu cầu chỉnh sửa lại. Use case quay lại bước 4.<br><br>Tại bước 7, nếu bản ghi đã bị người dùng khác thay đổi (conflict) hoặc xóa trước đó, hệ thống thông báo lỗi đồng bộ dữ liệu. |
 
 ---
@@ -447,11 +445,12 @@
 | **Đối tượng**      | Nhân viên quầy dịch vụ |
 | **Tiền điều kiện** | Nhân viên quầy dịch vụ đã đăng nhập, có quyền xóa và bản ghi hồ sơ khách hàng cần xử lý đang tồn tại trong hệ thống. |
 | **Hậu điều kiện**  | Thành công: Bản ghi hồ sơ khách hàng bị vô hiệu hóa hoặc xóa thành công khỏi hệ thống.<br>Thất bại: Hệ thống thông báo lỗi, bản ghi được giữ nguyên. |
-| **Luồng cơ bản**   | 1. Nhân viên quầy dịch vụ truy cập màn hình quản lý và chọn bản ghi hồ sơ khách hàng cần xử lý.<br>2. Nhân viên quầy dịch vụ chọn hành động **Xóa** hoặc **Hủy**.<br>3. Hệ thống hiển thị hộp thoại cảnh báo và yêu cầu xác nhận thao tác.<br>4. Nhân viên quầy dịch vụ nhấn **Xác nhận**.<br>5. Hệ thống kiểm tra các ràng buộc dữ liệu liên quan đến bản ghi (ví dụ: dữ liệu có đang được sử dụng ở chức năng khác không).<br>6. Hệ thống thực hiện xóa mềm (chuyển trạng thái sang Ngừng hoạt động/Đã hủy) hoặc xóa cứng bản ghi tùy theo quy định.<br>7. Hệ thống hiển thị thông báo thành công và cập nhật lại danh sách. |
-| **Luồng thay thế** | **[Hủy thao tác]** Tại bước 3, nhân viên quầy dịch vụ chọn **Hủy**:<br>3a. Hệ thống đóng hộp thoại cảnh báo và hủy bỏ thao tác xóa, giữ nguyên dữ liệu. |
-| **Luồng ngoại lệ** | Tại bước 5, nếu bản ghi đang có ràng buộc dữ liệu với các nghiệp vụ khác (ví dụ: đã phát sinh giao dịch, hóa đơn), hệ thống từ chối xóa và hiển thị thông báo lỗi giải thích lý do không thể xóa. |
+| **Luồng cơ bản**   | **[Vô hiệu hóa khách hàng]**<br>1. Nhân viên quầy dịch vụ truy cập màn hình quản lý và chọn bản ghi hồ sơ khách hàng cần xử lý.<br>2. Nhân viên quầy dịch vụ chọn hành động **Vô hiệu hóa**.<br>3. Hệ thống hiển thị hộp thoại cảnh báo và yêu cầu xác nhận thao tác.<br>4. Nhân viên quầy dịch vụ nhấn **Xác nhận**.<br>5. Hệ thống kiểm tra khách hàng có phiếu công việc chưa hoàn thành, hóa đơn chưa thanh toán hoặc lịch hẹn đang mở hay không.<br>6. Hệ thống thực hiện vô hiệu hóa (chuyển trạng thái hoạt động sang false).<br>7. Hệ thống hiển thị thông báo thành công và cập nhật lại danh sách. |
+| **Luồng thay thế** | **[Xóa vĩnh viễn khách hàng]** Tại bước 2, nhân viên chọn **Xóa vĩnh viễn**:<br>2a. Hệ thống hiển thị cảnh báo không thể khôi phục và yêu cầu xác nhận.<br>3a. Nhân viên nhấn **Xác nhận**.<br>4a. Hệ thống kiểm tra khách hàng không có dữ liệu giao dịch liên quan.<br>5a. Hệ thống tiến hành xóa dữ liệu phương tiện, vai trò và xóa vĩnh viễn hồ sơ khách hàng khỏi hệ thống.<br>6a. Hệ thống hiển thị thông báo thành công và cập nhật danh sách.<br><br>**[Hủy thao tác]** Tại bước 3 hoặc 3a, nhân viên chọn **Hủy bỏ**:<br>Hệ thống đóng hộp thoại cảnh báo và hủy bỏ thao tác, giữ nguyên dữ liệu. |
+| **Luồng ngoại lệ** | **[Vô hiệu hóa thất bại]** Tại bước 5 của luồng cơ bản, nếu khách hàng đang có phiếu công việc chưa hoàn thành, hóa đơn chưa thanh toán hoặc lịch hẹn đang mở, hệ thống từ chối vô hiệu hóa và hiển thị thông báo lỗi cụ thể (ví dụ: Không thể xóa do khách hàng đang có hóa đơn chưa thanh toán).<br><br>**[Xóa vĩnh viễn thất bại]** Tại bước 4a của luồng thay thế, nếu có dữ liệu liên quan không thể xóa, hệ thống từ chối xóa và hiển thị thông báo lỗi "Không thể xóa vĩnh viễn khách hàng vì có dữ liệu liên quan". |
 
 ---
+
 
 ---
 
@@ -537,7 +536,7 @@
 | **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
 | **Tiền điều kiện** | Phiếu công việc đã được tạo (UC-17). |
 | **Hậu điều kiện**  | Thành công: Thông tin tiếp nhận được lưu và khách hàng được thông báo để xác nhận (UC-09).<br>Thất bại: Hệ thống thông báo lỗi nếu thiếu thông tin bắt buộc. |
-| **Luồng cơ bản**   | 1. Cố vấn mở phiếu công việc và chọn **Ghi nhận tình trạng xe**.<br>2. Cố vấn điền thông tin bắt buộc: số km hiện tại, mức xăng, nội dung phàn nàn / yêu cầu của khách và tình trạng xe quan sát bên ngoài.<br>3. Cố vấn ghi thêm tài sản trong xe nếu có.<br>4. Cố vấn chụp hoặc đính kèm hình ảnh minh chứng tình trạng xe.<br>5. Cố vấn nhấn **Lưu**.<br>6. Hệ thống lưu thông tin và gửi thông báo xác nhận cho khách hàng (UC-09). |
+| **Luồng cơ bản**   | 1. Cố vấn mở phiếu công việc và chọn **Ghi nhận tình trạng xe**.<br>2. Cố vấn điền thông tin bắt buộc: số km hiện tại, mức xăng, nội dung phàn nàn / yêu cầu của khách và tình trạng xe quan sát bên ngoài.<br>3. Cố vấn ghi thêm tài sản trong xe nếu có.<br>4. Cố vấn chụp hoặc đính kèm hình ảnh minh chứng tình trạng xe.<br>5. Cố vấn nhấn **Lưu Thông Tin**.<br>6. Hệ thống lưu thông tin và gửi thông báo xác nhận cho khách hàng (UC-09). |
 | **Luồng thay thế** | Không có. |
 | **Luồng ngoại lệ** | Tại bước 5, nếu thiếu thông tin bắt buộc (km, xăng, phàn nàn hoặc tình trạng xe), hệ thống từ chối lưu và hiển thị các trường còn thiếu. |
 
@@ -545,19 +544,18 @@
 
 ---
 
-
 ## UC-31 – Thêm hạng mục dịch vụ (Add Service)
 
 | **Mã Use case**    | UC-31 |
 | ------------------ | ------ |
 | **Tên Use case**   | Thêm hạng mục dịch vụ (Add Service) |
-| **Mô tả**          | Thêm hạng mục dịch vụ vào Work Order. |
+| **Mô tả**          | Cố vấn dịch vụ thêm hạng mục dịch vụ mới vào phiếu công việc để lên kế hoạch sửa chữa/bảo dưỡng cho khách hàng. |
 | **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Work Order đang mở. |
-| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
-| **Luồng cơ bản**   | 1. Mở Work Order.<br>2. Nhấn Thêm dịch vụ.<br>3. Chọn dịch vụ từ danh mục.<br>4. Hệ thống lưu vào WO. |
-| **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+| **Tiền điều kiện** | Cố vấn dịch vụ đã đăng nhập và phiếu công việc (Work Order) đang ở trạng thái cho phép chỉnh sửa. |
+| **Hậu điều kiện**  | Thành công: Hạng mục dịch vụ mới được lưu thành công vào phiếu công việc.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu phiếu công việc giữ nguyên. |
+| **Luồng cơ bản**   | 1. Cố vấn dịch vụ truy cập màn hình chi tiết phiếu công việc.<br>2. Cố vấn nhấn nút **Thêm dịch vụ**.<br>3. Hệ thống hiển thị danh mục các dịch vụ hiện có.<br>4. (Tùy chọn) Cố vấn nhập từ khóa vào ô tìm kiếm để lọc dịch vụ mong muốn.<br>5. Cố vấn chọn dịch vụ từ danh sách.<br>6. Hệ thống thêm dịch vụ vào danh sách của phiếu công việc và tự động lưu. |
+| **Luồng thay thế** | **[Không tìm thấy dịch vụ]** Tại bước 4, nếu không có dịch vụ nào khớp với từ khóa tìm kiếm:<br>4a. Hệ thống hiển thị thông báo "Không tìm thấy dịch vụ phù hợp". |
+| **Luồng ngoại lệ** | Tại bước 6, nếu kết nối lỗi hoặc dịch vụ không hợp lệ, hệ thống hiển thị thông báo lỗi cụ thể và từ chối lưu. |
 
 
 ---
@@ -567,13 +565,13 @@
 | **Mã Use case**    | UC-32 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xóa hạng mục dịch vụ (Remove Service) |
-| **Mô tả**          | Xóa hạng mục dịch vụ khỏi Work Order. |
+| **Mô tả**          | Cố vấn dịch vụ xóa hạng mục dịch vụ khỏi phiếu công việc khi khách hàng không đồng ý hoặc không còn nhu cầu. |
 | **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Work Order đang mở. |
-| **Hậu điều kiện**  | Thành công: Hệ thống xử lý đúng yêu cầu. Thất bại: Giữ nguyên trạng thái. |
-| **Luồng cơ bản**   | 1. Mở Work Order.<br>2. Chọn dịch vụ cần xóa.<br>3. Nhấn Xóa.<br>4. Hệ thống loại bỏ khỏi WO. |
-| **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Hệ thống thông báo lỗi nếu dữ liệu không hợp lệ. |
+| **Tiền điều kiện** | Cố vấn dịch vụ đã đăng nhập, phiếu công việc đang mở và đã có ít nhất một hạng mục dịch vụ. |
+| **Hậu điều kiện**  | Thành công: Hạng mục dịch vụ được loại bỏ khỏi phiếu công việc.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu được giữ nguyên. |
+| **Luồng cơ bản**   | 1. Cố vấn dịch vụ truy cập màn hình chi tiết phiếu công việc.<br>2. (Tùy chọn) Cố vấn nhập từ khóa vào ô tìm kiếm để lọc dịch vụ cần xóa khỏi danh sách.<br>3. Cố vấn chọn hạng mục dịch vụ cần xóa và nhấn **Xóa**.<br>4. Hệ thống hiển thị hộp thoại xác nhận thao tác.<br>5. Cố vấn nhấn **Xác nhận**.<br>6. Hệ thống tiến hành loại bỏ hạng mục dịch vụ đó khỏi phiếu công việc và cập nhật danh sách. |
+| **Luồng thay thế** | **[Không tìm thấy dịch vụ]** Tại bước 2, nếu không có dịch vụ nào khớp với từ khóa tìm kiếm:<br>2a. Hệ thống hiển thị thông báo "Không tìm thấy dịch vụ phù hợp". |
+| **Luồng ngoại lệ** | Tại bước 6, nếu dịch vụ đã bắt đầu thực hiện hoặc đã thanh toán, hệ thống từ chối xóa và hiển thị thông báo lỗi (ví dụ: Không thể xóa dịch vụ đang thực hiện). |
 
 
 ---
@@ -587,8 +585,8 @@
 | **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
 | **Tiền điều kiện** | Phiếu công việc đã được tạo (UC-17). Cố vấn đã ghi nhận tình trạng tiếp nhận xe (UC-18). Xe đang ở trong xưởng, chưa thực hiện sửa chữa. |
 | **Hậu điều kiện**  | Thành công: Danh sách các vấn đề phát hiện (Finding) kèm vị trí marker trên sơ đồ xe được lưu vào phiếu công việc, sẵn sàng để lên kế hoạch tạo Job xử lý.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu không được lưu. |
-| **Luồng cơ bản**   | 1. Cố vấn mở mục **Kiểm tra xe (Vehicle Inspection)** trong phiếu công việc.<br>2. Hệ thống hiển thị sơ đồ 2D mô phỏng hình ảnh thân xe (Front, Rear, Left, Right) và thanh công cụ chứa các loại marker (Damage, Rust, Missing, Dent, Scratch,...).<br>3. Cố vấn chọn một loại marker trên thanh công cụ và nhấp chuột vào bộ phận tương ứng trên sơ đồ xe (ví dụ: nhấp chọn Driver side - Front door).<br>4. Hệ thống đặt đánh dấu (marker) lên sơ đồ xe tại vị trí vừa nhấp và tự động tạo một dòng thông tin phát hiện (Finding).<br>5. Cố vấn nhập thêm ghi chú chi tiết và đính kèm hình ảnh thực tế (Photo) cho Finding nếu có.<br>6. Cố vấn nhấn **Lưu kết quả kiểm tra**.<br>7. Hệ thống lưu toàn bộ danh sách Finding và vị trí các marker trên sơ đồ xe vào phiếu công việc. |
-| **Luồng thay thế** | **[Xóa vấn đề phát hiện / Marker]** Tại bước 4, cố vấn muốn xóa một Finding không chính xác:<br>4a. Cố vấn nhấp biểu tượng xóa (X) tại dòng Finding tương ứng trong bảng hoặc nhấp trực tiếp vào marker trên sơ đồ xe.<br>5a. Hệ thống kiểm tra: nếu Finding chưa được liên kết với Job nào, hệ thống xóa dòng Finding và gỡ bỏ marker khỏi sơ đồ xe.<br><br>**[Chỉnh sửa ghi chú / Đổi ảnh Finding]** Tại bước 5, cố vấn nhấp vào ô Note để sửa nội dung ghi chú hoặc tải lên hình ảnh minh chứng khác. |
+| **Luồng cơ bản**   | 1. Cố vấn cuộn đến phần **Kiểm tra xe** trong phiếu công việc.<br>2. Hệ thống hiển thị sơ đồ thân xe và thanh công cụ chứa các loại marker (Damage, Rust, Missing, Dent, Scratch).<br>3. Cố vấn chọn một loại marker trên thanh công cụ và nhấp chuột vào bộ phận tương ứng trên sơ đồ xe.<br>4. Hệ thống đặt đánh dấu (marker) lên sơ đồ xe và tự động thêm một dòng thông tin phát hiện (Finding) vào danh sách bên phải.<br>5. Cố vấn nhập trực tiếp nội dung ghi chú (Note) vào ô nhập liệu của dòng Finding.<br>6. (Tùy chọn) Cố vấn nhấp vào biểu tượng tải lên để đính kèm hình ảnh minh chứng (Photo).<br>7. (Tùy chọn) Cố vấn chọn công việc (Job) từ danh sách hoặc nhấp **Thêm công việc** để liên kết với Finding.<br>8. Hệ thống tự động ghi nhận thay đổi (không cần nhấn nút lưu riêng biệt). |
+| **Luồng thay thế** | **[Xóa vấn đề phát hiện]** Cố vấn nhấp vào biểu tượng xóa (dấu X) xuất hiện khi rê chuột vào dòng Finding trong danh sách: Hệ thống xóa Finding và gỡ marker khỏi sơ đồ xe.<br><br>**[Chỉnh sửa thông tin]** Cố vấn có thể sửa trực tiếp ghi chú (Note) trên ô nhập liệu hoặc tải lên lại ảnh ở bất kỳ thời điểm nào. |
 | **Luồng ngoại lệ** | Tại bước 5a của luồng Xóa, nếu Finding đã được liên kết với một Job, hệ thống từ chối xóa và hiển thị thông báo yêu cầu hủy liên kết Job trước. |
 
 ---
