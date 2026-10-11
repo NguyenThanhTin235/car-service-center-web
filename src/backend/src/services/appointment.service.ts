@@ -28,9 +28,14 @@ export class AppointmentService {
     limit: number = 50,
     startDate?: string,
     endDate?: string,
-    status?: string
+    status?: string,
+    customerId?: number
   ) {
     let whereClause: Prisma.AppointmentWhereInput = {};
+
+    if (customerId) {
+      whereClause.customer_id = customerId;
+    }
 
     if (searchQuery) {
       whereClause = {
@@ -104,7 +109,7 @@ export class AppointmentService {
   /**
    * Lấy chi tiết lịch hẹn
    */
-  async getAppointmentById(id: number) {
+  async getAppointmentById(id: number, customerId?: number) {
     const appointment = await prisma.appointment.findUnique({
       where: { id },
       include: {
@@ -120,6 +125,9 @@ export class AppointmentService {
     });
 
     if (!appointment) throw new Error('Không tìm thấy lịch hẹn');
+    if (customerId && appointment.customer_id !== customerId) {
+      throw new Error('Bạn không có quyền xem lịch hẹn này');
+    }
 
     const aptAny = appointment as any;
     return {
@@ -202,6 +210,20 @@ export class AppointmentService {
         });
       }
 
+      // Gửi email xác nhận đặt lịch
+      const customerForEmail = await tx.user.findUnique({ where: { id: appointment.customer_id } });
+      if (customerForEmail?.email) {
+        const dateStr = new Date(appointment.scheduled_date).toLocaleDateString('vi-VN');
+        const timeStr = appointment.scheduled_time.toISOString().substring(11, 16);
+        notificationService.sendEmail(
+          customerForEmail.email,
+          'Xác nhận đặt lịch hẹn - Car Service Center',
+          `<p>Kính chào ${customerForEmail.full_name},</p>
+           <p>Lịch hẹn của quý khách vào <b>${timeStr} ngày ${dateStr}</b> đã được tạo thành công trên hệ thống.</p>
+           <p>Vui lòng chờ nhân viên liên hệ xác nhận.</p>`
+        ).catch(err => console.error('Failed to send email:', err));
+      }
+
       return appointment;
     });
   }
@@ -209,9 +231,13 @@ export class AppointmentService {
   /**
    * Dời lịch hẹn (UC-19)
    */
-  async updateAppointment(id: number, data: UpdateAppointmentDto) {
+  async updateAppointment(id: number, data: UpdateAppointmentDto, customerId?: number) {
     const appointment = await prisma.appointment.findUnique({ where: { id } });
     if (!appointment) throw new Error('Không tìm thấy lịch hẹn');
+
+    if (customerId && appointment.customer_id !== customerId) {
+      throw new Error('Bạn không có quyền chỉnh sửa lịch hẹn này');
+    }
 
     if (appointment.status !== 'REQUESTED' && appointment.status !== 'CONFIRMED' && appointment.status !== 'RESCHEDULED') {
       throw new Error(`Không thể dời lịch hẹn đang ở trạng thái ${appointment.status}`);
@@ -278,11 +304,11 @@ export class AppointmentService {
 
     if (data.scheduled_date && updated.customer?.email) {
       const dateStr = new Date(updated.scheduled_date).toLocaleDateString('vi-VN');
-      await notificationService.sendEmail(
+      notificationService.sendEmail(
         updated.customer.email,
         'Thông báo dời lịch hẹn - Car Service Center',
         `<p>Kính chào ${updated.customer.full_name},</p><p>Lịch hẹn của quý khách đã được dời sang ngày <b>${dateStr}</b>.</p><p>Vui lòng sắp xếp thời gian đến đúng giờ.</p>`
-      );
+      ).catch(err => console.error('Failed to send email:', err));
     }
 
     return updated;
@@ -309,11 +335,11 @@ export class AppointmentService {
 
     if (updated.customer?.email) {
       const dateStr = new Date(updated.scheduled_date).toLocaleDateString('vi-VN');
-      await notificationService.sendEmail(
+      notificationService.sendEmail(
         updated.customer.email,
         'Xác nhận lịch hẹn thành công - Car Service Center',
         `<p>Kính chào ${updated.customer.full_name},</p><p>Lịch hẹn của quý khách vào ngày <b>${dateStr}</b> đã được xác nhận thành công.</p><p>Hân hạnh được đón tiếp quý khách.</p>`
-      );
+      ).catch(err => console.error('Failed to send email:', err));
     }
 
     return updated;
@@ -322,9 +348,13 @@ export class AppointmentService {
   /**
    * Hủy lịch hẹn (UC-20)
    */
-  async cancelAppointment(id: number, cancelReason: string) {
+  async cancelAppointment(id: number, cancelReason: string, customerId?: number) {
     const appointment = await prisma.appointment.findUnique({ where: { id } });
     if (!appointment) throw new Error('Không tìm thấy lịch hẹn');
+
+    if (customerId && appointment.customer_id !== customerId) {
+      throw new Error('Bạn không có quyền hủy lịch hẹn này');
+    }
 
     if (appointment.status === 'ARRIVED') {
       throw new Error('Không thể hủy lịch hẹn khi khách đã mang xe đến xưởng');
@@ -346,11 +376,11 @@ export class AppointmentService {
 
     if (updated.customer?.email) {
       const dateStr = new Date(updated.scheduled_date).toLocaleDateString('vi-VN');
-      await notificationService.sendEmail(
+      notificationService.sendEmail(
         updated.customer.email,
         'Thông báo hủy lịch hẹn - Car Service Center',
         `<p>Kính chào ${updated.customer.full_name},</p><p>Lịch hẹn của quý khách vào ngày <b>${dateStr}</b> đã bị hủy.</p><p>Lý do: <i>${cancelReason}</i></p>`
-      );
+      ).catch(err => console.error('Failed to send email:', err));
     }
 
     return updated;
