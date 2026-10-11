@@ -11,13 +11,16 @@ export const getAppointments = async (req: Request, res: Response): Promise<void
     const pageNumber = page ? parseInt(page as string) : 1;
     const limitNumber = limit ? parseInt(limit as string) : 50;
 
+    const customerId = req.user?.roles.includes('CUSTOMER') ? req.user.id : undefined;
+
     const result = await appointmentService.getAppointments(
       search as string,
       pageNumber,
       limitNumber,
       startDate as string,
       endDate as string,
-      status as string
+      status as string,
+      customerId
     );
 
     res.json({
@@ -33,7 +36,8 @@ export const getAppointments = async (req: Request, res: Response): Promise<void
 export const getAppointmentById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const appointment = await appointmentService.getAppointmentById(Number(id));
+    const customerId = req.user?.roles.includes('CUSTOMER') ? req.user.id : undefined;
+    const appointment = await appointmentService.getAppointmentById(Number(id), customerId);
     
     res.json({
       status: 'success',
@@ -55,8 +59,14 @@ export const createAppointment = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Assume user is attached to req by auth middleware, for now mock user ID 1
-    const createdById = (req as any).user?.id || 1;
+    if (req.user?.roles.includes('CUSTOMER')) {
+      value.customer_id = req.user.id;
+    } else if (!value.customer_id) {
+      res.status(400).json({ status: 'error', message: 'Vui lòng chọn khách hàng' });
+      return;
+    }
+
+    const createdById = req.user?.id || 1;
 
     const newAppointment = await appointmentService.createAppointment(value, createdById);
     
@@ -83,7 +93,8 @@ export const updateAppointment = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const updatedAppointment = await appointmentService.updateAppointment(Number(id), value);
+    const customerId = req.user?.roles.includes('CUSTOMER') ? req.user.id : undefined;
+    const updatedAppointment = await appointmentService.updateAppointment(Number(id), value, customerId);
     
     res.json({
       status: 'success',
@@ -126,7 +137,8 @@ export const cancelAppointment = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const cancelledAppointment = await appointmentService.cancelAppointment(Number(id), value.cancel_reason);
+    const customerId = req.user?.roles.includes('CUSTOMER') ? req.user.id : undefined;
+    const cancelledAppointment = await appointmentService.cancelAppointment(Number(id), value.cancel_reason, customerId);
     
     res.json({
       status: 'success',

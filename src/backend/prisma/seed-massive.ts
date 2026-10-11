@@ -214,7 +214,14 @@ async function main() {
   for (const r of ['Hàng hỏng', 'Kiểm kê chênh lệch', 'Hết hạn sử dụng']) {
     await prisma.systemCatalog.create({ data: { catalog_type: CatalogType.ADJUST_REASON, name: r } });
   }
-  console.log('   ✅ 15 SystemCatalogs');
+  // BRAND (Thương hiệu phụ tùng)
+  const brandNames = ['Toyota OEM', 'Bosch', 'Denso', 'NGK', 'Castrol', 'Mobil', 'Shell', 'Brembo', 'KYB', 'GS Yuasa'];
+  const brandCatalogs: any[] = [];
+  for (let i = 0; i < brandNames.length; i++) {
+    brandCatalogs.push(await prisma.systemCatalog.create({ data: { catalog_type: CatalogType.BRAND, name: brandNames[i], sort_order: i } }));
+  }
+  catalogs.brand = brandCatalogs;
+  console.log('   ✅ 25 SystemCatalogs');
 
   // 2.3 Skills
   const skillNames = [
@@ -635,23 +642,56 @@ async function main() {
     { name: 'Nước hoa ô tô', type: ItemType.ACCESSORY, uomIdx: 0, selling: 150000, cost: 70000, onHand: 50 },
   ];
 
+  // Mỗi itemData → 1 PartCategory (Master) + 1-2 InventoryItem (Variant theo hãng).
+  // inventoryItems[i] luôn là variant chính của category i để giữ nguyên các mapping theo index bên dưới.
+  const brandByType: Record<string, number[]> = {
+    [ItemType.PART]: [0, 1, 2],       // Toyota OEM, Bosch, Denso
+    [ItemType.CONSUMABLE]: [4, 5, 6], // Castrol, Mobil, Shell
+    [ItemType.CHEMICAL]: [1, 6],      // Bosch, Shell
+    [ItemType.ACCESSORY]: [0, 1],     // Toyota OEM, Bosch
+  };
+  const partCategories: any[] = [];
   const inventoryItems: any[] = [];
+  const extraVariants: any[] = [];
   for (let i = 0; i < itemData.length; i++) {
     const d = itemData[i];
+    const code = `PC-${String(i + 1).padStart(3, '0')}`;
+    const category = await prisma.partCategory.create({
+      data: { code, name: d.name, item_type: d.type, uom_id: catalogs.uom[d.uomIdx].id }
+    });
+    partCategories.push(category);
+
+    const brands = brandByType[d.type];
+    const primaryBrand = catalogs.brand[brands[i % brands.length]];
     inventoryItems.push(await prisma.inventoryItem.create({
       data: {
-        sku: `VT-${String(i + 1).padStart(3, '0')}`,
-        name: d.name,
-        item_type: d.type,
-        uom_id: catalogs.uom[d.uomIdx].id,
+        part_category_id: category.id,
+        sku: `VT-${String(i + 1).padStart(3, '0')}-A`,
+        brand_id: primaryBrand.id,
         selling_price: d.selling,
         average_cost: d.cost,
         on_hand: d.onHand,
         reorder_level: Math.round(d.onHand * 0.2),
       }
     }));
+
+    // Variant thứ 2 (hãng khác, giá khác) cho category chẵn
+    if (i % 2 === 0) {
+      const altBrand = catalogs.brand[brands[(i + 1) % brands.length]];
+      extraVariants.push(await prisma.inventoryItem.create({
+        data: {
+          part_category_id: category.id,
+          sku: `VT-${String(i + 1).padStart(3, '0')}-B`,
+          brand_id: altBrand.id,
+          selling_price: Math.round(d.selling * 1.15),
+          average_cost: Math.round(d.cost * 1.15),
+          on_hand: Math.round(d.onHand / 2),
+          reorder_level: Math.round(d.onHand * 0.1),
+        }
+      }));
+    }
   }
-  console.log(`   ✅ ${inventoryItems.length} InventoryItems`);
+  console.log(`   ✅ ${partCategories.length} PartCategories, ${inventoryItems.length + extraVariants.length} InventoryItems`);
 
   // JobTemplateParts (liên kết job template với vật tư)
   const jtpMappings: { jtIdx: number; itemIdx: number; qty: number }[] = [

@@ -8,20 +8,21 @@ import {
   getAppointmentById,
   arriveAppointment
 } from '../controllers/appointment.controller';
+import { authenticate } from '../middlewares/auth.middleware';
 
 const router = Router();
 
 // Lấy danh sách & Chi tiết
-router.get('/', getAppointments);
-router.get('/:id', getAppointmentById);
+router.get('/', authenticate, getAppointments);
+router.get('/:id', authenticate, getAppointmentById);
 
 // Thêm mới & Cập nhật
-router.post('/', createAppointment);
-router.put('/:id', updateAppointment);
+router.post('/', authenticate, createAppointment);
+router.put('/:id', authenticate, updateAppointment);
 
 // Đổi trạng thái
-router.patch('/:id/confirm', confirmAppointment);
-router.patch('/:id/cancel', cancelAppointment);
-router.patch('/:id/arrive', arriveAppointment);
+router.patch('/:id/confirm', authenticate, confirmAppointment);
+router.patch('/:id/cancel', authenticate, cancelAppointment);
+router.patch('/:id/arrive', authenticate, arriveAppointment);
 
 export default router;
