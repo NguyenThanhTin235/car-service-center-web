@@ -502,23 +502,23 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
               </div>
               
               <div className="flex flex-col gap-6">
-                <div className="grid grid-cols-[120px_1fr] gap-4 items-center">
-                  <span className="text-body-sm text-on-surface-variant">Mileage</span>
+                <div className="grid grid-cols-[140px_1fr] gap-4 items-center">
+                  <span className="text-body-sm text-on-surface-variant">Số ODO</span>
                   <span className="text-body-sm font-medium">{mileage ? `${parseInt(mileage).toLocaleString()} km` : ''}</span>
                 </div>
-                <div className="grid grid-cols-[120px_1fr] gap-4 items-start">
-                  <span className="text-body-sm text-on-surface-variant">Belongings</span>
+                <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
+                  <span className="text-body-sm text-on-surface-variant">Tài sản để trên xe</span>
                   <span className="text-body-sm font-medium">{belongings || 'Không có'}</span>
                 </div>
-                <div className="grid grid-cols-[120px_1fr] gap-4 items-start">
-                  <span className="text-body-sm text-on-surface-variant">Est. job cost</span>
+                <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
+                  <span className="text-body-sm text-on-surface-variant">Chi phí ước tính</span>
                   <span className="text-body-sm font-medium">S$ 1,920.00</span>
                 </div>
               </div>
 
               <div className="flex flex-col gap-6">
-                <div className="grid grid-cols-[120px_1fr] gap-4 items-center">
-                  <span className="text-body-sm text-on-surface-variant">Fuel / charge</span>
+                <div className="grid grid-cols-[140px_1fr] gap-4 items-center">
+                  <span className="text-body-sm text-on-surface-variant">Mức nhiên liệu</span>
                   <div className="flex items-center gap-2">
                     <div className="w-48 h-6 bg-gradient-to-r from-[#F6D2CA] via-[#F3E7B7] to-[#D5E9D4] rounded-md overflow-hidden flex relative shadow-sm border border-black/5">
                       <div className="flex-1 border-r border-black/5 flex items-center justify-center text-[10px] text-[#557088] z-10">E</div>
@@ -531,12 +531,12 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
                   </div>
                 </div>
 
-                <div className="grid grid-cols-[120px_1fr] gap-4 items-start">
-                  <span className="text-body-sm text-on-surface-variant">Notes</span>
+                <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
+                  <span className="text-body-sm text-on-surface-variant">Ghi chú</span>
                   <span className="text-body-sm font-medium">{workOrder?.intake_record?.notes || complaint || 'Không có ghi chú.'}</span>
                 </div>
-                <div className="grid grid-cols-[120px_1fr] gap-4 items-start">
-                  <span className="text-body-sm text-on-surface-variant">Est. ready</span>
+                <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
+                  <span className="text-body-sm text-on-surface-variant">Dự kiến xong</span>
                   <span className="text-body-sm font-medium">20 Jun 2026</span>
                 </div>
               </div>
