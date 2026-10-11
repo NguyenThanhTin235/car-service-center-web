@@ -18,6 +18,7 @@ import serviceCategoryRoutes from './routes/service-category.routes';
 import jobTypeRoutes from './routes/job-type.routes';
 import catalogRoutes from './routes/system-catalog.routes';
 import vehicleRoutes from './routes/vehicle.routes';
+import inventoryRoutes from './routes/inventory.routes';
 
 const app = express();
 
@@ -60,7 +61,8 @@ app.use('/api/employees', employeeRoutes);
 app.use('/api/service-categories', serviceCategoryRoutes);
 
 app.use('/api/job-types', jobTypeRoutes);
-app.use('/api/catalogs', catalogRoutes);
+app.use('/api/system-catalogs', catalogRoutes);
 app.use('/api/vehicles', vehicleRoutes);
+app.use('/api', inventoryRoutes);
 
 export default app;

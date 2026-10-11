@@ -28,6 +28,10 @@ async function main() {
   const uomCatalog = await prisma.systemCatalog.create({ data: { catalog_type: CatalogType.UOM, name: 'Cái' } });
   await prisma.systemCatalog.create({ data: { catalog_type: CatalogType.CANCEL_REASON, name: 'Khách đổi ý' } });
   await prisma.systemCatalog.create({ data: { catalog_type: CatalogType.ADJUST_REASON, name: 'Hàng hỏng' } });
+  const brandCatalogs = [];
+  for (const b of ['Toyota OEM', 'Bosch', 'Denso']) {
+    brandCatalogs.push(await prisma.systemCatalog.create({ data: { catalog_type: CatalogType.BRAND, name: b } }));
+  }
 
   // 4. CREATE USERS & EMPLOYEES
   const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
@@ -147,8 +151,11 @@ async function main() {
 
   const inventoryItems = [];
   for (let i = 1; i <= 10; i++) {
+    const category = await prisma.partCategory.create({
+      data: { code: `PC-${i}`, name: `Vật tư ${i}`, item_type: ItemType.PART, uom_id: uomCatalog.id }
+    });
     inventoryItems.push(await prisma.inventoryItem.create({
-      data: { sku: `ITEM-${i}`, name: `Vật tư ${i}`, item_type: ItemType.PART, uom_id: uomCatalog.id, selling_price: 200000, average_cost: 150000, on_hand: 100 }
+      data: { part_category_id: category.id, sku: `ITEM-${i}`, brand_id: brandCatalogs[i % 3].id, selling_price: 200000, average_cost: 150000, on_hand: 100 }
     }));
   }
 
