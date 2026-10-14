@@ -89,36 +89,40 @@ Xây dựng một nền tảng web quản lý toàn bộ quy trình vận hành 
 | UC-41 | Kiểm định chất lượng | SA | Must |
 | UC-42 | Bàn giao xe | SA | Must |
 | UC-43 | Theo dõi hoạt động xưởng | MGR | Must |
-| UC-44 | Thêm phụ tùng | MGR | Must |
-| UC-45 | Xem phụ tùng | MGR | Must |
-| UC-46 | Cập nhật phụ tùng | MGR | Must |
-| UC-47 | Xóa phụ tùng | MGR | Must |
-| UC-48 | Nhập kho | MGR | Must |
-| UC-49 | Xem báo cáo vận hành | MGR | Must |
-| UC-50 | Thêm tài khoản | ADM | Must |
-| UC-51 | Xem tài khoản | ADM | Must |
-| UC-52 | Cập nhật tài khoản | ADM | Must |
-| UC-53 | Xóa tài khoản | ADM | Must |
-| UC-54 | Thêm nhân viên | ADM | Must |
-| UC-55 | Xem nhân viên | ADM | Must |
-| UC-56 | Cập nhật nhân viên | ADM | Must |
-| UC-57 | Xóa nhân viên | ADM | Must |
-| UC-58 | Thêm danh mục dịch vụ | ADM | Must |
-| UC-59 | Xem danh mục dịch vụ | ADM | Must |
-| UC-60 | Cập nhật danh mục dịch vụ | ADM | Must |
-| UC-61 | Xóa danh mục dịch vụ | ADM | Must |
-| UC-62 | Thêm dịch vụ (Service) | ADM | Must |
-| UC-63 | Xem dịch vụ (Service) | ADM | Must |
-| UC-64 | Cập nhật dịch vụ (Service) | ADM | Must |
-| UC-65 | Xóa dịch vụ (Service) | ADM | Must |
-| UC-66 | Thêm loại công việc | ADM | Must |
-| UC-67 | Xem loại công việc | ADM | Must |
-| UC-68 | Cập nhật loại công việc | ADM | Must |
-| UC-69 | Xóa loại công việc | ADM | Must |
-| UC-70 | Thêm danh mục chung | ADM | Must |
-| UC-71 | Xem danh mục chung | ADM | Must |
-| UC-72 | Cập nhật danh mục chung | ADM | Must |
-| UC-73 | Xóa danh mục chung | ADM | Must |
+| UC-44 | Thêm danh mục phụ tùng (Create Part Category) | MGR | Must |
+| UC-45 | Xem danh mục phụ tùng (View Part Category) | MGR | Must |
+| UC-46 | Cập nhật danh mục phụ tùng (Update Part Category) | MGR | Must |
+| UC-47 | Xóa danh mục phụ tùng (Delete Part Category) | MGR | Must |
+| UC-48 | Thêm phụ tùng (Create Inventory Item) | MGR | Must |
+| UC-49 | Xem phụ tùng (View Inventory Item) | MGR | Must |
+| UC-50 | Cập nhật phụ tùng (Update Inventory Item) | MGR | Must |
+| UC-51 | Xóa phụ tùng (Delete/Deactivate Inventory Item) | MGR | Must |
+| UC-52 | Nhập kho | MGR | Must |
+| UC-53 | Xem báo cáo vận hành | MGR | Must |
+| UC-54 | Thêm tài khoản | ADM | Must |
+| UC-55 | Xem tài khoản | ADM | Must |
+| UC-56 | Cập nhật tài khoản | ADM | Must |
+| UC-57 | Xóa tài khoản | ADM | Must |
+| UC-58 | Thêm nhân viên | ADM | Must |
+| UC-59 | Xem nhân viên | ADM | Must |
+| UC-60 | Cập nhật nhân viên | ADM | Must |
+| UC-61 | Xóa nhân viên | ADM | Must |
+| UC-62 | Thêm danh mục dịch vụ | ADM | Must |
+| UC-63 | Xem danh mục dịch vụ | ADM | Must |
+| UC-64 | Cập nhật danh mục dịch vụ | ADM | Must |
+| UC-65 | Xóa danh mục dịch vụ | ADM | Must |
+| UC-66 | Thêm dịch vụ (Service) | ADM | Must |
+| UC-67 | Xem dịch vụ (Service) | ADM | Must |
+| UC-68 | Cập nhật dịch vụ (Service) | ADM | Must |
+| UC-69 | Xóa dịch vụ (Service) | ADM | Must |
+| UC-70 | Thêm loại công việc | ADM | Must |
+| UC-71 | Xem loại công việc | ADM | Must |
+| UC-72 | Cập nhật loại công việc | ADM | Must |
+| UC-73 | Xóa loại công việc | ADM | Must |
+| UC-74 | Thêm danh mục chung | ADM | Must |
+| UC-75 | Xem danh mục chung | ADM | Must |
+| UC-76 | Cập nhật danh mục chung | ADM | Must |
+| UC-77 | Xóa danh mục chung | ADM | Must |
 
 ---
 
@@ -234,6 +238,8 @@ Xây dựng một nền tảng web quản lý toàn bộ quy trình vận hành 
 | BR-INV-ITEM-05 | Không sửa tồn trực tiếp | Thay đổi tồn phải qua nghiệp vụ nhập, xuất, trả hoặc Stock Adjustment được phê duyệt. |
 | BR-INV-ITEM-06 | Issue to Job | Mọi lần xuất kho tạo Stock Movement và lưu unit cost tại thời điểm xuất. |
 | BR-INV-ITEM-07 | Return from Job | Số lượng trả không vượt số lượng đã issue chưa dùng; nhập lại theo unit cost của movement gốc. |
+| BR-INV-ITEM-08 | Part Category (Master Data) | Mỗi Inventory Item phải thuộc đúng một Part Category. Part Category được quản lý như Master Data; không được xóa vật lý nếu đã có Item tham chiếu. Chỉ chuyển trạng thái Inactive. |
+| BR-INV-ITEM-09 | SKU Unique | Mã SKU phải duy nhất trong toàn hệ thống. Hệ thống hỗ trợ tự sinh SKU từ tên danh mục và thương hiệu khi tạo mới. |
 
 ### 4.13. Master Data
 
