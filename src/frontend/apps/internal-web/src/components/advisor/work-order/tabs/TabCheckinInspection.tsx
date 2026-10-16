@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { WorkOrder, saveCheckIn, confirmCheckIn, addServiceToWO, removeServiceFromWO, getServiceCatalog, ServiceTemplateOption } from '@/lib/api/work-order.api';
 import toast from 'react-hot-toast';
 import EvidenceUploader from './EvidenceUploader';
@@ -15,6 +15,123 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
   const [jobTypes, setJobTypes] = useState<string[]>([]);
   const [customerReported, setCustomerReported] = useState<string[]>([]);
 
+  // Danh sách dịch vụ khách hàng yêu cầu: Tổng hợp đầy đủ từ workOrder.services và intake_record.services
+  const requestedServices = useMemo(() => {
+    const list: Array<{ id: number | string; name: string; category?: string }> = [];
+    const seenNames = new Set<string>();
+
+    // 1. Nếu Work Order đã có danh sách dịch vụ (services), đây là dữ liệu thực tế và chuẩn xác nhất
+    if (workOrder?.services && workOrder.services.length > 0) {
+      for (const s of workOrder.services) {
+        const name = (s.name || s.service?.name || 'Dịch vụ').trim();
+        const key = name.toLowerCase();
+        if (!seenNames.has(key)) {
+          seenNames.add(key);
+          list.push({
+            id: s.id,
+            name: name,
+            category: s.service?.category?.name,
+          });
+        }
+      }
+      return list;
+    }
+
+    // 2. Nếu Work Order chưa có services, lấy từ phiếu tiếp nhận intake_record
+    if (workOrder?.intake_record?.services && workOrder.intake_record.services.length > 0) {
+      for (const s of workOrder.intake_record.services as any[]) {
+        const name = (s.service?.name || s.service?.category?.name || 'Dịch vụ yêu cầu').trim();
+        const key = name.toLowerCase();
+        if (!seenNames.has(key)) {
+          seenNames.add(key);
+          list.push({
+            id: s.id,
+            name: name,
+            category: s.service?.category?.name,
+          });
+        }
+      }
+    }
+
+    return list;
+  }, [workOrder]);
+
+  // Chi phí ước tính động (thay thế hardcode)
+  const estimatedCostText = useMemo(() => {
+    if (!workOrder) return 'Chờ báo giá';
+    let total = 0;
+    let hasPrice = false;
+
+    // 1. Tính từ workOrder.services
+    if (workOrder.services && workOrder.services.length > 0) {
+      for (const svc of workOrder.services) {
+        if (svc.service?.fixed_price) {
+          total += Number(svc.service.fixed_price);
+          hasPrice = true;
+        }
+        if (svc.jobs && svc.jobs.length > 0) {
+          for (const job of svc.jobs) {
+            if (job.parts && job.parts.length > 0) {
+              for (const p of job.parts) {
+                const price = (p as any).unit_price || (p as any).item?.selling_price || 0;
+                const qty = (p as any).quantity || 1;
+                if (price > 0) {
+                  total += Number(price) * Number(qty);
+                  hasPrice = true;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Tính từ intake_record.services nếu chưa có wo.services
+    if (!hasPrice && workOrder.intake_record?.services) {
+      for (const s of workOrder.intake_record.services as any[]) {
+        if (s.service?.fixed_price) {
+          total += Number(s.service.fixed_price);
+          hasPrice = true;
+        }
+      }
+    }
+
+    if (hasPrice && total > 0) {
+      return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(total);
+    }
+
+    return 'Chờ báo giá';
+  }, [workOrder]);
+
+  // Thời gian dự kiến hoàn thành động (thay thế hardcode)
+  const expectedCompletionText = useMemo(() => {
+    if (!workOrder) return 'Dự kiến trong ngày';
+
+    // 1. Ưu tiên từ lịch hẹn
+    if (workOrder.appointment?.scheduled_date) {
+      try {
+        const d = new Date(workOrder.appointment.scheduled_date);
+        const timePart = workOrder.appointment.scheduled_time ? ` ${workOrder.appointment.scheduled_time}` : '';
+        return `${d.toLocaleDateString('vi-VN')}${timePart}`;
+      } catch {
+        return workOrder.appointment.scheduled_date;
+      }
+    }
+
+    // 2. Lấy từ ngày tiếp nhận / check-in
+    const baseDate = workOrder.check_in?.created_at || workOrder.created_at;
+    if (baseDate) {
+      try {
+        const d = new Date(baseDate);
+        return `${d.toLocaleDateString('vi-VN')} (Dự kiến trong ngày)`;
+      } catch {
+        return 'Dự kiến trong ngày';
+      }
+    }
+
+    return 'Dự kiến trong ngày';
+  }, [workOrder]);
+
   useEffect(() => {
     if (workOrder?.intake_record?.services) {
       const uniqueCategories = Array.from(
@@ -22,8 +139,6 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
       ) as string[];
       setJobTypes(uniqueCategories);
     }
-    // You can parse specific tags from notes if needed, but for now we leave customerReported empty 
-    // since the notes are displayed below in the UI anyway.
   }, [workOrder]);
 
   const toggleJobType = (type: string) => {
@@ -271,7 +386,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
         </div>
       )}
 
-      {/* Pill Selectors */}
+      {/* Pill Selectors (Chỉ hiển thị khi đang chỉnh sửa) */}
       {!isReadOnly && (
         <div className="grid grid-cols-2 gap-12">
         {/* Job Request / Type (Dynamic Services) */}
@@ -476,12 +591,16 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
           {isReadOnly ? (
             <div className="grid grid-cols-2 gap-x-12 gap-y-6">
               <div className="col-span-2 flex flex-col gap-3 mb-4">
-                {jobTypes.length > 0 && (
+                {requestedServices.length > 0 && (
                   <div className="flex flex-wrap gap-2 items-center">
                     <span className="text-body-sm text-on-surface-variant font-medium w-[120px]">Yêu cầu dịch vụ:</span>
-                    {jobTypes.map(t => (
-                      <span key={t} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-[#856404] bg-[#FFF3CD] text-[#856404] text-label-sm font-medium">
-                        <span className="material-symbols-outlined text-[14px]">check</span> {t}
+                    {requestedServices.map((s, idx) => (
+                      <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-[#856404] bg-[#FFF3CD] text-[#856404] text-label-sm font-medium">
+                        <span className="material-symbols-outlined text-[14px]">check</span>
+                        <span>{s.name}</span>
+                        {s.category && s.category.toLowerCase() !== s.name.toLowerCase() && (
+                          <span className="text-[11px] opacity-75 font-normal">({s.category})</span>
+                        )}
                       </span>
                     ))}
                   </div>
@@ -496,7 +615,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
                     ))}
                   </div>
                 )}
-                {jobTypes.length === 0 && customerReported.length === 0 && (
+                {requestedServices.length === 0 && customerReported.length === 0 && (
                   <span className="text-body-sm text-outline italic">Không có ghi nhận yêu cầu / báo lỗi.</span>
                 )}
               </div>
@@ -512,7 +631,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
                 </div>
                 <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
                   <span className="text-body-sm text-on-surface-variant">Chi phí ước tính</span>
-                  <span className="text-body-sm font-medium">S$ 1,920.00</span>
+                  <span className="text-body-sm font-medium text-primary font-semibold">{estimatedCostText}</span>
                 </div>
               </div>
 
@@ -537,7 +656,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
                 </div>
                 <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
                   <span className="text-body-sm text-on-surface-variant">Dự kiến xong</span>
-                  <span className="text-body-sm font-medium">20 Jun 2026</span>
+                  <span className="text-body-sm font-medium">{expectedCompletionText}</span>
                 </div>
               </div>
 
@@ -657,6 +776,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
       {workOrder && (
         <VehicleInspectionPanel
           workOrder={workOrder}
+          refetchWO={refetchWO}
           isReadOnly={propIsReadOnly || ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '')}
         />
       )}

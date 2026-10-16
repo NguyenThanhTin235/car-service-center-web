@@ -29,10 +29,54 @@ const workOrderInclude = {
           category: { select: { id: true, name: true } },
         },
       },
+      jobs: {
+        include: {
+          job_type: { select: { id: true, name: true } },
+          findings: {
+            include: {
+              finding: {
+                select: {
+                  id: true,
+                  description: true,
+                  severity: true,
+                  marker_type: true,
+                },
+              },
+            },
+          },
+          labours: {
+            include: {
+              employee: { select: { id: true, full_name: true } },
+            },
+          },
+          parts: {
+            include: {
+              item: { select: { id: true, sku: true, part_category: { select: { name: true } } } },
+            },
+          },
+        },
+        orderBy: { created_at: 'asc' as const },
+      },
     },
     orderBy: { sort_order: 'asc' as const },
   },
+  inspections: {
+    include: {
+      findings: {
+        include: {
+          job_findings: {
+            include: {
+              job: { select: { id: true, name: true } },
+            },
+          },
+        },
+        orderBy: { id: 'asc' as const },
+      },
+    },
+    orderBy: { created_at: 'asc' as const },
+  },
 } satisfies Prisma.WorkOrderInclude;
+
 
 export interface WorkOrderFilters {
   status?: WorkOrderStatus;

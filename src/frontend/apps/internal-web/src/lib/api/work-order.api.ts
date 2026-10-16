@@ -38,6 +38,21 @@ export interface IntakeQueueItem {
   work_order?: {
     id: number;
     wo_number: string;
+    status?: string;
+    services?: {
+      id: number;
+      name: string;
+      pricing_type?: string;
+      status?: string;
+      service?: {
+        id: number;
+        name: string;
+        category?: {
+          id: number;
+          name: string;
+        };
+      } | null;
+    }[];
   } | null;
 }
 
@@ -61,6 +76,11 @@ export interface WorkOrder {
     color: string | null;
     vehicle_size: string;
   };
+  appointment?: {
+    id: number;
+    scheduled_date: string;
+    scheduled_time: string;
+  } | null;
   check_in?: CheckIn | null;
   intake_record?: {
     id: number;
@@ -77,6 +97,24 @@ export interface WorkOrder {
     }[];
   } | null;
   services?: WoService[];
+  inspections?: Array<{
+    id: number;
+    status: string;
+    findings: Array<{
+      id: number;
+      marker_type: string;
+      part_name: string | null;
+      description: string;
+      severity: string;
+      status: string;
+      evidence_urls: string[] | null;
+      job_findings?: Array<{
+        id: number;
+        job_id: number;
+        job?: { id: number; name: string };
+      }>;
+    }>;
+  }>;
   advisor: {
     id: number;
     full_name: string;
@@ -88,7 +126,6 @@ export interface WorkOrder {
     id: number;
     status: string;
   } | null;
-
 }
 
 export interface CheckIn {
@@ -194,6 +231,37 @@ export async function confirmCheckIn(workOrderId: number): Promise<ApiResponse<C
 // WO SERVICE (UC-31, UC-32)
 // ==========================================
 
+export interface WoJob {
+  id: number;
+  name: string;
+  description: string | null;
+  estimated_hours: number | null;
+  actual_hours: number | null;
+  status: string;
+  job_type?: {
+    id: number;
+    name: string;
+  } | null;
+  findings?: Array<{
+    id: number;
+    finding: {
+      id: number;
+      description: string;
+      severity: string;
+      marker_type: string | null;
+    };
+  }>;
+  labours?: Array<{
+    id: number;
+    employee_id?: number | null;
+    employee?: { id: number; full_name: string } | null;
+  }>;
+  parts?: Array<{
+    id: number;
+    item?: { id: number; sku: string; part_category?: { name: string } } | null;
+  }>;
+}
+
 export interface WoService {
   id: number;
   work_order_id: number;
@@ -215,7 +283,9 @@ export interface WoService {
       name: string;
     };
   } | null;
+  jobs?: WoJob[];
 }
+
 
 export interface ServiceTemplateOption {
   id: number;
@@ -256,3 +326,184 @@ export async function getServiceCatalog(): Promise<ServiceTemplateOption[]> {
   const response = await api.get('/api/services');
   return response.data?.data || response.data;
 }
+
+/**
+ * Tạo nhanh Hạng mục sửa chữa & Công việc con từ 1 vết lỗi (Finding)
+ */
+export async function createServiceFromFinding(
+  workOrderId: number,
+  findingId: number
+): Promise<ApiResponse<{ service: WoService; job: WoJob }>> {
+  const response = await api.post(
+    `/api/work-orders/${workOrderId}/services/from-finding`,
+    { finding_id: findingId }
+  );
+  return response.data;
+}
+
+// ==========================================
+// UC-34: AI JOB PLANNER
+// ==========================================
+
+export interface AIJobFinding {
+  id: number;
+  marker_type: string;
+  severity: string;
+  description: string;
+  recommendation?: string | null;
+}
+
+export interface AISuggestedJob {
+  name: string;
+  description: string;
+  job_type_id: number;
+  job_type_name: string;
+  estimated_hours: number;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  matched_finding_ids?: number[];
+  matched_findings?: AIJobFinding[];
+  suggested_part_category_ids?: number[];
+}
+
+export interface AISuggestedService {
+  service_id?: number | null;
+  service_name: string;
+  category_type: 'REPAIR' | 'MAINTENANCE' | 'OTHER';
+  is_existing_service?: boolean;
+  finding_id?: number | null;
+  finding_info?: {
+    id: number;
+    description: string;
+    severity: string;
+    marker_type?: string;
+  } | null;
+  jobs: AISuggestedJob[];
+}
+
+export interface AIJobPlanResponse {
+  work_order_id: number;
+  work_order_number: string;
+  summary: string;
+  risk_assessment?: string;
+  suggested_services: AISuggestedService[];
+  suggested_jobs: AISuggestedJob[];
+  available_job_types: Array<{ id: number; name: string }>;
+  retrieved_parts_count: number;
+}
+
+/**
+ * Lấy danh sách công việc do AI RAG đề xuất (toàn bộ hoặc theo riêng 1 hạng mục)
+ */
+export async function getAIJobSuggestions(
+  workOrderId: number,
+  serviceId?: number
+): Promise<ApiResponse<AIJobPlanResponse>> {
+  const query = serviceId ? `?serviceId=${serviceId}` : '';
+  const response = await api.get(`/api/work-orders/${workOrderId}/ai-job-suggestions${query}`);
+  return response.data;
+}
+
+/**
+ * Áp dụng danh sách Hạng mục & Jobs được SA phê duyệt vào Work Order
+ */
+export async function applyAIJobs(
+  workOrderId: number,
+  payload: {
+    services?: Array<{
+      service_name: string;
+      category_type?: 'REPAIR' | 'MAINTENANCE' | 'OTHER';
+      finding_id?: number | null;
+      pricing_type?: string;
+      jobs: Array<{
+        name: string;
+        description?: string;
+        job_type_id: number;
+        estimated_hours: number;
+        matched_finding_ids?: number[];
+      }>;
+    }>;
+    jobs?: Array<{
+      name: string;
+      description?: string;
+      job_type_id: number;
+      estimated_hours: number;
+      matched_finding_ids?: number[];
+    }>;
+  } | Array<any>
+): Promise<ApiResponse<{ applied_jobs_count: number; created_services_count?: number }>> {
+  const body = Array.isArray(payload) ? { jobs: payload } : payload;
+  const response = await api.post(`/api/work-orders/${workOrderId}/apply-ai-jobs`, body);
+  return response.data;
+}
+
+export interface CreateManualJobPayload {
+  finding_id?: number | null;
+  finding_ids?: number[];
+  wo_service_id?: number | null;
+  new_service_name?: string | null;
+  name: string;
+  job_type_id?: number | null;
+  technician_id?: number | null;
+  description?: string | null;
+  estimated_hours?: number | null;
+  labours?: Array<{
+    task_name?: string;
+    employee_id?: number | null;
+    start_time?: string | null;
+    end_time?: string | null;
+    estimated_hours?: number | null;
+    price?: number | null;
+    job_type_id?: number | null;
+  }>;
+  parts?: Array<{
+    item_id: number;
+    quantity: number;
+    unit_price?: number;
+  }>;
+}
+
+/**
+ * Tạo công việc thủ công (Dispatch Job) cho Work Order
+ */
+export async function createManualJob(
+  workOrderId: number,
+  payload: CreateManualJobPayload
+): Promise<ApiResponse<{ service_id: number; job: WoJob }>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/jobs`, payload);
+  return response.data;
+}
+
+export interface UpdateManualJobPayload {
+  name?: string;
+  job_type_id?: number | null;
+  technician_id?: number | null;
+  description?: string | null;
+  estimated_hours?: number | null;
+}
+
+/**
+ * Cập nhật công việc thủ công khi chưa phân công (status === 'PLANNED')
+ */
+export async function updateManualJob(
+  workOrderId: number,
+  jobId: number,
+  payload: UpdateManualJobPayload
+): Promise<ApiResponse<WoJob>> {
+  const response = await api.patch(`/api/work-orders/${workOrderId}/jobs/${jobId}`, payload);
+  return response.data;
+}
+
+/**
+ * Xóa công việc khi chưa phân công (status === 'PLANNED')
+ */
+export async function deleteJob(
+  workOrderId: number,
+  jobId: number
+): Promise<ApiResponse<null>> {
+  const response = await api.delete(`/api/work-orders/${workOrderId}/jobs/${jobId}`);
+  return response.data;
+}
+
+
+
+

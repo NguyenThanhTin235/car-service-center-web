@@ -13,6 +13,7 @@ export interface Finding {
   note: string;
   jobId?: string | number;
   jobName?: string;
+  jobNames?: string[];
   photos?: string[];
 }
 
@@ -87,7 +88,7 @@ export default function InteractiveCarSVG({
     switch (type) {
       case 'DAMAGE': return 'bg-[#B22222]'; // Dark red
       case 'RUST': return 'bg-[#B8860B]'; // Dark goldenrod
-      case 'MISSING': return 'bg-[#6A5ACD]'; // Slate blue
+      case 'MISSING': return 'bg-[#1E40AF]'; // Royal blue
       case 'DENT': return 'bg-[#4682B4]'; // Steel blue
       case 'SCRATCH': return 'bg-[#708090]'; // Slate gray
       default: return 'bg-gray-500';
@@ -101,7 +102,7 @@ export default function InteractiveCarSVG({
       case 'RUST':
         return { color: 'text-[#B8860B]', bgColor: 'bg-[#B8860B]', lightBg: 'bg-[#FDF6E3]', border: 'border-[#B8860B]/20' };
       case 'MISSING':
-        return { color: 'text-[#6A5ACD]', bgColor: 'bg-[#6A5ACD]', lightBg: 'bg-[#EAE6F9]', border: 'border-[#6A5ACD]/20' };
+        return { color: 'text-[#1E40AF]', bgColor: 'bg-[#1E40AF]', lightBg: 'bg-[#EFF6FF]', border: 'border-[#1E40AF]/20' };
       case 'DENT':
         return { color: 'text-[#4682B4]', bgColor: 'bg-[#4682B4]', lightBg: 'bg-[#E5F0F9]', border: 'border-[#4682B4]/20' };
       case 'SCRATCH':
@@ -416,8 +417,8 @@ export default function InteractiveCarSVG({
               </div>
 
               {/* Tooltip tiếng Việt hiện đại */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center w-max max-w-[260px] z-50 pointer-events-none drop-shadow-xl animate-in fade-in-0 zoom-in-95 duration-150">
-                <div className="bg-white text-slate-800 rounded-lg p-2.5 border border-slate-200/90 shadow-xl flex flex-col gap-1.5 text-left w-full">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center w-max max-w-[300px] z-50 pointer-events-none drop-shadow-xl animate-in fade-in-0 zoom-in-95 duration-150">
+                <div className="bg-white text-slate-800 rounded-lg p-2.5 border border-slate-200/90 shadow-xl flex flex-col gap-1.5 text-left w-full min-w-[210px]">
                   {/* Dòng 1: Badge số thứ tự + Badge Loại vết + Badge số lượng ảnh */}
                   <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-100">
                     <div className="flex items-center gap-1.5">
@@ -436,7 +437,7 @@ export default function InteractiveCarSVG({
                     </div>
 
                     {finding.photos && finding.photos.length > 0 && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#6A5ACD] bg-[#EAE6F9] px-1.5 py-0.5 rounded">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#2563EB] bg-[#EFF6FF] px-1.5 py-0.5 rounded">
                         <span className="material-symbols-outlined text-[12px]">image</span>
                         {finding.photos.length} ảnh
                       </span>
@@ -455,11 +456,23 @@ export default function InteractiveCarSVG({
                     </div>
                   )}
 
-                  {/* Dòng 4: Công việc nếu có */}
-                  {finding.jobName && (
-                    <div className="flex items-center gap-1 text-[9px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">
-                      <span className="material-symbols-outlined text-[11px]">build</span>
-                      {finding.jobName}
+                  {/* Dòng 4: Công việc nếu có - Mỗi job hiển thị 1 dòng */}
+                  {((finding.jobNames && finding.jobNames.length > 0) || finding.jobName) && (
+                    <div className="flex flex-col gap-1 bg-emerald-50/90 border border-emerald-200/70 p-1.5 rounded">
+                      {(
+                        finding.jobNames && finding.jobNames.length > 0
+                          ? finding.jobNames
+                          : finding.jobName
+                          ? finding.jobName.split(', ').map((s) => s.trim()).filter(Boolean)
+                          : []
+                      ).map((jName, jIdx) => (
+                        <div key={jIdx} className="flex items-start gap-1.5 text-[9.5px] text-emerald-800 font-semibold leading-snug">
+                          <span className="font-bold text-emerald-700 shrink-0 min-w-[14px]">
+                            {jIdx + 1}.
+                          </span>
+                          <span className="break-words flex-1">{jName}</span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

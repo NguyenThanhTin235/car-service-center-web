@@ -7,12 +7,19 @@ import {
   getWorkOrderById,
   updateWorkOrder,
   addServiceToWO,
-  removeServiceFromWO
+  updateServiceInWO,
+  removeServiceFromWO,
+  createServiceFromFinding,
+  createManualJob,
+  updateManualJob,
+  deleteJob,
 } from '../controllers/work-order.controller';
 import { CheckInController } from '../controllers/check-in.controller';
 import { InspectionController } from '../controllers/inspection.controller';
+import aiJobRoutes from './ai-job.routes';
 
 const router = Router();
+
 
 // Yêu cầu đăng nhập cho toàn bộ
 router.use(authenticate);
@@ -43,8 +50,17 @@ router.post('/:id/inspection/findings', authorize('SA', 'ADMIN'), InspectionCont
 router.patch('/:id/inspection/findings/:findingId', authorize('SA', 'ADMIN'), InspectionController.updateFinding);
 router.delete('/:id/inspection/findings/:findingId', authorize('SA', 'ADMIN'), InspectionController.deleteFinding);
 
-// QUẢN LÝ DỊCH VỤ TRONG WO (UC-31, UC-32)
+// QUẢN LÝ DỊCH VỤ & CÔNG VIỆC TRONG WO (UC-31, UC-32, UC-34)
 router.post('/:id/services', authorize('SA', 'ADMIN'), addServiceToWO);
+router.post('/:id/services/from-finding', authorize('SA', 'ADMIN'), createServiceFromFinding);
+router.post('/:id/jobs', authorize('SA', 'ADMIN'), createManualJob);
+router.patch('/:id/jobs/:jobId', authorize('SA', 'ADMIN'), updateManualJob);
+router.delete('/:id/jobs/:jobId', authorize('SA', 'ADMIN'), deleteJob);
+router.patch('/:id/services/:serviceId', authorize('SA', 'ADMIN'), updateServiceInWO);
 router.delete('/:id/services/:serviceId', authorize('SA', 'ADMIN'), removeServiceFromWO);
 
+// LÊN KẾ HOẠCH CÔNG VIỆC TÍCH HỢP AI LLM (UC-34)
+router.use('/', aiJobRoutes);
+
 export default router;
+
