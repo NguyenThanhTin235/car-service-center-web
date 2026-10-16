@@ -503,5 +503,46 @@ export const deleteJob = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+/**
+ * PUT /api/work-orders/:id/services/:serviceId/reorder-jobs
+ * Cập nhật thứ tự các công việc trong hạng mục
+ */
+export const reorderJobs = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const serviceId = Number(req.params.serviceId);
+    const { job_ids } = req.body;
+
+    if (!Array.isArray(job_ids) || job_ids.length === 0) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Danh sách job_ids không hợp lệ.',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    await workOrderService.reorderJobs(workOrderId, serviceId, job_ids);
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: 'Đã cập nhật thứ tự công việc thành công',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      code: 400,
+      message: error.message || 'Lỗi khi sắp xếp thứ tự công việc',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
 
 

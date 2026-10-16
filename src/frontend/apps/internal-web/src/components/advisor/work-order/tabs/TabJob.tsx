@@ -11,6 +11,7 @@ import {
   createServiceFromFinding,
   updateManualJob,
   deleteJob,
+  reorderJobs,
 } from '@/lib/api/work-order.api';
 import { employeeApi, EmployeeData } from '@/lib/api/employees';
 import toast from 'react-hot-toast';
@@ -246,6 +247,64 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
       toast.error(err.response?.data?.message || err.message || 'Lỗi khi xóa công việc');
     } finally {
       setDeletingJobId(null);
+    }
+  };
+
+  // Xóa toàn bộ công việc con trong hạng mục
+  const [confirmDeleteServiceJobsId, setConfirmDeleteServiceJobsId] = useState<number | null>(null);
+  const [deletingServiceJobsId, setDeletingServiceJobsId] = useState<number | null>(null);
+
+  const handleDeleteAllJobsInService = async (svc: WoService) => {
+    if (!workOrder || deletingServiceJobsId) return;
+    const targetJobs = (svc.jobs || []).filter((j) => j.status === 'PLANNED');
+    if (targetJobs.length === 0) {
+      toast.error('Không có công việc ở trạng thái Mới (PLANNED) để xóa');
+      return;
+    }
+    try {
+      setDeletingServiceJobsId(svc.id);
+      let deletedCount = 0;
+      for (const j of targetJobs) {
+        const res = await deleteJob(workOrder.id, j.id);
+        if (res.success) deletedCount++;
+      }
+      toast.success(`Đã xóa ${deletedCount} công việc trong hạng mục "${svc.name}"`);
+      setConfirmDeleteServiceJobsId(null);
+      if (refetchWO) refetchWO();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Lỗi khi xóa công việc');
+    } finally {
+      setDeletingServiceJobsId(null);
+    }
+  };
+
+  // Sắp xếp thứ tự công việc trong hạng mục
+  const [reorderingServiceId, setReorderingServiceId] = useState<number | null>(null);
+
+  const handleMoveJob = async (svc: WoService, currentIndex: number, direction: -1 | 1) => {
+    if (!workOrder || reorderingServiceId) return;
+    const currentJobs = [...(svc.jobs || [])];
+    const targetIndex = currentIndex + direction;
+    if (targetIndex < 0 || targetIndex >= currentJobs.length) return;
+
+    // Hoán đổi vị trí
+    const [movedJob] = currentJobs.splice(currentIndex, 1);
+    currentJobs.splice(targetIndex, 0, movedJob);
+
+    try {
+      setReorderingServiceId(svc.id);
+      const jobIds = currentJobs.map((j) => j.id);
+      const res = await reorderJobs(workOrder.id, svc.id, jobIds);
+      if (res.success) {
+        toast.success(`Đã đổi thứ tự: "${movedJob.name}"`);
+        if (refetchWO) refetchWO();
+      } else {
+        toast.error(res.message || 'Lỗi khi sắp xếp thứ tự');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Lỗi khi sắp xếp');
+    } finally {
+      setReorderingServiceId(null);
     }
   };
 
@@ -600,6 +659,50 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
                       </button>
                     )}
 
+                    {/* Nút Xóa toàn bộ việc con trong hạng mục */}
+                    {!isWOClosed && jobs.length > 0 && (
+                      confirmDeleteServiceJobsId === svc.id ? (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1 bg-surface-container px-2 py-1 rounded-xl border border-error/30 animate-fade-in text-label-xs"
+                        >
+                          <span className="text-error font-medium">Xóa hết {jobs.length} việc?</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAllJobsInService(svc)}
+                            disabled={deletingServiceJobsId === svc.id}
+                            className="text-error hover:bg-error/20 p-1 rounded transition-colors disabled:opacity-50 cursor-pointer"
+                            title="Xác nhận xóa toàn bộ công việc"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">
+                              {deletingServiceJobsId === svc.id ? 'progress_activity' : 'check'}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteServiceJobsId(null)}
+                            className="text-on-surface-variant hover:bg-surface-container-high p-1 rounded transition-colors cursor-pointer"
+                            title="Hủy"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">close</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDeleteServiceJobsId(svc.id);
+                          }}
+                          className="flex items-center gap-1 px-2.5 py-1.5 bg-error/5 hover:bg-error/15 text-error rounded-xl text-label-xs font-semibold border border-error/20 transition-all cursor-pointer shadow-2xs active:scale-95"
+                          title={`Xóa tất cả ${jobs.length} công việc trong hạng mục này`}
+                        >
+                          <span className="material-symbols-outlined text-[15px]">playlist_remove</span>
+                          <span>Xóa việc ({jobs.length})</span>
+                        </button>
+                      )
+                    )}
+
                     {/* Nút Xóa hạng mục */}
                     {!isWOClosed && (
                       <div className="flex items-center">
@@ -649,7 +752,7 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
                           <table className="w-full text-left">
                             <thead>
                               <tr className="bg-surface-container-low/70 border-b border-outline-variant/40 text-label-xs font-bold text-on-surface-variant uppercase tracking-wider">
-                                <th className="px-3 py-2.5 w-12 text-center">STT</th>
+                                <th className="px-3 py-2.5 w-14 text-center">STT</th>
                                 <th className="px-3.5 py-2.5 w-[36%] min-w-[260px]">Công việc kỹ thuật cụ thể</th>
                                 <th className="px-3.5 py-2.5 min-w-[260px]">Kỹ thuật viên phụ trách</th>
                                 <th className="px-2 py-2.5 w-20 text-center">Định mức</th>
@@ -680,9 +783,45 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
                                     className="hover:bg-blue-50/50 dark:hover:bg-blue-950/25 transition-colors cursor-pointer group"
                                     title="Nhấn để xem chi tiết / chỉnh sửa công việc này"
                                   >
-                                    {/* STT */}
-                                    <td className="px-3 py-3 text-body-xs font-bold text-on-surface-variant text-center">
-                                      {jIdx + 1}
+                                    {/* STT & Nút chuyển thứ tự nhanh */}
+                                    <td className="px-2 py-3 text-center">
+                                      <div className="flex items-center justify-center gap-1">
+                                        <span className="font-bold text-body-xs text-on-surface-variant min-w-[14px]">
+                                          {jIdx + 1}
+                                        </span>
+                                        {!isWOClosed && jobs.length > 1 && (
+                                          <div className="flex flex-col items-center -space-y-1">
+                                            <button
+                                              type="button"
+                                              disabled={jIdx === 0 || reorderingServiceId === svc.id}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleMoveJob(svc, jIdx, -1);
+                                              }}
+                                              className={`p-0.5 rounded text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors ${
+                                                jIdx === 0 ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'
+                                              }`}
+                                              title="Chuyển lên trên"
+                                            >
+                                              <span className="material-symbols-outlined text-[15px]">expand_less</span>
+                                            </button>
+                                            <button
+                                              type="button"
+                                              disabled={jIdx === jobs.length - 1 || reorderingServiceId === svc.id}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleMoveJob(svc, jIdx, 1);
+                                              }}
+                                              className={`p-0.5 rounded text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors ${
+                                                jIdx === jobs.length - 1 ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'
+                                              }`}
+                                              title="Chuyển xuống dưới"
+                                            >
+                                              <span className="material-symbols-outlined text-[15px]">expand_more</span>
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
                                     </td>
 
                                     {/* Tên công việc & Mô tả (Cột hẹp lại vừa vặn) */}
@@ -814,6 +953,7 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
                                             </div>
                                           ) : (
                                             <div className="flex items-center justify-center gap-0.5">
+                                              {/* Nút Xem / Chỉnh sửa */}
                                               <button
                                                 type="button"
                                                 onClick={() => {
@@ -829,19 +969,17 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
                                                 </span>
                                               </button>
 
-                                              {/* Chỉ hiển thị nút Xóa khi CHƯA PHÂN CÔNG */}
-                                              {!currentEmployeeId && (
-                                                <button
-                                                  type="button"
-                                                  onClick={() => setConfirmDeleteJobId(job.id)}
-                                                  className="p-1 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors cursor-pointer"
-                                                  title="Xóa công việc này (chưa phân công KTV)"
-                                                >
-                                                  <span className="material-symbols-outlined text-[16px]">
-                                                    delete_outline
-                                                  </span>
-                                                </button>
-                                              )}
+                                              {/* Cho phép Xóa công việc trên bảng ở trạng thái PLANNED */}
+                                              <button
+                                                type="button"
+                                                onClick={() => setConfirmDeleteJobId(job.id)}
+                                                className="p-1 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors cursor-pointer"
+                                                title="Xóa công việc này"
+                                              >
+                                                <span className="material-symbols-outlined text-[16px]">
+                                                  delete_outline
+                                                </span>
+                                              </button>
                                             </div>
                                           )
                                         )}

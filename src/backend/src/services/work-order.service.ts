@@ -900,12 +900,7 @@ export class WorkOrderService {
       throw new Error('Công việc không thuộc phiếu công việc này.');
     }
 
-    // Chỉ cho phép xóa khi chưa phân công (chưa có kỹ thuật viên nhận việc)
-    const hasAssignedTechnician = job.labours.some((l) => l.employee_id !== null);
-    if (hasAssignedTechnician) {
-      throw new Error('Công việc đã được phân công kỹ thuật viên. Vui lòng hủy phân công trước khi xóa.');
-    }
-
+    // Cho phép xóa công việc khi còn ở trạng thái lập kế hoạch (PLANNED)
     if (job.status !== 'PLANNED') {
       throw new Error(`Không thể xóa công việc đang ở trạng thái ${job.status}.`);
     }
@@ -940,6 +935,34 @@ export class WorkOrderService {
       await tx.job.delete({ where: { id: jobId } });
 
       return { success: true, message: `Đã xóa công việc "${job.name}"` };
+    });
+  }
+
+  /**
+   * Cập nhật thứ tự các công việc trong một hạng mục dịch vụ
+   */
+  async reorderJobs(workOrderId: number, serviceId: number, jobIds: number[]) {
+    const service = await prisma.woService.findUnique({
+      where: { id: serviceId },
+      include: { jobs: true },
+    });
+
+    if (!service) throw new Error('Không tìm thấy hạng mục dịch vụ.');
+    if (service.work_order_id !== workOrderId) {
+      throw new Error('Hạng mục không thuộc phiếu sửa chữa này.');
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      const baseTime = new Date('2026-01-01T08:00:00.000Z').getTime();
+      for (let i = 0; i < jobIds.length; i++) {
+        await tx.job.update({
+          where: { id: jobIds[i] },
+          data: {
+            created_at: new Date(baseTime + i * 1000),
+          },
+        });
+      }
+      return { success: true };
     });
   }
 }

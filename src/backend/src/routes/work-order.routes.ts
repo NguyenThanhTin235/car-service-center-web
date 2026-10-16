@@ -13,6 +13,7 @@ import {
   createManualJob,
   updateManualJob,
   deleteJob,
+  reorderJobs,
 } from '../controllers/work-order.controller';
 import { CheckInController } from '../controllers/check-in.controller';
 import { InspectionController } from '../controllers/inspection.controller';
@@ -56,6 +57,7 @@ router.post('/:id/services/from-finding', authorize('SA', 'ADMIN'), createServic
 router.post('/:id/jobs', authorize('SA', 'ADMIN'), createManualJob);
 router.patch('/:id/jobs/:jobId', authorize('SA', 'ADMIN'), updateManualJob);
 router.delete('/:id/jobs/:jobId', authorize('SA', 'ADMIN'), deleteJob);
+router.put('/:id/services/:serviceId/reorder-jobs', authorize('SA', 'ADMIN'), reorderJobs);
 router.patch('/:id/services/:serviceId', authorize('SA', 'ADMIN'), updateServiceInWO);
 router.delete('/:id/services/:serviceId', authorize('SA', 'ADMIN'), removeServiceFromWO);
 

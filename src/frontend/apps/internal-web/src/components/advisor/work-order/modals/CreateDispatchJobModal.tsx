@@ -273,13 +273,11 @@ export default function CreateDispatchJobModal({
     }
   };
 
-  // Chỉ cho phép xóa khi công việc đã tồn tại, ở trạng thái PLANNED và CHƯA PHÂN CÔNG KTV
+  // Cho phép xóa khi công việc đã tồn tại và ở trạng thái PLANNED
   const canDeleteJob = Boolean(
     job?.id &&
       job.status === 'PLANNED' &&
-      !isReadOnlyMode &&
-      !selectedTechnicianId &&
-      (!job.labours || !job.labours[0] || !job.labours[0].employee_id)
+      !isReadOnlyMode
   );
 
   if (!isOpen) return null;

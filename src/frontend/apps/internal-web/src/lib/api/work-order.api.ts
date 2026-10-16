@@ -504,6 +504,20 @@ export async function deleteJob(
   return response.data;
 }
 
+/**
+ * Cập nhật thứ tự các công việc trong hạng mục
+ */
+export async function reorderJobs(
+  workOrderId: number,
+  serviceId: number,
+  jobIds: number[]
+): Promise<ApiResponse<null>> {
+  const response = await api.put(`/api/work-orders/${workOrderId}/services/${serviceId}/reorder-jobs`, {
+    job_ids: jobIds,
+  });
+  return response.data;
+}
+
 
 
 

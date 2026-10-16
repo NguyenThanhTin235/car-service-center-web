@@ -124,8 +124,12 @@ export default function InteractiveCarSVG({
         <defs>
           <style>
             {`
-              .car-part { fill: #f8fafc; stroke: #2C3E50; stroke-width: 1.5; stroke-linejoin: round; transition: fill 0.2s; }
+              .car-part { fill: #f8fafc; stroke: #2C3E50; stroke-width: 1.5; stroke-linejoin: round; transition: fill 0.2s, stroke 0.2s; }
               .car-part:hover { fill: #e2e8f0; cursor: pointer; }
+              .car-part-handle { fill: #f8fafc; stroke: #2C3E50; stroke-width: 1.5; cursor: pointer; transition: fill 0.2s, stroke 0.2s; }
+              .car-part-handle:hover { fill: #bae6fd; stroke: #0284c7; stroke-width: 2; cursor: pointer; }
+              .car-part-light { fill: #ffffff; stroke: #2C3E50; stroke-width: 1.5; cursor: pointer; transition: fill 0.2s, stroke 0.2s; }
+              .car-part-light:hover { fill: #fef08a; stroke: #ca8a04; stroke-width: 2; cursor: pointer; }
               .view-title { font-family: sans-serif; font-size: 13px; font-weight: bold; fill: #7F8C8D; letter-spacing: 0.5px; }
               .sub-label { font-family: sans-serif; font-size: 11px; font-weight: bold; fill: #95A5A6; letter-spacing: 1px; }
               .grid-border { fill: none; stroke: #BDC3C7; stroke-width: 1; }
@@ -199,12 +203,12 @@ export default function InteractiveCarSVG({
           <line x1="810" y1="195" x2="860" y2="195" fill="none" stroke="#2C3E50" strokeWidth="1.5" />
 
           {/* Door Handles */}
-          <rect x="420" y="130" width="35" height="10" rx="5" className="car-part" fill="#f8fafc" />
-          <rect x="530" y="130" width="35" height="10" rx="5" className="car-part" fill="#f8fafc" />
+          <rect id="ds-rear-door-handle" data-part-name="Bên lái - Tay nắm cửa sau" x="420" y="129" width="36" height="12" rx="5" className="car-part car-part-handle" />
+          <rect id="ds-front-door-handle" data-part-name="Bên lái - Tay nắm cửa trước" x="530" y="129" width="36" height="12" rx="5" className="car-part car-part-handle" />
 
           {/* Lights */}
-          <path d="M 115,145 L 160,145 L 160,165 L 112,165 Z" className="car-part" fill="#ffffff" />
-          <path d="M 830,145 L 870,145 L 868,165 L 830,165 Z" className="car-part" fill="#ffffff" />
+          <path id="ds-tail-light" data-part-name="Bên lái - Đèn hậu" d="M 115,145 L 160,145 L 160,165 L 112,165 Z" className="car-part car-part-light" />
+          <path id="ds-head-light" data-part-name="Bên lái - Đèn pha trước" d="M 830,145 L 870,145 L 868,165 L 830,165 Z" className="car-part car-part-light" />
 
           {/* Mirror */}
           <path id="ds-mirror" data-part-name="Bên lái - Gương chiếu hậu" className="car-part" 
@@ -375,12 +379,12 @@ export default function InteractiveCarSVG({
             <line x1="810" y1="195" x2="860" y2="195" fill="none" stroke="#2C3E50" strokeWidth="1.5" />
 
             {/* Door Handles */}
-            <rect x="420" y="130" width="35" height="10" rx="5" className="car-part" fill="#f8fafc" />
-            <rect x="530" y="130" width="35" height="10" rx="5" className="car-part" fill="#f8fafc" />
+            <rect id="ps-rear-door-handle" data-part-name="Bên phụ - Tay nắm cửa sau" x="420" y="129" width="36" height="12" rx="5" className="car-part car-part-handle" />
+            <rect id="ps-front-door-handle" data-part-name="Bên phụ - Tay nắm cửa trước" x="530" y="129" width="36" height="12" rx="5" className="car-part car-part-handle" />
 
             {/* Lights */}
-            <path d="M 115,145 L 160,145 L 160,165 L 112,165 Z" className="car-part" fill="#ffffff" />
-            <path d="M 830,145 L 870,145 L 868,165 L 830,165 Z" className="car-part" fill="#ffffff" />
+            <path id="ps-tail-light" data-part-name="Bên phụ - Đèn hậu" d="M 115,145 L 160,145 L 160,165 L 112,165 Z" className="car-part car-part-light" />
+            <path id="ps-head-light" data-part-name="Bên phụ - Đèn pha trước" d="M 830,145 L 870,145 L 868,165 L 830,165 Z" className="car-part car-part-light" />
 
             {/* Mirror */}
             <path id="ps-mirror" data-part-name="Bên phụ - Gương chiếu hậu" className="car-part" 
