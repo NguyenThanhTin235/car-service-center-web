@@ -11,14 +11,14 @@ const prisma = new PrismaClient();
 export interface CreateAppointmentDto {
   customer_id: number;
   vehicle_id: number;
-  scheduled_date: Date;
+  scheduled_date: Date | string;
   scheduled_time: string;
   notes?: string;
   service_ids?: number[];
 }
 
 export interface UpdateAppointmentDto {
-  scheduled_date?: Date;
+  scheduled_date?: Date | string;
   scheduled_time?: string;
   notes?: string;
 }
@@ -56,10 +56,12 @@ export class AppointmentService {
     if (startDate || endDate) {
       whereClause.scheduled_date = {};
       if (startDate) {
-        whereClause.scheduled_date.gte = new Date(startDate);
+        const rawStart = typeof startDate === 'string' ? startDate.substring(0, 10) : new Date(startDate).toISOString().substring(0, 10);
+        whereClause.scheduled_date.gte = new Date(`${rawStart}T00:00:00.000Z`);
       }
       if (endDate) {
-        whereClause.scheduled_date.lte = new Date(endDate);
+        const rawEnd = typeof endDate === 'string' ? endDate.substring(0, 10) : new Date(endDate).toISOString().substring(0, 10);
+        whereClause.scheduled_date.lte = new Date(`${rawEnd}T23:59:59.999Z`);
       }
     }
 
@@ -187,15 +189,20 @@ export class AppointmentService {
       throw new Error('Chỉ có thể đặt lịch trong giờ hành chính (8:00 - 17:00)');
     }
 
-    const timeDate = new Date();
-    timeDate.setUTCHours(hour, minute, 0, 0);
+    const timeDate = new Date(Date.UTC(1970, 0, 1, hour, minute, 0));
+
+    // Normalize date to UTC midnight (YYYY-MM-DD)
+    const rawDateStr = typeof data.scheduled_date === 'string'
+      ? data.scheduled_date.substring(0, 10)
+      : new Date(data.scheduled_date).toISOString().substring(0, 10);
+    const scheduledDateObj = new Date(`${rawDateStr}T00:00:00.000Z`);
 
     return prisma.$transaction(async (tx) => {
       const appointment = await tx.appointment.create({
         data: {
           customer_id: data.customer_id,
           vehicle_id: data.vehicle_id,
-          scheduled_date: new Date(data.scheduled_date),
+          scheduled_date: scheduledDateObj,
           scheduled_time: timeDate,
           notes: data.notes,
           status: 'REQUESTED',
@@ -266,7 +273,11 @@ export class AppointmentService {
       throw new Error('Bạn không có quyền chỉnh sửa lịch hẹn này');
     }
 
-    if (appointment.status !== 'REQUESTED' && appointment.status !== 'CONFIRMED' && appointment.status !== 'RESCHEDULED') {
+    if (appointment.status === 'CONFIRMED') {
+      throw new Error('Lịch hẹn đã được xác nhận, không thể dời ngày/giờ. Vui lòng liên hệ hotline trung tâm để được hỗ trợ.');
+    }
+
+    if (appointment.status !== 'REQUESTED' && appointment.status !== 'RESCHEDULED') {
       throw new Error(`Không thể dời lịch hẹn đang ở trạng thái ${appointment.status}`);
     }
 
@@ -284,7 +295,10 @@ export class AppointmentService {
       hasTimeOrDateChanged = true;
       
       if (data.scheduled_date) {
-        const reqDate = new Date(data.scheduled_date);
+        const rawDateStr = typeof data.scheduled_date === 'string'
+          ? data.scheduled_date.substring(0, 10)
+          : new Date(data.scheduled_date).toISOString().substring(0, 10);
+        const reqDate = new Date(`${rawDateStr}T00:00:00.000Z`);
         
         // Validate duplicate for reschedule
         const startOfDay = new Date(reqDate);
@@ -321,8 +335,7 @@ export class AppointmentService {
           throw new Error('Chỉ có thể đặt lịch trong giờ hành chính (8:00 - 17:00)');
         }
 
-        const timeDate = new Date();
-        timeDate.setUTCHours(hour, minute, 0, 0);
+        const timeDate = new Date(Date.UTC(1970, 0, 1, hour, minute, 0));
         updateData.scheduled_time = timeDate;
       }
     }
@@ -410,6 +423,9 @@ export class AppointmentService {
       throw new Error('Bạn không có quyền hủy lịch hẹn này');
     }
 
+    if (appointment.status === 'CONFIRMED') {
+      throw new Error('Lịch hẹn đã được xác nhận, không thể hủy. Vui lòng liên hệ hotline trung tâm để được hỗ trợ.');
+    }
     if (appointment.status === 'ARRIVED') {
       throw new Error('Không thể hủy lịch hẹn khi khách đã mang xe đến xưởng');
     }

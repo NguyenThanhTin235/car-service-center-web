@@ -425,7 +425,7 @@ async function main() {
   const friday = new Date(monday);
   friday.setUTCDate(monday.getUTCDate() + 4); // Friday
 
-  const time1 = new Date(Date.UTC(1970, 0, 1, 2, 0)); // 02:00 UTC = 09:00 VN
+  const time1 = new Date(Date.UTC(1970, 0, 1, 9, 0)); // 09:00 VN
   await prisma.appointment.create({
     data: {
       customer_id: customer1.id,
@@ -443,7 +443,7 @@ async function main() {
     }
   });
 
-  const time2 = new Date(Date.UTC(1970, 0, 1, 7, 0)); // 07:00 UTC = 14:00 VN
+  const time2 = new Date(Date.UTC(1970, 0, 1, 14, 0)); // 14:00 VN
   await prisma.appointment.create({
     data: {
       customer_id: customer1.id,
@@ -462,7 +462,7 @@ async function main() {
     }
   });
 
-  const time3 = new Date(Date.UTC(1970, 0, 1, 3, 30)); // 03:30 UTC = 10:30 VN
+  const time3 = new Date(Date.UTC(1970, 0, 1, 10, 30)); // 10:30 VN
   await prisma.appointment.create({
     data: {
       customer_id: customer1.id,

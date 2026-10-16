@@ -41,7 +41,7 @@ export default function MonthlyCalendarGrid({
     return {
       date: d,
       dateNum: d.getDate(),
-      fullDate: d.toLocaleDateString('en-CA'),
+      fullDate: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
       isCurrentMonth,
       isToday,
       isWeekend
@@ -52,7 +52,9 @@ export default function MonthlyCalendarGrid({
 
   const getAppointmentsForDay = (dateStr: string) => {
     return appointments.filter(a => {
-      const aptDate = new Date(a.scheduled_date).toISOString().split('T')[0];
+      const aptDate = typeof a.scheduled_date === 'string'
+        ? a.scheduled_date.substring(0, 10)
+        : new Date(a.scheduled_date).toISOString().split('T')[0];
       return aptDate === dateStr;
     });
   };
