@@ -152,6 +152,61 @@ export class InspectionService {
       },
     });
 
+    // Tự động tạo Hạng mục công việc (WoService) tương ứng cho lỗi này
+    const markerLabels: Record<string, string> = {
+      DENT: 'Móp méo',
+      SCRATCH: 'Trầy xước',
+      DAMAGE: 'Hư hỏng bể vỡ',
+      RUST: 'Rỉ sét',
+      MISSING: 'Thiếu phụ tùng',
+    };
+    const markerLabel = markerLabels[data.marker_type] || data.marker_type || 'Lỗi kỹ thuật';
+    const serviceName = `Khắc phục lỗi: ${markerLabel} tại ${data.part_name || 'bộ phận xe'}`;
+
+    const existingWoService = await prisma.woService.findFirst({
+      where: {
+        work_order_id: workOrderId,
+        name: serviceName,
+      },
+    });
+
+    if (!existingWoService) {
+      const maxSort = await prisma.woService.aggregate({
+        where: { work_order_id: workOrderId },
+        _max: { sort_order: true },
+      });
+      const nextSortOrder = (maxSort._max.sort_order ?? 0) + 1;
+
+      // Tìm dịch vụ phù hợp thuộc danh mục Sơn & Đồng để liên kết
+      let linkedServiceId: number | null = null;
+      try {
+        if (data.marker_type === 'DENT') {
+          const s = await prisma.service.findFirst({ where: { name: { contains: 'Gò nắn' }, is_active: true } });
+          if (s) linkedServiceId = s.id;
+        } else if (data.marker_type === 'SCRATCH' || data.marker_type === 'RUST') {
+          const s = await prisma.service.findFirst({ where: { name: { contains: 'Sơn' }, is_active: true } });
+          if (s) linkedServiceId = s.id;
+        }
+        if (!linkedServiceId) {
+          const s = await prisma.service.findFirst({ where: { category: { name: { contains: 'Sơn' } }, is_active: true } });
+          if (s) linkedServiceId = s.id;
+        }
+      } catch {
+        // Fallback null
+      }
+
+      await prisma.woService.create({
+        data: {
+          work_order_id: workOrderId,
+          service_id: linkedServiceId,
+          name: serviceName,
+          pricing_type: 'LABOUR_PARTS',
+          status: 'PENDING',
+          sort_order: nextSortOrder,
+        },
+      });
+    }
+
     return finding;
   }
 
@@ -272,7 +327,11 @@ export class InspectionService {
         },
         job_findings: {
           include: {
-            job: true,
+            job: {
+              include: {
+                labours: true,
+              },
+            },
           },
         },
       },
@@ -287,14 +346,71 @@ export class InspectionService {
       throw new Error('Phiếu công việc đã kết thúc. Không thể xóa dữ liệu.');
     }
 
-    // Kiểm tra Luồng ngoại lệ UC-33:
+    // Kiểm tra ràng buộc: Chỉ cho phép xóa khi chưa có việc hoặc việc chưa phân công
     if (finding.job_findings && finding.job_findings.length > 0) {
-      const jobNames = finding.job_findings
-        .map((jf) => jf.job?.name || `Job #${jf.job_id}`)
-        .join(', ');
-      throw new Error(
-        `Finding đã được liên kết với công việc (${jobNames}). Vui lòng hủy liên kết Job trước khi xóa.`
+      const assignedJobs = finding.job_findings.filter(
+        (jf) =>
+          jf.job &&
+          (jf.job.status !== 'PLANNED' ||
+            (jf.job.labours && jf.job.labours.some((l) => l.employee_id !== null)))
       );
+      if (assignedJobs.length > 0) {
+        const jobNames = assignedJobs.map((jf) => jf.job?.name).join(', ');
+        throw new Error(
+          `Không thể xóa: Vết lỗi đã có công việc (${jobNames}) được phân công hoặc đang thực hiện.`
+        );
+      }
+
+      // Xóa các liên kết Job chưa phân công
+      for (const jf of finding.job_findings) {
+        await prisma.jobFinding.delete({ where: { id: jf.id } });
+        const remainingCount = await prisma.jobFinding.count({ where: { job_id: jf.job_id } });
+        if (remainingCount === 0) {
+          await prisma.jobLabour.deleteMany({ where: { job_id: jf.job_id } });
+          await prisma.job.delete({ where: { id: jf.job_id } });
+        }
+      }
+    }
+
+    // Tự động xóa Hạng mục dịch vụ tương ứng (nếu chưa có việc hoặc các việc chưa phân công)
+    const markerLabels: Record<string, string> = {
+      DENT: 'Móp méo',
+      SCRATCH: 'Trầy xước',
+      DAMAGE: 'Hư hỏng bể vỡ',
+      RUST: 'Rỉ sét',
+      MISSING: 'Thiếu phụ tùng',
+    };
+    const markerLabel = markerLabels[finding.marker_type || ''] || finding.marker_type || 'Lỗi kỹ thuật';
+    const serviceName = `Khắc phục lỗi: ${markerLabel} tại ${finding.part_name || 'bộ phận xe'}`;
+
+    const autoWoService = await prisma.woService.findFirst({
+      where: {
+        work_order_id: finding.inspection.work_order_id,
+        name: serviceName,
+      },
+      include: {
+        jobs: {
+          include: {
+            labours: true,
+          },
+        },
+      },
+    });
+
+    if (autoWoService) {
+      const hasAssignedJobs = autoWoService.jobs.some(
+        (j) =>
+          j.status !== 'PLANNED' ||
+          (j.labours && j.labours.some((l) => l.employee_id !== null))
+      );
+      if (!hasAssignedJobs) {
+        for (const j of autoWoService.jobs) {
+          await prisma.jobFinding.deleteMany({ where: { job_id: j.id } });
+          await prisma.jobLabour.deleteMany({ where: { job_id: j.id } });
+          await prisma.job.delete({ where: { id: j.id } });
+        }
+        await prisma.woService.delete({ where: { id: autoWoService.id } });
+      }
     }
 
     await prisma.finding.delete({

@@ -36,6 +36,99 @@ function getIntakeTypeBadge(type: string) {
   }
 }
 
+/**
+ * Trích xuất loại danh mục dịch vụ chuẩn xác dựa trên service, category hoặc tên công việc/hạng mục
+ */
+function resolveServiceCategory(svc: any): string {
+  if (svc.service?.category?.name) return svc.service.category.name;
+  if (svc.category) return svc.category;
+
+  const text = (svc.name || svc.service?.name || '').toLowerCase();
+  if (
+    text.includes('móp') ||
+    text.includes('trầy') ||
+    text.includes('xước') ||
+    text.includes('sơn') ||
+    text.includes('thân') ||
+    text.includes('nóc') ||
+    text.includes('cửa') ||
+    text.includes('panel') ||
+    text.includes('gò') ||
+    text.includes('vỏ')
+  ) {
+    return 'Sơn & Đồng';
+  }
+  if (text.includes('phanh') || text.includes('thắng') || text.includes('má phanh') || text.includes('đĩa phanh')) {
+    return 'Hệ thống phanh';
+  }
+  if (
+    text.includes('động cơ') ||
+    text.includes('quá nhiệt') ||
+    text.includes('nổ máy') ||
+    text.includes('bugi') ||
+    text.includes('kim phun')
+  ) {
+    return 'Sửa chữa động cơ';
+  }
+  if (text.includes('hộp số') || text.includes('trượt số') || text.includes('ly hợp') || text.includes('côn')) {
+    return 'Sửa chữa hộp số';
+  }
+  if (
+    text.includes('treo') ||
+    text.includes('gầm') ||
+    text.includes('giảm xóc') ||
+    text.includes('phuộc') ||
+    text.includes('rotuyn') ||
+    text.includes('thước lái') ||
+    text.includes('lốp')
+  ) {
+    return 'Hệ thống treo & Gầm';
+  }
+  if (
+    text.includes('điện') ||
+    text.includes('ắc quy') ||
+    text.includes('đèn') ||
+    text.includes('máy phát') ||
+    text.includes('cầu chì')
+  ) {
+    return 'Hệ thống điện & Ắc quy';
+  }
+  if (
+    text.includes('vệ sinh') ||
+    text.includes('chăm sóc') ||
+    text.includes('rửa xe') ||
+    text.includes('detailing') ||
+    text.includes('nội thất')
+  ) {
+    return 'Chăm sóc & Vệ sinh';
+  }
+  if (text.includes('bảo dưỡng') || text.includes('thay dầu') || text.includes('nhớt') || text.includes('lọc')) {
+    return 'Bảo dưỡng định kỳ';
+  }
+  if (text.includes('khắc phục lỗi') || text.includes('hư hỏng')) {
+    return 'Sơn & Đồng';
+  }
+  return svc.name || 'Dịch vụ sửa chữa';
+}
+
+function getEffectiveServices(item: IntakeQueueItem): Array<{ id: number | string; name: string; category: string }> {
+  if (item.work_order?.services && item.work_order.services.length > 0) {
+    return item.work_order.services.map((s: any) => ({
+      id: s.id,
+      name: s.name || s.service?.name || 'Dịch vụ',
+      category: resolveServiceCategory(s),
+    }));
+  }
+  if (item.services && item.services.length > 0) {
+    return item.services.map((s: any) => ({
+      id: s.id,
+      name: s.service?.name || 'Dịch vụ',
+      category: resolveServiceCategory(s),
+    }));
+  }
+  return [];
+}
+
 function IntakeDetailModal({ intake, onClose, onCreateWO, onViewWO, isLoading }: { intake: IntakeQueueItem, onClose: () => void, onCreateWO: (id: number) => void, onViewWO: (id: number) => void, isLoading: boolean }) {
   if (!intake) return null;
   const waitTime = calcWaitTime(intake.arrived_at);
@@ -113,18 +206,29 @@ function IntakeDetailModal({ intake, onClose, onCreateWO, onViewWO, isLoading }:
           <div className="flex flex-col gap-3">
             <h3 className="text-label-lg font-bold text-secondary flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px]">build</span>
-              Dịch vụ yêu cầu
+              {intake.work_order ? 'Hạng mục dịch vụ (Phiếu công việc)' : 'Dịch vụ yêu cầu ban đầu'}
             </h3>
             <div className="bg-surface-container-lowest border border-outline-variant/50 rounded-lg p-3">
-              {intake.services.length > 0 ? (
-                <ul className="list-disc list-inside text-body-md text-on-surface flex flex-col gap-1">
-                  {intake.services.map(s => (
-                    <li key={s.id}>{s.service?.name || 'Dịch vụ'}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-body-md text-outline italic">Không có dịch vụ cụ thể được yêu cầu</p>
-              )}
+              {(() => {
+                const effectiveServices = getEffectiveServices(intake);
+                if (effectiveServices.length === 0) {
+                  return <p className="text-body-md text-outline italic">Không có dịch vụ cụ thể được yêu cầu</p>;
+                }
+                return (
+                  <ul className="divide-y divide-outline-variant/30 flex flex-col">
+                    {effectiveServices.map((s, idx) => (
+                      <li key={idx} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-4">
+                        <span className="text-body-md text-on-surface font-medium">{s.name}</span>
+                        {s.category && (
+                          <span className="inline-flex px-2 py-0.5 rounded text-label-sm font-medium bg-secondary/10 text-secondary border border-secondary/20 flex-shrink-0">
+                            {s.category}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                );
+              })()}
             </div>
           </div>
 
@@ -290,23 +394,33 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                     {/* Services / Service Categories */}
                     <td className="px-5 py-4">
                       <div className="flex flex-col items-start gap-1.5">
-                        {item.services.length > 0 ? (
-                          (() => {
-                            const uniqueCategories = Array.from(
-                              new Set(item.services.map((s) => s.service?.category?.name).filter(Boolean))
-                            );
-                            if (uniqueCategories.length === 0) {
-                              return <span className="text-body-sm font-body-sm text-outline italic">Chưa phân loại</span>;
+                        {(() => {
+                          const effectiveServices = getEffectiveServices(item);
+
+                          if (effectiveServices.length === 0) {
+                            return <span className="text-body-sm font-body-sm text-outline italic">Chưa xác định</span>;
+                          }
+
+                          // Gom nhóm theo Loại dịch vụ (Danh mục)
+                          const categoryMap = new Map<string, string[]>();
+                          effectiveServices.forEach((s) => {
+                            const cat = s.category || 'Dịch vụ khác';
+                            if (!categoryMap.has(cat)) {
+                              categoryMap.set(cat, []);
                             }
-                            return uniqueCategories.map((catName, idx) => (
-                              <span key={idx} className="inline-flex px-2 py-0.5 rounded text-label-sm font-medium bg-secondary/10 text-secondary border border-secondary/20">
-                                {catName}
-                              </span>
-                            ));
-                          })()
-                        ) : (
-                          <span className="text-body-sm font-body-sm text-outline italic">Chưa xác định</span>
-                        )}
+                            categoryMap.get(cat)!.push(s.name);
+                          });
+
+                          return Array.from(categoryMap.entries()).map(([catName, serviceNames], idx) => (
+                            <span
+                              key={idx}
+                              title={`Chi tiết: ${serviceNames.join(', ')}`}
+                              className="inline-flex px-2 py-0.5 rounded text-label-sm font-medium bg-secondary/10 text-secondary border border-secondary/20 cursor-default hover:bg-secondary/20 transition-colors"
+                            >
+                              {catName}
+                            </span>
+                          ));
+                        })()}
                       </div>
                     </td>
 

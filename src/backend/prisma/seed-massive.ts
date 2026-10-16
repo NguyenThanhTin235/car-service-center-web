@@ -165,6 +165,76 @@ const DIAGNOSES = [
   'Mòn má phanh', 'Hỏng phuộc giảm xóc', 'Thiếu ga điều hòa',
 ];
 
+// Bộ kịch bản chẩn đoán chuyên sâu (Ground Truth cho AI Training/Context)
+const CAR_SCENARIOS = [
+  {
+    stIdx: 0, // Thay dầu máy
+    complaint: 'Đến hạn bảo dưỡng định kỳ, kiểm tra tổng thể động cơ',
+    exterior: 'Tốt, không hư hại ngoại thất',
+    findingDesc: 'Dầu máy xuống mức thấp dưới vạch L, chuyển màu đen sẫm',
+    findingRec: 'Cần xả dầu động cơ cũ và thay thế lọc dầu mới',
+    marker: MarkerType.OTHER,
+    severity: Severity.LOW,
+    partItemIdx: 20, // Dầu máy 5W-30
+    partQty: 1,
+  },
+  {
+    stIdx: 9, // Thay má phanh trước
+    complaint: 'Phanh phát ra tiếng kêu rít chói tai khi rà phanh, bàn đạp rung',
+    exterior: 'Bình thường, mâm xe bám nhiều mạt bụi phanh đen',
+    findingDesc: 'Má phanh đĩa trước mòn trơ xương sắt chỉ còn dưới 1.5mm, đĩa phanh xước rãnh',
+    findingRec: 'Thay gấp bộ má phanh trước và láng đĩa phanh',
+    marker: MarkerType.DAMAGE,
+    severity: Severity.HIGH,
+    partItemIdx: 2, // Má phanh trước
+    partQty: 1,
+  },
+  {
+    stIdx: 12, // Thay bình ắc quy
+    complaint: 'Xe đề khó nổ vào buổi sáng, đèn taplo chập chờn sụt áp',
+    exterior: 'Bình thường',
+    findingDesc: 'Cọc bình ắc quy bám muối xanh, điện áp tĩnh tụt dưới 11.2V không tích được điện',
+    findingRec: 'Thay bình ắc quy mới 12V 60Ah và vệ sinh cọc bình',
+    marker: MarkerType.DAMAGE,
+    severity: Severity.HIGH,
+    partItemIdx: 9, // Bình ắc quy
+    partQty: 1,
+  },
+  {
+    stIdx: 4, // Thay bugi & bô bin
+    complaint: 'Động cơ bị rung giật mạnh khi dừng chờ đèn đỏ, tăng tốc bị hụt hơi',
+    exterior: 'Tốt',
+    findingDesc: 'Bugi máy số 1 mòn điện cực đánh lửa chập chờn, bô bin đánh lửa bị nứt vỏ cách điện',
+    findingRec: 'Thay bộ 4 bugi Iridium và bô bin đánh lửa',
+    marker: MarkerType.DAMAGE,
+    severity: Severity.CRITICAL,
+    partItemIdx: 5, // Bugi
+    partQty: 4,
+  },
+  {
+    stIdx: 15, // Thay phuộc giảm xóc
+    complaint: 'Xe qua gờ giảm tốc bị bồng bềnh dằn xóc, có tiếng kêu lục cục ở bánh trước',
+    exterior: 'Gầm trước có dấu hiệu bám dính dầu ẩm',
+    findingDesc: 'Phuộc giảm xóc trước bên phụ xì dầu nặng, cao su tăm bông rách nát',
+    findingRec: 'Thay cụm phuộc giảm xóc trước và cân chỉnh độ chụm bánh xe',
+    marker: MarkerType.DAMAGE,
+    severity: Severity.MEDIUM,
+    partItemIdx: 7, // Phuộc giảm xóc trước
+    partQty: 2,
+  },
+  {
+    stIdx: 17, // Sơn lại panel
+    complaint: 'Xe bị va chạm quẹt vào cột bê tông hầm xe',
+    exterior: 'Trầy xước ba-đờ-xốc trước góc bên tài, móp nhẹ cánh cửa',
+    findingDesc: 'Cản trước trầy xước sâu lộ lớp nhựa đen diện tích 30x15cm, mép tai vè trước biến dạng',
+    findingRec: 'Gò nắn nắn chỉnh panel và sơn sấy dặm cản trước',
+    marker: MarkerType.SCRATCH,
+    severity: Severity.MEDIUM,
+    partItemIdx: 29, // Sơn lót chống gỉ
+    partQty: 1,
+  },
+];
+
 // ==========================================
 // MAIN SEED FUNCTION
 // ==========================================
@@ -977,16 +1047,19 @@ async function main() {
         }
       });
 
+      // Chọn kịch bản ca bệnh logic cho WO này
+      const scenario = CAR_SCENARIOS[woIndex % CAR_SCENARIOS.length];
+
       // ---- CHECKIN (all except DRAFT) ----
       if (woStatus !== WorkOrderStatus.DRAFT) {
         await prisma.checkIn.create({
           data: {
             work_order_id: wo.id,
-            mileage: randomBetween(5000, 150000),
-            fuel_level: randomFrom([FuelLevel.EMPTY, FuelLevel.QUARTER, FuelLevel.HALF, FuelLevel.THREE_QUARTER, FuelLevel.FULL]),
-            complaint: randomFrom(COMPLAINTS),
-            belongings: randomFrom([null, 'Túi xách trên ghế sau', 'Laptop trong cốp', 'Không có', 'Ô dù và áo mưa']),
-            exterior_condition: randomFrom(['Bình thường', 'Có xước nhẹ cánh cửa trái', 'Trầy xước ba-đờ-xốc trước', 'Móp nhẹ nắp ca-pô', 'Tốt, không hư hại']),
+            mileage: randomBetween(10000, 120000),
+            fuel_level: randomFrom([FuelLevel.QUARTER, FuelLevel.HALF, FuelLevel.THREE_QUARTER, FuelLevel.FULL]),
+            complaint: scenario.complaint,
+            belongings: randomFrom([null, 'Túi xách trên ghế sau', 'Không có', 'Ô dù và áo mưa']),
+            exterior_condition: scenario.exterior,
             status: CheckInStatus.CONFIRMED,
             evidence_urls: [DEFAULT_IMAGE],
             created_by_id: adv.id,
@@ -997,14 +1070,19 @@ async function main() {
       }
 
       // ---- WO SERVICES ----
-      const numWoServices = randomBetween(1, 3);
-      const woServices: any[] = [];
-      const usedWoServiceIds = new Set<number>();
-      for (let s = 0; s < numWoServices; s++) {
-        let stIdx: number;
-        do { stIdx = randomBetween(0, services.length - 1); } while (usedWoServiceIds.has(stIdx));
-        usedWoServiceIds.add(stIdx);
+      // Ưu tiên service chính từ kịch bản scenario.stIdx
+      const primaryStIdx = scenario.stIdx;
+      const numExtraServices = randomBetween(0, 1);
+      const usedStIndices = [primaryStIdx];
+      for (let extra = 0; extra < numExtraServices; extra++) {
+        let randSt: number;
+        do { randSt = randomBetween(0, services.length - 1); } while (usedStIndices.includes(randSt));
+        usedStIndices.push(randSt);
+      }
 
+      const woServices: any[] = [];
+      for (let s = 0; s < usedStIndices.length; s++) {
+        const stIdx = usedStIndices[s];
         const svcStatus = woStatus === WorkOrderStatus.DRAFT || woStatus === WorkOrderStatus.IN_PLANNING
           ? ServiceStatus.PENDING
           : woStatus === WorkOrderStatus.IN_PROGRESS
@@ -1035,7 +1113,6 @@ async function main() {
             .slice(0, 2);
 
           if (matchingJTs.length === 0) {
-            // Fallback: create a generic job
             matchingJTs.push({ jtIdx: 7, stIdx, name: `Công việc cho ${serviceData[stIdx].name}`, hours: 1.5, idx: -1 });
           }
 
@@ -1081,33 +1158,33 @@ async function main() {
               }
             });
 
-            // JobPart (50% chance)
-            if (Math.random() > 0.4) {
-              const partIdx = randomBetween(0, 19); // Only PART type items
-              await prisma.jobPart.create({
-                data: {
-                  job_id: job.id,
-                  item_id: inventoryItems[partIdx].id,
-                  status: (jobStatus === JobStatus.COMPLETED || jobStatus === JobStatus.PASSED)
-                    ? PartAllocationStatus.USED
-                    : jobStatus === JobStatus.IN_PROGRESS
-                      ? PartAllocationStatus.ISSUED
-                      : PartAllocationStatus.PLANNED,
-                  planned_quantity: randomBetween(1, 4),
-                  issued_quantity: jobStatus !== JobStatus.PLANNED ? randomBetween(1, 4) : 0,
-                  unit_price: itemData[partIdx].selling,
-                }
-              });
-            }
+            // JobPart: Gán đúng vật tư theo kịch bản nếu là service chính
+            const partIdx = (stIdx === scenario.stIdx && scenario.partItemIdx !== undefined)
+              ? scenario.partItemIdx
+              : randomBetween(0, 19);
+
+            await prisma.jobPart.create({
+              data: {
+                job_id: job.id,
+                item_id: inventoryItems[partIdx].id,
+                status: (jobStatus === JobStatus.COMPLETED || jobStatus === JobStatus.PASSED)
+                  ? PartAllocationStatus.USED
+                  : jobStatus === JobStatus.IN_PROGRESS
+                    ? PartAllocationStatus.ISSUED
+                    : PartAllocationStatus.PLANNED,
+                planned_quantity: (stIdx === scenario.stIdx && scenario.partQty) ? scenario.partQty : randomBetween(1, 2),
+                issued_quantity: jobStatus !== JobStatus.PLANNED ? ((stIdx === scenario.stIdx && scenario.partQty) ? scenario.partQty : 1) : 0,
+                unit_price: itemData[partIdx].selling,
+              }
+            });
           }
         }
       }
 
-      // ---- INSPECTIONS (IN_PLANNING and beyond) ----
+      // ---- INSPECTIONS & FINDINGS (IN_PLANNING and beyond) ----
       if (woStatus !== WorkOrderStatus.DRAFT && woStatus !== WorkOrderStatus.IN_PLANNING) {
         for (let si = 0; si < Math.min(woServices.length, 2); si++) {
-          const { wos } = woServices[si];
-          // Find matching inspection template
+          const { wos, stIdx } = woServices[si];
           const matchingIT = inspTemplates.find((_, idx) =>
             inspTemplateData[idx].type === InspectionTemplateType.INSPECTION &&
             inspTemplateData[idx].stIdx < services.length
@@ -1138,28 +1215,30 @@ async function main() {
               });
             }
 
-            // Findings (1-2 per inspection)
-            const numFindings = randomBetween(1, 2);
-            for (let fi = 0; fi < numFindings; fi++) {
-              const finding = await prisma.finding.create({
-                data: {
-                  inspection_id: insp.id,
-                  status: allJobs.length > 0 ? FindingStatus.LINKED_TO_JOB : FindingStatus.NEW,
-                  description: randomFrom(COMPLAINTS),
-                  severity: randomFrom([Severity.LOW, Severity.MEDIUM, Severity.MEDIUM, Severity.HIGH, Severity.CRITICAL]),
-                  recommendation: randomFrom(DIAGNOSES),
-                  evidence_urls: [DEFAULT_IMAGE],
-                  marker_type: randomFrom([MarkerType.DAMAGE, MarkerType.SCRATCH, MarkerType.DENT, MarkerType.RUST, MarkerType.OTHER]),
-                  created_by_id: tech.id,
-                }
-              });
+            // Finding: Match chính xác từ scenario nếu là service chính
+            const findingDesc = (stIdx === scenario.stIdx) ? scenario.findingDesc : randomFrom(COMPLAINTS);
+            const findingRec = (stIdx === scenario.stIdx) ? scenario.findingRec : randomFrom(DIAGNOSES);
+            const findingMarker = (stIdx === scenario.stIdx) ? scenario.marker : MarkerType.OTHER;
+            const findingSeverity = (stIdx === scenario.stIdx) ? scenario.severity : Severity.MEDIUM;
 
-              // Link finding to job
-              if (allJobs.length > 0) {
-                await prisma.jobFinding.create({
-                  data: { job_id: allJobs[fi % allJobs.length].id, finding_id: finding.id }
-                });
+            const finding = await prisma.finding.create({
+              data: {
+                inspection_id: insp.id,
+                status: allJobs.length > 0 ? FindingStatus.LINKED_TO_JOB : FindingStatus.NEW,
+                description: findingDesc,
+                severity: findingSeverity,
+                recommendation: findingRec,
+                evidence_urls: [DEFAULT_IMAGE],
+                marker_type: findingMarker,
+                created_by_id: tech.id,
               }
+            });
+
+            // Link finding to job tương ứng
+            if (allJobs.length > 0) {
+              await prisma.jobFinding.create({
+                data: { job_id: allJobs[0].id, finding_id: finding.id }
+              });
             }
           }
         }
