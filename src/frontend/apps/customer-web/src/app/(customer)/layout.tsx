@@ -1,11 +1,11 @@
-import CustomerNavBar from '@/components/layout/CustomerNavBar';
+import PublicHeader from '@/components/layout/PublicHeader';
 import CustomerAuthGuard from '@/components/auth/CustomerAuthGuard';
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   return (
     <CustomerAuthGuard>
       <div className="min-h-screen flex flex-col bg-surface-container-low font-body-md text-on-surface antialiased">
-        <CustomerNavBar />
+        <PublicHeader />
         <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-8 py-8">
           {children}
         </main>

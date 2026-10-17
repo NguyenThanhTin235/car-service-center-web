@@ -292,6 +292,260 @@ export const removeServiceFromWO = async (req: Request, res: Response): Promise<
 
 
 /**
+ * PATCH /api/work-orders/:id/services/:serviceId
+ * Cập nhật thông tin dịch vụ trong Work Order (chỉ khi chưa phân công)
+ */
+export const updateServiceInWO = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const woServiceId = Number(req.params.serviceId);
+    const { name, pricing_type } = req.body;
+
+    const result = await workOrderService.updateService(workOrderId, woServiceId, { name, pricing_type });
+
+    res.json({
+      success: true,
+      code: 200,
+      message: 'Cập nhật dịch vụ thành công',
+      data: result,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    let statusCode = 400;
+    if (error.message.includes('Không tìm thấy')) statusCode = 404;
+    else if (error.message.includes('Không thể sửa')) statusCode = 422;
+
+    res.status(statusCode).json({
+      success: false,
+      code: statusCode,
+      message: error.message || 'Lỗi khi cập nhật dịch vụ',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * POST /api/work-orders/:id/services/from-finding
+ * Tạo nhanh Hạng mục sửa chữa & Công việc con từ Finding
+ */
+export const createServiceFromFinding = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const findingId = Number(req.body.finding_id);
+    const advisorUserId = req.user?.id;
+
+    if (isNaN(findingId) || findingId <= 0) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Mã vết lỗi (finding_id) không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    if (!advisorUserId) {
+      res.status(401).json({
+        success: false,
+        code: 401,
+        message: 'Không xác định được danh tính cố vấn dịch vụ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const result = await workOrderService.createServiceFromFinding(workOrderId, findingId, advisorUserId);
+
+    res.status(201).json({
+      success: true,
+      code: 201,
+      message: `Đã tạo Hạng mục sửa chữa "${result.service.name}" thành công`,
+      data: result,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      code: 500,
+      message: error.message || 'Lỗi khi tạo hạng mục sửa chữa từ vết lỗi',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * POST /api/work-orders/:id/jobs
+ * Tạo công việc thủ công (Dispatch Job)
+ */
+export const createManualJob = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const advisorUserId = req.user?.id;
+
+    if (!advisorUserId) {
+      res.status(401).json({
+        success: false,
+        code: 401,
+        message: 'Không xác định được danh tính cố vấn dịch vụ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const result = await workOrderService.createManualJob(workOrderId, advisorUserId, req.body);
+
+    res.status(201).json({
+      success: true,
+      code: 201,
+      message: `Đã tạo công việc "${result.job?.name}" thành công`,
+      data: result,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      code: 400,
+      message: error.message || 'Lỗi khi tạo công việc thủ công',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * PATCH /api/work-orders/:id/jobs/:jobId
+ * Cập nhật công việc thủ công khi chưa phân công (status === 'PLANNED')
+ */
+export const updateManualJob = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const jobId = Number(req.params.jobId);
+    const advisorUserId = req.user?.id;
+
+    if (!advisorUserId) {
+      res.status(401).json({
+        success: false,
+        code: 401,
+        message: 'Không xác định được danh tính cố vấn dịch vụ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const updatedJob = await workOrderService.updateManualJob(
+      workOrderId,
+      jobId,
+      advisorUserId,
+      req.body
+    );
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: `Đã cập nhật công việc "${updatedJob?.name}" thành công`,
+      data: updatedJob,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      code: 400,
+      message: error.message || 'Lỗi khi cập nhật công việc',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * DELETE /api/work-orders/:id/jobs/:jobId
+ * Xóa công việc khi chưa phân công
+ */
+export const deleteJob = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const jobId = Number(req.params.jobId);
+    const advisorUserId = req.user?.id;
+
+    if (!advisorUserId) {
+      res.status(401).json({
+        success: false,
+        code: 401,
+        message: 'Không xác định được danh tính cố vấn dịch vụ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const result = await workOrderService.deleteJob(workOrderId, jobId, advisorUserId);
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: result.message || 'Đã xóa công việc thành công',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      code: 400,
+      message: error.message || 'Lỗi khi xóa công việc',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * PUT /api/work-orders/:id/services/:serviceId/reorder-jobs
+ * Cập nhật thứ tự các công việc trong hạng mục
+ */
+export const reorderJobs = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const serviceId = Number(req.params.serviceId);
+    const { job_ids } = req.body;
+
+    if (!Array.isArray(job_ids) || job_ids.length === 0) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Danh sách job_ids không hợp lệ.',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    await workOrderService.reorderJobs(workOrderId, serviceId, job_ids);
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: 'Đã cập nhật thứ tự công việc thành công',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      code: 400,
+      message: error.message || 'Lỗi khi sắp xếp thứ tự công việc',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
  * GET /api/work-orders/my-tracking
  * Lấy danh sách phiếu công việc của khách hàng đang đăng nhập (UC-15)
  */

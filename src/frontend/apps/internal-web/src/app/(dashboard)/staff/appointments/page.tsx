@@ -21,6 +21,9 @@ export default function AppointmentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'DAY' | 'WEEK' | 'MONTH'>('WEEK');
   
+  // Helper to format date without timezone shift
+  const toApiDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
   // Calculate date boundaries based on viewMode
   const dateBoundaries = useMemo(() => {
     const start = new Date(currentDate);
@@ -39,11 +42,19 @@ export default function AppointmentsPage() {
       end.setDate(end.getDate() + 6);
       end.setHours(23, 59, 59, 999);
     } else if (viewMode === 'MONTH') {
-      start.setDate(1);
+      // Month grid displays 42 days (6 weeks starting from Monday)
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const firstDayOfMonth = new Date(year, month, 1);
+      let firstDayOfWeek = firstDayOfMonth.getDay();
+      firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1; // Mon = 0
+      
+      start.setTime(firstDayOfMonth.getTime());
+      start.setDate(start.getDate() - firstDayOfWeek);
       start.setHours(0, 0, 0, 0);
       
-      end.setMonth(end.getMonth() + 1);
-      end.setDate(0);
+      end.setTime(start.getTime());
+      end.setDate(end.getDate() + 41);
       end.setHours(23, 59, 59, 999);
     }
     
@@ -79,8 +90,8 @@ export default function AppointmentsPage() {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       dispatch(fetchAppointments({ 
-        startDate: dateBoundaries.start.toISOString(), 
-        endDate: dateBoundaries.end.toISOString(),
+        startDate: toApiDateStr(dateBoundaries.start), 
+        endDate: toApiDateStr(dateBoundaries.end),
         search: searchQuery
       }));
     }, 300);
@@ -185,8 +196,9 @@ export default function AppointmentsPage() {
         ARRIVED: 'Đã tiếp nhận',
         CANCELLED: 'Đã hủy'
       };
-      const dateObj = new Date(apt.scheduled_date);
-      const dateStr = dateObj.toLocaleDateString('vi-VN');
+      const rawDate = typeof apt.scheduled_date === 'string' ? apt.scheduled_date.substring(0, 10) : new Date(apt.scheduled_date).toISOString().substring(0, 10);
+      const [y, m, d] = rawDate.split('-');
+      const dateStr = `${d}/${m}/${y}`;
       const vehicleStr = (apt.vehicle?.license_plate || '') + ' - ' + (apt.vehicle?.make || '') + ' ' + (apt.vehicle?.model || '');
       const statusStr = statusMap[apt.status] || apt.status;
       
@@ -267,8 +279,9 @@ export default function AppointmentsPage() {
         CANCELLED: 'Đã hủy'
       };
       
-      const dateObj = new Date(apt.scheduled_date);
-      const dateStr = dateObj.toLocaleDateString('vi-VN');
+      const rawDate = typeof apt.scheduled_date === 'string' ? apt.scheduled_date.substring(0, 10) : new Date(apt.scheduled_date).toISOString().substring(0, 10);
+      const [y, m, d] = rawDate.split('-');
+      const dateStr = `${d}/${m}/${y}`;
       const vehicleStr = (apt.vehicle?.license_plate || '') + ' - ' + (apt.vehicle?.make || '') + ' ' + (apt.vehicle?.model || '');
       const statusStr = statusMap[apt.status] || apt.status;
       

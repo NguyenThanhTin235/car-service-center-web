@@ -49,10 +49,11 @@ export default function AppointmentCard({ appointment, onClick }: AppointmentCar
   let isOverdue = false;
   if (appointment.status === 'CONFIRMED' || appointment.status === 'REQUESTED' || appointment.status === 'RESCHEDULED') {
     const now = new Date();
-    const aptDate = new Date(appointment.scheduled_date);
     if (appointment.scheduled_time_str) {
       const [h, m] = appointment.scheduled_time_str.split(':');
-      aptDate.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+      const rawDate = typeof appointment.scheduled_date === 'string' ? appointment.scheduled_date.substring(0, 10) : new Date(appointment.scheduled_date).toISOString().substring(0, 10);
+      const [y, mon, d] = rawDate.split('-').map(Number);
+      const aptDate = new Date(y, mon - 1, d, parseInt(h, 10), parseInt(m, 10), 0, 0);
       
       // Thêm 30 phút ân hạn (grace period)
       aptDate.setMinutes(aptDate.getMinutes() + 30);

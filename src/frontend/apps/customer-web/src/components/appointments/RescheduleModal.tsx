@@ -14,7 +14,9 @@ export default function RescheduleModal({ appointment, onClose }: RescheduleModa
 
   // Form state
   const [date, setDate] = useState<string>(
-    new Date(appointment.scheduled_date).toISOString().split('T')[0]
+    typeof appointment.scheduled_date === 'string'
+      ? appointment.scheduled_date.substring(0, 10)
+      : new Date(appointment.scheduled_date).toISOString().split('T')[0]
   );
   const [time, setTime] = useState<string>(appointment.scheduled_time_str);
   const [notes, setNotes] = useState<string>(appointment.notes || '');
@@ -44,7 +46,7 @@ export default function RescheduleModal({ appointment, onClose }: RescheduleModa
       await dispatch(rescheduleAppointment({
         id: appointment.id,
         updateData: {
-          scheduled_date: new Date(date).toISOString(),
+          scheduled_date: date,
           scheduled_time: time,
           notes
         }

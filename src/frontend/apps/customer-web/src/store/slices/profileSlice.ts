@@ -36,9 +36,19 @@ const initialState: ProfileState = {
 // Async Thunks
 export const fetchProfile = createAsyncThunk(
   'profile/fetchProfile',
-  async (_, { rejectWithValue }) => {
+  async (_, { dispatch, rejectWithValue }) => {
     try {
       const { data } = await api.get('/api/auth/me');
+      if (data?.data) {
+        dispatch(setCredentials({
+          user: {
+            id: data.data.id,
+            email: data.data.email,
+            fullName: data.data.fullName,
+            roles: data.data.roles || [],
+          }
+        }));
+      }
       return data.data as ProfileData;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải hồ sơ.');

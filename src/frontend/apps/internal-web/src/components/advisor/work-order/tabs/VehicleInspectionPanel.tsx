@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import InteractiveCarSVG, { Finding as SvgFinding, MarkerType } from './InteractiveCarSVG';
-import { WorkOrder } from '@/lib/api/work-order.api';
+import { WorkOrder, deleteJob } from '@/lib/api/work-order.api';
 import {
   getInspection,
   createFinding,
@@ -10,11 +10,13 @@ import {
   uploadFindingPhoto,
   InspectionFinding,
 } from '@/lib/api/inspection.api';
+import CreateDispatchJobModal from '../modals/CreateDispatchJobModal';
 import toast from 'react-hot-toast';
 
 interface VehicleInspectionPanelProps {
   workOrder: WorkOrder;
   isReadOnly?: boolean;
+  refetchWO?: () => void;
 }
 
 /**
@@ -65,6 +67,7 @@ async function compressImage(file: File, maxWidth = 1600, quality = 0.82): Promi
 export default function VehicleInspectionPanel({
   workOrder,
   isReadOnly = false,
+  refetchWO,
 }: VehicleInspectionPanelProps) {
   const [selectedTool, setSelectedTool] = useState<MarkerType | null>(null);
   const [inspection, setInspection] = useState<any>(null);
@@ -81,6 +84,11 @@ export default function VehicleInspectionPanel({
   const [showPhotoLibrary, setShowPhotoLibrary] = useState(false);
   const [showLogModal, setShowLogModal] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Modal tạo / xem chi tiết công việc liên kết với vết lỗi
+  const [isJobModalOpen, setIsJobModalOpen] = useState(false);
+  const [selectedJobForModal, setSelectedJobForModal] = useState<any | null>(null);
+  const [selectedFindingForJobModal, setSelectedFindingForJobModal] = useState<InspectionFinding | null>(null);
 
   // Debounce timers for auto-saving notes
   const debounceTimers = useRef<Record<number, NodeJS.Timeout>>({});
@@ -135,6 +143,7 @@ export default function VehicleInspectionPanel({
         setFindings((prev) => [...prev, res.data]);
         toast.success(`Đã ghi nhận: ${res.data.part_name}`);
         setHighlightedFindingId(res.data.id);
+        if (refetchWO) refetchWO();
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Lỗi khi lưu đánh dấu kiểm tra xe');
@@ -143,17 +152,19 @@ export default function VehicleInspectionPanel({
     }
   };
 
+
   const handleRemoveFinding = async (id: number) => {
     if (isReadOnly) return;
 
-    // Kiểm tra ràng buộc phía Client trước khi gọi API (Luồng ngoại lệ UC-33)
+    // Kiểm tra ràng buộc phía Client: Chỉ chặn xóa khi việc đã được phân công hoặc đang thực hiện
     const targetFinding = findings.find((f) => f.id === id);
-    if (targetFinding?.job_findings && targetFinding.job_findings.length > 0) {
-      const jobName =
-        targetFinding.job_findings[0]?.job?.name ||
-        `Công việc #${targetFinding.job_findings[0]?.job_id}`;
+    const assignedJob = targetFinding?.job_findings?.find(
+      (jf) => jf.job && (jf.job.status !== 'PLANNED' || (jf.job as any).technician_id)
+    );
+    if (assignedJob) {
+      const jobName = assignedJob.job?.name || `Công việc #${assignedJob.job_id}`;
       toast.error(
-        `Không thể xóa: Điểm đánh dấu này đã được liên kết với "${jobName}". Vui lòng hủy liên kết với công việc trước.`,
+        `Không thể xóa: Vết lỗi đã có công việc "${jobName}" được phân công cho kỹ thuật viên hoặc đang thực hiện.`,
         { duration: 5000 }
       );
       return;
@@ -165,9 +176,28 @@ export default function VehicleInspectionPanel({
         setFindings((prev) => prev.filter((f) => f.id !== id));
         if (highlightedFindingId === id) setHighlightedFindingId(null);
         toast.success('Đã xóa đánh dấu thành công');
+        if (refetchWO) refetchWO();
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Lỗi khi xóa đánh dấu kiểm tra xe');
+    }
+  };
+
+  const handleDeleteJobFromInspection = async (jobId: number, jobName: string) => {
+    if (!workOrder?.id) return;
+    const isConfirmed = window.confirm(`Bạn có chắc chắn muốn xóa công việc "${jobName}" khỏi phiếu sửa chữa?`);
+    if (!isConfirmed) return;
+    try {
+      const res = await deleteJob(workOrder.id, jobId);
+      if (res.success) {
+        toast.success(`Đã xóa công việc "${jobName}"`);
+        loadInspection();
+        if (refetchWO) refetchWO();
+      } else {
+        toast.error(res.message || 'Lỗi khi xóa công việc');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Lỗi khi xóa công việc');
     }
   };
 
@@ -260,23 +290,40 @@ export default function VehicleInspectionPanel({
   }[] = [
     { type: 'DAMAGE', label: 'Hư hỏng', icon: 'X', color: 'text-[#B22222]', bgColor: 'bg-[#B22222]', borderColor: 'border-[#B22222]', lightBg: 'bg-[#FCE8E8]' },
     { type: 'RUST', label: 'Rỉ sét', icon: 'R', color: 'text-[#B8860B]', bgColor: 'bg-[#B8860B]', borderColor: 'border-[#B8860B]', lightBg: 'bg-[#FDF6E3]' },
-    { type: 'MISSING', label: 'Thiếu', icon: 'M', color: 'text-[#6A5ACD]', bgColor: 'bg-[#6A5ACD]', borderColor: 'border-[#6A5ACD]', lightBg: 'bg-[#EAE6F9]' },
+    { type: 'MISSING', label: 'Thiếu', icon: 'M', color: 'text-[#1E40AF]', bgColor: 'bg-[#1E40AF]', borderColor: 'border-[#1E40AF]', lightBg: 'bg-[#EFF6FF]' },
     { type: 'DENT', label: 'Móp méo', icon: 'D', color: 'text-[#4682B4]', bgColor: 'bg-[#4682B4]', borderColor: 'border-[#4682B4]', lightBg: 'bg-[#E5F0F9]' },
     { type: 'SCRATCH', label: 'Trầy xước', icon: 'S', color: 'text-[#708090]', bgColor: 'bg-[#708090]', borderColor: 'border-[#708090]', lightBg: 'bg-[#F1F5F9]' },
   ];
 
   // Map backend findings sang SVG finding format
-  const svgFindings: SvgFinding[] = findings.map((f) => ({
-    id: f.id,
-    type: f.marker_type,
-    partId: f.coordinates?.part_id || '',
-    partName: f.part_name,
-    x: f.coordinates?.x ?? 50,
-    y: f.coordinates?.y ?? 50,
-    note: f.description || '',
-    photos: f.evidence_urls || [],
-    jobName: f.job_findings?.[0]?.job?.name,
-  }));
+  const svgFindings: SvgFinding[] = findings.map((f) => {
+    const jobNames: string[] = [];
+    f.job_findings?.forEach((jf) => {
+      if (jf.job?.name && !jobNames.includes(jf.job.name)) {
+        jobNames.push(jf.job.name);
+      }
+    });
+    workOrder?.services?.forEach((srv) => {
+      srv.jobs?.forEach((job) => {
+        if (job.findings?.some((item: any) => item.finding_id === f.id || item.finding?.id === f.id)) {
+          if (!jobNames.includes(job.name)) jobNames.push(job.name);
+        }
+      });
+    });
+
+    return {
+      id: f.id,
+      type: f.marker_type,
+      partId: f.coordinates?.part_id || '',
+      partName: f.part_name,
+      x: f.coordinates?.x ?? 50,
+      y: f.coordinates?.y ?? 50,
+      note: f.description || '',
+      photos: f.evidence_urls || [],
+      jobName: jobNames.join(', ') || undefined,
+      jobNames: jobNames.length > 0 ? jobNames : undefined,
+    };
+  });
 
   // Tổng số ảnh đã chụp
   const totalPhotos = findings.reduce(
@@ -397,7 +444,7 @@ export default function VehicleInspectionPanel({
       </div>
 
       <div className="bg-[#F8F9FA] rounded-md p-2.5 flex items-center gap-3 text-[11px] text-on-surface-variant mb-1 border border-outline-variant/40">
-        <div className="w-5 h-5 bg-[#6A5ACD] text-white flex items-center justify-center rounded-sm shrink-0">
+        <div className="w-5 h-5 bg-[#2563EB] text-white flex items-center justify-center rounded-sm shrink-0">
           <span className="material-symbols-outlined text-[14px]">touch_app</span>
         </div>
         <p>
@@ -417,7 +464,7 @@ export default function VehicleInspectionPanel({
                 disabled={isReadOnly}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded border text-[11px] font-bold transition-all shadow-sm ${
                   isSelected
-                    ? 'border-[#6A5ACD] text-[#000080] bg-white ring-2 ring-[#6A5ACD]/30'
+                    ? 'border-[#2563EB] text-[#000080] bg-white ring-2 ring-[#2563EB]/30'
                     : 'border-outline-variant text-on-surface-variant bg-white hover:bg-surface-container-low'
                 } ${isReadOnly ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
               >
@@ -444,11 +491,11 @@ export default function VehicleInspectionPanel({
 
           <button
             onClick={() => setShowPhotoLibrary(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded border border-[#6A5ACD] bg-white text-[#6A5ACD] text-[11px] font-bold hover:bg-[#F8F9FA] transition-colors shadow-sm cursor-pointer"
+            className="flex items-center gap-2 px-3 py-1.5 rounded border border-[#2563EB] bg-white text-[#2563EB] text-[11px] font-bold hover:bg-[#F8F9FA] transition-colors shadow-sm cursor-pointer"
           >
             <span className="material-symbols-outlined text-[15px]">photo_library</span>
             Thư viện ảnh
-            <span className="bg-[#6A5ACD] text-white px-1.5 py-0.2 rounded text-[10px] font-bold">
+            <span className="bg-[#2563EB] text-white px-1.5 py-0.2 rounded text-[10px] font-bold">
               {totalPhotos}
             </span>
           </button>
@@ -471,7 +518,7 @@ export default function VehicleInspectionPanel({
             <span className="font-bold">Chú thích:</span>
             <span className="text-[#B22222]"><strong className="text-black">X</strong> Hư hỏng</span>
             <span className="text-[#B8860B]"><strong className="text-black">R</strong> Rỉ sét</span>
-            <span className="text-[#6A5ACD]"><strong className="text-black">M</strong> Thiếu</span>
+            <span className="text-[#1E40AF]"><strong className="text-black">M</strong> Thiếu</span>
             <span className="text-[#4682B4]"><strong className="text-black">D</strong> Móp méo</span>
             <span className="text-[#708090]"><strong className="text-black">S</strong> Trầy xước</span>
           </div>
@@ -479,7 +526,29 @@ export default function VehicleInspectionPanel({
 
         {/* Right: Findings List */}
         <div className="w-full lg:w-1/2 bg-white flex flex-col pt-1 border border-outline-variant/40 rounded-lg p-3">
-          <div className="grid grid-cols-[36px_85px_120px_1fr_95px_50px_32px] gap-2 pb-2 border-b border-outline-variant/60 text-[10px] text-on-surface-variant font-bold uppercase tracking-wider items-center">
+          <div className="flex items-center justify-between pb-2 mb-1.5 border-b border-outline-variant/30">
+            <span className="text-[12px] font-bold text-on-surface flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-primary text-[16px]">format_list_bulleted</span>
+              Danh sách ghi nhận kiểm tra ({findings.length})
+            </span>
+            {!isReadOnly && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedFindingForJobModal(null);
+                  setSelectedJobForModal(null);
+                  setIsJobModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-primary/10 hover:bg-primary/20 text-primary text-[10.5px] font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                title="Tạo nhanh công việc trực tiếp vào phiếu sửa chữa"
+              >
+                <span className="material-symbols-outlined text-[14px]">add_circle</span>
+                Tạo job mới
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-[30px_85px_110px_1fr_200px_46px_28px] gap-2 pb-2 border-b border-outline-variant/60 text-[10px] text-on-surface-variant font-bold uppercase tracking-wider items-center">
             <div className="text-center">#</div>
             <div>Loại dấu vết</div>
             <div>Vị trí bộ phận</div>
@@ -503,8 +572,40 @@ export default function VehicleInspectionPanel({
               findings.map((finding, index) => {
                 const toolDef = tools.find((t) => t.type === finding.marker_type);
                 const isHighlighted = highlightedFindingId === finding.id;
-                const linkedJob = finding.job_findings?.[0]?.job;
-                const isLinkedToJob = Boolean(linkedJob || (finding.job_findings && finding.job_findings.length > 0));
+                
+                // Thu thập TẤT CẢ các công việc liên kết với finding này (từ job_findings và từ workOrder.services)
+                const linkedJobsMap = new Map<number, { id: number; name: string; status?: string; serviceName?: string; fullJob?: any }>();
+
+                finding.job_findings?.forEach((jf) => {
+                  if (jf.job) {
+                    linkedJobsMap.set(jf.job.id, {
+                      id: jf.job.id,
+                      name: jf.job.name,
+                      status: (jf.job as any).status,
+                      fullJob: jf.job,
+                    });
+                  }
+                });
+
+                workOrder?.services?.forEach((srv) => {
+                  srv.jobs?.forEach((job) => {
+                    const isMatched = job.findings?.some(
+                      (f: any) => f.finding_id === finding.id || f.finding?.id === finding.id
+                    );
+                    if (isMatched) {
+                      linkedJobsMap.set(job.id, {
+                        id: job.id,
+                        name: job.name,
+                        status: job.status,
+                        serviceName: srv.name,
+                        fullJob: job,
+                      });
+                    }
+                  });
+                });
+
+                const allLinkedJobs = Array.from(linkedJobsMap.values());
+                const isLinkedToJob = allLinkedJobs.length > 0;
                 const photoCount = finding.evidence_urls?.length || 0;
 
                 return (
@@ -512,7 +613,7 @@ export default function VehicleInspectionPanel({
                     key={finding.id}
                     onMouseEnter={() => setHighlightedFindingId(finding.id)}
                     onMouseLeave={() => setHighlightedFindingId(null)}
-                    className={`grid grid-cols-[36px_85px_120px_1fr_95px_50px_32px] gap-2 items-center py-2.5 border-b border-outline-variant/30 group transition-colors rounded ${
+                    className={`grid grid-cols-[30px_85px_110px_1fr_200px_46px_28px] gap-2 items-center py-2.5 border-b border-outline-variant/30 group transition-colors rounded ${
                       isHighlighted ? 'bg-primary/5' : 'hover:bg-surface-container-lowest'
                     }`}
                   >
@@ -551,12 +652,75 @@ export default function VehicleInspectionPanel({
                       )}
                     </div>
 
-                    {/* Job linking */}
-                    <div className="flex flex-col items-center justify-center text-center">
-                      {linkedJob ? (
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold truncate max-w-full" title={linkedJob.name}>
-                          {linkedJob.name}
-                        </span>
+                    {/* Job linking - Hiển thị toàn bộ công việc lên bảng & Nút thêm job trực tiếp */}
+                    <div className="flex flex-col items-center justify-center text-center w-full">
+                      {allLinkedJobs.length > 0 ? (
+                        <div className="flex flex-col gap-1 w-full items-stretch">
+                          {allLinkedJobs.map((job) => (
+                            <div
+                              key={job.id}
+                              onClick={() => {
+                                setSelectedJobForModal(job.fullJob || job);
+                                setSelectedFindingForJobModal(finding);
+                                setIsJobModalOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-medium max-w-full text-left transition-colors cursor-pointer active:scale-98"
+                              title={`Nhấn để xem thông tin chi tiết công việc: ${job.name}`}
+                            >
+                              <span className="material-symbols-outlined text-[11px] text-emerald-600 shrink-0">
+                                build_circle
+                              </span>
+                              <span className="truncate flex-1 font-semibold">{job.name}</span>
+                              {job.status && (
+                                <span className="text-[8px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold shrink-0">
+                                  {job.status === 'PLANNED' ? 'Mới' : job.status === 'IN_PROGRESS' ? 'Đang làm' : job.status}
+                                </span>
+                              )}
+                              {!isReadOnly && (job.status === 'PLANNED' || !job.status) && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteJobFromInspection(job.id, job.name);
+                                  }}
+                                  className="p-0.5 rounded hover:bg-error/20 text-error/60 hover:text-error transition-colors shrink-0"
+                                  title={`Xóa công việc "${job.name}"`}
+                                >
+                                  <span className="material-symbols-outlined text-[12px]">close</span>
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          {!isReadOnly && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedFindingForJobModal(finding);
+                                setSelectedJobForModal(null);
+                                setIsJobModalOpen(true);
+                              }}
+                              className="inline-flex items-center justify-center gap-1 px-1.5 py-0.5 mt-0.5 rounded border border-dashed border-emerald-400 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 hover:border-emerald-600 text-[9px] font-bold transition-all cursor-pointer active:scale-95 w-full"
+                              title="Thêm công việc khác trực tiếp cho dấu vết này"
+                            >
+                              <span className="material-symbols-outlined text-[11px] text-emerald-600">add_circle</span>
+                              + Thêm job
+                            </button>
+                          )}
+                        </div>
+                      ) : !isReadOnly ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedFindingForJobModal(finding);
+                            setSelectedJobForModal(null);
+                            setIsJobModalOpen(true);
+                          }}
+                          className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 hover:border-emerald-500 text-[10px] font-bold transition-all shadow-xs active:scale-95 cursor-pointer w-full"
+                          title="Tạo và liên kết công việc trực tiếp cho dấu vết này"
+                        >
+                          <span className="material-symbols-outlined text-[13px] text-emerald-600">add_circle</span>
+                          + Thêm job
+                        </button>
                       ) : (
                         <span className="text-[10px] text-on-surface-variant italic">
                           Chưa gắn
@@ -571,7 +735,7 @@ export default function VehicleInspectionPanel({
                         disabled={isReadOnly || uploadingFindingId === finding.id}
                         title={photoCount > 0 ? `${photoCount} ảnh minh chứng` : 'Tải ảnh minh chứng'}
                         className={`relative p-1 rounded hover:bg-surface-container transition-colors ${
-                          photoCount > 0 ? 'text-[#6A5ACD]' : 'text-on-surface-variant'
+                          photoCount > 0 ? 'text-[#2563EB]' : 'text-on-surface-variant'
                         } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}
                       >
                         {uploadingFindingId === finding.id ? (
@@ -584,7 +748,7 @@ export default function VehicleInspectionPanel({
                           </span>
                         )}
                         {photoCount > 0 && (
-                          <span className="absolute -top-1 -right-1 bg-[#6A5ACD] text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                          <span className="absolute -top-1 -right-1 bg-[#2563EB] text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
                             {photoCount}
                           </span>
                         )}
@@ -627,7 +791,7 @@ export default function VehicleInspectionPanel({
           <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/40">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#6A5ACD] text-[22px]">photo_library</span>
+                <span className="material-symbols-outlined text-[#2563EB] text-[22px]">photo_library</span>
                 <h4 className="text-[14px] font-bold text-on-surface">
                   Thư viện ảnh kiểm tra xe ({totalPhotos} ảnh)
                 </h4>
@@ -733,7 +897,7 @@ export default function VehicleInspectionPanel({
               </div>
               <div className="flex items-center gap-4 text-on-surface-variant">
                 <span>Tổng số điểm: <strong className="text-primary">{findings.length}</strong></span>
-                <span>Tổng số ảnh: <strong className="text-[#6A5ACD]">{totalPhotos}</strong></span>
+                <span>Tổng số ảnh: <strong className="text-[#2563EB]">{totalPhotos}</strong></span>
               </div>
             </div>
 
@@ -878,6 +1042,24 @@ export default function VehicleInspectionPanel({
           />
         </div>
       )}
+
+      {/* Modal Tạo / Xem chi tiết công việc điều phối */}
+      <CreateDispatchJobModal
+        isOpen={isJobModalOpen}
+        onClose={() => {
+          setIsJobModalOpen(false);
+          setSelectedJobForModal(null);
+          setSelectedFindingForJobModal(null);
+        }}
+        workOrder={workOrder}
+        finding={selectedFindingForJobModal}
+        job={selectedJobForModal}
+        onSuccess={() => {
+          loadInspection();
+          if (refetchWO) refetchWO();
+        }}
+      />
     </div>
   );
 }
+

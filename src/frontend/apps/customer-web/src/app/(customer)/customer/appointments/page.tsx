@@ -159,7 +159,15 @@ export default function AppointmentsPage() {
               <tbody className="divide-y divide-gray-200">
                 {appointments.map((apt) => (
                   <tr key={apt.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">{new Date(apt.scheduled_date).toLocaleDateString('vi-VN')}</td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        const raw = typeof apt.scheduled_date === 'string'
+                          ? apt.scheduled_date.substring(0, 10)
+                          : new Date(apt.scheduled_date).toISOString().substring(0, 10);
+                        const [y, m, d] = raw.split('-');
+                        return `${d}/${m}/${y}`;
+                      })()}
+                    </td>
                     <td className="px-6 py-4">{apt.scheduled_time_str}</td>
                     <td className="px-6 py-4 font-medium">{apt.vehicle?.license_plate}</td>
                     <td className="px-6 py-4 text-gray-600">
@@ -169,21 +177,25 @@ export default function AppointmentsPage() {
                       {getStatusBadge(apt.status)}
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
-                      {(apt.status === 'REQUESTED' || apt.status === 'CONFIRMED') && (
-                        <button 
-                          onClick={() => handleRescheduleClick(apt)}
-                          className="text-[#0866FF] hover:underline"
-                        >
-                          Dời lịch
-                        </button>
-                      )}
-                      {(apt.status === 'REQUESTED' || apt.status === 'CONFIRMED' || apt.status === 'RESCHEDULED') && (
-                        <button 
-                          onClick={() => handleCancelClick(apt.id)}
-                          className="text-[#E41E3F] hover:underline ml-3"
-                        >
-                          Hủy
-                        </button>
+                      {(apt.status === 'REQUESTED' || apt.status === 'RESCHEDULED') ? (
+                        <>
+                          <button 
+                            onClick={() => handleRescheduleClick(apt)}
+                            className="text-[#0866FF] hover:underline"
+                          >
+                            Dời lịch
+                          </button>
+                          <button 
+                            onClick={() => handleCancelClick(apt.id)}
+                            className="text-[#E41E3F] hover:underline ml-3"
+                          >
+                            Hủy
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-400">
+                          {apt.status === 'CONFIRMED' ? 'Đã xác nhận' : '—'}
+                        </span>
                       )}
                     </td>
                   </tr>

@@ -25,7 +25,7 @@ export default function DailyCalendarGrid({
   const dayData = {
     name: dayNames[d.getDay()],
     dateStr: `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`,
-    fullDate: d.toLocaleDateString('en-CA'), // YYYY-MM-DD
+    fullDate: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
     isToday,
     isWeekend
   };
@@ -37,8 +37,10 @@ export default function DailyCalendarGrid({
 
   const getAppointmentsForSlot = (date: string, time: string) => {
     return appointments.filter(a => {
-      const aptDate = new Date(a.scheduled_date).toISOString().split('T')[0];
-      const aptTime = a.scheduled_time_str.substring(0, 2);
+      const aptDate = typeof a.scheduled_date === 'string'
+        ? a.scheduled_date.substring(0, 10)
+        : new Date(a.scheduled_date).toISOString().split('T')[0];
+      const aptTime = (a.scheduled_time_str || '').substring(0, 2);
       const slotTime = time.substring(0, 2);
       
       return aptDate === date && aptTime === slotTime;
