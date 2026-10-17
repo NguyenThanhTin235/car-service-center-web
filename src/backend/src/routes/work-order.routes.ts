@@ -7,7 +7,9 @@ import {
   getWorkOrderById,
   updateWorkOrder,
   addServiceToWO,
-  removeServiceFromWO
+  removeServiceFromWO,
+  getMyTrackingOrders,
+  getMyTrackingOrderDetail
 } from '../controllers/work-order.controller';
 import { CheckInController } from '../controllers/check-in.controller';
 import { InspectionController } from '../controllers/inspection.controller';
@@ -16,6 +18,10 @@ const router = Router();
 
 // Yêu cầu đăng nhập cho toàn bộ
 router.use(authenticate);
+// UC-15: THEO DÕI TIẾN ĐỘ SỬA CHỮA DÀNH CHO KHÁCH HÀNG
+router.get('/my-tracking', authorize('CUSTOMER'), getMyTrackingOrders);
+router.get('/my-tracking/:id', authorize('CUSTOMER'), getMyTrackingOrderDetail);
+
 
 // Lấy danh sách hàng đợi tiếp nhận (cho Advisor tạo WO)
 router.get('/intake-queue', authorize('SA', 'ADMIN'), getIntakeQueueForAdvisor);

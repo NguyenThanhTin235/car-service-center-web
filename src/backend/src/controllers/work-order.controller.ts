@@ -289,3 +289,72 @@ export const removeServiceFromWO = async (req: Request, res: Response): Promise<
     });
   }
 };
+
+
+/**
+ * GET /api/work-orders/my-tracking
+ * Lấy danh sách phiếu công việc của khách hàng đang đăng nhập (UC-15)
+ */
+export const getMyTrackingOrders = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const data = await workOrderService.getMyTrackingOrders(userId);
+
+    res.json({
+      success: true,
+      code: 200,
+      message: 'Lấy danh sách tiến độ sửa chữa thành công',
+      data,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      code: 500,
+      message: error.message || 'Lỗi khi lấy tiến độ sửa chữa',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * GET /api/work-orders/my-tracking/:id
+ * Lấy chi tiết một phiếu công việc theo dõi của khách hàng (UC-15)
+ */
+export const getMyTrackingOrderDetail = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const workOrderId = Number(req.params.id);
+
+    if (isNaN(workOrderId) || workOrderId <= 0) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Mã phiếu công việc không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const data = await workOrderService.getMyTrackingOrderDetail(workOrderId, userId);
+
+    res.json({
+      success: true,
+      code: 200,
+      message: 'Lấy chi tiết tiến độ thành công',
+      data,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
+      success: false,
+      code: statusCode,
+      message: error.message || 'Lỗi khi lấy chi tiết tiến độ',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
