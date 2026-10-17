@@ -138,7 +138,7 @@ export default function BookAppointmentPage() {
               <div className="text-center p-6 bg-gray-50 rounded-lg">
                 <p className="text-gray-600 mb-4">Bạn chưa có phương tiện nào trong hồ sơ.</p>
                 <button 
-                  onClick={() => router.push('/customer/vehicles/new')}
+                  onClick={() => router.push('/customer/vehicles/new?redirect=/customer/appointments/new')}
                   className="bg-[#0866FF] text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
                 >
                   Thêm xe mới

@@ -14,6 +14,8 @@ import {
   updateManualJob,
   deleteJob,
   reorderJobs,
+  getMyTrackingOrders,
+  getMyTrackingOrderDetail,
 } from '../controllers/work-order.controller';
 import { CheckInController } from '../controllers/check-in.controller';
 import { InspectionController } from '../controllers/inspection.controller';
@@ -21,9 +23,12 @@ import aiJobRoutes from './ai-job.routes';
 
 const router = Router();
 
-
 // Yêu cầu đăng nhập cho toàn bộ
 router.use(authenticate);
+
+// UC-15: THEO DÕI TIẾN ĐỘ SỬA CHỮA DÀNH CHO KHÁCH HÀNG
+router.get('/my-tracking', authorize('CUSTOMER'), getMyTrackingOrders);
+router.get('/my-tracking/:id', authorize('CUSTOMER'), getMyTrackingOrderDetail);
 
 // Lấy danh sách hàng đợi tiếp nhận (cho Advisor tạo WO)
 router.get('/intake-queue', authorize('SA', 'ADMIN'), getIntakeQueueForAdvisor);
@@ -65,4 +70,3 @@ router.delete('/:id/services/:serviceId', authorize('SA', 'ADMIN'), removeServic
 router.use('/', aiJobRoutes);
 
 export default router;
-

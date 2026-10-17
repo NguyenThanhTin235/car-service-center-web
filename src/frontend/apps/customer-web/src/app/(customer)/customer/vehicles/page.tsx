@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
   fetchVehicles,
@@ -22,12 +23,36 @@ type VehicleFormData = {
   vehicleSize: 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL';
 };
 
-const VEHICLE_SIZES = [
-  { value: 'SMALL', label: 'Nhỏ (< 4.2m)' },
-  { value: 'MEDIUM', label: 'Trung bình (4.2–4.6m)' },
-  { value: 'LARGE', label: 'Lớn (4.6–5m)' },
-  { value: 'XL', label: 'Cỡ lớn (> 5m, SUV/Pickup)' },
-];
+export const VEHICLE_SIZES = [
+  {
+    value: 'SMALL',
+    label: 'Cỡ nhỏ (Hạng A - B)',
+    shortLabel: 'Cỡ nhỏ',
+    desc: 'Hatchback, Sedan nhỏ: Morning, i10, Yaris, Accent...',
+    icon: 'minor_crash',
+  },
+  {
+    value: 'MEDIUM',
+    label: 'Cỡ vừa (Hạng C)',
+    shortLabel: 'Cỡ vừa',
+    desc: 'Sedan hạng C, CUV nhỏ: Vios, City, Mazda 3, CX-30...',
+    icon: 'directions_car',
+  },
+  {
+    value: 'LARGE',
+    label: 'Cỡ lớn (Hạng D - SUV)',
+    shortLabel: 'Cỡ lớn',
+    desc: 'CUV/SUV cỡ trung & lớn: CX-5, CR-V, Santa Fe, Camry...',
+    icon: 'airport_shuttle',
+  },
+  {
+    value: 'XL',
+    label: 'Rất lớn (MPV / Bán tải)',
+    shortLabel: 'Rất lớn',
+    desc: 'Bán tải, MPV gia đình: Ranger, Carnival, Everest...',
+    icon: 'rv_hookup',
+  },
+] as const;
 
 const EMPTY_FORM: VehicleFormData = {
   licensePlate: '',
@@ -65,7 +90,8 @@ function VehicleCard({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const sizeLabel = VEHICLE_SIZES.find((s) => s.value === vehicle.vehicleSize)?.label?.split(' ')[0] || vehicle.vehicleSize;
+  const sizeObj = VEHICLE_SIZES.find((s) => s.value === vehicle.vehicleSize);
+  const sizeLabel = sizeObj ? sizeObj.label : (vehicle.vehicleSize || 'Chưa xác định');
 
   return (
     <div className="bg-surface-container-lowest rounded-xl border border-surface-container-highest shadow-sm hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden">
@@ -103,7 +129,9 @@ function VehicleCard({
       {/* Vehicle Primary Info */}
       <div className="px-5 py-4 flex items-start gap-4 border-b border-surface-container-high">
         <div className="w-12 h-12 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0">
-          <span className="material-symbols-outlined" style={{ fontSize: '26px', fontVariationSettings: "'FILL' 1" }}>directions_car</span>
+          <span className="material-symbols-outlined" style={{ fontSize: '26px', fontVariationSettings: "'FILL' 1" }}>
+            {sizeObj?.icon || 'directions_car'}
+          </span>
         </div>
         <div className="min-w-0">
           <span className="inline-block px-2.5 py-0.5 mb-1.5 rounded border border-outline bg-surface-container-low font-mono font-bold tracking-wider text-on-surface text-xs shadow-inner">
@@ -123,10 +151,12 @@ function VehicleCard({
           <p className="text-sm font-medium text-on-surface">{vehicle.color || '—'}</p>
         </div>
         <div>
-          <p className="text-xs text-on-surface-variant">Kích thước</p>
-          <p className="text-sm font-medium text-on-surface">{sizeLabel || '—'}</p>
+          <p className="text-xs text-on-surface-variant">Phân khúc</p>
+          <p className="text-xs font-semibold text-primary truncate" title={sizeLabel}>
+            {sizeObj?.shortLabel || sizeLabel}
+          </p>
         </div>
-        <div>
+        <div className="col-span-2">
           <p className="text-xs text-on-surface-variant">Ngày đăng ký</p>
           <p className="text-sm font-medium text-on-surface">
             {new Date(vehicle.createdAt).toLocaleDateString('vi-VN')}
@@ -151,7 +181,7 @@ function VehicleCard({
   );
 }
 
-// ─────────────── Vehicle Form Modal ───────────────
+// ─────────────── Vehicle Form Modal (for Edit) ───────────────
 function VehicleModal({
   isOpen,
   mode,
@@ -190,23 +220,29 @@ function VehicleModal({
 
   if (!isOpen) return null;
 
-  const inputClass = 'w-full px-3 py-2.5 border border-surface-container-highest rounded-lg text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-outline';
+  const inputClass =
+    'w-full px-3.5 py-2.5 border border-surface-container-highest rounded-xl text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-outline';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-inverse-surface/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-md border border-surface-container-highest overflow-hidden">
+      <div className="relative bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-xl border border-surface-container-highest overflow-hidden max-h-[90vh] flex flex-col">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-surface-container-high">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-surface-container-high shrink-0">
+          <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-primary-fixed flex items-center justify-center text-primary">
               <span className="material-symbols-outlined" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>
                 {mode === 'add' ? 'add_circle' : 'edit'}
               </span>
             </div>
-            <h2 className="font-bold text-on-surface text-base">
-              {mode === 'add' ? 'Thêm xe mới' : 'Chỉnh sửa thông tin xe'}
-            </h2>
+            <div>
+              <h2 className="font-bold text-on-surface text-base">
+                {mode === 'add' ? 'Thêm phương tiện mới' : 'Chỉnh sửa thông tin xe'}
+              </h2>
+              {mode === 'edit' && initial && (
+                <p className="text-xs text-on-surface-variant font-mono">{initial.licensePlate}</p>
+              )}
+            </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-container-low text-outline hover:text-on-surface transition-colors">
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>close</span>
@@ -214,7 +250,7 @@ function VehicleModal({
         </div>
 
         {/* Modal Body */}
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-6 py-5 space-y-4 overflow-y-auto">
           {/* License plate */}
           <div>
             <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-1.5">
@@ -226,46 +262,48 @@ function VehicleModal({
               onChange={(e) => setForm({ ...form, licensePlate: e.target.value.toUpperCase() })}
               readOnly={mode === 'edit'}
               placeholder="VD: 51G-123.45"
-              className={`${inputClass} font-mono tracking-wider ${mode === 'edit' ? 'bg-surface-container-low text-on-surface-variant cursor-default' : ''}`}
+              className={`${inputClass} font-mono tracking-wider font-bold ${
+                mode === 'edit' ? 'bg-surface-container-low text-on-surface-variant cursor-not-allowed' : ''
+              }`}
             />
             {mode === 'edit' && (
               <p className="text-xs text-on-surface-variant mt-1 flex items-center gap-1">
-                <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>info</span>
-                Biển số không thể thay đổi sau khi đăng ký
+                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>lock</span>
+                Biển số được dùng để quản lý lịch sử kỹ thuật và không thể thay đổi sau khi tạo.
               </p>
             )}
           </div>
 
           {/* Make + Model */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-1.5">
-                Hãng xe <span className="text-error">*</span>
+                Hãng sản xuất <span className="text-error">*</span>
               </label>
               <input
                 type="text"
                 value={form.make}
                 onChange={(e) => setForm({ ...form, make: e.target.value })}
-                placeholder="Toyota, Honda..."
+                placeholder="VD: Toyota, Mazda..."
                 className={inputClass}
               />
             </div>
             <div>
               <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-1.5">
-                Dòng xe <span className="text-error">*</span>
+                Dòng xe / Model <span className="text-error">*</span>
               </label>
               <input
                 type="text"
                 value={form.model}
                 onChange={(e) => setForm({ ...form, model: e.target.value })}
-                placeholder="Vios, CX-5..."
+                placeholder="VD: CX-5, Vios..."
                 className={inputClass}
               />
             </div>
           </div>
 
           {/* Year + Color */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-1.5">
                 Năm sản xuất
@@ -274,8 +312,8 @@ function VehicleModal({
                 type="number"
                 value={form.year}
                 onChange={(e) => setForm({ ...form, year: e.target.value })}
-                placeholder="2020"
-                min={1990}
+                placeholder="VD: 2022"
+                min={1980}
                 max={new Date().getFullYear() + 1}
                 className={inputClass}
               />
@@ -288,31 +326,54 @@ function VehicleModal({
                 type="text"
                 value={form.color}
                 onChange={(e) => setForm({ ...form, color: e.target.value })}
-                placeholder="Trắng, Đen..."
+                placeholder="VD: Trắng, Đen, Xám..."
                 className={inputClass}
               />
             </div>
           </div>
 
-          {/* Vehicle Size */}
+          {/* Vehicle Size Selection Cards */}
           <div>
-            <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-1.5">
-              Kích thước xe
+            <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2">
+              Phân khúc kích thước xe <span className="text-error">*</span>
             </label>
-            <select
-              value={form.vehicleSize}
-              onChange={(e) => setForm({ ...form, vehicleSize: e.target.value as VehicleFormData['vehicleSize'] })}
-              className={inputClass}
-            >
-              {VEHICLE_SIZES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {VEHICLE_SIZES.map((size) => {
+                const isSelected = form.vehicleSize === size.value;
+                return (
+                  <div
+                    key={size.value}
+                    onClick={() => setForm({ ...form, vehicleSize: size.value as VehicleFormData['vehicleSize'] })}
+                    className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
+                      isSelected
+                        ? 'border-primary bg-primary-fixed/30 shadow-2xs'
+                        : 'border-surface-container-highest bg-surface-container-lowest hover:bg-surface-container-low'
+                    }`}
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                        isSelected ? 'bg-primary text-white' : 'bg-surface-container text-on-surface-variant'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">{size.icon}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className={`text-xs font-bold leading-tight ${isSelected ? 'text-primary' : 'text-on-surface'}`}>
+                        {size.label}
+                      </h4>
+                      <p className="text-[11px] text-on-surface-variant mt-0.5 line-clamp-2 leading-snug">
+                        {size.desc}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Error */}
           {error && (
-            <div className="flex items-center gap-2 bg-error-container text-on-error-container px-3 py-2.5 rounded-lg text-sm">
+            <div className="flex items-center gap-2 bg-error-container text-on-error-container px-3.5 py-2.5 rounded-xl text-xs">
               <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>error</span>
               {error}
             </div>
@@ -320,17 +381,17 @@ function VehicleModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-container-high bg-surface-container-low/50">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-container-high bg-surface-container-low/50 shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-surface-container-highest text-on-surface-variant rounded-lg text-sm font-medium hover:bg-surface-container-low transition-all"
+            className="px-4 py-2 border border-surface-container-highest text-on-surface-variant rounded-xl text-xs font-semibold hover:bg-surface-container-low transition-all"
           >
             Hủy
           </button>
           <button
             onClick={() => onSubmit(form)}
             disabled={loading || !form.licensePlate || !form.make || !form.model}
-            className="flex items-center gap-2 px-5 py-2 bg-primary text-on-primary rounded-lg text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 active:scale-[0.98] transition-all"
+            className="flex items-center gap-2 px-5 py-2 bg-primary text-on-primary rounded-xl text-xs font-semibold hover:bg-primary/90 disabled:opacity-60 active:scale-[0.98] transition-all"
           >
             {loading ? (
               <div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin" />
@@ -448,15 +509,26 @@ export default function VehiclesPage() {
       const result = await dispatch(createVehicle(dto));
       if (!result.type.endsWith('/rejected')) {
         handleCloseModal();
-        setSuccessMsg('Thêm xe thành công!');
-        setTimeout(() => setSuccessMsg(''), 3000);
+        setSuccessMsg(`Thêm xe ${form.licensePlate} thành công!`);
+        dispatch(fetchVehicles());
       }
     } else if (modalMode === 'edit' && selectedVehicle) {
-      const result = await dispatch(updateVehicle({ id: selectedVehicle.id, dto }));
+      const result = await dispatch(
+        updateVehicle({
+          id: selectedVehicle.id,
+          dto: {
+            make: dto.make,
+            model: dto.model,
+            year: dto.year,
+            color: dto.color,
+            vehicleSize: dto.vehicleSize,
+          },
+        })
+      );
       if (!result.type.endsWith('/rejected')) {
         handleCloseModal();
-        setSuccessMsg('Cập nhật xe thành công!');
-        setTimeout(() => setSuccessMsg(''), 3000);
+        setSuccessMsg(`Cập nhật xe ${selectedVehicle.licensePlate} thành công!`);
+        dispatch(fetchVehicles());
       }
     }
   };
@@ -465,28 +537,23 @@ export default function VehiclesPage() {
     if (!deleteTarget) return;
     const result = await dispatch(deleteVehicle(deleteTarget.id));
     if (!result.type.endsWith('/rejected')) {
-      const msg = (result.payload as any)?.deactivated
-        ? 'Xe đã được vô hiệu hóa (có lịch sử dịch vụ).'
-        : 'Xóa xe thành công!';
+      const plate = deleteTarget.licensePlate;
       setDeleteTarget(null);
-      dispatch(clearActionError());
-      setSuccessMsg(msg);
-      setTimeout(() => setSuccessMsg(''), 3000);
+      setSuccessMsg(`Đã xóa xe ${plate}!`);
+      dispatch(fetchVehicles());
     }
   };
 
-  // Filtered list
   const filtered = vehicles.filter((v) => {
-    const matchSearch =
-      !search ||
-      v.licensePlate.toLowerCase().includes(search.toLowerCase()) ||
-      v.make.toLowerCase().includes(search.toLowerCase()) ||
-      v.model.toLowerCase().includes(search.toLowerCase());
     const matchFilter =
-      filter === 'all' ||
-      (filter === 'active' && v.isActive) ||
-      (filter === 'inactive' && !v.isActive);
-    return matchSearch && matchFilter;
+      filter === 'all' ? true : filter === 'active' ? v.isActive : !v.isActive;
+    const q = search.toLowerCase();
+    const matchSearch =
+      !q ||
+      v.licensePlate.toLowerCase().includes(q) ||
+      v.make.toLowerCase().includes(q) ||
+      v.model.toLowerCase().includes(q);
+    return matchFilter && matchSearch;
   });
 
   const activeCount = vehicles.filter((v) => v.isActive).length;
@@ -515,10 +582,10 @@ export default function VehiclesPage() {
       {/* Page Header */}
       <section className="mb-6">
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-1.5 text-xs text-on-surface-variant mb-3">
-          <a href="/customer" className="hover:text-primary transition-colors">Tổng quan</a>
+        <nav className="flex items-center gap-1.5 text-xs text-on-surface-variant mb-3 font-medium">
+          <Link href="/customer" className="hover:text-primary transition-colors">Tổng quan</Link>
           <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>chevron_right</span>
-          <span className="text-on-surface font-medium">Xe của tôi</span>
+          <span className="text-on-surface font-semibold">Xe của tôi</span>
         </nav>
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-5 border-b border-surface-container-highest">
@@ -530,16 +597,16 @@ export default function VehiclesPage() {
               </span>
             </div>
             <p className="text-sm text-on-surface-variant mt-1">
-              Theo dõi tình trạng kỹ thuật và lịch sử bảo dưỡng cho từng xe.
+              Theo dõi tình trạng kỹ thuật, thông tin phân khúc và lịch sử bảo dưỡng cho từng xe.
             </p>
           </div>
-          <button
-            onClick={() => setModalMode('add')}
+          <Link
+            href="/customer/vehicles/new"
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-xl text-sm font-semibold shadow-sm hover:bg-primary/90 active:scale-[0.98] transition-all shrink-0"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>add</span>
             Thêm xe mới
-          </button>
+          </Link>
         </div>
 
         {/* Search + Filter */}
@@ -618,13 +685,13 @@ export default function VehiclesPage() {
               : 'Thêm xe đầu tiên của bạn để bắt đầu theo dõi lịch sử bảo dưỡng.'}
           </p>
           {!search && filter === 'all' && (
-            <button
-              onClick={() => setModalMode('add')}
-              className="flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all"
+            <Link
+              href="/customer/vehicles/new"
+              className="flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all shadow-sm"
             >
               <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>add</span>
               Thêm xe đầu tiên
-            </button>
+            </Link>
           )}
         </div>
       )}

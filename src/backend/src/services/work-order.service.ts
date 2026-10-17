@@ -965,6 +965,296 @@ export class WorkOrderService {
       return { success: true };
     });
   }
+
+  // ==========================================
+  // UC-15: Theo dõi tiến độ sửa chữa (Customer Tracking)
+  // ==========================================
+
+  /**
+   * Lấy danh sách phiếu công việc của khách hàng
+   */
+  async getMyTrackingOrders(userId: number) {
+    const workOrders = await prisma.workOrder.findMany({
+      where: {
+        customer_id: userId,
+        status: {
+          notIn: ['CANCELLED'],
+        },
+      },
+      include: {
+        customer: { select: { id: true, full_name: true, phone: true, email: true } },
+        vehicle: { select: { id: true, license_plate: true, make: true, model: true, year: true, color: true, vehicle_size: true } },
+        advisor: { select: { id: true, full_name: true, phone: true } },
+        check_in: true,
+        services: {
+          include: {
+            service: { select: { id: true, name: true, category: { select: { name: true } } } },
+            jobs: {
+              include: {
+                labours: {
+                  include: {
+                    employee: {
+                      include: {
+                        skills: { include: { skill: true } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          orderBy: { sort_order: 'asc' },
+        },
+        inspections: {
+          include: {
+            findings: {
+              where: { is_visible_to_customer: true },
+              orderBy: { created_at: 'asc' },
+            },
+          },
+        },
+        invoice: {
+          select: {
+            id: true,
+            invoice_number: true,
+            status: true,
+            total_amount: true,
+            amount_due: true,
+            issued_at: true,
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    return workOrders.map((wo) => this.mapToTrackingDto(wo));
+  }
+
+  /**
+   * Lấy chi tiết một phiếu công việc của khách hàng (kèm kiểm tra bảo mật)
+   */
+  async getMyTrackingOrderDetail(id: number, userId: number) {
+    const wo = await prisma.workOrder.findUnique({
+      where: { id },
+      include: {
+        customer: { select: { id: true, full_name: true, phone: true, email: true } },
+        vehicle: { select: { id: true, license_plate: true, make: true, model: true, year: true, color: true, vehicle_size: true } },
+        advisor: { select: { id: true, full_name: true, phone: true } },
+        check_in: true,
+        services: {
+          include: {
+            service: { select: { id: true, name: true, category: { select: { name: true } } } },
+            jobs: {
+              include: {
+                labours: {
+                  include: {
+                    employee: {
+                      include: {
+                        skills: { include: { skill: true } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          orderBy: { sort_order: 'asc' },
+        },
+        inspections: {
+          include: {
+            findings: {
+              where: { is_visible_to_customer: true },
+              orderBy: { created_at: 'asc' },
+            },
+          },
+        },
+        invoice: {
+          select: {
+            id: true,
+            invoice_number: true,
+            status: true,
+            total_amount: true,
+            amount_due: true,
+            issued_at: true,
+          },
+        },
+      },
+    });
+
+    if (!wo) {
+      throw new Error('Không tìm thấy phiếu công việc');
+    }
+
+    if (wo.customer_id !== userId) {
+      const err: any = new Error('Bạn không có quyền truy cập phiếu công việc này');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    return this.mapToTrackingDto(wo);
+  }
+
+  /**
+   * Map dữ liệu Work Order sang DTO Theo dõi tiến độ cho khách hàng
+   * với 4 giai đoạn kỹ thuật tổng quát
+   */
+  private mapToTrackingDto(wo: any) {
+    const status = wo.status;
+    let currentStep = 1;
+    let progressPercent = 25;
+
+    const totalServices = wo.services?.length || 0;
+    const completedServices = wo.services?.filter((s: any) => s.status === 'COMPLETED').length || 0;
+
+    if (['RELEASED', 'CLOSED'].includes(status)) {
+      currentStep = 4;
+      progressPercent = 100;
+    } else if (['FINANCIAL_CLEARED', 'BILLING_REQUESTED'].includes(status)) {
+      currentStep = 4;
+      progressPercent = 95;
+    } else if (status === 'IN_PROGRESS') {
+      if (totalServices > 0 && completedServices === totalServices) {
+        currentStep = 3;
+        progressPercent = 85;
+      } else {
+        currentStep = 2;
+        const serviceRatio = totalServices > 0 ? (completedServices / totalServices) : 0.5;
+        progressPercent = Math.round(30 + serviceRatio * 45);
+      }
+    } else if (status === 'APPROVED') {
+      currentStep = 2;
+      progressPercent = 30;
+    } else {
+      currentStep = 1;
+      progressPercent = wo.check_in?.confirmed_at ? 25 : 15;
+    }
+
+    const steps = [
+      {
+        stepIndex: 1,
+        title: 'Tiếp nhận & Kiểm tra',
+        status: currentStep > 1 ? 'COMPLETED' : (currentStep === 1 ? 'IN_PROGRESS' : 'PENDING'),
+        time: wo.check_in?.confirmed_at 
+          ? new Date(wo.check_in.confirmed_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+          : (wo.created_at ? new Date(wo.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : undefined),
+        description: wo.check_in 
+          ? `Đã hoàn tất tiếp nhận phương tiện, ODO ghi nhận ${Number(wo.check_in.mileage).toLocaleString()} km và kiểm tra hiện trạng ban đầu.`
+          : 'Đang tiếp nhận và kiểm tra hiện trạng xe.',
+      },
+      {
+        stepIndex: 2,
+        title: 'Đang thực hiện dịch vụ',
+        status: currentStep > 2 ? 'COMPLETED' : (currentStep === 2 ? 'IN_PROGRESS' : 'PENDING'),
+        time: currentStep >= 2 ? 'Đang triển khai' : 'Dự kiến',
+        description: totalServices > 0 
+          ? `Đang tiến hành thực hiện ${totalServices} hạng mục dịch vụ yêu cầu (${completedServices}/${totalServices} hạng mục đã hoàn thành).`
+          : 'Kỹ thuật viên đang thực hiện các dịch vụ theo phiếu công việc.',
+      },
+      {
+        stepIndex: 3,
+        title: 'Kiểm định chất lượng (KCS)',
+        status: currentStep > 3 ? 'COMPLETED' : (currentStep === 3 ? 'IN_PROGRESS' : 'PENDING'),
+        time: currentStep >= 3 ? 'Đang kiểm định' : 'Chờ thực hiện',
+        description: 'Kiểm tra chất lượng và nghiệm thu kỹ thuật theo tiêu chuẩn an toàn của trung tâm.',
+      },
+      {
+        stepIndex: 4,
+        title: 'Hoàn tất & Sẵn sàng bàn giao',
+        status: currentStep === 4 && ['RELEASED', 'CLOSED'].includes(status) ? 'COMPLETED' : (currentStep === 4 ? 'IN_PROGRESS' : 'PENDING'),
+        time: currentStep === 4 ? 'Sẵn sàng' : 'Dự kiến bàn giao',
+        description: currentStep === 4 
+          ? 'Phương tiện đã hoàn thiện toàn bộ dịch vụ và sẵn sàng bàn giao cho quý khách.'
+          : 'Bàn giao xe và nghiệm thu hoàn tất tại sảnh tiếp nhận.',
+      },
+    ];
+
+    let assignedMechanic = null;
+    for (const s of (wo.services || [])) {
+      for (const j of (s.jobs || [])) {
+        for (const l of (j.labours || [])) {
+          if (l.employee) {
+            assignedMechanic = {
+              id: l.employee.id,
+              fullName: l.employee.full_name,
+              position: l.employee.position,
+              skills: (l.employee.skills || []).map((sk: any) => sk.skill?.name).filter(Boolean),
+            };
+            break;
+          }
+        }
+        if (assignedMechanic) break;
+      }
+      if (assignedMechanic) break;
+    }
+
+    const publicFindings = [];
+    for (const insp of (wo.inspections || [])) {
+      for (const f of (insp.findings || [])) {
+        if (f.is_visible_to_customer) {
+          publicFindings.push({
+            id: f.id,
+            description: f.description,
+            severity: f.severity,
+            recommendation: f.recommendation,
+            evidenceUrls: f.evidence_urls,
+            partName: f.part_name,
+            createdAt: f.created_at,
+          });
+        }
+      }
+    }
+
+    return {
+      id: wo.id,
+      woNumber: wo.wo_number,
+      status: wo.status,
+      createdAt: wo.created_at,
+      updatedAt: wo.updated_at,
+      vehicle: {
+        id: wo.vehicle.id,
+        licensePlate: wo.vehicle.license_plate,
+        make: wo.vehicle.make,
+        model: wo.vehicle.model,
+        year: wo.vehicle.year,
+        color: wo.vehicle.color,
+        vehicleSize: wo.vehicle.vehicle_size,
+        mileage: wo.check_in?.mileage,
+      },
+      advisor: {
+        id: wo.advisor.id,
+        fullName: wo.advisor.full_name,
+        phone: wo.advisor.phone,
+      },
+      mechanic: assignedMechanic,
+      services: (wo.services || []).map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        status: s.status,
+        pricingType: s.pricing_type,
+        categoryName: s.service?.category?.name || 'Dịch vụ kỹ thuật',
+      })),
+      findings: publicFindings,
+      checkIn: wo.check_in ? {
+        mileage: wo.check_in.mileage,
+        fuelLevel: wo.check_in.fuel_level,
+        complaint: wo.check_in.complaint,
+        exteriorCondition: wo.check_in.exterior_condition,
+        confirmedAt: wo.check_in.confirmed_at,
+        evidenceUrls: wo.check_in.evidence_urls,
+      } : null,
+      steps,
+      currentStep,
+      progressPercent,
+      invoice: wo.invoice ? {
+        id: wo.invoice.id,
+        invoiceNumber: wo.invoice.invoice_number,
+        status: wo.invoice.status,
+        totalAmount: Number(wo.invoice.total_amount),
+        amountDue: Number(wo.invoice.amount_due),
+        issuedAt: wo.invoice.issued_at,
+      } : null,
+    };
+  }
 }
 
 

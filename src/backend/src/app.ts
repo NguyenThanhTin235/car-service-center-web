@@ -19,6 +19,7 @@ import jobTypeRoutes from './routes/job-type.routes';
 import catalogRoutes from './routes/system-catalog.routes';
 import vehicleRoutes from './routes/vehicle.routes';
 import inventoryRoutes from './routes/inventory.routes';
+import invoiceRoutes from './routes/invoice.routes';
 
 const app = express();
 
@@ -64,5 +65,6 @@ app.use('/api/job-types', jobTypeRoutes);
 app.use('/api/system-catalogs', catalogRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api', inventoryRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 export default app;
