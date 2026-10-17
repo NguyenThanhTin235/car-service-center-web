@@ -21,8 +21,10 @@ import {
 } from '@/store/slices/appointmentSlice';
 import Toast from '@/components/shared/Toast';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import TrackingView from '@/components/tracking/TrackingView';
+import InvoicesView from '@/components/invoices/InvoicesView';
 
-type TabKey = 'profile' | 'vehicles' | 'appointments' | 'history';
+export type TabKey = 'profile' | 'vehicles' | 'appointments' | 'tracking' | 'invoices' | 'history';
 
 // Vehicle Form Types & Presets
 interface VehicleFormData {
@@ -180,8 +182,20 @@ export default function ProfilePage() {
 
   // Active Tab State
   const initialTab = (searchParams.get('tab') as TabKey) || 'profile';
+    // Sync activeTab when searchParams changes
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') as TabKey;
+    if (tabParam && ['profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (key: TabKey) => {
+    setActiveTab(key);
+    window.history.replaceState(null, '', `/customer/profile?tab=${key}`);
+  };
   const [activeTab, setActiveTab] = useState<TabKey>(
-    ['profile', 'vehicles', 'appointments', 'history'].includes(initialTab) ? initialTab : 'profile'
+    ['profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history'].includes(initialTab) ? initialTab : 'profile'
   );
 
   // Profile Form States
@@ -664,7 +678,7 @@ export default function ProfilePage() {
                 <button
                   key={tab.key}
                   type="button"
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => handleTabChange(tab.key)}
                   className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left ${
                     isActive
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 font-semibold'
@@ -1060,6 +1074,20 @@ export default function ProfilePage() {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB: TIẾN ĐỘ SỬA CHỮA (UC-15) */}
+          {activeTab === 'tracking' && (
+            <div className="space-y-6">
+              <TrackingView isEmbedded={true} />
+            </div>
+          )}
+
+          {/* TAB: HÓA ĐƠN DỊCH VỤ (UC-16) */}
+          {activeTab === 'invoices' && (
+            <div className="space-y-6">
+              <InvoicesView isEmbedded={true} />
             </div>
           )}
 
