@@ -8,35 +8,35 @@ import { fetchMyTrackingOrders } from '@/store/slices/trackingSlice';
 
 const quickLinks = [
   {
-    href: '/customer/tracking',
+    href: '/customer/profile?tab=tracking',
     icon: 'timeline',
     title: 'Theo dõi tiến độ',
     desc: 'Xem trực tiếp tiến độ các bước sửa chữa xe',
     color: 'bg-primary-fixed text-primary',
   },
   {
-    href: '/customer/invoices',
+    href: '/customer/profile?tab=invoices',
     icon: 'receipt_long',
     title: 'Hóa đơn & Chi phí',
     desc: 'Chi tiết hóa đơn và thanh toán trực tuyến',
     color: 'bg-secondary-fixed text-secondary',
   },
   {
-    href: '/customer/vehicles',
+    href: '/customer/profile?tab=vehicles',
     icon: 'directions_car',
     title: 'Xe của tôi',
     desc: 'Xem và quản lý danh sách phương tiện',
     color: 'bg-primary-fixed text-primary',
   },
   {
-    href: '/customer/appointments',
+    href: '/customer/profile?tab=appointments',
     icon: 'calendar_today',
     title: 'Đặt lịch hẹn',
     desc: 'Đặt lịch bảo dưỡng hoặc sửa chữa tại xưởng',
     color: 'bg-tertiary-fixed text-tertiary',
   },
   {
-    href: '/customer/profile',
+    href: '/customer/profile?tab=profile',
     icon: 'manage_accounts',
     title: 'Hồ sơ cá nhân',
     desc: 'Cập nhật thông tin tài khoản của bạn',
@@ -110,7 +110,7 @@ export default function CustomerDashboardPage() {
             </div>
 
             <Link
-              href="/customer/tracking"
+              href="/customer/profile?tab=tracking"
               className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-primary text-on-primary rounded-xl text-xs sm:text-sm font-semibold hover:bg-primary/90 transition-all shadow-2xs shrink-0"
             >
               <span>Theo dõi trực tiếp</span>

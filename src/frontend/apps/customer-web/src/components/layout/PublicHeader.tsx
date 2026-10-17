@@ -30,7 +30,12 @@ export default function PublicHeader() {
           
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-7 pt-4">
-            <Link className="text-primary-container font-label-lg text-label-lg border-b-2 border-primary-container pb-4 active:scale-[0.98] transition-transform duration-150 ease-out" href="/">Trang chủ</Link>
+            <Link className="text-on-surface-variant font-label-lg text-label-lg pb-4 hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="/">Trang chủ</Link>
+            {isAuthenticated && (
+              <Link className="text-primary-container font-semibold font-label-lg text-label-lg border-b-2 border-primary-container pb-4 active:scale-[0.98] transition-transform duration-150 ease-out" href="/customer">
+                Tổng quan
+              </Link>
+            )}
             <a className="text-on-surface-variant font-label-lg text-label-lg pb-4 hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="/#services">Dịch vụ</a>
             <a className="text-on-surface-variant font-label-lg text-label-lg pb-4 hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="/#contact">Liên hệ</a>
           </nav>
@@ -76,12 +81,36 @@ export default function PublicHeader() {
                         <p className="text-xs text-on-surface-variant truncate">{user.email}</p>
                       </div>
                       <Link
+                        href="/customer"
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-surface-container-low transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-primary" style={{ fontSize: '18px' }}>dashboard</span>
+                        Trang tổng quan
+                      </Link>
+                      <Link
                         href={user?.roles?.includes('CUSTOMER') ? '/customer/profile' : getDashboardPathByRole(user?.roles || [])}
                         onClick={() => setProfileOpen(false)}
                         className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors"
                       >
                         <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: '18px' }}>manage_accounts</span>
-                        Hồ sơ của tôi
+                        Hồ sơ & Đặt lịch
+                      </Link>
+                      <Link
+                        href="/customer/profile?tab=tracking"
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: '18px' }}>car_repair</span>
+                        Tiến độ sửa chữa
+                      </Link>
+                      <Link
+                        href="/customer/profile?tab=invoices"
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: '18px' }}>receipt_long</span>
+                        Hóa đơn dịch vụ
                       </Link>
                       <div className="px-4 py-2 hover:bg-red-50 cursor-pointer text-red-600 transition-colors">
                         <LogoutButton iconOnly={false} className="w-full text-left" />
