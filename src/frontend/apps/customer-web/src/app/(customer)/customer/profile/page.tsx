@@ -252,10 +252,13 @@ export default function ProfilePage() {
     dispatch(fetchVehicles());
   }, [dispatch]);
 
-  // Fetch appointments strictly for this customer once profile loads (default to customer 1 if staff account)
+  // Fetch appointments strictly for this customer once profile loads
   useEffect(() => {
-    const targetCustId = data?.id && data.id <= 30 ? data.id : 1;
-    dispatch(fetchAppointments({ customer_id: targetCustId }));
+    if (data?.id) {
+      dispatch(fetchAppointments({ customer_id: data.id }));
+    } else {
+      dispatch(fetchAppointments({}));
+    }
   }, [data?.id, dispatch]);
 
   // Sync profile form when data loads
@@ -416,17 +419,20 @@ export default function ProfilePage() {
       const cellDate = String(d.getDate()).padStart(2, '0');
       const cellDateStr = `${cellYear}-${cellMonth}-${cellDate}`;
 
-      const effectiveCustomerId = data?.id && data.id <= 30 ? data.id : 1;
+      const effectiveCustomerId = data?.id;
 
       const dayApts = appointments.filter((a) => {
-        // Only show appointments belonging to this customer (or preview customer 1 if staff account)
-        if (a.customer_id && a.customer_id !== effectiveCustomerId) {
+        // Only show appointments belonging to this customer if customer ID is known
+        if (effectiveCustomerId && a.customer_id && a.customer_id !== effectiveCustomerId) {
           return false;
         }
-        const aDateStr =
-          typeof a.scheduled_date === 'string'
-            ? a.scheduled_date.substring(0, 10)
-            : `${new Date(a.scheduled_date).getFullYear()}-${String(new Date(a.scheduled_date).getMonth() + 1).padStart(2, '0')}-${String(new Date(a.scheduled_date).getDate()).padStart(2, '0')}`;
+        let aDateStr = '';
+        if (typeof a.scheduled_date === 'string') {
+          aDateStr = a.scheduled_date.includes('T') ? a.scheduled_date.split('T')[0] : a.scheduled_date.substring(0, 10);
+        } else if (a.scheduled_date) {
+          const dt = new Date(a.scheduled_date);
+          aDateStr = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+        }
         return aDateStr === cellDateStr;
       });
 
@@ -495,28 +501,13 @@ export default function ProfilePage() {
             chosenVehicleId = vehicles[0]?.id;
           }
         }
-      } else if (!chosenVehicleId || chosenVehicleId >= 990 || chosenVehicleId === 0) {
-        // Fallback mock cards: Map to existing vehicle if present, or create in DB
+      } else if (!chosenVehicleId) {
         if (vehicles.length > 0) {
           chosenVehicleId = vehicles[0].id;
         } else {
-          const fallbackPlate = chosenVehicleId === 999 ? '30H-888.99' : '29A-678.90';
-          const fallbackMake = chosenVehicleId === 999 ? 'Mazda' : 'Ford';
-          const fallbackModel = chosenVehicleId === 999 ? 'CX-5' : 'Ranger';
-          try {
-            const newVeh = await dispatch(
-              createVehicle({
-                licensePlate: fallbackPlate,
-                make: fallbackMake,
-                model: fallbackModel,
-                vehicleSize: 'MEDIUM',
-              })
-            ).unwrap();
-            chosenVehicleId = newVeh.id;
-            dispatch(fetchVehicles());
-          } catch {
-            chosenVehicleId = vehicles[0]?.id || 1;
-          }
+          setVehicleToast({ message: 'Vui lòng chọn xe hoặc nhập biển số xe.', type: 'error' });
+          setBookingSubmitting(false);
+          return;
         }
       }
 
@@ -534,7 +525,7 @@ export default function ProfilePage() {
       setVehicleToast({ message: 'Đặt lịch dịch vụ thành công! Hệ thống đã ghi nhận lịch hẹn.', type: 'success' });
       setBookingModalOpen(false);
       setBookingNotes('');
-      dispatch(fetchAppointments({}));
+      dispatch(fetchAppointments(data?.id ? { customer_id: data.id } : {}));
     } catch (err: any) {
       setVehicleToast({ message: typeof err === 'string' ? err : 'Không thể đặt lịch. Vui lòng thử lại.', type: 'error' });
     } finally {
@@ -550,7 +541,7 @@ export default function ProfilePage() {
       setVehicleToast({ message: 'Đã hủy lịch hẹn thành công.', type: 'success' });
       setCancelApt(null);
       setSelectedAptDetail(null);
-      dispatch(fetchAppointments({}));
+      dispatch(fetchAppointments(data?.id ? { customer_id: data.id } : {}));
     } catch (err: any) {
       setVehicleToast({ message: typeof err === 'string' ? err : 'Lỗi khi hủy lịch', type: 'error' });
     }
@@ -571,7 +562,7 @@ export default function ProfilePage() {
       setVehicleToast({ message: 'Dời lịch hẹn thành công!', type: 'success' });
       setRescheduleApt(null);
       setSelectedAptDetail(null);
-      dispatch(fetchAppointments({}));
+      dispatch(fetchAppointments(data?.id ? { customer_id: data.id } : {}));
     } catch (err: any) {
       setVehicleToast({ message: typeof err === 'string' ? err : 'Lỗi khi dời lịch', type: 'error' });
     }
@@ -1385,125 +1376,60 @@ export default function ProfilePage() {
                 {/* Vehicle Selection Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   {/* Default / Registered Vehicles */}
-                  {vehicles.map((v) => {
-                    const isSelected = bookingVehicleId === v.id;
-                    return (
-                      <div
-                        key={v.id}
-                        onClick={() => {
-                          setBookingVehicleId(v.id);
-                          setCustomPlateInput('');
-                        }}
-                        className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between gap-3 ${
-                          isSelected
-                            ? 'border-blue-600 bg-blue-50/20 shadow-sm'
-                            : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="px-2.5 py-0.5 bg-slate-100 rounded text-xs font-mono font-bold text-slate-800">
-                              {v.licensePlate}
-                            </span>
-                            <div
-                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
-                              }`}
-                            >
-                              {isSelected && <span className="material-symbols-outlined text-[13px]">check</span>}
+                  {vehicles.length === 0 ? (
+                    <div className="col-span-full p-6 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+                      <span className="material-symbols-outlined text-3xl text-slate-400 mb-1">directions_car</span>
+                      <p className="text-sm font-semibold text-slate-700">Chưa có phương tiện trong hồ sơ</p>
+                      <p className="text-xs text-slate-500 mt-1">Vui lòng nhập biển số xe bên dưới để tiếp tục đặt lịch.</p>
+                    </div>
+                  ) : (
+                    vehicles.map((v) => {
+                      const isSelected = !customPlateInput && bookingVehicleId === v.id;
+                      return (
+                        <div
+                          key={v.id}
+                          onClick={() => {
+                            setBookingVehicleId(v.id);
+                            setCustomPlateInput('');
+                          }}
+                          className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between gap-3 ${
+                            isSelected
+                              ? 'border-blue-600 bg-blue-50/20 shadow-sm'
+                              : 'border-slate-200 bg-white hover:border-slate-300'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="px-2.5 py-0.5 bg-slate-100 rounded text-xs font-mono font-bold text-slate-800">
+                                {v.licensePlate}
+                              </span>
+                              <div
+                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                  isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
+                                }`}
+                              >
+                                {isSelected && <span className="material-symbols-outlined text-[13px]">check</span>}
+                              </div>
                             </div>
+                            <h4 className="font-bold text-sm text-slate-900 leading-snug">
+                              {v.make} {v.model}
+                            </h4>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              {v.color ? `Màu: ${v.color}` : 'Phương tiện'} {v.year ? `• Đời: ${v.year}` : ''}
+                            </p>
                           </div>
-                          <h4 className="font-bold text-sm text-slate-900 leading-snug">
-                            {v.make} {v.model}
-                          </h4>
-                          <p className="text-[11px] text-slate-500 mt-0.5">Số km đã đi: 38,500 km</p>
-                        </div>
-                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                          <span className="text-emerald-700 flex items-center gap-1 font-medium">
-                            <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                            Đúng hẹn bảo dưỡng
-                          </span>
-                          <span className={isSelected ? 'text-blue-600 font-bold' : 'text-slate-400'}>
-                            {isSelected ? 'Đang chọn' : 'Chọn xe'}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {/* Fallback mock cards if user has few registered vehicles */}
-                  {vehicles.length < 2 && (
-                    <>
-                      <div
-                        onClick={() => {
-                          setBookingVehicleId(999);
-                          setCustomPlateInput('');
-                        }}
-                        className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between gap-3 ${
-                          bookingVehicleId === 999
-                            ? 'border-blue-600 bg-blue-50/20 shadow-sm'
-                            : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="px-2.5 py-0.5 bg-slate-100 rounded text-xs font-mono font-bold text-slate-800">
-                              30H-888.99
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                            <span className="text-emerald-700 flex items-center gap-1 font-medium">
+                              <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                              Hoạt động
                             </span>
-                            <div
-                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                bookingVehicleId === 999 ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
-                              }`}
-                            >
-                              {bookingVehicleId === 999 && <span className="material-symbols-outlined text-[13px]">check</span>}
-                            </div>
-                          </div>
-                          <h4 className="font-bold text-sm text-slate-900 leading-snug">Mazda CX-5 2.0L</h4>
-                          <p className="text-[11px] text-slate-500 mt-0.5">Số km đã đi: 18,200 km</p>
-                        </div>
-                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                          <span className="text-slate-400">Bảo dưỡng lần trước: 15.000 km</span>
-                          <span className={bookingVehicleId === 999 ? 'text-blue-600 font-bold' : 'text-slate-400'}>
-                            {bookingVehicleId === 999 ? 'Đang chọn' : 'Chọn xe'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div
-                        onClick={() => {
-                          setBookingVehicleId(998);
-                          setCustomPlateInput('');
-                        }}
-                        className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between gap-3 ${
-                          bookingVehicleId === 998
-                            ? 'border-blue-600 bg-blue-50/20 shadow-sm'
-                            : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="px-2.5 py-0.5 bg-slate-100 rounded text-xs font-mono font-bold text-slate-800">
-                              29A-678.90
+                            <span className={isSelected ? 'text-blue-600 font-bold' : 'text-slate-400'}>
+                              {isSelected ? 'Đang chọn' : 'Chọn xe'}
                             </span>
-                            <div
-                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                bookingVehicleId === 998 ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
-                              }`}
-                            >
-                              {bookingVehicleId === 998 && <span className="material-symbols-outlined text-[13px]">check</span>}
-                            </div>
                           </div>
-                          <h4 className="font-bold text-sm text-slate-900 leading-snug">Ford Ranger Wildtrak</h4>
-                          <p className="text-[11px] text-slate-500 mt-0.5">Số km đã đi: 72,000 km</p>
                         </div>
-                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                          <span className="text-slate-400">Bảo dưỡng lần trước: 70.000 km</span>
-                          <span className={bookingVehicleId === 998 ? 'text-blue-600 font-bold' : 'text-slate-400'}>
-                            {bookingVehicleId === 998 ? 'Đang chọn' : 'Chọn xe'}
-                          </span>
-                        </div>
-                      </div>
-                    </>
+                      );
+                    })
                   )}
                 </div>
 
@@ -1839,7 +1765,13 @@ export default function ProfilePage() {
               {bookingStep < 3 ? (
                 <button
                   type="button"
-                  onClick={() => setBookingStep((bookingStep + 1) as any)}
+                  onClick={() => {
+                    if (bookingStep === 1 && !bookingVehicleId && !customPlateInput.trim()) {
+                      setVehicleToast({ message: 'Vui lòng chọn xe hoặc nhập biển số xe để tiếp tục.', type: 'error' });
+                      return;
+                    }
+                    setBookingStep((bookingStep + 1) as any);
+                  }}
                   className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-1.5"
                 >
                   Tiếp tục

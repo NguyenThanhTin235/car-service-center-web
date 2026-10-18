@@ -9,6 +9,17 @@ const api = axios.create({
   },
 });
 
+// Attach Bearer token from localStorage if present (for complete origin isolation)
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
 // Interceptor to handle global errors like 401 Unauthorized
 api.interceptors.response.use(
   (response) => response,

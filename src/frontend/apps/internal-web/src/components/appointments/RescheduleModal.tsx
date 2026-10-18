@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAppDispatch } from '@/store';
 import { rescheduleAppointment, Appointment } from '@/store/slices/appointmentSlice';
+import toast from 'react-hot-toast';
 
 interface RescheduleModalProps {
   appointment: Appointment;
@@ -51,9 +52,12 @@ export default function RescheduleModal({ appointment, onClose }: RescheduleModa
           notes
         }
       })).unwrap();
+      toast.success(`Dời lịch hẹn #${appointment.id} thành công!`);
       onClose();
     } catch (err: any) {
-      setError(err || 'Đã có lỗi xảy ra khi dời lịch');
+      const errMsg = typeof err === 'string' ? err : (err?.message || 'Đã có lỗi xảy ra khi dời lịch');
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }

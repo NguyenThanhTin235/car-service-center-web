@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
 import { notificationService } from '../services/notification.service';
+import { renderAppointmentReminderTemplate } from '../utils/appointment-email.templates';
 
 const prisma = new PrismaClient();
 
@@ -23,11 +24,10 @@ export const startAppointmentReminderJob = () => {
             gte: targetStart,
             lte: targetEnd,
           },
-          // Ideally we should track if the reminder was already sent with a boolean field
-          // but for this scope, relying on the narrow time window is a workable heuristic.
         },
         include: {
           customer: true,
+          vehicle: true,
         },
       });
 
@@ -35,13 +35,20 @@ export const startAppointmentReminderJob = () => {
         if (apt.customer?.email) {
           const dateStr = new Date(apt.scheduled_date).toLocaleDateString('vi-VN');
           const timeStr = apt.scheduled_time.toISOString().substring(11, 16);
+          const vehicleModel = apt.vehicle ? `${apt.vehicle.make} ${apt.vehicle.model}`.trim() : undefined;
           
+          const html = renderAppointmentReminderTemplate({
+            customerName: apt.customer.full_name,
+            licensePlate: apt.vehicle?.license_plate,
+            vehicleModel,
+            scheduledDate: dateStr,
+            scheduledTime: timeStr,
+          });
+
           notificationService.sendEmail(
             apt.customer.email,
-            'Nhắc nhở lịch hẹn - Car Service Center',
-            `<p>Kính chào ${apt.customer.full_name},</p>
-             <p>Bạn có một lịch hẹn sắp tới vào ngày mai, <b>${dateStr} lúc ${timeStr}</b>.</p>
-             <p>Vui lòng đến đúng giờ để được phục vụ tốt nhất.</p>`
+            `[Car Service Center] Nhắc nhở: Lịch hẹn bảo dưỡng ngày mai (${dateStr})`,
+            html
           ).catch(err => console.error(`Failed to send reminder to ${apt.customer.email}:`, err));
         }
       }

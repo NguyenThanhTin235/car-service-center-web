@@ -37,7 +37,9 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   }, 
-  credentials: true 
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-portal', 'Cookie'],
+  exposedHeaders: ['Set-Cookie']
 }));
 app.use(helmet());
 app.use(morgan('dev'));

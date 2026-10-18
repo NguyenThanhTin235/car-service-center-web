@@ -29,9 +29,9 @@ export default function PublicHeader() {
           </Link>
           
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-7 pt-4">
+          <nav className="hidden md:flex items-center gap-7 pt-4" suppressHydrationWarning>
             <Link className="text-on-surface-variant font-label-lg text-label-lg pb-4 hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="/">Trang chủ</Link>
-            {isAuthenticated && (
+            {mounted && isAuthenticated && (
               <Link className="text-primary-container font-semibold font-label-lg text-label-lg border-b-2 border-primary-container pb-4 active:scale-[0.98] transition-transform duration-150 ease-out" href="/customer">
                 Tổng quan
               </Link>
@@ -45,7 +45,7 @@ export default function PublicHeader() {
         <div className="flex items-center gap-4">
           <Link
             className="hidden sm:inline-flex items-center justify-center px-4 py-2 bg-primary-container text-on-primary-container font-label-lg text-label-lg rounded-lg shadow-sm hover:opacity-95 transition-all duration-150 active:scale-[0.98]"
-            href={isAuthenticated ? "/customer/profile?tab=appointments" : "/login"}
+            href={mounted && isAuthenticated ? "/customer/profile?tab=appointments" : "/login"}
           >
             Đặt lịch ngay
           </Link>

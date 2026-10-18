@@ -374,3 +374,171 @@ export function renderAppointmentCancelledTemplate(details: EmailAppointmentDeta
 
   return buildEmailLayout('Thông báo hủy lịch hẹn dịch vụ', 'ĐÃ HỦY LỊCH', '#dc2626', '#ffffff', content);
 }
+
+/**
+ * 4. Template: Xác nhận lịch hẹn thành công (UC-12 Cố vấn/Lễ tân xác nhận)
+ */
+export function renderAppointmentConfirmedTemplate(details: EmailAppointmentDetails): string {
+  const servicesListHtml = details.services && details.services.length > 0
+    ? details.services.map(s => `
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 10px 12px; color: #059669; font-size: 16px; width: 24px;" valign="top">✓</td>
+          <td style="padding: 10px 12px; color: #1e293b; font-size: 14px; font-weight: 500;">${s}</td>
+        </tr>
+      `).join('')
+    : `
+        <tr>
+          <td colspan="2" style="padding: 12px; color: #64748b; font-size: 13.5px; font-style: italic;">
+            Kiểm tra và bảo dưỡng tổng quát theo quy chuẩn của trung tâm.
+          </td>
+        </tr>
+      `;
+
+  const content = `
+    <!-- GREETING -->
+    <h2 style="margin: 0 0 14px 0; color: #0f172a; font-size: 18px; font-weight: 700;">
+      Kính chào Quý khách ${details.customerName},
+    </h2>
+    <p style="margin: 0 0 24px 0; color: #475569; font-size: 14.5px; line-height: 1.6;">
+      Lịch hẹn dịch vụ của Quý khách đã được Cố vấn dịch vụ tiếp nhận khoang xưởng và <strong style="color: #059669;">xác nhận thành công</strong>. Chúng tôi đã bố trí sẵn sàng đội ngũ kỹ thuật viên và vật tư để phục vụ phương tiện của Quý khách chu đáo nhất.
+    </p>
+
+    <!-- KEY HIGHLIGHT CARD -->
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 12px; margin-bottom: 24px; overflow: hidden;">
+      <tr>
+        <td style="padding: 20px;">
+          <table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td width="50%" valign="top" style="padding-right: 12px; border-right: 1px solid #dcfce7;">
+                <p style="margin: 0 0 4px 0; font-size: 12px; color: #059669; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">GIỜ & NGÀY TIẾP NHẬN</p>
+                <p style="margin: 0; font-size: 20px; color: #047857; font-weight: 800;">
+                  ${details.scheduledTime}
+                </p>
+                <p style="margin: 2px 0 0 0; font-size: 14.5px; color: #1e293b; font-weight: 700;">
+                  Ngày ${details.scheduledDate}
+                </p>
+                <span style="display: inline-block; margin-top: 6px; font-size: 11px; background-color: #d1fae5; color: #065f46; font-weight: 700; padding: 2px 8px; border-radius: 4px;">
+                  Khoang ưu tiên sẵn sàng
+                </span>
+              </td>
+              <td width="50%" valign="top" style="padding-left: 20px;">
+                <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">THÔNG TIN PHƯƠNG TIỆN</p>
+                <div style="margin: 0;">
+                  ${details.licensePlate ? `
+                    <span style="display: inline-block; background-color: #ffffff; color: #0f172a; font-weight: 800; font-size: 15px; padding: 3px 10px; border-radius: 6px; border: 1.5px solid #059669; font-family: monospace; letter-spacing: 0.5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                      ${details.licensePlate}
+                    </span>
+                  ` : '<span style="color: #64748b;">Chưa có biển số</span>'}
+                </div>
+                ${details.vehicleModel ? `
+                  <p style="margin: 6px 0 0 0; font-size: 13.5px; color: #334155; font-weight: 600;">
+                    ${details.vehicleModel}
+                  </p>
+                ` : ''}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- SERVICES REQUESTED -->
+    <div style="margin-bottom: 24px;">
+      <h3 style="margin: 0 0 12px 0; color: #0f172a; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+        HẠNG MỤC DỊCH VỤ DỰ KIẾN:
+      </h3>
+      <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+        ${servicesListHtml}
+      </table>
+    </div>
+
+    ${details.notes ? `
+    <!-- NOTES -->
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin-bottom: 24px;">
+      <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b; font-weight: 700; text-transform: uppercase;">Ghi chú yêu cầu của khách hàng:</p>
+      <p style="margin: 0; font-size: 13.5px; color: #334155; line-height: 1.5; white-space: pre-line;">${details.notes}</p>
+    </div>
+    ` : ''}
+
+    <!-- SERVICE ADVANTAGES & TIPS -->
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border-left: 4px solid #059669; border-radius: 0 8px 8px 0; margin-bottom: 16px;">
+      <tr>
+        <td style="padding: 16px 20px;">
+          <p style="margin: 0 0 8px 0; font-size: 14px; color: #065f46; font-weight: 700;">
+            Quy trình tiếp nhận xe nhanh chóng:
+          </p>
+          <ul style="margin: 0; padding-left: 18px; color: #166534; font-size: 13px; line-height: 1.6;">
+            <li>Khi đến xưởng, Quý khách chỉ cần cung cấp <strong>Biển số xe</strong> hoặc <strong>Số điện thoại</strong> tại quầy Lễ tân.</li>
+            <li>Quý khách được phục vụ trà, cà phê và nước suối miễn phí tại phòng chờ VIP có Wi-Fi tốc độ cao.</li>
+            <li>Theo dõi trực tuyến từng bước tiến độ bảo dưỡng trên trang cá nhân theo thời gian thực.</li>
+          </ul>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  return buildEmailLayout('Xác nhận lịch hẹn dịch vụ thành công', 'ĐÃ XÁC NHẬN', '#059669', '#ffffff', content);
+}
+
+/**
+ * 5. Template: Nhắc nhở lịch hẹn sắp tới (Chạy bởi Job định kỳ)
+ */
+export function renderAppointmentReminderTemplate(details: EmailAppointmentDetails): string {
+  const content = `
+    <!-- GREETING -->
+    <h2 style="margin: 0 0 14px 0; color: #0f172a; font-size: 18px; font-weight: 700;">
+      Kính chào Quý khách ${details.customerName},
+    </h2>
+    <p style="margin: 0 0 24px 0; color: #475569; font-size: 14.5px; line-height: 1.6;">
+      Trung tâm <strong>Car Service Center</strong> xin gửi thông báo nhắc nhở: Quý khách có một lịch hẹn bảo dưỡng ô tô diễn ra vào <strong style="color: #d97706;">ngày mai</strong>.
+    </p>
+
+    <!-- KEY REMINDER CARD -->
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #fffbeb; border: 1.5px solid #fde68a; border-radius: 12px; margin-bottom: 24px; overflow: hidden;">
+      <tr>
+        <td style="padding: 20px;">
+          <table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td width="50%" valign="top" style="padding-right: 12px; border-right: 1px solid #fef3c7;">
+                <p style="margin: 0 0 4px 0; font-size: 12px; color: #b45309; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">GIỜ & NGÀY HẸN</p>
+                <p style="margin: 0; font-size: 20px; color: #d97706; font-weight: 800;">
+                  ${details.scheduledTime}
+                </p>
+                <p style="margin: 2px 0 0 0; font-size: 14.5px; color: #1e293b; font-weight: 700;">
+                  Ngày ${details.scheduledDate}
+                </p>
+              </td>
+              <td width="50%" valign="top" style="padding-left: 20px;">
+                <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">PHƯƠNG TIỆN</p>
+                <div style="margin: 0;">
+                  ${details.licensePlate ? `
+                    <span style="display: inline-block; background-color: #ffffff; color: #0f172a; font-weight: 800; font-size: 15px; padding: 3px 10px; border-radius: 6px; border: 1.5px solid #d97706; font-family: monospace;">
+                      ${details.licensePlate}
+                    </span>
+                  ` : ''}
+                </div>
+                ${details.vehicleModel ? `
+                  <p style="margin: 6px 0 0 0; font-size: 13.5px; color: #334155; font-weight: 600;">
+                    ${details.vehicleModel}
+                  </p>
+                ` : ''}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #eff6ff; border-left: 4px solid #0050cd; border-radius: 0 8px 8px 0; margin-bottom: 16px;">
+      <tr>
+        <td style="padding: 14px 18px;">
+          <p style="margin: 0; font-size: 13.5px; color: #1e40af; line-height: 1.5;">
+            Quý khách vui lòng đến trước <strong>10 - 15 phút</strong> để việc tiếp nhận diễn ra thuận lợi nhất. Nếu cần dời lại lịch hẹn, Quý khách có thể thao tác trực tiếp trên website hoặc gọi hotline <strong>1900 6868</strong>.
+          </p>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  return buildEmailLayout('Nhắc nhở lịch hẹn bảo dưỡng ô tô', 'NHẮC HẸN NGÀY MAI', '#d97706', '#ffffff', content);
+}

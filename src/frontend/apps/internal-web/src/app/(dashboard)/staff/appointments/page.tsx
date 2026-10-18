@@ -11,6 +11,7 @@ import CreateAppointmentModal from '@/components/appointments/CreateAppointmentM
 import RescheduleModal from '@/components/appointments/RescheduleModal';
 import CancelConfirmDialog from '@/components/appointments/CancelConfirmDialog';
 import ActionConfirmDialog from '@/components/appointments/ActionConfirmDialog';
+import toast from 'react-hot-toast';
 
 export default function AppointmentsPage() {
   const dispatch = useAppDispatch();
@@ -165,12 +166,16 @@ export default function AppointmentsPage() {
     try {
       if (confirmAction.actionType === 'CONFIRM') {
         await dispatch(confirmAppointment(confirmAction.appointmentId)).unwrap();
+        toast.success(`Xác nhận lịch hẹn #${confirmAction.appointmentId} thành công!`);
       } else if (confirmAction.actionType === 'ARRIVE') {
         await dispatch(arriveAppointment(confirmAction.appointmentId)).unwrap();
+        toast.success(`Tiếp nhận xe thành công! Xe đã vào hàng đợi tiếp nhận.`);
       }
       setConfirmAction(prev => ({ ...prev, isOpen: false }));
-    } catch (err) {
+    } catch (err: any) {
       console.error('Lỗi khi xác nhận:', err);
+      const errMsg = typeof err === 'string' ? err : (err?.message || 'Thao tác không thành công');
+      toast.error(errMsg);
     } finally {
       setIsConfirming(false);
     }

@@ -29,22 +29,24 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
     loadData();
   }, [loadData]);
 
-  // Bộ đếm thời gian thực cho camera overlay và auto-refresh countdown
+  // Cập nhật đồng hồ thời gian thực và đếm ngược hiển thị mỗi giây
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date();
       setCurrentTime(now.toLocaleTimeString('vi-VN'));
-
-      setRefreshCountdown((prev) => {
-        if (prev <= 1) {
-          loadData(false);
-          return 30;
-        }
-        return prev - 1;
-      });
+      setRefreshCountdown((prev) => (prev <= 1 ? 30 : prev - 1));
     }, 1000);
 
     return () => clearInterval(timer);
+  }, []);
+
+  // Tự động tải lại dữ liệu định kỳ mỗi 30 giây
+  useEffect(() => {
+    const refreshTimer = setInterval(() => {
+      loadData(false);
+    }, 30000);
+
+    return () => clearInterval(refreshTimer);
   }, [loadData]);
 
   const activeOrder: WorkOrderTrackingDto | null = selectedOrder || (orders.length > 0 ? orders[0] : null);
