@@ -21,8 +21,10 @@ import {
 } from '@/store/slices/appointmentSlice';
 import Toast from '@/components/shared/Toast';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import TrackingView from '@/components/tracking/TrackingView';
+import InvoicesView from '@/components/invoices/InvoicesView';
 
-type TabKey = 'profile' | 'vehicles' | 'appointments' | 'history';
+export type TabKey = 'profile' | 'vehicles' | 'appointments' | 'tracking' | 'invoices' | 'history';
 
 // Vehicle Form Types & Presets
 interface VehicleFormData {
@@ -180,8 +182,20 @@ export default function ProfilePage() {
 
   // Active Tab State
   const initialTab = (searchParams.get('tab') as TabKey) || 'profile';
+    // Sync activeTab when searchParams changes
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') as TabKey;
+    if (tabParam && ['profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (key: TabKey) => {
+    setActiveTab(key);
+    window.history.replaceState(null, '', `/customer/profile?tab=${key}`);
+  };
   const [activeTab, setActiveTab] = useState<TabKey>(
-    ['profile', 'vehicles', 'appointments', 'history'].includes(initialTab) ? initialTab : 'profile'
+    ['profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history'].includes(initialTab) ? initialTab : 'profile'
   );
 
   // Profile Form States
@@ -592,11 +606,13 @@ export default function ProfilePage() {
     });
   }, [historySearch, selectedVehicleFilter]);
 
-  // 4 Tabs in Vertical Sidebar
+  // 6 Tabs in Vertical Sidebar (including UC-15 Tracking & UC-16 Invoices)
   const navTabs: { key: TabKey; label: string; icon: string }[] = [
     { key: 'profile', label: 'Hồ sơ cá nhân', icon: 'account_circle' },
     { key: 'vehicles', label: 'Xe của tôi', icon: 'directions_car' },
     { key: 'appointments', label: 'Đặt lịch', icon: 'calendar_today' },
+    { key: 'tracking', label: 'Tiến độ sửa chữa', icon: 'car_repair' },
+    { key: 'invoices', label: 'Hóa đơn dịch vụ', icon: 'receipt_long' },
     { key: 'history', label: 'Lịch sử dịch vụ', icon: 'history' },
   ];
 
@@ -631,6 +647,8 @@ export default function ProfilePage() {
       <nav className="flex items-center gap-1.5 text-xs text-slate-500 mb-6">
         <Link href="/" className="hover:text-blue-600 transition-colors">Trang chủ</Link>
         <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+        <Link href="/customer" className="hover:text-blue-600 transition-colors">Tổng quan</Link>
+        <span className="material-symbols-outlined text-[14px]">chevron_right</span>
         <span className="text-slate-800 font-medium">
           {navTabs.find((t) => t.key === activeTab)?.label || 'Hồ sơ cá nhân'}
         </span>
@@ -658,13 +676,23 @@ export default function ProfilePage() {
 
           {/* Navigation Tabs */}
           <nav className="space-y-1">
+            {/* Quick link back to Customer Dashboard */}
+            <Link
+              href="/customer"
+              className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-semibold transition-all text-slate-700 bg-slate-50 hover:bg-blue-50 hover:text-blue-700 border border-slate-200/60 mb-2 group shadow-2xs"
+            >
+              <span className="material-symbols-outlined text-xl text-blue-600 transition-transform group-hover:-translate-x-0.5">
+                dashboard
+              </span>
+              <span>Trang tổng quan</span>
+            </Link>
             {navTabs.map((tab) => {
               const isActive = activeTab === tab.key;
               return (
                 <button
                   key={tab.key}
                   type="button"
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => handleTabChange(tab.key)}
                   className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left ${
                     isActive
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 font-semibold'
@@ -1060,6 +1088,20 @@ export default function ProfilePage() {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB: TIẾN ĐỘ SỬA CHỮA (UC-15) */}
+          {activeTab === 'tracking' && (
+            <div className="space-y-6">
+              <TrackingView isEmbedded={true} />
+            </div>
+          )}
+
+          {/* TAB: HÓA ĐƠN DỊCH VỤ (UC-16) */}
+          {activeTab === 'invoices' && (
+            <div className="space-y-6">
+              <InvoicesView isEmbedded={true} />
             </div>
           )}
 
