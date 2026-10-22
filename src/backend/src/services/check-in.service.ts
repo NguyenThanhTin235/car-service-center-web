@@ -75,7 +75,14 @@ export class CheckInService {
         });
       }
 
-      // Note: Trạng thái WO chỉ chuyển sang IN_PLANNING khi khách hàng đã ký xác nhận
+      // Tự động chuyển trạng thái WO sang IN_PLANNING (Lập kế hoạch) sau khi lưu thông tin tiếp nhận
+      if (workOrder.status === 'DRAFT') {
+        await tx.workOrder.update({
+          where: { id: workOrderId },
+          data: { status: 'IN_PLANNING' },
+        });
+      }
+
       return checkIn;
     });
   }

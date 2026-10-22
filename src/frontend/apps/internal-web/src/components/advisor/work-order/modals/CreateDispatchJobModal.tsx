@@ -152,7 +152,7 @@ export default function CreateDispatchJobModal({
 
     Promise.allSettled([
       jobTypeApi.getAll({ limit: 50 }),
-      employeeApi.getAll({ limit: 50 }),
+      employeeApi.getAll({ limit: 100, position: 'TECHNICIAN' }),
     ])
       .then(([jobTypeRes, employeeRes]) => {
         if (!mounted) return;
@@ -169,7 +169,9 @@ export default function CreateDispatchJobModal({
         if (employeeRes.status === 'fulfilled') {
           const emps: EmployeeData[] =
             employeeRes.value?.data?.data || employeeRes.value?.data || [];
-          setEmployees(emps);
+          setEmployees(
+            emps.filter((e) => e.isActive !== false && e.position === 'TECHNICIAN')
+          );
         }
       })
       .finally(() => {
@@ -519,9 +521,14 @@ export default function CreateDispatchJobModal({
                 }`}
               >
                 <option value="">-- Chưa chỉ định (Điều phối sau) --</option>
+                {selectedTechnicianId && !employees.some((e) => e.id === selectedTechnicianId) && (
+                  <option value={selectedTechnicianId}>
+                    {job?.labours?.[0]?.employee?.full_name || `KTV #${selectedTechnicianId}`}
+                  </option>
+                )}
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.fullName} ({emp.position})
+                    {emp.fullName}
                   </option>
                 ))}
               </select>

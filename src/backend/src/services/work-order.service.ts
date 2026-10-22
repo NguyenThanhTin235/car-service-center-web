@@ -595,6 +595,16 @@ export class WorkOrderService {
       throw new Error('Tên công việc không được để trống.');
     }
 
+    if (data.technician_id) {
+      const tech = await prisma.employee.findUnique({
+        where: { id: data.technician_id },
+        select: { id: true, position: true, is_active: true },
+      });
+      if (!tech || tech.position !== 'TECHNICIAN') {
+        throw new Error('Nhân viên được phân công phải là kỹ thuật viên (TECHNICIAN).');
+      }
+    }
+
     return await prisma.$transaction(async (tx) => {
       // 1. Xác định hoặc tạo WoService
       let targetServiceId = data.wo_service_id;
@@ -817,6 +827,16 @@ export class WorkOrderService {
       throw new Error(
         `Không thể chỉnh sửa công việc đã ở trạng thái ${job.status}. Chỉ có thể sửa khi chưa phân công (Chờ điều phối).`
       );
+    }
+
+    if (data.technician_id) {
+      const tech = await prisma.employee.findUnique({
+        where: { id: data.technician_id },
+        select: { id: true, position: true, is_active: true },
+      });
+      if (!tech || tech.position !== 'TECHNICIAN') {
+        throw new Error('Nhân viên được phân công phải là kỹ thuật viên (TECHNICIAN).');
+      }
     }
 
     return await prisma.$transaction(async (tx) => {
@@ -1256,6 +1276,7 @@ export class WorkOrderService {
     };
   }
 }
+
 
 
 

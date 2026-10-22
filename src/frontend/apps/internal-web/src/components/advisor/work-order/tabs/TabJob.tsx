@@ -183,15 +183,17 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
   const [manualJobTargetService, setManualJobTargetService] = useState<WoService | null>(null);
   const [editingJob, setEditingJob] = useState<any | null>(null);
 
-  // Load danh sách nhân viên kỹ thuật
+  // Load danh sách nhân viên kỹ thuật (chỉ lấy Kỹ thuật viên)
   useEffect(() => {
     let mounted = true;
     employeeApi
-      .getAll({ limit: 100 })
+      .getAll({ limit: 100, position: 'TECHNICIAN' })
       .then((res) => {
         if (!mounted) return;
         const list: EmployeeData[] = res.data?.data || res.data || [];
-        setTechnicians(list.filter((e) => e.isActive !== false));
+        setTechnicians(
+          list.filter((e) => e.isActive !== false && e.position === 'TECHNICIAN')
+        );
       })
       .catch((err) => {
         console.error('Lỗi khi tải danh sách kỹ thuật viên:', err);
@@ -869,9 +871,14 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
                                             } focus:border-blue-600 focus:bg-surface-container-lowest`}
                                           >
                                             <option value="">-- Chưa phân công --</option>
+                                            {currentEmployeeId && !technicians.some((t) => t.id === currentEmployeeId) && (
+                                              <option value={currentEmployeeId}>
+                                                {technicianName || `KTV #${currentEmployeeId}`}
+                                              </option>
+                                            )}
                                             {technicians.map((emp) => (
                                               <option key={emp.id} value={emp.id}>
-                                                {emp.fullName} ({emp.position})
+                                                {emp.fullName}
                                               </option>
                                             ))}
                                           </select>
