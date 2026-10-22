@@ -15,6 +15,10 @@ export interface ApplyJobItemInput {
   estimated_hours: number;
   matched_finding_ids?: number[];
   suggested_part_category_ids?: number[];
+  assigned_technician_id?: number | null;
+  assigned_technician_name?: string | null;
+  assignment_reason?: string | null;
+  match_score?: number;
 }
 
 export interface ApplyServiceGroupInput {
@@ -236,7 +240,8 @@ export class AiJobPlannerService {
       parsed,
       validJobTypeIds,
       validFindingIds,
-      validPartCategoryIds
+      validPartCategoryIds,
+      knowledge.technicians
     );
 
     // Trích xuất metadata và làm giàu thông tin cho từng Service Group
@@ -337,6 +342,7 @@ export class AiJobPlannerService {
       suggested_services: finalServices,
       suggested_jobs: finalJobs,
       available_job_types: knowledge.jobTypes,
+      available_technicians: knowledge.technicians,
       retrieved_parts_count: knowledge.matchingPartCategories.length,
     };
   }
@@ -482,11 +488,13 @@ export class AiJobPlannerService {
             },
           });
 
-          // Tạo JobLabour
+          // Tạo JobLabour kèm phân công KTV (tự động từ AI hoặc do SA chọn)
           await tx.jobLabour.create({
             data: {
               job_id: newJob.id,
               job_type_id: jobItem.job_type_id,
+              employee_id: jobItem.assigned_technician_id || null,
+              description: jobItem.name,
               estimated_hours: hours,
               price: hours * 150000,
             },

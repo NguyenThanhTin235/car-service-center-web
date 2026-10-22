@@ -353,6 +353,15 @@ export interface AIJobFinding {
   recommendation?: string | null;
 }
 
+export interface AITechnician {
+  id: number;
+  full_name: string;
+  skills: string[];
+  active_jobs_count: number;
+  today_assigned_hours: number;
+  status: 'AVAILABLE' | 'BUSY' | 'OVERLOADED';
+}
+
 export interface AISuggestedJob {
   name: string;
   description: string;
@@ -363,6 +372,10 @@ export interface AISuggestedJob {
   matched_finding_ids?: number[];
   matched_findings?: AIJobFinding[];
   suggested_part_category_ids?: number[];
+  assigned_technician_id?: number | null;
+  assigned_technician_name?: string | null;
+  assignment_reason?: string | null;
+  match_score?: number;
 }
 
 export interface AISuggestedService {
@@ -388,6 +401,7 @@ export interface AIJobPlanResponse {
   suggested_services: AISuggestedService[];
   suggested_jobs: AISuggestedJob[];
   available_job_types: Array<{ id: number; name: string }>;
+  available_technicians?: AITechnician[];
   retrieved_parts_count: number;
 }
 
@@ -420,6 +434,7 @@ export async function applyAIJobs(
         job_type_id: number;
         estimated_hours: number;
         matched_finding_ids?: number[];
+        assigned_technician_id?: number | null;
       }>;
     }>;
     jobs?: Array<{
@@ -428,6 +443,7 @@ export async function applyAIJobs(
       job_type_id: number;
       estimated_hours: number;
       matched_finding_ids?: number[];
+      assigned_technician_id?: number | null;
     }>;
   } | Array<any>
 ): Promise<ApiResponse<{ applied_jobs_count: number; created_services_count?: number }>> {

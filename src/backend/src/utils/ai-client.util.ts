@@ -31,20 +31,25 @@ export function getGeminiApiKeys(): string[] {
   return keys;
 }
 
-export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
 export const FALLBACK_MODELS = [
   GEMINI_MODEL,
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
+  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
 ].filter((v, i, a) => a.indexOf(v) === i);
 
+// Con trỏ Round-Robin để luân chuyển key đều giữa các request, tránh nghẽn/rate limit 1 key cố định
+let currentKeyCursor = 0;
+
 /**
- * Gọi Gemini với cơ chế tự động xoay vòng key & model (Failover / Fallback)
- * Nếu Key/Model gặp lỗi quota (429) hoặc 503 high demand, tự động chuyển sang Model/Key tiếp theo
+ * Gọi Gemini với cơ chế tự động xoay vòng key & model (Failover / Fallback / Round-Robin)
+ * Chiến lược: Thử model nhanh nhất (gemini-3.5-flash) lần lượt trên TOÀN BỘ các Key trước.
+ * Nếu tất cả các Key đều bị 503/429 thì mới chuyển sang fallback model (gemini-3.5-flash-lite).
+ * Tích hợp timeout (15s) để ngăn chặn hoàn toàn tình trạng bị treo 3-5 phút.
  */
 export async function executeWithGeminiFailover<T>(
-  operation: (ai: GoogleGenAI, keyIndex: number, model: string) => Promise<T>
+  operation: (ai: GoogleGenAI, keyIndex: number, model: string) => Promise<T>,
+  timeoutMs: number = 15000
 ): Promise<T> {
   const keys = getGeminiApiKeys();
 
@@ -53,20 +58,37 @@ export async function executeWithGeminiFailover<T>(
   }
 
   let lastError: any = null;
+  const numKeys = keys.length;
 
-  for (let i = 0; i < keys.length; i++) {
-    const key = keys[i];
-    const ai = new GoogleGenAI({ apiKey: key });
+  for (const model of FALLBACK_MODELS) {
+    const startIdx = currentKeyCursor;
+    for (let offset = 0; offset < numKeys; offset++) {
+      const keyIndex = (startIdx + offset) % numKeys;
+      const key = keys[keyIndex];
+      const ai = new GoogleGenAI({ apiKey: key });
 
-    for (const model of FALLBACK_MODELS) {
       try {
-        return await operation(ai, i, model);
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`Timeout sau ${timeoutMs / 1000}s khi gọi Gemini model ${model}`)), timeoutMs)
+        );
+
+        const result = await Promise.race([
+          operation(ai, keyIndex, model),
+          timeoutPromise,
+        ]);
+
+        // Cập nhật cursor sang key tiếp theo để cân bằng tải (round-robin)
+        currentKeyCursor = (keyIndex + 1) % numKeys;
+        return result;
       } catch (err: any) {
         lastError = err;
-        console.warn(`[Gemini Failover] Key #${i + 1} với model ${model} gặp lỗi: ${err?.message || err}. Thử tiếp tục...`);
+        const errMsg = err?.message || String(err);
+        console.warn(`[Gemini Failover] Key #${keyIndex + 1} (${key.slice(0, 10)}...) với model ${model} gặp lỗi: ${errMsg.slice(0, 150)}. Thử key tiếp theo...`);
       }
     }
   }
 
   throw new Error(`Tất cả ${keys.length} API key Gemini đều gặp lỗi: ${lastError?.message || lastError}`);
 }
+
+

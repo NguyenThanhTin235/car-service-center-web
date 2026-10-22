@@ -1,6 +1,15 @@
 import prisma from '../../utils/prisma';
 import { ItemType } from '@prisma/client';
 
+export interface RetrievedTechnician {
+  id: number;
+  full_name: string;
+  skills: string[];
+  active_jobs_count: number;
+  today_assigned_hours: number;
+  status: 'AVAILABLE' | 'BUSY' | 'OVERLOADED';
+}
+
 export interface RetrievedKnowledge {
   jobTypes: Array<{ id: number; name: string }>;
   jobTemplates: Array<{ id: number; name: string; estimated_hours: number | null; job_type_id: number; service_name?: string }>;
@@ -18,6 +27,7 @@ export interface RetrievedKnowledge {
     findings: string[];
     jobs: string[];
   }>;
+  technicians: RetrievedTechnician[];
 }
 
 export class RagRetrieverService {
@@ -109,6 +119,65 @@ export class RagRetrieverService {
     });
 
 
+    // 5. Truy xuất danh sách Kỹ thuật viên & Tải công việc hiện tại (Tối ưu hóa phân công tự động)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const activeTechs = await prisma.employee.findMany({
+      where: {
+        position: 'TECHNICIAN',
+        is_active: true,
+      },
+      include: {
+        skills: {
+          include: {
+            skill: true,
+          },
+        },
+        job_labours: {
+          where: {
+            created_at: { gte: startOfToday },
+          },
+          include: {
+            job: {
+              select: {
+                status: true,
+                estimated_hours: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { id: 'asc' },
+    });
+
+    const technicians: RetrievedTechnician[] = activeTechs.map((tech) => {
+      const activeJobsCount = tech.job_labours.filter(
+        (jl) => jl.job?.status === 'IN_PROGRESS'
+      ).length;
+
+      const todayAssignedHours = tech.job_labours.reduce((sum, jl) => {
+        const hours = Number(jl.estimated_hours) || Number(jl.job?.estimated_hours) || 1.0;
+        return sum + hours;
+      }, 0);
+
+      let status: 'AVAILABLE' | 'BUSY' | 'OVERLOADED' = 'AVAILABLE';
+      if (todayAssignedHours >= 7 || activeJobsCount >= 3) {
+        status = 'OVERLOADED';
+      } else if (todayAssignedHours >= 4 || activeJobsCount >= 1) {
+        status = 'BUSY';
+      }
+
+      return {
+        id: tech.id,
+        full_name: tech.full_name,
+        skills: tech.skills.map((s) => s.skill.name).filter(Boolean),
+        active_jobs_count: activeJobsCount,
+        today_assigned_hours: Math.round(todayAssignedHours * 10) / 10,
+        status,
+      };
+    });
+
     return {
       jobTypes,
       jobTemplates: jobTemplates.map((jt) => ({
@@ -120,6 +189,7 @@ export class RagRetrieverService {
       })),
       matchingPartCategories,
       historicalCases,
+      technicians,
     };
   }
 

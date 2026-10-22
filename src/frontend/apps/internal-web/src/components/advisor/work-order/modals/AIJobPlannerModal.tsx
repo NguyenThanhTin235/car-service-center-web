@@ -147,6 +147,7 @@ export default function AIJobPlannerModal({
 
   const handleAddJobToService = (serviceIdx: number) => {
     const defaultJobType = planData?.available_job_types[0];
+    const defaultTech = planData?.available_technicians?.[0];
     const newJob: AISuggestedJob = {
       name: 'Công việc kỹ thuật bổ sung',
       description: 'Kiểm tra và xử lý bổ sung',
@@ -157,6 +158,10 @@ export default function AIJobPlannerModal({
       matched_finding_ids: editableServices[serviceIdx]?.finding_id
         ? [editableServices[serviceIdx].finding_id!]
         : [],
+      assigned_technician_id: defaultTech?.id || null,
+      assigned_technician_name: defaultTech?.full_name || null,
+      assignment_reason: defaultTech ? `Tự động phân công cho KTV: ${defaultTech.full_name}` : null,
+      match_score: 80,
     };
 
     setEditableServices((prev) => {
@@ -214,6 +219,7 @@ export default function AIJobPlannerModal({
             job_type_id: Number(j.job_type_id),
             estimated_hours: Number(j.estimated_hours),
             matched_finding_ids: j.matched_finding_ids,
+            assigned_technician_id: j.assigned_technician_id ? Number(j.assigned_technician_id) : null,
           })),
         };
       })
@@ -588,6 +594,79 @@ export default function AIJobPlannerModal({
                                           className="w-16 text-body-xs bg-surface-container px-2 py-1 rounded-md border border-outline-variant text-on-surface focus:outline-none focus:border-primary text-center font-bold"
                                         />
                                         <span className="text-on-surface-variant">giờ</span>
+                                      </div>
+
+                                      {/* Dòng 4: Phân công kỹ thuật viên (Tự động đề xuất bởi AI + Cho phép chọn lại thủ công) */}
+                                      <div className="w-full pt-2.5 mt-2 border-t border-outline-variant/30 space-y-2">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                          {/* Dropdown KTV */}
+                                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                                            <div className="flex items-center gap-1 text-primary font-semibold text-label-xs shrink-0">
+                                              <span className="material-symbols-outlined text-[16px]">badge</span>
+                                              <span>Phân công KTV:</span>
+                                            </div>
+                                            <select
+                                              value={job.assigned_technician_id || ''}
+                                              onChange={(e) => {
+                                                const selectedId = e.target.value ? Number(e.target.value) : null;
+                                                const selectedTech = (planData.available_technicians || []).find(
+                                                  (t) => t.id === selectedId
+                                                );
+                                                handleUpdateJobField(sIdx, jIdx, 'assigned_technician_id', selectedId);
+                                                handleUpdateJobField(
+                                                  sIdx,
+                                                  jIdx,
+                                                  'assigned_technician_name',
+                                                  selectedTech?.full_name || null
+                                                );
+                                                handleUpdateJobField(
+                                                  sIdx,
+                                                  jIdx,
+                                                  'assignment_reason',
+                                                  selectedTech
+                                                    ? `Cố vấn phân công thủ công: ${selectedTech.full_name}`
+                                                    : null
+                                                );
+                                              }}
+                                              className="w-full sm:w-auto max-w-full sm:max-w-md text-body-xs bg-surface-container font-medium px-2.5 py-1.5 rounded-lg border border-primary/30 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs truncate"
+                                            >
+                                              <option value="">-- Chưa phân công --</option>
+                                              {(planData.available_technicians || []).map((tech) => {
+                                                const isBusy = tech.status === 'OVERLOADED';
+                                                return (
+                                                  <option key={tech.id} value={tech.id}>
+                                                    {tech.full_name} {tech.skills.length > 0 ? `(${tech.skills.slice(0, 2).join(', ')})` : ''} - [Tải: {tech.today_assigned_hours}h / {tech.active_jobs_count} việc]{isBusy ? ' ⚠️' : ''}
+                                                  </option>
+                                                );
+                                              })}
+                                            </select>
+                                          </div>
+
+                                          {/* Huy hiệu Độ phù hợp */}
+                                          {job.match_score && (
+                                            <div className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold shrink-0 border border-primary/20">
+                                              <span className="material-symbols-outlined text-[14px]">verified</span>
+                                              <span>Độ phù hợp: {job.match_score}%</span>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {/* Dòng lý do đề xuất của AI (Full-width, hiển thị rõ ràng, không bao giờ tràn mép) */}
+                                        {job.assignment_reason && (
+                                          <div className="flex items-start sm:items-center gap-2 text-label-xs px-3 py-1.5 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/50 w-full shadow-2xs">
+                                            <span className="material-symbols-outlined text-[16px] shrink-0 text-amber-500 mt-0.5 sm:mt-0">
+                                              auto_awesome
+                                            </span>
+                                            <span className="flex-1 text-[11px] leading-relaxed">
+                                              <strong className="font-semibold text-blue-900 dark:text-blue-200">Gợi ý AI:</strong> {job.assignment_reason}
+                                            </span>
+                                            {job.match_score && (
+                                              <span className="sm:hidden px-2 py-0.5 bg-primary text-white rounded font-bold text-[10px] shrink-0">
+                                                {job.match_score}%
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
