@@ -19,6 +19,7 @@ import jobTypeRoutes from './routes/job-type.routes';
 import catalogRoutes from './routes/system-catalog.routes';
 import vehicleRoutes from './routes/vehicle.routes';
 import inventoryRoutes from './routes/inventory.routes';
+import invoiceRoutes from './routes/invoice.routes';
 
 const app = express();
 
@@ -36,7 +37,9 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   }, 
-  credentials: true 
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-portal', 'Cookie'],
+  exposedHeaders: ['Set-Cookie']
 }));
 app.use(helmet());
 app.use(morgan('dev'));
@@ -64,5 +67,6 @@ app.use('/api/job-types', jobTypeRoutes);
 app.use('/api/system-catalogs', catalogRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api', inventoryRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 export default app;

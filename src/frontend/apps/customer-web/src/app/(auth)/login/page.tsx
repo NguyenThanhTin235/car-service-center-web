@@ -14,6 +14,7 @@ import { RootState } from '@/store';
 export default function LoginPage() {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
 
+  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,11 +26,15 @@ export default function LoginPage() {
   const dispatch = useDispatch();
 
   React.useEffect(() => {
-    if (isAuthenticated && user) {
+    setMounted(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (mounted && isAuthenticated && user) {
       const redirectPath = getDashboardPathByRole(user.roles);
-      router.push(redirectPath);
+      window.location.href = redirectPath;
     }
-  }, [isAuthenticated, user, router]);
+  }, [mounted, isAuthenticated, user]);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -42,10 +47,6 @@ export default function LoginPage() {
     }
   }, []);
 
-  if (isAuthenticated) {
-    return null;
-  }
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -54,22 +55,32 @@ export default function LoginPage() {
     try {
       const res = await api.post('/api/auth/login', { email, password });
       
-      const { user } = res.data.data;
-      dispatch(setCredentials({ user }));
+      const { user, token } = res.data.data;
+      dispatch(setCredentials({ user, token }));
       
-      // Redirect based on role
+      // Redirect cleanly to avoid lingering login DOM
       const redirectPath = getDashboardPathByRole(user.roles);
-      router.push(redirectPath);
+      window.location.href = redirectPath;
     } catch (err: any) {
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
       } else {
         setError('Đăng nhập thất bại. Vui lòng thử lại sau.');
       }
-    } finally {
       setLoading(false);
     }
   };
+
+  if (mounted && isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface-container-low">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-on-surface-variant font-medium">Đang chuyển hướng...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full flex flex-col justify-between bg-surface-container-low text-on-surface antialiased selection:bg-primary-container selection:text-white">

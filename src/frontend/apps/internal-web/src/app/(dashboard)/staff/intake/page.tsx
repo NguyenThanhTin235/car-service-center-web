@@ -55,7 +55,8 @@ export default function IntakePage() {
     dispatch(fetchIntakeQueue({}));
     
     // Lấy lịch hẹn trong ngày hôm nay có trạng thái CONFIRMED
-    const todayStr = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     dispatch(fetchAppointments({ 
       startDate: todayStr, 
       endDate: todayStr,
@@ -95,8 +96,8 @@ export default function IntakePage() {
         try {
           await dispatch(arriveAppointment(id)).unwrap();
           toast.success('Đã tiếp nhận xe thành công!');
-          // Refresh appointment list to remove it from "Lịch hẹn hôm nay"
-          const todayStr = new Date().toISOString().split('T')[0];
+          const n = new Date();
+          const todayStr = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
           dispatch(fetchAppointments({ startDate: todayStr, endDate: todayStr, status: 'CONFIRMED' }));
           dispatch(fetchIntakeQueue({}));
         } catch (err: any) {

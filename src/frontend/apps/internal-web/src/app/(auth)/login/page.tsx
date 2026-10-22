@@ -64,8 +64,8 @@ export default function LoginPage() {
     try {
       const res = await api.post('/api/auth/login', { email, password });
       
-      const { user } = res.data.data;
-      dispatch(setCredentials({ user }));
+      const { user, token } = res.data.data;
+      dispatch(setCredentials({ user, token }));
       
       // Redirect based on role
       const redirectPath = getDashboardPathByRole(user.roles);

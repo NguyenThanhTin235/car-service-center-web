@@ -30,7 +30,17 @@ export class AuthController {
     try {
       const { email, password } = value;
       const { token, user } = await authService.login(email, password);
+
+      const portal = (req.headers['x-portal'] as string) || 
+        (req.headers.referer?.includes(':3001') || req.headers.referer?.includes('/staff') || req.headers.origin?.includes(':3001') ? 'internal' : 'customer');
+
+      if (portal === 'internal') {
+        res.cookie('staff_jwt', token, COOKIE_OPTIONS);
+      } else {
+        res.cookie('customer_jwt', token, COOKIE_OPTIONS);
+      }
       res.cookie('jwt', token, COOKIE_OPTIONS);
+
       res.status(200).json({ status: 'success', data: { token, user } });
     } catch (err: any) {
       res.status(401).json({ status: 'error', message: err.message || 'Xác thực thất bại' });
@@ -41,11 +51,25 @@ export class AuthController {
   // UC-04: Logout
   // ========================
   async logout(req: Request, res: Response): Promise<void> {
-    res.clearCookie('jwt', {
+    const portal = (req.headers['x-portal'] as string) || 
+      (req.headers.referer?.includes(':3001') || req.headers.referer?.includes('/staff') || req.headers.origin?.includes(':3001') ? 'internal' : 
+       req.headers.referer?.includes(':3000') || req.headers.origin?.includes(':3000') ? 'customer' : undefined);
+
+    const clearOpts = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-    });
+      sameSite: 'strict' as const,
+    };
+
+    if (portal === 'internal') {
+      res.clearCookie('staff_jwt', clearOpts);
+    } else if (portal === 'customer') {
+      res.clearCookie('customer_jwt', clearOpts);
+    } else {
+      res.clearCookie('staff_jwt', clearOpts);
+      res.clearCookie('customer_jwt', clearOpts);
+      res.clearCookie('jwt', clearOpts);
+    }
     res.status(200).json({ status: 'success', message: 'Đã đăng xuất thành công.' });
   }
 
@@ -85,7 +109,15 @@ export class AuthController {
     try {
       const { email, otp } = value;
       const { token, user } = await authService.verifyOtpAndCreateUser(email, otp);
+
+      const portal = (req.headers['x-portal'] as string) || 'customer';
+      if (portal === 'internal') {
+        res.cookie('staff_jwt', token, COOKIE_OPTIONS);
+      } else {
+        res.cookie('customer_jwt', token, COOKIE_OPTIONS);
+      }
       res.cookie('jwt', token, COOKIE_OPTIONS);
+
       res.status(201).json({
         status: 'success',
         message: 'Đăng ký tài khoản thành công!',

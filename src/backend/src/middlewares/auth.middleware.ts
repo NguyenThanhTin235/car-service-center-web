@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JwtPayload } from '../utils/jwt.util';
+import prisma from '../utils/prisma';
 
 // Extend Express Request to include user
 declare global {
@@ -12,10 +13,31 @@ declare global {
 
 /**
  * Authenticate user via HttpOnly cookie JWT
- * Sets req.user if valid
+ * Sets req.user if valid and loads fresh roles from database
  */
-export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
-  const token = req.cookies?.jwt;
+export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  // 1. Check Bearer token from Authorization header first (isolated per frontend origin via localStorage)
+  const authHeader = req.headers.authorization;
+  let token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+  // 2. Determine portal context
+  const portal = (req.headers['x-portal'] as string) || 
+    (req.headers.referer?.includes(':3001') || req.headers.referer?.includes('/staff') || req.headers.origin?.includes(':3001') ? 'internal' : 
+     req.headers.referer?.includes(':3000') || req.headers.origin?.includes(':3000') ? 'customer' : undefined);
+
+  // 3. If no Bearer token, resolve from isolated portal cookies
+  if (!token) {
+    if (portal === 'internal') {
+      token = req.cookies?.staff_jwt;
+    } else if (portal === 'customer') {
+      token = req.cookies?.customer_jwt;
+    }
+
+    // Fallback to legacy jwt cookie if specific portal cookie is not present
+    if (!token) {
+      token = req.cookies?.jwt || (portal === 'internal' ? req.cookies?.customer_jwt : req.cookies?.staff_jwt);
+    }
+  }
 
   if (!token) {
     res.status(401).json({ status: 'error', message: 'Chưa đăng nhập. Vui lòng đăng nhập để tiếp tục.' });
@@ -24,7 +46,40 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
 
   try {
     const payload = verifyToken(token);
-    req.user = payload;
+    
+    // Load fresh roles directly from database to ensure role changes take effect immediately
+    const user = await prisma.user.findUnique({
+      where: { id: payload.id },
+      select: {
+        is_active: true,
+        roles: {
+          select: { role: { select: { name: true } } }
+        }
+      }
+    });
+
+    if (!user || !user.is_active) {
+      res.status(401).json({ status: 'error', message: 'Tài khoản không tồn tại hoặc đã bị vô hiệu hóa.' });
+      return;
+    }
+
+    const liveRoles = user.roles.map((r: any) => r.role.name);
+
+    // If request is directed to internal management portal, enforce staff role
+    if (portal === 'internal') {
+      const hasStaffRole = liveRoles.some((r: string) => 
+        ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA', 'STAFF', 'SERVICE_ADVISOR', 'TECHNICIAN'].includes(r.toUpperCase())
+      );
+      if (!hasStaffRole) {
+        res.status(403).json({ status: 'error', message: 'Tài khoản khách hàng không có quyền truy cập trang quản trị nội bộ.' });
+        return;
+      }
+    }
+
+    req.user = {
+      ...payload,
+      roles: liveRoles.length > 0 ? liveRoles : payload.roles
+    };
     next();
   } catch {
     res.status(401).json({ status: 'error', message: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.' });

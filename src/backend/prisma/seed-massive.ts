@@ -892,8 +892,8 @@ async function main() {
           ? randomDate(14, 0)
           : futureDate(randomBetween(1, 14)); // future
 
-      const hours = randomBetween(7, 16);
-      const scheduledTime = new Date(Date.UTC(1970, 0, 1, hours - 7, randomFrom([0, 30]))); // VN time -> UTC
+      const hours = randomBetween(8, 16);
+      const scheduledTime = new Date(Date.UTC(1970, 0, 1, hours, randomFrom([0, 30]))); // VN business hours (08:00 - 16:30)
 
       const appt = await prisma.appointment.create({
         data: {

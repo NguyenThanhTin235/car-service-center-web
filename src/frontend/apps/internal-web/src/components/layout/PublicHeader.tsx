@@ -9,6 +9,11 @@ import { getDashboardPathByRole } from '@/utils/roleRedirect';
 
 export default function PublicHeader() {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 h-16 w-full bg-surface-container-lowest shadow-sm border-b border-surface-container-highest">
@@ -38,7 +43,9 @@ export default function PublicHeader() {
           
           {/* User Profile Pill or Login */}
           <div className="flex items-center gap-3 pl-2 sm:border-l border-surface-container-highest">
-            {isAuthenticated && user ? (
+            {!mounted ? (
+              <div className="w-24 h-9 bg-surface-container-low animate-pulse rounded-lg"></div>
+            ) : isAuthenticated && user ? (
               <>
                 <Link
                   href={getDashboardPathByRole(user.roles)}

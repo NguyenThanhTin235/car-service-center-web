@@ -140,7 +140,7 @@ export default function AppointmentDetailPopover({
                 Đổi giờ hẹn
               </button>
               
-              {appointment.status === 'REQUESTED' && onConfirm ? (
+              {(appointment.status === 'REQUESTED' || appointment.status === 'RESCHEDULED') && onConfirm ? (
                 <button 
                   onClick={() => onConfirm(appointment)}
                   className="h-8 bg-surface-container-lowest border border-outline-variant hover:bg-blue-50 text-primary text-label-sm font-semibold rounded flex items-center justify-center gap-1"

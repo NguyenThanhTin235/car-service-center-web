@@ -59,8 +59,8 @@ export default function VerifyOtpPage() {
     try {
       if (purpose === 'register') {
         const res = await api.post('/api/auth/verify-otp-register', { email, otp: otpString });
-        const { user } = res.data.data;
-        dispatch(setCredentials({ user }));
+        const { user, token } = res.data.data;
+        dispatch(setCredentials({ user, token }));
         sessionStorage.removeItem('pendingEmail');
         sessionStorage.removeItem('otpPurpose');
         const redirectPath = getDashboardPathByRole(user.roles);
