@@ -5,7 +5,7 @@ import CustomerFormModal from '@/components/customers/CustomerFormModal';
 import CustomerDetailModal from '@/components/customers/CustomerDetailModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import { toast } from 'react-hot-toast';
-import axios from 'axios';
+import api from '@/lib/axios';
 import * as XLSX from 'xlsx';
 import { useSelector } from 'react-redux';
 
@@ -33,7 +33,7 @@ export default function CustomersPage() {
   const fetchCustomers = async (searchQuery = '', page = 1, tabStatus = activeTab) => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/api/customers', {
+      const res = await api.get('/api/customers', {
         params: { search: searchQuery, page, limit: 5, status: tabStatus },
         withCredentials: true,
       });
@@ -62,11 +62,11 @@ export default function CustomersPage() {
     try {
       if (id) {
         // Edit Mode
-        await axios.put(`http://localhost:5000/api/customers/${id}`, data, { withCredentials: true });
+        await api.put(`/api/customers/${id}`, data);
         toast.success("Cập nhật hồ sơ khách hàng thành công!");
       } else {
         // Create Mode
-        await axios.post('http://localhost:5000/api/customers', data, { withCredentials: true });
+        await api.post('/api/customers', data);
         toast.success("Thêm khách hàng thành công!");
       }
       await fetchCustomers(search, currentPage, activeTab); // Refresh sau khi lưu
@@ -86,13 +86,13 @@ export default function CustomersPage() {
     if (!customerToProcess || !confirmAction) return;
     try {
       if (confirmAction === 'delete') {
-        await axios.delete(`http://localhost:5000/api/customers/${customerToProcess}`, { withCredentials: true });
+        await api.delete(`/api/customers/${customerToProcess}`);
         toast.success("Vô hiệu hóa khách hàng thành công!");
       } else if (confirmAction === 'restore') {
-        await axios.patch(`http://localhost:5000/api/customers/${customerToProcess}/restore`, {}, { withCredentials: true });
+        await api.patch(`/api/customers/${customerToProcess}/restore`);
         toast.success("Khôi phục khách hàng thành công!");
       } else if (confirmAction === 'hard_delete') {
-        await axios.delete(`http://localhost:5000/api/customers/${customerToProcess}/hard`, { withCredentials: true });
+        await api.delete(`/api/customers/${customerToProcess}/hard`);
         toast.success("Đã xóa vĩnh viễn khách hàng!");
       }
       setIsConfirmOpen(false);
@@ -107,7 +107,7 @@ export default function CustomersPage() {
     try {
       setLoading(true);
       // Fetch all for the report
-      const res = await axios.get('http://localhost:5000/api/customers', {
+      const res = await api.get('/api/customers', {
         params: { search, limit: 10000, status: activeTab },
         withCredentials: true,
       });

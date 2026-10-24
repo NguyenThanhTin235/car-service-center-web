@@ -106,7 +106,7 @@ export default function ResetPasswordPage() {
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-30">
         <div className="flex justify-between items-center w-full px-6 py-3 max-w-7xl mx-auto">
-          <Link href="/home" className="flex items-center gap-3 group">
+          <Link href="/login" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-xl bg-[#0866FF] flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
               <span className="material-symbols-outlined text-white text-[22px]">directions_car</span>
             </div>
