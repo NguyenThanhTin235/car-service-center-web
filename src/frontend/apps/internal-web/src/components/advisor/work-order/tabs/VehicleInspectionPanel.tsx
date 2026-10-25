@@ -531,21 +531,6 @@ export default function VehicleInspectionPanel({
               <span className="material-symbols-outlined text-primary text-[16px]">format_list_bulleted</span>
               Danh sách ghi nhận kiểm tra ({findings.length})
             </span>
-            {!isReadOnly && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedFindingForJobModal(null);
-                  setSelectedJobForModal(null);
-                  setIsJobModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-primary/10 hover:bg-primary/20 text-primary text-[10.5px] font-bold transition-all shadow-xs cursor-pointer active:scale-95"
-                title="Tạo nhanh công việc trực tiếp vào phiếu sửa chữa"
-              >
-                <span className="material-symbols-outlined text-[14px]">add_circle</span>
-                Tạo job mới
-              </button>
-            )}
           </div>
 
           <div className="grid grid-cols-[30px_85px_110px_1fr_200px_46px_28px] gap-2 pb-2 border-b border-outline-variant/60 text-[10px] text-on-surface-variant font-bold uppercase tracking-wider items-center">
