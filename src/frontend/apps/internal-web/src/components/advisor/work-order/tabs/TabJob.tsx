@@ -18,6 +18,7 @@ import { employeeApi, EmployeeData } from '@/lib/api/employees';
 import toast from 'react-hot-toast';
 import AIJobPlannerModal from '../modals/AIJobPlannerModal';
 import CreateDispatchJobModal from '../modals/CreateDispatchJobModal';
+import AddPartModal from '../modals/AddPartModal';
 
 interface TabJobProps {
   workOrder?: WorkOrder;
@@ -156,6 +157,9 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
   const [manualJobModalOpen, setManualJobModalOpen] = useState(false);
   const [manualJobTargetService, setManualJobTargetService] = useState<WoService | null>(null);
   const [editingJob, setEditingJob] = useState<any | null>(null);
+
+  // Modal Khai báo phụ tùng cho công việc (UC-36)
+  const [addPartJobId, setAddPartJobId] = useState<number | null>(null);
 
   // Load danh sách nhân viên kỹ thuật
   useEffect(() => {
@@ -349,11 +353,14 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
     .map((s) => s.service_id)
     .filter((id): id is number => id !== null);
 
-  const filteredCatalog = catalog.filter(
-    (t) =>
-      !existingTemplateIds.includes(t.id) &&
-      t.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCatalog = catalog.filter((t) => {
+    if (existingTemplateIds.includes(t.id)) return false;
+    if (!searchTerm.trim()) return true;
+    const q = searchTerm.toLowerCase().trim();
+    const matchName = t.name.toLowerCase().includes(q);
+    const matchCategory = ((t as any).category?.name || '').toLowerCase().includes(q);
+    return matchName || matchCategory;
+  });
 
   // Thống kê tổng số lượng công việc & giờ định mức
   const { grandTotalJobs, grandTotalHours, grandAssignedJobs, grandCompletedJobs } = useMemo(() => {
@@ -792,10 +799,36 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                                         edit
                                       </span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-0.5">
+                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                       <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-surface-container text-on-surface-variant">
                                         {job.job_type?.name || 'Kỹ thuật'}
                                       </span>
+                                      {job.parts && job.parts.length > 0 ? (
+                                        <span
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isWOClosed) setAddPartJobId(job.id);
+                                          }}
+                                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20 ${!isWOClosed ? 'cursor-pointer hover:bg-primary/20' : ''}`}
+                                          title={!isWOClosed ? 'Nhấn để khai báo thêm phụ tùng' : ''}
+                                        >
+                                          <span className="material-symbols-outlined text-[11px]">construction</span>
+                                          {job.parts.length} phụ tùng
+                                        </span>
+                                      ) : !isWOClosed ? (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setAddPartJobId(job.id);
+                                          }}
+                                          className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-medium text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors cursor-pointer"
+                                          title="Khai báo phụ tùng"
+                                        >
+                                          <span className="material-symbols-outlined text-[11px]">add</span>
+                                          + Phụ tùng
+                                        </button>
+                                      ) : null}
                                       {job.description && (
                                         <span className="text-[11px] text-on-surface-variant truncate max-w-xs">
                                           {job.description}
@@ -918,6 +951,14 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                                           >
                                             <span className="material-symbols-outlined text-[15px]">edit</span>
                                           </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setAddPartJobId(job.id)}
+                                            className="p-1 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors cursor-pointer"
+                                            title="Khai báo phụ tùng cho công việc này"
+                                          >
+                                            <span className="material-symbols-outlined text-[15px]">construction</span>
+                                          </button>
                                           {job.status === 'PLANNED' && (
                                             <button
                                               type="button"
@@ -1038,6 +1079,20 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
             setManualJobTargetService(null);
             setEditingJob(null);
             setDispatchFinding(null);
+            if (refetchWO) refetchWO();
+          }}
+        />
+      )}
+
+      {/* MODAL KHAI BÁO PHỤ TÙNG (UC-36) */}
+      {workOrder && addPartJobId !== null && (
+        <AddPartModal
+          isOpen={addPartJobId !== null}
+          onClose={() => setAddPartJobId(null)}
+          workOrder={workOrder}
+          preselectedJobId={addPartJobId}
+          onSuccess={() => {
+            setAddPartJobId(null);
             if (refetchWO) refetchWO();
           }}
         />

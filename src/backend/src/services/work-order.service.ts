@@ -1275,6 +1275,253 @@ export class WorkOrderService {
       } : null,
     };
   }
+
+  /**
+   * UC-36: Lấy danh sách phụ tùng trong Work Order
+   */
+  async getWorkOrderParts(workOrderId: number) {
+    const wo = await prisma.workOrder.findUnique({
+      where: { id: workOrderId },
+      select: { id: true, status: true },
+    });
+    if (!wo) throw new Error('Không tìm thấy phiếu công việc.');
+
+    const parts = await prisma.jobPart.findMany({
+      where: {
+        job: {
+          wo_service: {
+            work_order_id: workOrderId,
+          },
+        },
+      },
+      include: {
+        job: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            wo_service: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        item: {
+          select: {
+            id: true,
+            sku: true,
+            selling_price: true,
+            on_hand: true,
+            part_category: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                item_type: true,
+                uom: { select: { id: true, name: true } },
+              },
+            },
+            brand: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { id: 'asc' },
+    });
+
+    return parts;
+  }
+
+  /**
+   * UC-36: Khai báo thêm phụ tùng vào một Job
+   */
+  async addPartToJob(workOrderId: number, jobId: number, data: {
+    item_id: number;
+    planned_quantity: number;
+    unit_price?: number;
+  }) {
+    // 1. Kiểm tra Work Order
+    const wo = await prisma.workOrder.findUnique({
+      where: { id: workOrderId },
+      select: { id: true, status: true },
+    });
+    if (!wo) throw new Error('Không tìm thấy phiếu công việc.');
+    if (['CLOSED', 'CANCELLED', 'RELEASED'].includes(wo.status)) {
+      throw new Error(`Phiếu công việc đang ở trạng thái ${wo.status}, không thể thêm phụ tùng.`);
+    }
+
+    // 2. Kiểm tra Job thuộc Work Order
+    const job = await prisma.job.findFirst({
+      where: {
+        id: jobId,
+        wo_service: {
+          work_order_id: workOrderId,
+        },
+      },
+      select: { id: true, name: true },
+    });
+    if (!job) throw new Error('Công việc không tồn tại hoặc không thuộc phiếu công việc này.');
+
+    // 3. Kiểm tra Inventory Item
+    const item = await prisma.inventoryItem.findUnique({
+      where: { id: data.item_id },
+      include: {
+        part_category: { include: { uom: true } },
+        brand: true,
+      },
+    });
+    if (!item) throw new Error('Phụ tùng / vật tư không tồn tại trong kho.');
+    if (!item.is_active) throw new Error('Mặt hàng này hiện đang ngưng hoạt động trong kho.');
+
+    const unitPrice = data.unit_price !== undefined ? data.unit_price : Number(item.selling_price);
+
+    // 4. Tạo JobPart record
+    const jobPart = await prisma.jobPart.create({
+      data: {
+        job_id: jobId,
+        item_id: data.item_id,
+        planned_quantity: data.planned_quantity,
+        unit_price: unitPrice,
+        status: 'PLANNED',
+      },
+      include: {
+        job: {
+          select: {
+            id: true,
+            name: true,
+            wo_service: { select: { id: true, name: true } },
+          },
+        },
+        item: {
+          select: {
+            id: true,
+            sku: true,
+            selling_price: true,
+            on_hand: true,
+            part_category: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                item_type: true,
+                uom: { select: { id: true, name: true } },
+              },
+            },
+            brand: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    return jobPart;
+  }
+
+  /**
+   * UC-36: Cập nhật thông tin phụ tùng trong Job
+   */
+  async updateJobPart(workOrderId: number, jobId: number, partId: number, data: {
+    planned_quantity?: number;
+    unit_price?: number;
+    status?: any;
+  }) {
+    const wo = await prisma.workOrder.findUnique({
+      where: { id: workOrderId },
+      select: { id: true, status: true },
+    });
+    if (!wo) throw new Error('Không tìm thấy phiếu công việc.');
+    if (['CLOSED', 'CANCELLED', 'RELEASED'].includes(wo.status)) {
+      throw new Error(`Phiếu công việc đang ở trạng thái ${wo.status}, không thể cập nhật phụ tùng.`);
+    }
+
+    const jobPart = await prisma.jobPart.findFirst({
+      where: {
+        id: partId,
+        job_id: jobId,
+        job: {
+          wo_service: {
+            work_order_id: workOrderId,
+          },
+        },
+      },
+    });
+    if (!jobPart) throw new Error('Không tìm thấy phụ tùng trong công việc này.');
+
+    const updated = await prisma.jobPart.update({
+      where: { id: partId },
+      data: {
+        ...(data.planned_quantity !== undefined && { planned_quantity: data.planned_quantity }),
+        ...(data.unit_price !== undefined && { unit_price: data.unit_price }),
+        ...(data.status !== undefined && { status: data.status }),
+      },
+      include: {
+        job: {
+          select: {
+            id: true,
+            name: true,
+            wo_service: { select: { id: true, name: true } },
+          },
+        },
+        item: {
+          select: {
+            id: true,
+            sku: true,
+            selling_price: true,
+            on_hand: true,
+            part_category: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                item_type: true,
+                uom: { select: { id: true, name: true } },
+              },
+            },
+            brand: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    return updated;
+  }
+
+  /**
+   * UC-36: Xóa phụ tùng khỏi Job
+   */
+  async removePartFromJob(workOrderId: number, jobId: number, partId: number) {
+    const wo = await prisma.workOrder.findUnique({
+      where: { id: workOrderId },
+      select: { id: true, status: true },
+    });
+    if (!wo) throw new Error('Không tìm thấy phiếu công việc.');
+    if (['CLOSED', 'CANCELLED', 'RELEASED'].includes(wo.status)) {
+      throw new Error(`Phiếu công việc đang ở trạng thái ${wo.status}, không thể xóa phụ tùng.`);
+    }
+
+    const jobPart = await prisma.jobPart.findFirst({
+      where: {
+        id: partId,
+        job_id: jobId,
+        job: {
+          wo_service: {
+            work_order_id: workOrderId,
+          },
+        },
+      },
+    });
+    if (!jobPart) throw new Error('Không tìm thấy phụ tùng cần xóa.');
+
+    if (Number(jobPart.issued_quantity) > 0) {
+      throw new Error('Phụ tùng này đã được xuất kho thi công, không thể xóa trực tiếp. Vui lòng thực hiện nhập trả kho trước.');
+    }
+
+    await prisma.jobPart.delete({
+      where: { id: partId },
+    });
+
+    return { success: true, message: 'Đã xóa phụ tùng khỏi công việc thành công' };
+  }
 }
 
 

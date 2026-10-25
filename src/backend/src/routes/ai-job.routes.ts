@@ -25,5 +25,13 @@ router.post(
   controller.applyJobs.bind(controller)
 );
 
+// Đề xuất phụ tùng và vật tư tiêu hao cho một công việc bằng RAG
+router.get(
+  '/:id/jobs/:jobId/ai-part-suggestions',
+  authenticate,
+  authorize('SA', 'MANAGER', 'ADMIN'),
+  controller.getPartSuggestions.bind(controller)
+);
+
 export default router;
 

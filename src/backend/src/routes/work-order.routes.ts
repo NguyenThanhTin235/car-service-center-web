@@ -16,6 +16,10 @@ import {
   reorderJobs,
   getMyTrackingOrders,
   getMyTrackingOrderDetail,
+  getWorkOrderParts,
+  addPartToJob,
+  updateJobPart,
+  removePartFromJob,
 } from '../controllers/work-order.controller';
 import { CheckInController } from '../controllers/check-in.controller';
 import { InspectionController } from '../controllers/inspection.controller';
@@ -65,6 +69,12 @@ router.delete('/:id/jobs/:jobId', authorize('SA', 'ADMIN'), deleteJob);
 router.put('/:id/services/:serviceId/reorder-jobs', authorize('SA', 'ADMIN'), reorderJobs);
 router.patch('/:id/services/:serviceId', authorize('SA', 'ADMIN'), updateServiceInWO);
 router.delete('/:id/services/:serviceId', authorize('SA', 'ADMIN'), removeServiceFromWO);
+
+// KHAI BÁO VÀ QUẢN LÝ PHỤ TÙNG / VẬT TƯ CHO CÔNG VIỆC (UC-36)
+router.get('/:id/parts', authorize('SA', 'DESK STAFF', 'ADMIN'), getWorkOrderParts);
+router.post('/:id/jobs/:jobId/parts', authorize('SA', 'ADMIN'), addPartToJob);
+router.patch('/:id/jobs/:jobId/parts/:partId', authorize('SA', 'ADMIN'), updateJobPart);
+router.delete('/:id/jobs/:jobId/parts/:partId', authorize('SA', 'ADMIN'), removePartFromJob);
 
 // LÊN KẾ HOẠCH CÔNG VIỆC TÍCH HỢP AI LLM (UC-34)
 router.use('/', aiJobRoutes);

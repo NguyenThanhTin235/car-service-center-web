@@ -6,12 +6,15 @@ const svc = new ServiceService();
 // UC-59: Lấy danh sách + UC-59 categories dropdown
 export const getServices = async (req: Request, res: Response) => {
   try {
-    const { search, categoryId, page, limit } = req.query;
+    const { search, categoryId, page, limit, all } = req.query;
+    const isAll = all === 'true' || limit === 'all' || limit === '0';
+    const limitNum = isAll ? undefined : (limit ? parseInt(limit as string) : 10);
     const result = await svc.getServices(
       search as string,
       categoryId ? parseInt(categoryId as string) : undefined,
       page ? parseInt(page as string) : 1,
-      limit ? parseInt(limit as string) : 10
+      limitNum,
+      isAll
     );
     res.json({ status: 'success', ...result });
   } catch (error: any) {
