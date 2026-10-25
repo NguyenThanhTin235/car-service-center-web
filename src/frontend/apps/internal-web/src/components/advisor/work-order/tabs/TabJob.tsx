@@ -22,6 +22,7 @@ import CreateDispatchJobModal from '../modals/CreateDispatchJobModal';
 interface TabJobProps {
   workOrder?: WorkOrder;
   refetchWO?: () => void;
+  isReadOnly?: boolean;
 }
 
 const SERVICE_STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: string }> = {
@@ -93,9 +94,9 @@ const getInitials = (name?: string | null) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
+export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: TabJobProps) {
   const services = workOrder?.services || [];
-  const isWOClosed = ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '');
+  const isWOClosed = isReadOnly || ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '');
 
   // Trích xuất toàn bộ findings từ kiểm tra xe
   const allFindings = workOrder?.inspections?.flatMap((i) => i.findings) || [];
@@ -968,7 +969,9 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
               : 'Chưa có hạng mục sửa chữa hay dịch vụ nào'}
           </h3>
           <p className="text-body-xs text-on-surface-variant mt-1.5 max-w-md leading-relaxed">
-            {unlinkedFindings.length > 0
+            {isReadOnly
+              ? 'Phiếu công việc này hiện chưa có hạng mục dịch vụ nào được thiết lập.'
+              : unlinkedFindings.length > 0
               ? 'Dùng tính năng AI để tự động gom vết lỗi thành Hạng mục thi công dứt điểm, hoặc thêm dịch vụ thủ công.'
               : 'Nhấn "Đề xuất bằng AI" để tự động lập kế hoạch theo xe hoặc chọn dịch vụ thủ công từ danh mục.'}
           </p>

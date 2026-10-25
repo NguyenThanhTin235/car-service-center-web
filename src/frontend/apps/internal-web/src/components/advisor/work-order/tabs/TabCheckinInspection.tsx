@@ -571,7 +571,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
         <div className="px-6 py-4 border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-low">
           <h3 className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider">TÌNH TRẠNG XE LÚC TIẾP NHẬN</h3>
           <div className="flex items-center gap-4">
-            {workOrder?.check_in && !isConfirmed && !isEditing && (
+            {workOrder?.check_in && !isConfirmed && !isEditing && !propIsReadOnly && (
               <button 
                 onClick={() => setIsEditing(true)}
                 className="flex items-center gap-1.5 text-primary hover:bg-primary/10 px-3 py-1 rounded-full text-label-sm font-bold transition-colors"
@@ -753,20 +753,22 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
                 <EvidenceUploader 
                   images={evidenceUrls} 
                   onChange={setEvidenceUrls} 
-                  readOnly={false} 
+                  readOnly={isReadOnly} 
                 />
               </div>
 
-              <div className="col-span-2 flex justify-end mt-4">
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="bg-primary hover:bg-[#523B4E] text-white px-6 py-2 rounded-md font-bold text-label-md flex items-center gap-2 transition-colors disabled:opacity-50"
-                >
-                  {isSaving ? <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> : <span className="material-symbols-outlined text-[18px]">save</span>}
-                  Lưu Thông Tin
-                </button>
-              </div>
+              {!isReadOnly && (
+                <div className="col-span-2 flex justify-end mt-4">
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="bg-primary hover:bg-[#523B4E] text-white px-6 py-2 rounded-md font-bold text-label-md flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    {isSaving ? <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> : <span className="material-symbols-outlined text-[18px]">save</span>}
+                    Lưu Thông Tin
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -820,14 +822,16 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
                 <p className="text-body-sm text-on-surface-variant mb-6">
                   Khách hàng đang ở quầy lễ tân. Đưa họ máy tính bảng — họ sẽ xem phần tổng hợp, đánh dấu đồng ý và ký tên.
                 </p>
-                <button 
-                  disabled={workOrder.check_in.status === 'CONFIRMED' || isConfirming}
-                  className="bg-[#62475E] hover:bg-[#4E394A] text-white px-4 py-2 rounded font-bold text-label-md flex items-center gap-2 transition-colors mb-6 shadow-sm disabled:opacity-50"
-                  onClick={handleConfirm}
-                >
-                  {isConfirming ? <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> : <span className="material-symbols-outlined text-[18px]">draw</span>}
-                  Mô phỏng Khách hàng Ký
-                </button>
+                {!propIsReadOnly && (
+                  <button 
+                    disabled={workOrder.check_in.status === 'CONFIRMED' || isConfirming}
+                    className="bg-[#62475E] hover:bg-[#4E394A] text-white px-4 py-2 rounded font-bold text-label-md flex items-center gap-2 transition-colors mb-6 shadow-sm disabled:opacity-50"
+                    onClick={handleConfirm}
+                  >
+                    {isConfirming ? <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> : <span className="material-symbols-outlined text-[18px]">draw</span>}
+                    Mô phỏng Khách hàng Ký
+                  </button>
+                )}
               </div>
             </div>
           </div>

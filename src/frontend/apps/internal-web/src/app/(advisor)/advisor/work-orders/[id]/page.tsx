@@ -128,6 +128,7 @@ export default function WorkOrderDetailPage() {
         vehicleName={`${workOrder.vehicle?.make || ''} ${workOrder.vehicle?.model || ''}`}
         customerName={workOrder.customer?.full_name || '...'}
         statusBadge={workOrder.status}
+        inlineStatus={true}
       />
 
       {/* Main Content Area: Resizable via state */}
