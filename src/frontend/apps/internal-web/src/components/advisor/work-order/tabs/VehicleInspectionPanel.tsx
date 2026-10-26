@@ -90,6 +90,13 @@ export default function VehicleInspectionPanel({
   const [selectedJobForModal, setSelectedJobForModal] = useState<any | null>(null);
   const [selectedFindingForJobModal, setSelectedFindingForJobModal] = useState<InspectionFinding | null>(null);
 
+  // Modal xác nhận xóa công việc thay cho alert/confirm
+  const [deleteJobConfirm, setDeleteJobConfirm] = useState<{
+    jobId: number;
+    jobName: string;
+  } | null>(null);
+  const [isDeletingJob, setIsDeletingJob] = useState(false);
+
   // Debounce timers for auto-saving notes
   const debounceTimers = useRef<Record<number, NodeJS.Timeout>>({});
 
@@ -183,14 +190,20 @@ export default function VehicleInspectionPanel({
     }
   };
 
-  const handleDeleteJobFromInspection = async (jobId: number, jobName: string) => {
-    if (!workOrder?.id) return;
-    const isConfirmed = window.confirm(`Bạn có chắc chắn muốn xóa công việc "${jobName}" khỏi phiếu sửa chữa?`);
-    if (!isConfirmed) return;
+  const promptDeleteJob = (jobId: number, jobName: string) => {
+    if (isReadOnly) return;
+    setDeleteJobConfirm({ jobId, jobName });
+  };
+
+  const handleExecuteDeleteJob = async () => {
+    if (!workOrder?.id || !deleteJobConfirm) return;
     try {
+      setIsDeletingJob(true);
+      const { jobId, jobName } = deleteJobConfirm;
       const res = await deleteJob(workOrder.id, jobId);
       if (res.success) {
         toast.success(`Đã xóa công việc "${jobName}"`);
+        setDeleteJobConfirm(null);
         loadInspection();
         if (refetchWO) refetchWO();
       } else {
@@ -198,6 +211,8 @@ export default function VehicleInspectionPanel({
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || err.message || 'Lỗi khi xóa công việc');
+    } finally {
+      setIsDeletingJob(false);
     }
   };
 
@@ -666,7 +681,7 @@ export default function VehicleInspectionPanel({
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDeleteJobFromInspection(job.id, job.name);
+                                    promptDeleteJob(job.id, job.name);
                                   }}
                                   className="p-0.5 rounded hover:bg-error/20 text-error/60 hover:text-error transition-colors shrink-0"
                                   title={`Xóa công việc "${job.name}"`}
@@ -1044,6 +1059,60 @@ export default function VehicleInspectionPanel({
           if (refetchWO) refetchWO();
         }}
       />
+
+      {/* Modal xác nhận xóa công việc chuyên nghiệp thay cho alert/confirm */}
+      {deleteJobConfirm && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-surface rounded-2xl shadow-2xl border border-outline-variant max-w-md w-full overflow-hidden flex flex-col animate-scale-in">
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-full bg-error-container text-on-error-container flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-[26px]">delete_forever</span>
+              </div>
+              <h3 className="text-title-md font-bold text-on-surface mb-2">
+                Xác nhận xóa công việc
+              </h3>
+              <p className="text-body-sm text-on-surface-variant leading-relaxed mb-4">
+                Bạn có chắc chắn muốn xóa công việc{' '}
+                <strong className="text-on-surface font-semibold">"{deleteJobConfirm.jobName}"</strong>{' '}
+                khỏi phiếu sửa chữa?
+              </p>
+              <div className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/40 text-xs text-on-surface-variant flex items-start gap-2">
+                <span className="material-symbols-outlined text-[16px] text-amber-600 shrink-0 mt-0.5">info</span>
+                <span>Công việc sẽ được gỡ khỏi danh sách hạng mục và hủy liên kết với các điểm đánh dấu trên xe.</span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-surface-container-lowest flex items-center justify-end gap-3 border-t border-outline-variant">
+              <button
+                type="button"
+                onClick={() => setDeleteJobConfirm(null)}
+                disabled={isDeletingJob}
+                className="px-4 py-2 text-label-md font-semibold text-secondary hover:bg-surface-container rounded-xl transition-colors border border-outline-variant disabled:opacity-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteDeleteJob}
+                disabled={isDeletingJob}
+                className="px-5 py-2 text-label-md font-bold text-white bg-error hover:bg-error/90 rounded-xl transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50"
+              >
+                {isDeletingJob ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
+                    Đang xóa...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                    Xác nhận xóa
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

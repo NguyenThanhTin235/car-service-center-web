@@ -100,10 +100,11 @@ export const createQuotation = async (req: Request, res: Response): Promise<void
     }
 
     const data = await quotationService.createQuotation(workOrderId, advisorUserId, req.body);
-    res.status(201).json({
+    const isDuplicate = Boolean((data as any)?.isDuplicate);
+    res.status(isDuplicate ? 200 : 201).json({
       success: true,
-      code: 201,
-      message: 'Tạo báo giá thành công',
+      code: isDuplicate ? 200 : 201,
+      message: isDuplicate ? (data as any).duplicateMessage : 'Tạo báo giá thành công',
       data,
       timestamp: Math.floor(Date.now() / 1000),
     });

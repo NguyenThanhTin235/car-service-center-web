@@ -15,6 +15,7 @@ import {
 } from '@/lib/api/quotation.api';
 import { WorkOrder } from '@/lib/api/work-order.api';
 import toast from 'react-hot-toast';
+import QuotationHistoryModal from '../modals/QuotationHistoryModal';
 
 interface TabQuotationProps {
   workOrder: WorkOrder;
@@ -47,6 +48,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
 
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   const fetchQuotations = useCallback(async () => {
     if (!workOrder?.id) return;
@@ -56,10 +58,11 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
       if (res.success && res.data) {
         setQuotations(res.data);
         if (res.data.length > 0) {
-          // Mặc định chọn báo giá mới nhất hoặc giữ nguyên id đang chọn
+          // Mặc định chọn Báo giá chính (gửi cuối cùng), hoặc báo giá đầu tiên
+          const mainQ = res.data.find((q) => q.isLatestSent) || res.data[0];
           setActiveQuotationId((prev) => {
             const exists = res.data.some((q) => q.id === prev);
-            return exists ? prev : res.data[0].id;
+            return exists ? prev : mainQ.id;
           });
         } else {
           setActiveQuotationId(null);
@@ -77,9 +80,14 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
     fetchQuotations();
   }, [fetchQuotations]);
 
+  // Báo giá chính (báo giá gửi cuối cùng hoặc báo giá đầu tiên)
+  const mainQuotation = useMemo(() => {
+    return quotations.find((q) => q.isLatestSent) || quotations[0] || null;
+  }, [quotations]);
+
   const activeQuotation = useMemo(() => {
-    return quotations.find((q) => q.id === activeQuotationId) || quotations[0] || null;
-  }, [quotations, activeQuotationId]);
+    return quotations.find((q) => q.id === activeQuotationId) || mainQuotation || null;
+  }, [quotations, activeQuotationId, mainQuotation]);
 
   // Phân nhóm dòng theo Service
   const groupedLines = useMemo(() => {
@@ -102,7 +110,14 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
         parentQuotationId: type === 'SUPPLEMENTARY' && activeQuotation ? activeQuotation.id : undefined,
       });
       if (res.success && res.data) {
-        toast.success(`Đã tạo ${type === 'PRIMARY' ? 'báo giá chính' : 'báo giá bổ sung'} thành công`);
+        if (res.data.isDuplicate) {
+          toast(res.data.duplicateMessage || `Nội dung kế hoạch trùng khớp với báo giá ${res.data.quotationNumber}. Đã mở lại báo giá này.`, {
+            icon: 'ℹ️',
+            duration: 4500,
+          });
+        } else {
+          toast.success(`Đã tạo ${type === 'PRIMARY' ? 'báo giá chính' : 'báo giá bổ sung'} thành công`);
+        }
         await fetchQuotations();
         setActiveQuotationId(res.data.id);
         refetchWO();
@@ -290,42 +305,85 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
     );
   }
 
-  const statusBadge = STATUS_BADGES[activeQuotation?.status || 'DRAFT'];
-
   return (
     <div className="space-y-6">
       {/* 1. Header Toolbar & Version Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container-lowest p-4 rounded-xl border border-outline-variant shadow-2xs">
         {/* Version Switcher Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-          {quotations.map((q) => {
-            const isActive = q.id === activeQuotationId;
-            return (
-              <button
-                key={q.id}
-                onClick={() => setActiveQuotationId(q.id)}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
-                  isActive
-                    ? 'bg-primary text-white shadow-2xs'
-                    : 'bg-surface-container-low hover:bg-surface-container text-on-surface-variant'
+          {/* Nút mở Lịch sử báo giá */}
+          <button
+            type="button"
+            onClick={() => setIsHistoryModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-high hover:bg-surface-container-highest text-primary rounded-lg text-xs font-bold transition-all whitespace-nowrap border border-primary/20 shadow-2xs hover:shadow-xs cursor-pointer shrink-0"
+            title="Xem lịch sử toàn bộ các phiên bản báo giá"
+          >
+            <span className="material-symbols-outlined text-[16px]">history</span>
+            <span>Lịch sử ({quotations.length})</span>
+          </button>
+
+          {/* Báo giá chính */}
+          {mainQuotation && (
+            <button
+              type="button"
+              onClick={() => setActiveQuotationId(mainQuotation.id)}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                activeQuotation?.id === mainQuotation.id
+                  ? 'bg-primary text-white shadow-2xs'
+                  : 'bg-surface-container-low hover:bg-surface-container text-on-surface-variant'
+              }`}
+            >
+              <span className="font-mono">{mainQuotation.quotationNumber}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded font-extrabold flex items-center gap-0.5 ${
+                  activeQuotation?.id === mainQuotation.id
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                }`}
+                title="Báo giá gửi cuối cùng cho khách hàng (Báo giá chính)"
+              >
+                <span className="material-symbols-outlined text-[11px]">star</span>
+                <span>Chính</span>
+              </span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${
+                  activeQuotation?.id === mainQuotation.id
+                    ? 'bg-white/20 text-white'
+                    : 'bg-surface-container-highest text-on-surface'
                 }`}
               >
-                <span>{q.quotationNumber}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-surface-container-highest text-on-surface'
-                }`}>
-                  {q.quotationType === 'PRIMARY' ? 'Chính' : 'Bổ sung'}
-                </span>
+                {mainQuotation.status === 'DRAFT'
+                  ? 'Nháp'
+                  : mainQuotation.status === 'SENT'
+                  ? 'Đã gửi'
+                  : mainQuotation.status === 'APPROVED'
+                  ? 'Đã duyệt'
+                  : 'Từ chối'}
+              </span>
+            </button>
+          )}
+
+          {/* Nếu đang xem một bản cũ từ Modal lịch sử */}
+          {activeQuotation && mainQuotation && activeQuotation.id !== mainQuotation.id && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs font-semibold whitespace-nowrap">
+              <span className="material-symbols-outlined text-[15px] text-amber-600">history</span>
+              <span>Đang xem bản cũ: <b className="font-mono">{activeQuotation.quotationNumber}</b></span>
+              <button
+                type="button"
+                onClick={() => setActiveQuotationId(mainQuotation.id)}
+                className="ml-1 text-primary hover:underline font-bold cursor-pointer"
+              >
+                (Về bản chính)
               </button>
-            );
-          })}
+            </div>
+          )}
 
           {/* Nút thêm báo giá bổ sung */}
           {!isReadOnly && activeQuotation?.status === 'APPROVED' && (
             <button
               onClick={() => handleCreateQuotation('SUPPLEMENTARY')}
               disabled={actionLoading}
-              className="inline-flex items-center gap-1 px-3 py-1.5 border border-dashed border-primary text-primary hover:bg-primary/5 rounded-lg text-xs font-semibold whitespace-nowrap"
+              className="inline-flex items-center gap-1 px-3 py-1.5 border border-dashed border-primary text-primary hover:bg-primary/5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer"
               title="Tạo báo giá bổ sung cho các hạng mục phát sinh"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
@@ -334,15 +392,8 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
           )}
         </div>
 
-        {/* Right Actions: Print & Status Badge */}
-        <div className="flex items-center gap-3">
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${statusBadge.bg} ${statusBadge.text}`}>
-            <span className="material-symbols-outlined text-[16px]">{statusBadge.icon}</span>
-            <span>{statusBadge.label}</span>
-          </div>
-
-          {/* Action Buttons: Print & Download PDF */}
-          <div className="flex items-center gap-1.5">
+        {/* Right Actions: Print & Download PDF */}
+        <div className="flex items-center gap-1.5">
             <button
               onClick={() => handleExportPdf('print')}
               disabled={isExportingPdf}
@@ -366,37 +417,8 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Thông báo nếu Báo giá đã được duyệt */}
-      {activeQuotation?.status === 'APPROVED' && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded-xl text-emerald-800 dark:text-emerald-200 text-sm shadow-xs animate-in fade-in duration-200">
-          <div className="flex items-start gap-3">
-            <span className="material-symbols-outlined text-[24px] text-emerald-600 shrink-0 mt-0.5">verified</span>
-            <div>
-              <div className="font-bold flex items-center gap-2">
-                <span>Khách hàng đã phê duyệt báo giá này!</span>
-                <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase rounded bg-emerald-600 text-white">
-                  ĐÃ KHÓA
-                </span>
-              </div>
-              <div className="mt-1 text-xs opacity-90">
-                Toàn bộ phụ tùng đã được giữ kho (RESERVED). Bạn có thể chuyển sang Tab Công việc để bắt đầu thi công.
-              </div>
-            </div>
-          </div>
-          {setActiveTab && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('job')}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all shrink-0 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
-              <span>Chuyển sang Tab Công việc để Bắt đầu →</span>
-            </button>
-          )}
-        </div>
-      )}
+
 
       {/* Thông báo nếu Báo giá bị từ chối */}
       {activeQuotation?.status === 'REJECTED' && (
@@ -887,6 +909,16 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
           </div>
         </div>
       )}
+
+      {/* MODAL LỊCH SỬ BÁO GIÁ */}
+      <QuotationHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        quotations={quotations}
+        activeQuotationId={activeQuotationId}
+        onSelectQuotation={(id) => setActiveQuotationId(id)}
+        workOrder={workOrder}
+      />
     </div>
   );
 }

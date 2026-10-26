@@ -67,7 +67,23 @@ export class QuotationService {
       orderBy: { created_at: 'desc' },
     });
 
-    return quotations.map((q) => this.formatQuotation(q));
+    // Xác định báo giá gửi cuối cùng cho khách hàng (Báo giá chính)
+    const sentQuotations = quotations.filter(
+      (q) => q.sent_at || ['SENT', 'APPROVED', 'REJECTED'].includes(q.status)
+    );
+    sentQuotations.sort((a, b) => {
+      const timeA = a.sent_at ? new Date(a.sent_at).getTime() : new Date(a.created_at).getTime();
+      const timeB = b.sent_at ? new Date(b.sent_at).getTime() : new Date(b.created_at).getTime();
+      return timeB - timeA;
+    });
+
+    const latestSentId = sentQuotations.length > 0 ? sentQuotations[0].id : null;
+
+    return quotations.map((q) => ({
+      ...this.formatQuotation(q),
+      isLatestSent: q.id === latestSentId,
+      isDraft: q.status === 'DRAFT',
+    }));
   }
 
   /**
@@ -273,16 +289,95 @@ export class QuotationService {
         discountPercent: dto.discountPercent,
       });
 
-      // 4. Sinh mã báo giá duy nhất
-      const existingCount = await tx.quotation.count({
+      // 4. Kiểm tra trùng lặp: Nếu nội dung các dòng và tổng tiền giống hệt một báo giá cũ thì không tạo mới
+      const existingQuotations = await tx.quotation.findMany({
         where: { work_order_id: workOrderId },
+        include: {
+          created_by: {
+            select: { id: true, full_name: true, phone: true },
+          },
+          approved_by: {
+            select: { id: true, full_name: true },
+          },
+          lines: {
+            orderBy: { sort_order: 'asc' },
+            include: {
+              wo_service: { select: { id: true, name: true, pricing_type: true } },
+              job: { select: { id: true, name: true } },
+              job_labour: { select: { id: true, description: true } },
+              job_part: {
+                select: {
+                  id: true,
+                  status: true,
+                  item: {
+                    select: {
+                      id: true,
+                      sku: true,
+                      part_category: { select: { name: true } },
+                      brand: { select: { name: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { id: 'desc' },
       });
+
+      const getLineSignature = (l: {
+        lineType?: string; line_type?: string;
+        woServiceId?: number | null; wo_service_id?: number | null;
+        jobId?: number | null; job_id?: number | null;
+        jobLabourId?: number | null; job_labour_id?: number | null;
+        jobPartId?: number | null; job_part_id?: number | null;
+        quantity: number | any;
+        unitPrice?: number | any; snapshot_unit_price?: number | any;
+      }) => {
+        const type = l.lineType || l.line_type || '';
+        const sId = l.woServiceId ?? l.wo_service_id ?? 0;
+        const jId = l.jobId ?? l.job_id ?? 0;
+        const lId = l.jobLabourId ?? l.job_labour_id ?? 0;
+        const pId = l.jobPartId ?? l.job_part_id ?? 0;
+        const qty = Number(l.quantity || 0).toFixed(2);
+        const price = Number(l.unitPrice ?? l.snapshot_unit_price ?? 0).toFixed(2);
+        return `${type}|${sId}|${jId}|${lId}|${pId}|${qty}|${price}`;
+      };
+
+      const currentSignatures = totals.lines.map(getLineSignature).sort().join(';;');
+
+      for (const eq of existingQuotations) {
+        const eqGrandTotal = Number(eq.grand_total);
+        const eqSubtotal = Number(eq.subtotal);
+        const eqDiscount = Number(eq.discount_amount);
+
+        if (
+          Math.abs(eqGrandTotal - totals.grandTotal) < 0.01 &&
+          Math.abs(eqSubtotal - totals.subtotal) < 0.01 &&
+          Math.abs(eqDiscount - totals.discountAmount) < 0.01 &&
+          eq.lines.length === totals.lines.length
+        ) {
+          const eqSignatures = eq.lines.map(getLineSignature).sort().join(';;');
+          if (eqSignatures === currentSignatures) {
+            // Trùng khớp hoàn toàn với một báo giá cũ -> Thông báo và hiển thị lại báo giá cũ, không tạo mới
+            const formatted = this.formatQuotation(eq);
+            return {
+              ...formatted,
+              isDuplicate: true,
+              duplicateMessage: `Kế hoạch dịch vụ và phụ tùng không có thay đổi so với báo giá ${eq.quotation_number}. Hệ thống tự động mở lại báo giá này thay vì tạo mới.`,
+            };
+          }
+        }
+      }
+
+      // 5. Sinh mã báo giá duy nhất nếu có thay đổi
+      const existingCount = existingQuotations.length;
       const quotationNumber = `QUO-${wo.wo_number}-${String(existingCount + 1).padStart(2, '0')}`;
 
       const quotationType: QuotationType =
         dto.quotationType || (existingCount === 0 ? 'PRIMARY' : 'SUPPLEMENTARY');
 
-      // 5. Lưu vào Database
+      // 6. Lưu vào Database
       const quotation = await tx.quotation.create({
         data: {
           work_order_id: workOrderId,
@@ -466,18 +561,23 @@ export class QuotationService {
               <p>Cố vấn dịch vụ đã hoàn tất lập dự toán kỹ thuật và kính gửi Quý khách Bảng báo giá chi tiết cho xe <b>${quotation.work_order.vehicle.license_plate}</b> (${quotation.work_order.vehicle.make} ${quotation.work_order.vehicle.model}).</p>
               
               <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin: 20px 0;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                  <span style="color: #64748b; font-size: 13px;">Số báo giá:</span>
-                  <span style="font-weight: bold; color: #0f172a; font-size: 13px;">${updated.quotation_number}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                  <span style="color: #64748b; font-size: 13px;">Chính sách thuế:</span>
-                  <span style="font-weight: 600; color: #15803d; font-size: 13px;">0% VAT (Không thu thuế)</span>
-                </div>
-                <div style="border-top: 1px dashed #cbd5e1; margin: 10px 0; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-                  <span style="color: #1e40af; font-size: 14px; font-weight: bold;">TỔNG THANH TOÁN:</span>
-                  <span style="font-size: 18px; font-weight: bold; color: #1e40af;">${grandTotalFormatted} đ</span>
-                </div>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="color: #64748b; font-size: 13px; padding: 5px 0; text-align: left; vertical-align: middle;">Số báo giá:</td>
+                    <td style="font-weight: bold; color: #0f172a; font-size: 13px; padding: 5px 0; text-align: right; vertical-align: middle; font-family: monospace, sans-serif;">${updated.quotation_number}</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #64748b; font-size: 13px; padding: 5px 0; text-align: left; vertical-align: middle;">Chính sách thuế:</td>
+                    <td style="font-weight: 600; color: #15803d; font-size: 13px; padding: 5px 0; text-align: right; vertical-align: middle;">0% VAT (Không thu thuế)</td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" style="padding-top: 10px; border-bottom: 1px dashed #cbd5e1;"></td>
+                  </tr>
+                  <tr>
+                    <td style="color: #1e40af; font-size: 14px; font-weight: bold; padding: 12px 0 2px 0; text-align: left; vertical-align: middle;">TỔNG THANH TOÁN:</td>
+                    <td style="font-size: 20px; font-weight: bold; color: #1e40af; padding: 12px 0 2px 0; text-align: right; vertical-align: middle;">${grandTotalFormatted} đ</td>
+                  </tr>
+                </table>
               </div>
 
               <div style="text-align: center; margin: 28px 0;">
@@ -567,6 +667,18 @@ export class QuotationService {
           status: 'APPROVED',
         },
       });
+
+      // 4. Khóa và xác nhận thông tin tiếp nhận xe (check-in) khi khách hàng phê duyệt báo giá
+      if (quotation.work_order_id) {
+        await tx.checkIn.updateMany({
+          where: { work_order_id: quotation.work_order_id },
+          data: {
+            status: 'CONFIRMED',
+            confirmed_at: now,
+            confirmed_by_customer_id: approverRole === 'CUSTOMER' ? approverUserId : undefined,
+          },
+        });
+      }
 
       return this.formatQuotation(updatedQuotation);
     });

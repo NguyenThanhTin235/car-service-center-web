@@ -51,6 +51,8 @@ export default function CustomerQuotationModal({
   const [showRejectForm, setShowRejectForm] = useState<boolean>(false);
   const [rejectReason, setRejectReason] = useState<string>('');
   const [rejectError, setRejectError] = useState<string>('');
+  const [isConfirmApproveOpen, setIsConfirmApproveOpen] = useState<boolean>(false);
+  const [approveError, setApproveError] = useState<string>('');
 
   if (!isOpen) return null;
 
@@ -70,19 +72,17 @@ export default function CustomerQuotationModal({
       .replace(/Phân khúc xe:\s*TRUCK/gi, 'Phân khúc xe: Bán tải');
   };
 
-  // Xử lý duyệt báo giá
-  const handleApprove = async () => {
-    if (!window.confirm('Quý khách xác nhận đồng ý với bảng báo giá này để xưởng tiến hành thực hiện?')) {
-      return;
-    }
-
+  // Xử lý phê duyệt báo giá
+  const handleExecuteApprove = async () => {
     try {
       setLoading(true);
+      setApproveError('');
       await approveQuotation(quotation.id);
+      setIsConfirmApproveOpen(false);
       onActionSuccess('Quý khách đã phê duyệt báo giá thành công! Kỹ thuật viên sẽ bắt đầu thực hiện.');
       onClose();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra khi phê duyệt báo giá');
+      setApproveError(err.response?.data?.message || 'Có lỗi xảy ra khi phê duyệt báo giá');
     } finally {
       setLoading(false);
     }
@@ -462,12 +462,15 @@ export default function CustomerQuotationModal({
 
                 <button
                   type="button"
-                  onClick={handleApprove}
+                  onClick={() => {
+                    setApproveError('');
+                    setIsConfirmApproveOpen(true);
+                  }}
                   disabled={loading}
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-on-primary text-xs sm:text-sm font-bold transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-on-primary text-xs sm:text-sm font-bold transition-all shadow-md active:scale-[0.98] disabled:opacity-50 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                  <span>{loading ? 'Đang xử lý...' : 'Đồng ý & Phê duyệt thực hiện'}</span>
+                  <span>Đồng ý & Phê duyệt thực hiện</span>
                 </button>
               </>
             )}
@@ -484,6 +487,87 @@ export default function CustomerQuotationModal({
           </div>
         </div>
 
+      {/* ================= MODAL XÁC NHẬN PHÊ DUYỆT BÁO GIÁ ================= */}
+      {isConfirmApproveOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-surface-container-lowest rounded-3xl border border-outline-variant shadow-2xl p-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+              <span className="material-symbols-outlined text-[32px]">verified</span>
+            </div>
+
+            <div>
+              <h3 className="text-title-md font-bold text-on-surface">Xác nhận phê duyệt báo giá</h3>
+              <p className="text-body-xs text-on-surface-variant mt-1">
+                Quý khách xác nhận đồng ý với bảng báo giá này để xưởng tiến hành thi công sửa chữa?
+              </p>
+            </div>
+
+            <div className="bg-surface-container-low rounded-2xl p-4 text-left space-y-2 border border-outline-variant/60 text-xs">
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant">Mã số báo giá:</span>
+                <span className="font-mono font-bold text-on-surface">{quotation.quotationNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant">Phương tiện:</span>
+                <span className="font-semibold text-on-surface">{vehiclePlate} ({vehicleModel})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant">Cố vấn phụ trách:</span>
+                <span className="font-semibold text-on-surface">{advisorName}</span>
+              </div>
+              <div className="border-t border-outline-variant/60 pt-2 flex justify-between items-center">
+                <span className="font-bold text-on-surface">Tổng thanh toán:</span>
+                <span className="font-mono font-extrabold text-base text-primary">
+                  {quotation.grandTotal.toLocaleString('vi-VN')} đ
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-800 dark:text-emerald-300 text-[11px] text-left flex items-start gap-2">
+              <span className="material-symbols-outlined text-[16px] text-emerald-600 shrink-0 mt-0.5">check</span>
+              <span>Toàn bộ chi phí đã được niêm yết trọn gói, cam kết 0% VAT và không phát sinh phụ phí ngoài kế hoạch.</span>
+            </div>
+
+            {approveError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs text-left">
+                {approveError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  setIsConfirmApproveOpen(false);
+                  setApproveError('');
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-outline-variant text-on-surface hover:bg-surface-container font-semibold text-xs transition-colors cursor-pointer"
+              >
+                Xem lại
+              </button>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handleExecuteApprove}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Đang phê duyệt...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                    <span>Xác nhận đồng ý</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

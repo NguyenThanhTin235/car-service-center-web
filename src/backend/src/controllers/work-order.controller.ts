@@ -850,3 +850,137 @@ export const startWorkOrder = async (req: Request, res: Response): Promise<void>
   }
 };
 
+/**
+ * POST /api/work-orders/:id/services/:serviceId/start
+ * Bắt đầu thi công cho MỘT hạng mục dịch vụ cụ thể
+ */
+export const startService = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const serviceId = Number(req.params.serviceId);
+    const userId = req.user?.id;
+    const userRole = req.user?.roles?.[0] || (req.user as any)?.role || 'SA';
+
+    if (isNaN(workOrderId) || isNaN(serviceId)) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Mã phiếu công việc hoặc mã hạng mục không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        code: 401,
+        message: 'Không xác định được danh tính người thực hiện',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const result = await workOrderService.startService(workOrderId, serviceId, userId, userRole);
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: `Đã kích hoạt bắt đầu thi công hạng mục "${result.name}" thành công`,
+      data: result,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 400).json({
+      success: false,
+      code: error.statusCode || 400,
+      message: error.message || 'Lỗi khi bắt đầu thi công hạng mục',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * PATCH /api/work-orders/:id/services/:serviceId/status
+ * Cập nhật trạng thái hạng mục dịch vụ
+ */
+export const updateServiceStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const serviceId = Number(req.params.serviceId);
+    const { status } = req.body;
+
+    if (!['PENDING', 'IN_PROGRESS', 'COMPLETED'].includes(status)) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Trạng thái hạng mục không hợp lệ (PENDING, IN_PROGRESS, COMPLETED)',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const updated = await workOrderService.updateServiceStatus(workOrderId, serviceId, status);
+    res.json({
+      success: true,
+      code: 200,
+      message: 'Cập nhật trạng thái hạng mục thành công',
+      data: updated,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      code: 400,
+      message: error.message || 'Lỗi khi cập nhật trạng thái hạng mục',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * PATCH /api/work-orders/:id/jobs/:jobId/status
+ * Cập nhật trạng thái công việc
+ */
+export const updateJobStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const jobId = Number(req.params.jobId);
+    const { status } = req.body;
+
+    if (!['PLANNED', 'IN_PROGRESS', 'COMPLETED', 'REWORK', 'PASSED'].includes(status)) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Trạng thái công việc không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const updated = await workOrderService.updateJobStatus(workOrderId, jobId, status);
+    res.json({
+      success: true,
+      code: 200,
+      message: 'Cập nhật trạng thái công việc thành công',
+      data: updated,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      code: 400,
+      message: error.message || 'Lỗi khi cập nhật trạng thái công việc',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+

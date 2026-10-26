@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { WorkOrder, saveCheckIn, confirmCheckIn, addServiceToWO, removeServiceFromWO, getServiceCatalog, ServiceTemplateOption } from '@/lib/api/work-order.api';
+import { WorkOrder, saveCheckIn, addServiceToWO, removeServiceFromWO, getServiceCatalog, ServiceTemplateOption } from '@/lib/api/work-order.api';
 import toast from 'react-hot-toast';
 import EvidenceUploader from './EvidenceUploader';
 import VehicleInspectionPanel from './VehicleInspectionPanel';
@@ -260,7 +260,6 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
   const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
   
   const [isSaving, setIsSaving] = useState(false);
-  const [isConfirming, setIsConfirming] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(!workOrder?.check_in);
 
@@ -344,26 +343,9 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
     }
   };
 
-  const handleConfirm = async () => {
-    if (!workOrder) return;
-    try {
-      setIsConfirming(true);
-      const res = await confirmCheckIn(workOrder.id);
-      if (res.success) {
-        toast.success('Khách hàng đã ký xác nhận thành công!');
-        if (refetchWO) refetchWO();
-      } else {
-        toast.error(res.message || 'Lỗi khi xác nhận');
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi xác nhận');
-    } finally {
-      setIsConfirming(false);
-    }
-  };
-
-  const isConfirmed = workOrder?.check_in?.status === 'CONFIRMED';
-  const isReadOnly = propIsReadOnly || !isEditing || isConfirmed;
+  // Khách hàng chỉ xác nhận 1 lần khi duyệt báo giá -> Sau khi duyệt báo giá sẽ khóa thông tin tiếp nhận
+  const isCustomerApproved = ['APPROVED', 'IN_PROGRESS', 'BILLING_REQUESTED', 'FINANCIAL_CLEARED', 'RELEASED', 'CLOSED'].includes(workOrder?.status || '') || workOrder?.check_in?.status === 'CONFIRMED';
+  const isReadOnly = propIsReadOnly || !isEditing || isCustomerApproved;
   const showRejectReason = workOrder?.check_in?.status === 'REJECTED' || workOrder?.check_in?.status === 'REVISION_REQUIRED';
 
   return (
@@ -571,18 +553,22 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
         <div className="px-6 py-4 border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-low">
           <h3 className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider">TÌNH TRẠNG XE LÚC TIẾP NHẬN</h3>
           <div className="flex items-center gap-4">
-            {workOrder?.check_in && !isConfirmed && !isEditing && !propIsReadOnly && (
+            {workOrder?.check_in && !isCustomerApproved && !isEditing && !propIsReadOnly && (
               <button 
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-1.5 text-primary hover:bg-primary/10 px-3 py-1 rounded-full text-label-sm font-bold transition-colors"
+                className="flex items-center gap-1.5 text-primary hover:bg-primary/10 px-3 py-1 rounded-full text-label-sm font-bold transition-colors border border-primary/20"
               >
                 <span className="material-symbols-outlined text-[18px]">edit</span>
-                Sửa
+                Sửa thông tin
               </button>
             )}
             {workOrder?.check_in && (
-              <span className={`px-2 py-1 text-label-sm font-bold rounded ${workOrder.check_in.status === 'CONFIRMED' ? 'bg-[#D4EDDA] text-[#155724]' : workOrder.check_in.status === 'PENDING_CONFIRMATION' ? 'bg-[#FFF3CD] text-[#856404]' : 'bg-[#F8D7DA] text-[#721C24]'}`}>
-                {workOrder.check_in.status === 'CONFIRMED' ? 'Đã ký xác nhận' : workOrder.check_in.status === 'PENDING_CONFIRMATION' ? 'Chờ KH xác nhận' : 'KH từ chối'}
+              <span className={`px-2.5 py-1 text-label-sm font-bold rounded-full ${
+                isCustomerApproved
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  : 'bg-amber-100 text-amber-800 border border-amber-300'
+              }`}>
+                {isCustomerApproved ? 'Đã khóa (Khách đã duyệt báo giá)' : 'Có thể chỉnh sửa (Chưa duyệt báo giá)'}
               </span>
             )}
           </div>
@@ -758,7 +744,16 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
               </div>
 
               {!isReadOnly && (
-                <div className="col-span-2 flex justify-end mt-4">
+                <div className="col-span-2 flex justify-end gap-3 mt-4">
+                  {workOrder?.check_in && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(false)}
+                      className="px-4 py-2 rounded-md font-bold text-label-md border border-outline text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                    >
+                      Hủy bỏ
+                    </button>
+                  )}
                   <button
                     onClick={handleSave}
                     disabled={isSaving}
@@ -783,60 +778,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
         />
       )}
 
-      {/* Customer Sign-off */}
-      {workOrder?.check_in && (
-        <div>
-          <h3 className="text-body-md font-bold text-primary mb-1">Khách hàng ký xác nhận <span className="text-on-surface-variant font-normal text-body-sm">— cố vấn chuẩn bị, khách hàng thực hiện</span></h3>
-          
-          <div className="bg-[#FAF5F0] border border-[#E6D5C3] text-[#5C4326] p-4 rounded-lg flex items-start gap-3 shadow-sm mb-6 mt-4">
-            <span className="bg-[#5C4326] text-white text-label-sm font-bold px-1.5 py-0.5 rounded">SIGN</span>
-            <p className="text-body-sm leading-relaxed">
-              Cố vấn dịch vụ điền các thông tin tiếp nhận ở trên. <strong>Việc đồng ý và ký tên do chính khách hàng thực hiện</strong> — ký trực tiếp trên máy tính bảng hoặc gửi link về điện thoại của khách để ký từ xa (kéo xe / vắng mặt).
-            </p>
-          </div>
 
-          <div className="grid grid-cols-2 gap-8 items-start border-t border-outline-variant/40 pt-6">
-            <div>
-              <h4 className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">KHÁCH HÀNG ĐỒNG Ý VỚI</h4>
-              <div className="flex flex-col gap-3 mb-6">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input type="checkbox" checked readOnly className="mt-1 w-4 h-4 rounded border-outline text-primary focus:ring-primary" />
-                  <span className="text-body-sm text-on-surface">Xác nhận <strong>các đánh dấu về tình trạng xe</strong> lúc tiếp nhận.</span>
-                </label>
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input type="checkbox" checked readOnly className="mt-1 w-4 h-4 rounded border-outline text-primary focus:ring-primary" />
-                  <span className="text-body-sm text-on-surface">Đọc và chấp nhận <strong>Điều khoản & Điều kiện (v3 - 2026)</strong>.</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-xl overflow-hidden shadow-sm">
-              <div className="flex items-center justify-between bg-surface-container-low px-4 py-3 border-b border-outline-variant/40">
-                <span className="font-bold text-body-md text-on-surface">Gửi xác nhận</span>
-                <div className="flex items-center gap-1.5 text-body-sm text-on-surface-variant font-bold">
-                  <div className={`w-2 h-2 rounded-full ${workOrder.check_in.status === 'CONFIRMED' ? 'bg-[#28A745]' : 'bg-outline'}`}></div> 
-                  {workOrder.check_in.status === 'CONFIRMED' ? 'Đã ký' : 'Chưa ký'}
-                </div>
-              </div>
-              <div className="p-6">
-                <p className="text-body-sm text-on-surface-variant mb-6">
-                  Khách hàng đang ở quầy lễ tân. Đưa họ máy tính bảng — họ sẽ xem phần tổng hợp, đánh dấu đồng ý và ký tên.
-                </p>
-                {!propIsReadOnly && (
-                  <button 
-                    disabled={workOrder.check_in.status === 'CONFIRMED' || isConfirming}
-                    className="bg-[#62475E] hover:bg-[#4E394A] text-white px-4 py-2 rounded font-bold text-label-md flex items-center gap-2 transition-colors mb-6 shadow-sm disabled:opacity-50"
-                    onClick={handleConfirm}
-                  >
-                    {isConfirming ? <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> : <span className="material-symbols-outlined text-[18px]">draw</span>}
-                    Mô phỏng Khách hàng Ký
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Image Preview Modal */}
       {previewImage && (

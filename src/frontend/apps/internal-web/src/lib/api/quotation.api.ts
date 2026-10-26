@@ -52,6 +52,10 @@ export interface Quotation {
   updatedAt: string;
   lines: QuotationLine[];
   workOrder?: any;
+  isLatestSent?: boolean;
+  isDraft?: boolean;
+  isDuplicate?: boolean;
+  duplicateMessage?: string;
 }
 
 export interface CreateQuotationPayload {

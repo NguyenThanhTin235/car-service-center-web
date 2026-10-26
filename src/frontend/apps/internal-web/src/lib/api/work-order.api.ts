@@ -669,6 +669,42 @@ export async function startWorkOrder(workOrderId: number): Promise<ApiResponse<W
   return response.data;
 }
 
+/**
+ * Bắt đầu thi công cho riêng MỘT hạng mục dịch vụ cụ thể
+ */
+export async function startService(
+  workOrderId: number,
+  serviceId: number
+): Promise<ApiResponse<WoService>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/services/${serviceId}/start`);
+  return response.data;
+}
+
+/**
+ * Cập nhật trạng thái hạng mục dịch vụ (WoService)
+ */
+export async function updateServiceStatus(
+  workOrderId: number,
+  serviceId: number,
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
+): Promise<ApiResponse<WoService>> {
+  const response = await api.patch(`/api/work-orders/${workOrderId}/services/${serviceId}/status`, { status });
+  return response.data;
+}
+
+/**
+ * Cập nhật trạng thái công việc (Job)
+ */
+export async function updateJobStatus(
+  workOrderId: number,
+  jobId: number,
+  status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'REWORK' | 'PASSED'
+): Promise<ApiResponse<WoJob>> {
+  const response = await api.patch(`/api/work-orders/${workOrderId}/jobs/${jobId}/status`, { status });
+  return response.data;
+}
+
+
 
 
 

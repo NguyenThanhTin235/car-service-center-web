@@ -788,6 +788,8 @@ export class WorkOrderService {
         },
       });
 
+      await this.syncServiceStatusFromJobs(tx, targetServiceId);
+
       return {
         service_id: targetServiceId,
         job: fullJob,
@@ -954,6 +956,9 @@ export class WorkOrderService {
 
       // 3. Xóa chính job
       await tx.job.delete({ where: { id: jobId } });
+
+      // Đồng bộ trạng thái của WoService cha
+      await this.syncServiceStatusFromJobs(tx, job.wo_service_id);
 
       return { success: true, message: `Đã xóa công việc "${job.name}"` };
     });
@@ -1270,12 +1275,16 @@ export class WorkOrderService {
       })),
       findings: publicFindings,
       checkIn: wo.check_in ? {
+        id: wo.check_in.id,
         mileage: wo.check_in.mileage,
         fuelLevel: wo.check_in.fuel_level,
         complaint: wo.check_in.complaint,
+        belongings: wo.check_in.belongings,
         exteriorCondition: wo.check_in.exterior_condition,
+        status: wo.check_in.status,
         confirmedAt: wo.check_in.confirmed_at,
         evidenceUrls: wo.check_in.evidence_urls,
+        createdAt: wo.check_in.created_at,
       } : null,
       steps,
       currentStep,
@@ -1647,7 +1656,21 @@ export class WorkOrderService {
         },
       });
 
-      // 3. Gửi email thông báo cho khách hàng
+      // 3. Chuyển tất cả Job thuộc các WoService của Work Order đang PLANNED sang IN_PROGRESS
+      const serviceIds = (wo.services || []).map((s) => s.id);
+      if (serviceIds.length > 0) {
+        await tx.job.updateMany({
+          where: {
+            wo_service_id: { in: serviceIds },
+            status: 'PLANNED',
+          },
+          data: {
+            status: 'IN_PROGRESS',
+          },
+        });
+      }
+
+      // 4. Gửi email thông báo cho khách hàng
       if (wo.customer?.email) {
         const trackingLink = `http://localhost:3000/tracking`;
         const emailHtml = `
@@ -1688,6 +1711,336 @@ export class WorkOrderService {
       }
 
       return updatedWo;
+    });
+  }
+
+  /**
+   * Cập nhật trạng thái hạng mục dịch vụ (WoService)
+   * Trạng thái: PENDING | IN_PROGRESS | COMPLETED
+   */
+  /**
+   * Bắt đầu thi công cho MỘT hạng mục dịch vụ cụ thể (WoService)
+   * Kích hoạt:
+   * - Nếu WorkOrder đang APPROVED -> tự động chuyển sang IN_PROGRESS và gửi email thông báo khách hàng
+   * - WoService được chọn chuyển sang IN_PROGRESS
+   * - Các Job thuộc WoService này có status PLANNED chuyển sang IN_PROGRESS
+   * - Các WoService khác trong WorkOrder vẫn giữ nguyên trạng thái PENDING
+   */
+  async startService(workOrderId: number, woServiceId: number, userId: number, userRole: string) {
+    return await prisma.$transaction(async (tx) => {
+      const wo = await tx.workOrder.findUnique({
+        where: { id: workOrderId },
+        include: {
+          customer: true,
+          vehicle: true,
+          advisor: true,
+          quotations: { where: { status: 'APPROVED' } },
+        },
+      });
+
+      if (!wo) throw new Error('Không tìm thấy phiếu công việc.');
+
+      if (['CLOSED', 'CANCELLED', 'RELEASED'].includes(wo.status)) {
+        throw new Error(`Phiếu công việc đã ở trạng thái ${wo.status}, không thể bắt đầu công việc.`);
+      }
+
+      if (wo.status !== 'APPROVED' && wo.status !== 'IN_PROGRESS') {
+        throw new Error(
+          `Phiếu công việc phải ở trạng thái APPROVED hoặc IN_PROGRESS để bắt đầu hạng mục. Trạng thái hiện tại: ${wo.status}.`
+        );
+      }
+
+      const woService = await tx.woService.findUnique({
+        where: { id: woServiceId },
+        include: { jobs: true },
+      });
+
+      if (!woService || woService.work_order_id !== workOrderId) {
+        throw new Error('Không tìm thấy hạng mục dịch vụ trên phiếu công việc này.');
+      }
+
+      if (woService.status === 'IN_PROGRESS') {
+        throw new Error(`Hạng mục "${woService.name}" đã đang trong quá trình thực hiện.`);
+      }
+
+      if (woService.status === 'COMPLETED') {
+        throw new Error(`Hạng mục "${woService.name}" đã hoàn thành.`);
+      }
+
+      // 1. Nếu WorkOrder chưa IN_PROGRESS (đang APPROVED) -> Chuyển sang IN_PROGRESS
+      let transitionedWoToInProgress = false;
+      if (wo.status === 'APPROVED') {
+        await tx.workOrder.update({
+          where: { id: workOrderId },
+          data: { status: 'IN_PROGRESS' },
+        });
+        transitionedWoToInProgress = true;
+      }
+
+      // 2. Chuyển WoService này sang IN_PROGRESS
+      const updatedService = await tx.woService.update({
+        where: { id: woServiceId },
+        data: { status: 'IN_PROGRESS' },
+        include: {
+          jobs: {
+            include: {
+              job_type: true,
+              labours: { include: { employee: true } },
+            },
+          },
+        },
+      });
+
+      // 3. Chuyển tất cả Job thuộc WoService này đang PLANNED sang IN_PROGRESS
+      await tx.job.updateMany({
+        where: {
+          wo_service_id: woServiceId,
+          status: 'PLANNED',
+        },
+        data: {
+          status: 'IN_PROGRESS',
+        },
+      });
+
+      // 4. Nếu WorkOrder lần đầu chuyển sang IN_PROGRESS, gửi email thông báo khách hàng
+      if (transitionedWoToInProgress && wo.customer?.email) {
+        const trackingLink = `http://localhost:3000/tracking`;
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+            <div style="background-color: #1e40af; padding: 24px; text-align: center; color: #ffffff;">
+              <h2 style="margin: 0; font-size: 20px; font-weight: bold;">CAR SERVICE CENTER</h2>
+              <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Thông Báo Bắt Đầu Thi Công Dịch Vụ</p>
+            </div>
+            <div style="padding: 24px; background: #ffffff;">
+              <p>Kính gửi Quý khách <b>${wo.customer?.full_name || 'Khách hàng'}</b>,</p>
+              <p>Phiếu công việc <b>${wo.wo_number}</b> cho xe <b>${wo.vehicle.license_plate}</b> (${wo.vehicle.make} ${wo.vehicle.model}) đã chính thức <b>bắt đầu thi công</b> hạng mục: <b>${woService.name}</b>.</p>
+              
+              <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                <p style="margin: 0 0 6px 0; color: #1e40af; font-weight: bold;">Trạng thái: Đang thực hiện (In Progress)</p>
+                <p style="margin: 0; font-size: 13px; color: #475569;">Cố vấn phụ trách: <b>${wo.advisor?.full_name || 'Tổ kỹ thuật'}</b></p>
+              </div>
+
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${trackingLink}" style="display: inline-block; background-color: #1e40af; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: bold;">
+                  🔍 Xem Tiến Độ Trực Tuyến
+                </a>
+              </div>
+            </div>
+            <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+              Hotline hỗ trợ: 1900 6868 | Email: cskh@carservice.vn<br/>
+              Hệ thống Dịch vụ & Chăm sóc Kỹ thuật Ô tô Toàn diện
+            </div>
+          </div>
+        `;
+
+        notificationService
+          .sendEmail(
+            wo.customer.email,
+            `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công hạng mục ${woService.name}`,
+            emailHtml
+          )
+          .catch((err: any) => console.warn('[StartService Email Error]', err?.message));
+      }
+
+      return updatedService;
+    });
+  }
+
+  /**
+   * Cập nhật trạng thái hạng mục dịch vụ (WoService)
+   * Trạng thái: PENDING | IN_PROGRESS | COMPLETED
+   */
+  async updateServiceStatus(
+    workOrderId: number,
+    woServiceId: number,
+    status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
+  ) {
+    return await prisma.$transaction(async (tx) => {
+      const wo = await tx.workOrder.findUnique({ where: { id: workOrderId } });
+      if (!wo) throw new Error('Không tìm thấy phiếu công việc.');
+      if (['CLOSED', 'CANCELLED', 'RELEASED'].includes(wo.status)) {
+        throw new Error(`Phiếu công việc đã ở trạng thái ${wo.status}, không thể thay đổi.`);
+      }
+      if (wo.status !== 'IN_PROGRESS' && wo.status !== 'APPROVED') {
+        throw new Error('Chỉ có thể thay đổi trạng thái hạng mục khi phiếu công việc đã duyệt báo giá (APPROVED) hoặc đang thi công (IN_PROGRESS).');
+      }
+
+      // Nếu WorkOrder đang APPROVED và chuyển hạng mục sang IN_PROGRESS -> WorkOrder thành IN_PROGRESS
+      if (wo.status === 'APPROVED' && status === 'IN_PROGRESS') {
+        await tx.workOrder.update({
+          where: { id: workOrderId },
+          data: { status: 'IN_PROGRESS' },
+        });
+      }
+
+      const woService = await tx.woService.findUnique({
+        where: { id: woServiceId },
+        include: { jobs: true },
+      });
+
+      if (!woService || woService.work_order_id !== workOrderId) {
+        throw new Error('Không tìm thấy hạng mục dịch vụ trên phiếu.');
+      }
+
+      // Cập nhật trạng thái WoService
+      const updatedService = await tx.woService.update({
+        where: { id: woServiceId },
+        data: { status },
+      });
+
+      // Nếu chuyển sang IN_PROGRESS, chuyển các job PLANNED sang IN_PROGRESS
+      if (status === 'IN_PROGRESS') {
+        await tx.job.updateMany({
+          where: {
+            wo_service_id: woServiceId,
+            status: 'PLANNED',
+          },
+          data: { status: 'IN_PROGRESS' },
+        });
+      } else if (status === 'COMPLETED') {
+        // Nếu hoàn thành dịch vụ, đánh dấu tất cả các job chưa xong thành COMPLETED
+        await tx.job.updateMany({
+          where: {
+            wo_service_id: woServiceId,
+            status: { notIn: ['COMPLETED', 'PASSED'] },
+          },
+          data: { status: 'COMPLETED' },
+        });
+      }
+
+      return updatedService;
+    });
+  }
+
+  /**
+   * Đồng bộ trạng thái của WoService dựa hoàn toàn vào các job con:
+   * - Nếu không có job con hoặc tất cả job con là PLANNED -> PENDING
+   * - Nếu tất cả job con đều COMPLETED hoặc PASSED -> COMPLETED
+   * - Ngược lại (có ít nhất 1 job IN_PROGRESS, COMPLETED, REWORK... và còn job chưa xong) -> IN_PROGRESS
+   */
+  async syncServiceStatusFromJobs(tx: any, woServiceId: number) {
+    const jobs = await tx.job.findMany({
+      where: { wo_service_id: woServiceId },
+      select: { status: true },
+    });
+
+    let newStatus: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' = 'PENDING';
+
+    if (jobs.length === 0) {
+      newStatus = 'PENDING';
+    } else {
+      const allPlanned = jobs.every((j: any) => j.status === 'PLANNED');
+      const allDone = jobs.every((j: any) => j.status === 'COMPLETED' || j.status === 'PASSED');
+
+      if (allDone) {
+        newStatus = 'COMPLETED';
+      } else if (allPlanned) {
+        newStatus = 'PENDING';
+      } else {
+        newStatus = 'IN_PROGRESS';
+      }
+    }
+
+    return await tx.woService.update({
+      where: { id: woServiceId },
+      data: { status: newStatus },
+    });
+  }
+
+  /**
+   * Cập nhật trạng thái công việc (Job)
+   * Trạng thái: PLANNED | IN_PROGRESS | COMPLETED | REWORK | PASSED
+   */
+  async updateJobStatus(
+    workOrderId: number,
+    jobId: number,
+    status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'REWORK' | 'PASSED'
+  ) {
+    return await prisma.$transaction(async (tx) => {
+      const wo = await tx.workOrder.findUnique({
+        where: { id: workOrderId },
+        include: { customer: true, vehicle: true, advisor: true }
+      });
+      if (!wo) throw new Error('Không tìm thấy phiếu công việc.');
+      if (['CLOSED', 'CANCELLED', 'RELEASED'].includes(wo.status)) {
+        throw new Error(`Phiếu công việc đã ở trạng thái ${wo.status}, không thể thay đổi.`);
+      }
+      if (wo.status !== 'IN_PROGRESS' && wo.status !== 'APPROVED') {
+        throw new Error('Chỉ có thể thay đổi trạng thái công việc khi phiếu công việc đã duyệt báo giá (APPROVED) hoặc đang thi công (IN_PROGRESS).');
+      }
+
+      // Nếu WorkOrder đang APPROVED và job chuyển sang IN_PROGRESS / COMPLETED -> WorkOrder thành IN_PROGRESS
+      let transitionedWo = false;
+      if (wo.status === 'APPROVED' && (status === 'IN_PROGRESS' || status === 'COMPLETED')) {
+        await tx.workOrder.update({
+          where: { id: workOrderId },
+          data: { status: 'IN_PROGRESS' },
+        });
+        transitionedWo = true;
+      }
+
+      const job = await tx.job.findUnique({
+        where: { id: jobId },
+        include: { wo_service: true },
+      });
+
+      if (!job || job.wo_service.work_order_id !== workOrderId) {
+        throw new Error('Không tìm thấy công việc trên phiếu.');
+      }
+
+      const updatedJob = await tx.job.update({
+        where: { id: jobId },
+        data: { status },
+        include: {
+          job_type: true,
+          labours: { include: { employee: true } },
+        },
+      });
+
+      // Đồng bộ trạng thái của WoService cha dựa hoàn toàn vào các job con
+      await this.syncServiceStatusFromJobs(tx, job.wo_service_id);
+
+      // Nếu lần đầu WorkOrder chuyển sang IN_PROGRESS, gửi email thông báo khách hàng
+      if (transitionedWo && wo.customer?.email) {
+        const trackingLink = `http://localhost:3000/tracking`;
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+            <div style="background-color: #1e40af; padding: 24px; text-align: center; color: #ffffff;">
+              <h2 style="margin: 0; font-size: 20px; font-weight: bold;">CAR SERVICE CENTER</h2>
+              <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Thông Báo Bắt Đầu Thi Công Dịch Vụ</p>
+            </div>
+            <div style="padding: 24px; background: #ffffff;">
+              <p>Kính gửi Quý khách <b>${wo.customer?.full_name || 'Khách hàng'}</b>,</p>
+              <p>Phiếu công việc <b>${wo.wo_number}</b> cho xe <b>${wo.vehicle.license_plate}</b> (${wo.vehicle.make} ${wo.vehicle.model}) đã chính thức <b>bắt đầu thi công</b> tại xưởng dịch vụ.</p>
+              
+              <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                <p style="margin: 0 0 6px 0; color: #1e40af; font-weight: bold;">Trạng thái: Đang thực hiện (In Progress)</p>
+                <p style="margin: 0; font-size: 13px; color: #475569;">Cố vấn phụ trách: <b>${wo.advisor?.full_name || 'Tổ kỹ thuật'}</b></p>
+              </div>
+
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${trackingLink}" style="display: inline-block; background-color: #1e40af; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: bold;">
+                  🔍 Xem Tiến Độ Trực Tuyến
+                </a>
+              </div>
+            </div>
+            <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+              Hotline hỗ trợ: 1900 6868 | Email: cskh@carservice.vn<br/>
+              Hệ thống Dịch vụ & Chăm sóc Kỹ thuật Ô tô Toàn diện
+            </div>
+          </div>
+        `;
+
+        notificationService
+          .sendEmail(
+            wo.customer.email,
+            `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công dịch vụ`,
+            emailHtml
+          )
+          .catch((err: any) => console.warn('[StartWork Email Error]', err?.message));
+      }
+
+      return updatedJob;
     });
   }
 }

@@ -6,6 +6,7 @@ import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchMyTrackingOrders, setSelectedOrder, WorkOrderTrackingDto } from '@/store/slices/trackingSlice';
 import Toast from '@/components/shared/Toast';
 import CustomerQuotationModal from './CustomerQuotationModal';
+import CustomerCheckInModal from './CustomerCheckInModal';
 
 export default function TrackingView({ isEmbedded = false }: { isEmbedded?: boolean }) {
   const dispatch = useAppDispatch();
@@ -14,6 +15,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
   const [toastMsg, setToastMsg] = useState<string>('');
   const [currentTime, setCurrentTime] = useState<string>('');
   const [isQuotationModalOpen, setIsQuotationModalOpen] = useState<boolean>(false);
+  const [isCheckInModalOpen, setIsCheckInModalOpen] = useState<boolean>(false);
 
   // Tải danh sách ban đầu
   const loadData = useCallback(async (isManual = false) => {
@@ -450,6 +452,24 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                           {step.description}
                         </p>
 
+                        {/* Nút xem chi tiết tiếp nhận xe ở Bước 1 */}
+                        {step.stepIndex === 1 && activeOrder.checkIn && (
+                          <div className="mt-3 pt-3 border-t border-surface-container-high/60 flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-xs text-on-surface-variant flex items-center gap-1.5 font-medium">
+                              <span className="material-symbols-outlined text-[16px] text-primary">fact_check</span>
+                              Biên bản kiểm tra & hiện trạng xe lúc nhận
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setIsCheckInModalOpen(true)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors border border-primary/20 shadow-2xs"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">visibility</span>
+                              Xem biên bản tiếp nhận
+                            </button>
+                          </div>
+                        )}
+
                         {/* Chi tiết dịch vụ nếu ở Bước 2 */}
                         {step.stepIndex === 2 && activeOrder.services.length > 0 && (
                           <div className="mt-3 pt-3 border-t border-surface-container-high space-y-2">
@@ -797,6 +817,18 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                 setToastMsg(msg);
                 loadData(true);
               }}
+            />
+          )}
+
+          {/* Customer CheckIn Detail Modal */}
+          {activeOrder.checkIn && (
+            <CustomerCheckInModal
+              isOpen={isCheckInModalOpen}
+              onClose={() => setIsCheckInModalOpen(false)}
+              checkIn={activeOrder.checkIn}
+              vehicle={activeOrder.vehicle}
+              advisor={activeOrder.advisor}
+              woNumber={activeOrder.woNumber}
             />
           )}
         </>

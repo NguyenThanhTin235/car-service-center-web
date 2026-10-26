@@ -21,6 +21,9 @@ import {
   updateJobPart,
   removePartFromJob,
   startWorkOrder,
+  startService,
+  updateServiceStatus,
+  updateJobStatus,
 } from '../controllers/work-order.controller';
 import { CheckInController } from '../controllers/check-in.controller';
 import { InspectionController } from '../controllers/inspection.controller';
@@ -66,9 +69,12 @@ router.post('/:id/services', authorize('SA', 'ADMIN'), addServiceToWO);
 router.post('/:id/services/from-finding', authorize('SA', 'ADMIN'), createServiceFromFinding);
 router.post('/:id/jobs', authorize('SA', 'ADMIN'), createManualJob);
 router.patch('/:id/jobs/:jobId', authorize('SA', 'ADMIN'), updateManualJob);
+router.patch('/:id/jobs/:jobId/status', authorize('SA', 'ADMIN'), updateJobStatus);
 router.delete('/:id/jobs/:jobId', authorize('SA', 'ADMIN'), deleteJob);
 router.put('/:id/services/:serviceId/reorder-jobs', authorize('SA', 'ADMIN'), reorderJobs);
 router.patch('/:id/services/:serviceId', authorize('SA', 'ADMIN'), updateServiceInWO);
+router.post('/:id/services/:serviceId/start', authorize('SA', 'ADMIN'), startService);
+router.patch('/:id/services/:serviceId/status', authorize('SA', 'ADMIN'), updateServiceStatus);
 router.delete('/:id/services/:serviceId', authorize('SA', 'ADMIN'), removeServiceFromWO);
 
 // KHAI BÁO VÀ QUẢN LÝ PHỤ TÙNG / VẬT TƯ CHO CÔNG VIỆC (UC-36)

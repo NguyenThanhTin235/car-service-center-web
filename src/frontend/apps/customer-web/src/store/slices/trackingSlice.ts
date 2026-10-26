@@ -57,12 +57,16 @@ export interface WorkOrderTrackingDto {
   services: WorkOrderServiceItem[];
   findings: WorkOrderFinding[];
   checkIn?: {
+    id?: number;
     mileage: number;
     fuelLevel: string;
     complaint: string;
+    belongings?: string | null;
     exteriorCondition: string;
-    confirmedAt?: string;
-    evidenceUrls?: any;
+    status?: string;
+    confirmedAt?: string | null;
+    evidenceUrls?: string[] | null;
+    createdAt?: string;
   } | null;
   steps: WorkOrderStep[];
   currentStep: number;
