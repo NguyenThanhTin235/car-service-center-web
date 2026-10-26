@@ -9,6 +9,7 @@ import WOVehicleCustomerInfo from '@/components/advisor/work-order/WOVehicleCust
 import WOTabContainer from '@/components/advisor/work-order/WOTabContainer';
 import ChatterSidebar from '@/components/advisor/work-order/ChatterSidebar';
 import { getWorkOrderById, getWorkOrders, WorkOrder } from '@/lib/api/work-order.api';
+import { getWOQuotations } from '@/lib/api/quotation.api';
 import toast from 'react-hot-toast';
 
 export default function WorkOrderDetailPage() {
@@ -19,6 +20,7 @@ export default function WorkOrderDetailPage() {
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [quoStats, setQuoStats] = useState({ quotes: 0, total: 0, approved: 0, pending: 0 });
   
   // Navigation state
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -45,6 +47,25 @@ export default function WorkOrderDetailPage() {
         return;
       }
 
+      // Fetch quotations stats
+      const quoRes = await getWOQuotations(id).catch(() => null);
+      if (quoRes && quoRes.success && quoRes.data) {
+        let qTotal = 0;
+        let qApproved = 0;
+        let qPending = 0;
+        quoRes.data.forEach((q) => {
+          qTotal += q.grandTotal;
+          if (q.status === 'APPROVED') qApproved += q.grandTotal;
+          if (q.status === 'SENT' || q.status === 'DRAFT') qPending += q.grandTotal;
+        });
+        setQuoStats({
+          quotes: quoRes.data.length,
+          total: qTotal,
+          approved: qApproved,
+          pending: qPending,
+        });
+      }
+
       // Fetch all WOs to determine index and prev/next
       const listRes = await getWorkOrders({ limit: 100 });
       if (listRes.success && listRes.data) {
@@ -64,7 +85,6 @@ export default function WorkOrderDetailPage() {
       if (!initialLoadDone.current) {
         setLoading(false);
       } else {
-        // If it was a background refetch, we still need to ensure loading is false
         setLoading(false);
       }
     }
@@ -76,19 +96,19 @@ export default function WorkOrderDetailPage() {
 
   const dummyOverview = {
     checkInTime: workOrder ? new Date(workOrder.created_at).toLocaleString('vi-VN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '...',
-    bay: 'Bay 4',
-    jobsTotal: 3,
-    jobsInProgress: 2,
-    jobsPending: 1,
-    partsTotal: 3,
-    partsIn: 3,
-    quotationTotal: 2649.44,
-    quotationQuotes: 4,
-    quotationApproved: 1940.94,
-    quotationPending: 708.50,
-    billingCollected: 780.00,
-    billingInvoices: 2,
-    billingInsurer: 1660.94,
+    bay: 'Khoang 1',
+    jobsTotal: workOrder?.services?.reduce((acc, s) => acc + (s.jobs?.length || 0), 0) || 0,
+    jobsInProgress: workOrder?.services?.reduce((acc, s) => acc + (s.jobs?.filter(j => j.status === 'IN_PROGRESS').length || 0), 0) || 0,
+    jobsPending: workOrder?.services?.reduce((acc, s) => acc + (s.jobs?.filter(j => j.status === 'PLANNED').length || 0), 0) || 0,
+    partsTotal: 0,
+    partsIn: 0,
+    quotationTotal: quoStats.total,
+    quotationQuotes: quoStats.quotes,
+    quotationApproved: quoStats.approved,
+    quotationPending: quoStats.pending,
+    billingCollected: 0,
+    billingInvoices: 0,
+    billingInsurer: 0,
   };
 
   const dummyCustomer = {

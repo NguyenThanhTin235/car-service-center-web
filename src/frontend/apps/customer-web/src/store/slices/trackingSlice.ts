@@ -67,6 +67,31 @@ export interface WorkOrderTrackingDto {
   steps: WorkOrderStep[];
   currentStep: number;
   progressPercent: number;
+  activeQuotation?: {
+    id: number;
+    quotationNumber: string;
+    quotationType: string;
+    version: number;
+    status: 'DRAFT' | 'SENT' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+    subtotal: number;
+    discountAmount: number;
+    taxRate: number;
+    taxAmount: number;
+    grandTotal: number;
+    rejectReason?: string | null;
+    sentAt?: string | null;
+    approvedAt?: string | null;
+    createdAt: string;
+    lines: Array<{
+      id: number;
+      lineType: 'LABOUR' | 'PART';
+      description: string;
+      quantity: number;
+      unitPrice: number;
+      amount: number;
+      sortOrder: number;
+    }>;
+  } | null;
   invoice?: {
     id: number;
     invoiceNumber: string;

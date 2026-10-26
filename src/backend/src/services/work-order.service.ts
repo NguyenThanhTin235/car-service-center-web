@@ -1043,6 +1043,13 @@ export class WorkOrderService {
             issued_at: true,
           },
         },
+        quotations: {
+          orderBy: { created_at: 'desc' },
+          include: {
+            lines: { orderBy: { sort_order: 'asc' } },
+            created_by: { select: { id: true, full_name: true } },
+          },
+        },
       },
       orderBy: { created_at: 'desc' },
     });
@@ -1096,6 +1103,13 @@ export class WorkOrderService {
             total_amount: true,
             amount_due: true,
             issued_at: true,
+          },
+        },
+        quotations: {
+          orderBy: { created_at: 'desc' },
+          include: {
+            lines: { orderBy: { sort_order: 'asc' } },
+            created_by: { select: { id: true, full_name: true } },
           },
         },
       },
@@ -1265,6 +1279,36 @@ export class WorkOrderService {
       steps,
       currentStep,
       progressPercent,
+      activeQuotation: (() => {
+        const latest = wo.quotations && wo.quotations.length > 0 ? wo.quotations[0] : null;
+        if (!latest) return null;
+        const vMatch = latest.quotation_number.match(/-V(\d+)$/i);
+        return {
+          id: latest.id,
+          quotationNumber: latest.quotation_number,
+          quotationType: latest.quotation_type,
+          version: vMatch ? parseInt(vMatch[1], 10) : 1,
+          status: latest.status,
+          subtotal: Number(latest.subtotal),
+          discountAmount: Number(latest.discount_amount),
+          taxRate: Number(latest.tax_rate),
+          taxAmount: Number(latest.tax_amount),
+          grandTotal: Number(latest.grand_total),
+          rejectReason: latest.reject_reason,
+          sentAt: latest.sent_at,
+          approvedAt: latest.approved_at,
+          createdAt: latest.created_at,
+          lines: (latest.lines || []).map((l: any) => ({
+            id: l.id,
+            lineType: l.line_type,
+            description: l.description,
+            quantity: Number(l.quantity),
+            unitPrice: Number(l.snapshot_unit_price),
+            amount: Number(l.amount),
+            sortOrder: l.sort_order,
+          })),
+        };
+      })(),
       invoice: wo.invoice ? {
         id: wo.invoice.id,
         invoiceNumber: wo.invoice.invoice_number,

@@ -20,6 +20,7 @@ import catalogRoutes from './routes/system-catalog.routes';
 import vehicleRoutes from './routes/vehicle.routes';
 import inventoryRoutes from './routes/inventory.routes';
 import invoiceRoutes from './routes/invoice.routes';
+import quotationRoutes from './routes/quotation.routes';
 
 const app = express();
 
@@ -68,5 +69,6 @@ app.use('/api/system-catalogs', catalogRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api', inventoryRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/quotations', quotationRoutes);
 
 export default app;

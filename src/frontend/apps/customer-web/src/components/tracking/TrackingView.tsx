@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchMyTrackingOrders, setSelectedOrder, WorkOrderTrackingDto } from '@/store/slices/trackingSlice';
 import Toast from '@/components/shared/Toast';
+import CustomerQuotationModal from './CustomerQuotationModal';
 
 export default function TrackingView({ isEmbedded = false }: { isEmbedded?: boolean }) {
   const dispatch = useAppDispatch();
@@ -12,6 +13,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
   const [refreshCountdown, setRefreshCountdown] = useState<number>(30);
   const [toastMsg, setToastMsg] = useState<string>('');
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [isQuotationModalOpen, setIsQuotationModalOpen] = useState<boolean>(false);
 
   // Tải danh sách ban đầu
   const loadData = useCallback(async (isManual = false) => {
@@ -254,6 +256,105 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
 
             </div>
           </section>
+
+          {/* ================= QUOTATION ACTION BANNER (Báo giá dịch vụ) ================= */}
+          {activeOrder.activeQuotation && (
+            <section className="animate-fade-in">
+              {activeOrder.activeQuotation.status === 'SENT' || activeOrder.status === 'PENDING_APPROVAL' ? (
+                <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-amber-400 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  {/* Decorative background circle */}
+                  <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+
+                  <div className="flex items-start space-x-3.5 z-10">
+                    <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0 border border-white/30 text-white">
+                      <span className="material-symbols-outlined text-[28px] animate-bounce">
+                        request_quote
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-extrabold uppercase tracking-wide bg-white text-amber-800 shadow-2xs">
+                          Cần Quý khách xác nhận
+                        </span>
+                        <span className="text-xs font-mono font-bold text-amber-100">
+                          #{activeOrder.activeQuotation.quotationNumber} (v{activeOrder.activeQuotation.version})
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-bold leading-tight">
+                        Bảng báo giá dịch vụ đã được gửi & đang chờ Quý khách phê duyệt
+                      </h3>
+                      <p className="text-xs sm:text-sm text-amber-100 leading-relaxed">
+                        Dự toán tổng chi phí: <strong className="text-white font-mono text-base">{activeOrder.activeQuotation.grandTotal.toLocaleString()} đ</strong> (Chính sách 0% thuế VAT). Quý khách vui lòng kiểm tra và duyệt để xưởng bắt đầu thi công.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0 z-10">
+                    <button
+                      type="button"
+                      onClick={() => setIsQuotationModalOpen(true)}
+                      className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-amber-900 font-extrabold text-sm hover:bg-amber-50 active:scale-[0.98] transition-all shadow-lg"
+                    >
+                      <span className="material-symbols-outlined text-[20px] text-amber-600">
+                        visibility
+                      </span>
+                      <span>Xem chi tiết & Phê duyệt</span>
+                    </button>
+                  </div>
+                </div>
+              ) : activeOrder.activeQuotation.status === 'APPROVED' ? (
+                <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm text-emerald-900 shadow-2xs">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-[22px]">check_circle</span>
+                    </div>
+                    <div>
+                      <p className="font-bold">
+                        Báo giá #{activeOrder.activeQuotation.quotationNumber} đã được phê duyệt
+                      </p>
+                      <p className="text-emerald-700 text-xs mt-0.5">
+                        Tổng thanh toán dự kiến: <strong className="font-mono">{activeOrder.activeQuotation.grandTotal.toLocaleString()} đ</strong>. Đội ngũ kỹ thuật đang tiếp tục thực hiện theo kế hoạch.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsQuotationModalOpen(true)}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-100 font-semibold text-xs transition-colors shrink-0 shadow-2xs"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">receipt</span>
+                    Xem lại báo giá đã duyệt
+                  </button>
+                </div>
+              ) : activeOrder.activeQuotation.status === 'REJECTED' ? (
+                <div className="bg-rose-50 border border-rose-300 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm text-rose-900 shadow-2xs">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-[22px]">history_edu</span>
+                    </div>
+                    <div>
+                      <p className="font-bold">
+                        Quý khách đã từ chối báo giá #{activeOrder.activeQuotation.quotationNumber}
+                      </p>
+                      <p className="text-rose-700 text-xs mt-0.5">
+                        Cố vấn dịch vụ đang ghi nhận yêu cầu và sẽ liên hệ để điều chỉnh phương án phù hợp nhất.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsQuotationModalOpen(true)}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-rose-300 text-rose-800 hover:bg-rose-100 font-semibold text-xs transition-colors shrink-0 shadow-2xs"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">info</span>
+                    Xem chi tiết phản hồi
+                  </button>
+                </div>
+              ) : null}
+            </section>
+          )}
 
           {/* ================= MIDDLE SECTION: Stepper Timeline & Live Cam ================= */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
@@ -682,6 +783,22 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
             </div>
 
           </div>
+
+          {/* Customer Quotation Detail Modal */}
+          {activeOrder.activeQuotation && (
+            <CustomerQuotationModal
+              isOpen={isQuotationModalOpen}
+              onClose={() => setIsQuotationModalOpen(false)}
+              quotation={activeOrder.activeQuotation as any}
+              advisorName={activeOrder.advisor.fullName}
+              vehiclePlate={activeOrder.vehicle.licensePlate}
+              vehicleModel={`${activeOrder.vehicle.make} ${activeOrder.vehicle.model}`}
+              onActionSuccess={(msg) => {
+                setToastMsg(msg);
+                loadData(true);
+              }}
+            />
+          )}
         </>
       )}
     </div>
