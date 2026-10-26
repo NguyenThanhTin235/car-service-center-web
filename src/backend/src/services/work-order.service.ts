@@ -2,6 +2,7 @@ import { IntakeType, WorkOrderSourceType } from '@prisma/client';
 import prisma from '../utils/prisma';
 import { WorkOrderRepository } from '../repositories/work-order.repository';
 import { IntakeRepository } from '../repositories/intake.repository';
+import { notificationService } from './notification.service';
 
 const workOrderRepo = new WorkOrderRepository();
 const intakeRepo = new IntakeRepository();
@@ -1565,6 +1566,129 @@ export class WorkOrderService {
     });
 
     return { success: true, message: 'Đã xóa phụ tùng khỏi công việc thành công' };
+  }
+
+  /**
+   * Bắt đầu công việc (Start Work Order execution)
+   * Kích hoạt: WorkOrder APPROVED -> IN_PROGRESS, WoService PENDING -> IN_PROGRESS
+   * Điều kiện: Work Order phải ở trạng thái APPROVED (đã duyệt báo giá)
+   */
+  async startWork(workOrderId: number, userId: number, userRole: string) {
+    return await prisma.$transaction(async (tx) => {
+      const wo = await tx.workOrder.findUnique({
+        where: { id: workOrderId },
+        include: {
+          quotations: {
+            where: { status: 'APPROVED' },
+          },
+          services: {
+            include: {
+              jobs: {
+                include: {
+                  labours: true,
+                },
+              },
+            },
+          },
+          vehicle: true,
+          customer: true,
+          advisor: true,
+        },
+      });
+
+      if (!wo) {
+        throw new Error('Không tìm thấy phiếu công việc.');
+      }
+
+      if (wo.status === 'IN_PROGRESS') {
+        throw new Error('Phiếu công việc này đã bắt đầu thi công.');
+      }
+
+      if (['CLOSED', 'CANCELLED', 'RELEASED'].includes(wo.status)) {
+        throw new Error(`Phiếu công việc đã ở trạng thái ${wo.status}, không thể bắt đầu công việc.`);
+      }
+
+      if (wo.status !== 'APPROVED') {
+        throw new Error(
+          `Phiếu công việc chưa được phê duyệt báo giá. Trạng thái hiện tại: ${wo.status}. Vui lòng hoàn thành duyệt báo giá trước khi bắt đầu thi công.`
+        );
+      }
+
+      if (!wo.quotations || wo.quotations.length === 0) {
+        throw new Error('Không tìm thấy báo giá đã phê duyệt cho phiếu công việc này.');
+      }
+
+      // 1. Chuyển Work Order sang IN_PROGRESS
+      const updatedWo = await tx.workOrder.update({
+        where: { id: workOrderId },
+        data: {
+          status: 'IN_PROGRESS',
+        },
+        include: {
+          customer: true,
+          vehicle: true,
+          advisor: true,
+          services: {
+            include: {
+              jobs: true,
+            },
+          },
+        },
+      });
+
+      // 2. Chuyển tất cả WoService đang PENDING sang IN_PROGRESS
+      await tx.woService.updateMany({
+        where: {
+          work_order_id: workOrderId,
+          status: 'PENDING',
+        },
+        data: {
+          status: 'IN_PROGRESS',
+        },
+      });
+
+      // 3. Gửi email thông báo cho khách hàng
+      if (wo.customer?.email) {
+        const trackingLink = `http://localhost:3000/tracking`;
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+            <div style="background-color: #1e40af; padding: 24px; text-align: center; color: #ffffff;">
+              <h2 style="margin: 0; font-size: 20px; font-weight: bold;">CAR SERVICE CENTER</h2>
+              <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Thông Báo Bắt Đầu Thi Công Dịch Vụ</p>
+            </div>
+            <div style="padding: 24px; background: #ffffff;">
+              <p>Kính gửi Quý khách <b>${wo.customer?.full_name || 'Khách hàng'}</b>,</p>
+              <p>Phiếu công việc <b>${wo.wo_number}</b> cho xe <b>${wo.vehicle.license_plate}</b> (${wo.vehicle.make} ${wo.vehicle.model}) đã chính thức <b>bắt đầu thi công</b> tại xưởng dịch vụ.</p>
+              
+              <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                <p style="margin: 0 0 6px 0; color: #1e40af; font-weight: bold;">Trạng thái: Đang thực hiện (In Progress)</p>
+                <p style="margin: 0; font-size: 13px; color: #475569;">Cố vấn phụ trách: <b>${wo.advisor?.full_name || 'Tổ kỹ thuật'}</b></p>
+              </div>
+
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${trackingLink}" style="display: inline-block; background-color: #1e40af; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: bold;">
+                  🔍 Xem Tiến Độ Trực Tuyến
+                </a>
+              </div>
+            </div>
+            <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+              Hotline hỗ trợ: 1900 6868 | Email: cskh@carservice.vn<br/>
+              Hệ thống Dịch vụ & Chăm sóc Kỹ thuật Ô tô Toàn diện
+            </div>
+          </div>
+        `;
+
+        notificationService
+          .sendEmail(
+            wo.customer.email,
+            `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công dịch vụ`,
+            emailHtml
+          )
+          .catch((err: any) => console.warn('[StartWork Email Error]', err?.message));
+      }
+
+      return updatedWo;
+    });
   }
 }
 

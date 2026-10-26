@@ -20,6 +20,7 @@ import {
   addPartToJob,
   updateJobPart,
   removePartFromJob,
+  startWorkOrder,
 } from '../controllers/work-order.controller';
 import { CheckInController } from '../controllers/check-in.controller';
 import { InspectionController } from '../controllers/inspection.controller';
@@ -75,6 +76,9 @@ router.get('/:id/parts', authorize('SA', 'DESK STAFF', 'ADMIN'), getWorkOrderPar
 router.post('/:id/jobs/:jobId/parts', authorize('SA', 'ADMIN'), addPartToJob);
 router.patch('/:id/jobs/:jobId/parts/:partId', authorize('SA', 'ADMIN'), updateJobPart);
 router.delete('/:id/jobs/:jobId/parts/:partId', authorize('SA', 'ADMIN'), removePartFromJob);
+
+// BẮT ĐẦU THI CÔNG PHIẾU CÔNG VIỆC SAU KHI DUYỆT BÁO GIÁ
+router.post('/:id/start-work', authorize('SA', 'ADMIN'), startWorkOrder);
 
 // LÊN KẾ HOẠCH CÔNG VIỆC TÍCH HỢP AI LLM (UC-34)
 router.use('/', aiJobRoutes);

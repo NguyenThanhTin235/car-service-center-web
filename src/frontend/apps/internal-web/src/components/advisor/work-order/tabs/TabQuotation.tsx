@@ -20,6 +20,7 @@ interface TabQuotationProps {
   workOrder: WorkOrder;
   refetchWO: () => void;
   isReadOnly?: boolean;
+  setActiveTab?: (tabId: string) => void;
 }
 
 const STATUS_BADGES: Record<string, { label: string; bg: string; text: string; icon: string }> = {
@@ -29,7 +30,7 @@ const STATUS_BADGES: Record<string, { label: string; bg: string; text: string; i
   REJECTED: { label: 'Khách từ chối', bg: 'bg-rose-50 dark:bg-rose-950/50', text: 'text-rose-700 dark:text-rose-400', icon: 'cancel' },
 };
 
-export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false }: TabQuotationProps) {
+export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false, setActiveTab }: TabQuotationProps) {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [activeQuotationId, setActiveQuotationId] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -45,6 +46,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false 
   const [rejectReason, setRejectReason] = useState('');
 
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
+  const [isSendModalOpen, setIsSendModalOpen] = useState(false);
 
   const fetchQuotations = useCallback(async () => {
     if (!workOrder?.id) return;
@@ -366,6 +368,36 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false 
         </div>
       </div>
 
+      {/* Thông báo nếu Báo giá đã được duyệt */}
+      {activeQuotation?.status === 'APPROVED' && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded-xl text-emerald-800 dark:text-emerald-200 text-sm shadow-xs animate-in fade-in duration-200">
+          <div className="flex items-start gap-3">
+            <span className="material-symbols-outlined text-[24px] text-emerald-600 shrink-0 mt-0.5">verified</span>
+            <div>
+              <div className="font-bold flex items-center gap-2">
+                <span>Khách hàng đã phê duyệt báo giá này!</span>
+                <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase rounded bg-emerald-600 text-white">
+                  ĐÃ KHÓA
+                </span>
+              </div>
+              <div className="mt-1 text-xs opacity-90">
+                Toàn bộ phụ tùng đã được giữ kho (RESERVED). Bạn có thể chuyển sang Tab Công việc để bắt đầu thi công.
+              </div>
+            </div>
+          </div>
+          {setActiveTab && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('job')}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all shrink-0 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
+              <span>Chuyển sang Tab Công việc để Bắt đầu →</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Thông báo nếu Báo giá bị từ chối */}
       {activeQuotation?.status === 'REJECTED' && (
         <div className="flex items-start gap-3 p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-xl text-rose-800 dark:text-rose-200 text-sm">
@@ -579,9 +611,9 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false 
               </button>
 
               <button
-                onClick={handleSendQuotation}
+                onClick={() => setIsSendModalOpen(true)}
                 disabled={actionLoading}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">send</span>
                 {actionLoading ? 'Đang gửi...' : 'Gửi cho khách hàng duyệt'}
@@ -595,7 +627,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false 
               <button
                 onClick={() => setIsRejectModalOpen(true)}
                 disabled={actionLoading}
-                className="inline-flex items-center gap-1.5 px-4 py-2 border border-rose-300 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl text-sm font-semibold transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2 border border-rose-300 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl text-sm font-semibold transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
                 Khách từ chối (Nhập lý do)
@@ -604,7 +636,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false 
               <button
                 onClick={handleApproveQuotation}
                 disabled={actionLoading}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">done_all</span>
                 {actionLoading ? 'Đang xác nhận...' : 'Khách đã đồng ý (Duyệt báo giá)'}
@@ -614,9 +646,23 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false 
 
           {/* Trạng thái APPROVED: Đã khóa giá */}
           {activeQuotation?.status === 'APPROVED' && (
-            <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-200 font-semibold">
-              <span className="material-symbols-outlined text-[18px]">lock</span>
-              Báo giá đã được phê duyệt và khóa đơn giá. Phụ tùng đã sẵn sàng xuất kho thi công.
+            <div className="flex flex-wrap items-center justify-between gap-3 w-full bg-emerald-50 dark:bg-emerald-950/30 px-5 py-3 rounded-2xl border border-emerald-200 dark:border-emerald-800">
+              <div className="flex items-center gap-2.5 text-xs text-emerald-800 dark:text-emerald-300 font-semibold">
+                <span className="material-symbols-outlined text-[20px] text-emerald-600">verified</span>
+                <span>
+                  Báo giá đã được phê duyệt và khóa đơn giá. Phụ tùng đã chuyển sang trạng thái <strong>Giữ hàng (Reserved)</strong>.
+                </span>
+              </div>
+              {workOrder.status === 'APPROVED' && setActiveTab && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('job')}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+                >
+                  <span>Chuyển sang Tab Công việc để Bắt đầu</span>
+                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -756,6 +802,86 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false 
                 className="px-4 py-2 bg-rose-600 text-white rounded-lg text-xs font-semibold"
               >
                 Xác nhận xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: Xác nhận gửi báo giá cho khách hàng */}
+      {isSendModalOpen && activeQuotation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-surface-container-lowest w-full max-w-lg rounded-2xl border border-outline-variant shadow-xl p-6 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[26px]">send</span>
+              </div>
+              <div>
+                <h3 className="text-title-md font-bold text-on-surface">Gửi Báo Giá Cho Khách Hàng</h3>
+                <p className="text-xs text-on-surface-variant">
+                  Hệ thống sẽ gửi email kèm liên kết trực tiếp để khách hàng phê duyệt trực tuyến.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-surface-container-low rounded-xl p-4 space-y-2.5 text-xs border border-outline-variant/60">
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant font-medium">Khách hàng:</span>
+                <span className="font-bold text-on-surface">{workOrder.customer?.full_name || 'Khách hàng'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant font-medium">Email nhận thông báo:</span>
+                <span className="font-bold text-primary">{workOrder.customer?.email || 'Chưa cập nhật email'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant font-medium">Số điện thoại:</span>
+                <span className="font-bold text-on-surface">{workOrder.customer?.phone || 'Chưa cập nhật'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant font-medium">Phương tiện:</span>
+                <span className="font-bold text-on-surface">
+                  {workOrder.vehicle?.license_plate} - {workOrder.vehicle?.make} {workOrder.vehicle?.model}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant font-medium">Mã số báo giá:</span>
+                <span className="font-mono font-bold text-on-surface">{activeQuotation.quotationNumber}</span>
+              </div>
+              <div className="border-t border-outline-variant/60 pt-2 flex justify-between items-center">
+                <span className="text-on-surface font-bold">Tổng thanh toán (0% VAT):</span>
+                <span className="text-base font-extrabold text-primary font-mono">
+                  {activeQuotation.grandTotal.toLocaleString('vi-VN')} đ
+                </span>
+              </div>
+            </div>
+
+            {!workOrder.customer?.email && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 rounded-xl text-xs flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0">warning</span>
+                <span>Khách hàng chưa có email. Khách có thể xem và duyệt trực tiếp trên cổng thông tin Khách hàng (Tracking).</span>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsSendModalOpen(false)}
+                disabled={actionLoading}
+                className="px-4 py-2 border border-outline-variant text-on-surface-variant hover:bg-surface-container rounded-xl text-sm font-semibold transition-colors cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsSendModalOpen(false);
+                  await handleSendQuotation();
+                }}
+                disabled={actionLoading}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">mark_email_read</span>
+                {actionLoading ? 'Đang gửi...' : 'Xác nhận gửi báo giá'}
               </button>
             </div>
           </div>

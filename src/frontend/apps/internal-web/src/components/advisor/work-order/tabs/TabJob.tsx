@@ -13,6 +13,7 @@ import {
   updateManualJob,
   deleteJob,
   reorderJobs,
+  startWorkOrder,
 } from '@/lib/api/work-order.api';
 import { employeeApi, EmployeeData } from '@/lib/api/employees';
 import toast from 'react-hot-toast';
@@ -160,6 +161,29 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
 
   // Modal Khai báo phụ tùng cho công việc (UC-36)
   const [addPartJobId, setAddPartJobId] = useState<number | null>(null);
+
+  // Modal Bắt đầu công việc (Start Work)
+  const [isStartWorkModalOpen, setIsStartWorkModalOpen] = useState(false);
+  const [startWorkLoading, setStartWorkLoading] = useState(false);
+
+  const handleStartWork = async () => {
+    if (!workOrder) return;
+    try {
+      setStartWorkLoading(true);
+      const res = await startWorkOrder(workOrder.id);
+      if (res.success) {
+        toast.success('Đã bắt đầu công việc thi công thành công! Lệnh sửa chữa đã chuyển sang IN_PROGRESS.');
+        setIsStartWorkModalOpen(false);
+        if (refetchWO) refetchWO();
+      } else {
+        toast.error(res.message || 'Lỗi khi bắt đầu công việc');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Lỗi khi bắt đầu thi công');
+    } finally {
+      setStartWorkLoading(false);
+    }
+  };
 
   // Load danh sách nhân viên kỹ thuật
   useEffect(() => {
@@ -446,6 +470,61 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
       </div>
 
 
+      {/* 2. BANNERS TRẠNG THÁI BÁO GIÁ & THI CÔNG */}
+      {workOrder?.status === 'APPROVED' && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <span className="material-symbols-outlined text-[24px]">verified</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-body-md font-bold text-emerald-950 dark:text-emerald-200">
+                  Báo giá đã được phê duyệt — Sẵn sàng bắt đầu thi công
+                </h4>
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold uppercase bg-emerald-600 text-white">
+                  APPROVED
+                </span>
+              </div>
+              <p className="text-body-xs text-emerald-800 dark:text-emerald-300 mt-0.5">
+                Khách hàng đã xác nhận bảng báo giá và toàn bộ phụ tùng đã được giữ kho (RESERVED). Bạn có thể kiểm tra phân công KTV và bấm "Bắt đầu công việc".
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsStartWorkModalOpen(true)}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-label-md shadow-md active:scale-95 transition-all shrink-0 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[20px]">rocket_launch</span>
+            <span>Bắt đầu công việc</span>
+          </button>
+        </div>
+      )}
+
+      {workOrder?.status === 'IN_PROGRESS' && (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-500/15 via-indigo-500/10 to-transparent border border-blue-500/30 flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs animate-pulse">
+              <span className="material-symbols-outlined text-[20px]">engineering</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-body-sm font-bold text-blue-950 dark:text-blue-200">
+                  Đang trong quá trình thi công (IN_PROGRESS)
+                </h4>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-600 text-white">
+                  ĐANG THI CÔNG
+                </span>
+              </div>
+              <p className="text-[12px] text-blue-800 dark:text-blue-300">
+                Các hạng mục và KTV đang tiến hành theo kế hoạch. Khách hàng đang theo dõi tiến độ thời gian thực.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 3. UNIFIED ACTION TOOLBAR */}
       <div className="p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/60 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Tìm kiếm & Thu gọn/Mở rộng */}
@@ -558,6 +637,18 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                 </div>
               )}
             </div>
+
+            {/* Nút Bắt đầu công việc khi đã APPROVED */}
+            {workOrder?.status === 'APPROVED' && (
+              <button
+                type="button"
+                onClick={() => setIsStartWorkModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-white rounded-xl text-label-sm font-bold shadow-xs transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
+                <span>Bắt đầu công việc</span>
+              </button>
+            )}
 
             {/* Nút Đề xuất Job bằng AI (Nổi bật) */}
             <button
@@ -1096,6 +1187,117 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
             if (refetchWO) refetchWO();
           }}
         />
+      )}
+
+      {/* MODAL XÁC NHẬN BẮT ĐẦU CÔNG VIỆC */}
+      {workOrder && isStartWorkModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-surface-container-lowest rounded-3xl border border-outline-variant shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-6 py-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[24px]">rocket_launch</span>
+                </div>
+                <div>
+                  <h3 className="text-title-sm font-bold">Xác nhận bắt đầu công việc</h3>
+                  <p className="text-body-xs text-white/80">Kích hoạt thi công cho lệnh sửa chữa</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsStartWorkModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <div className="p-4 rounded-2xl bg-surface-container-low border border-outline-variant/60 space-y-2">
+                <div className="flex items-center justify-between text-body-xs">
+                  <span className="text-on-surface-variant">Lệnh sửa chữa:</span>
+                  <span className="font-mono font-bold text-on-surface">{workOrder.wo_number}</span>
+                </div>
+                <div className="flex items-center justify-between text-body-xs">
+                  <span className="text-on-surface-variant">Phương tiện:</span>
+                  <span className="font-semibold text-on-surface">
+                    {workOrder.vehicle.license_plate} ({workOrder.vehicle.make} {workOrder.vehicle.model})
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-body-xs">
+                  <span className="text-on-surface-variant">Số lượng hạng mục:</span>
+                  <span className="font-semibold text-on-surface">{services.length} hạng mục</span>
+                </div>
+                <div className="flex items-center justify-between text-body-xs">
+                  <span className="text-on-surface-variant">Tổng công việc & phân công KTV:</span>
+                  <span className="font-mono font-bold text-emerald-600">
+                    {grandAssignedJobs} / {grandTotalJobs} việc đã gán KTV
+                  </span>
+                </div>
+              </div>
+
+              {grandAssignedJobs < grandTotalJobs && (
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-body-xs flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-[20px] text-amber-600 shrink-0">
+                    warning
+                  </span>
+                  <div>
+                    <p className="font-semibold">Có {grandTotalJobs - grandAssignedJobs} công việc chưa phân công KTV</p>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
+                      Bạn vẫn có thể bắt đầu thi công ngay bây giờ và tiếp tục phân công KTV trong quá trình làm việc.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-900 dark:text-blue-200 text-body-xs flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-[20px] text-blue-600 shrink-0">
+                  info
+                </span>
+                <div>
+                  <p className="font-semibold">Hệ thống sẽ cập nhật trạng thái tự động:</p>
+                  <ul className="list-disc list-inside text-[11px] text-blue-800 dark:text-blue-300 space-y-0.5 mt-1">
+                    <li>Chuyển trạng thái Lệnh sửa chữa thành <b>IN_PROGRESS</b></li>
+                    <li>Chuyển tất cả dịch vụ trong phiếu sang <b>IN_PROGRESS</b></li>
+                    <li>Gửi email thông báo bắt đầu thi công kèm link theo dõi trực tiếp tới khách hàng</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-surface-container-low border-t border-outline-variant/60 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={startWorkLoading}
+                onClick={() => setIsStartWorkModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-outline-variant text-on-surface hover:bg-surface-container-high text-label-sm font-semibold transition-colors cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={startWorkLoading}
+                onClick={handleStartWork}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-label-sm font-bold shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {startWorkLoading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Đang kích hoạt...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
+                    <span>Xác nhận Bắt đầu</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

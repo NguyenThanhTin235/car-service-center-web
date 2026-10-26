@@ -63,7 +63,7 @@ export default function WOTabContainer({ workOrder, refetchWO, isReadOnly = fals
 
       {/* Tab Content Area */}
       <div className="py-6">
-        <ActiveComponent workOrder={workOrder} refetchWO={refetchWO} isReadOnly={isReadOnly} />
+        <ActiveComponent workOrder={workOrder} refetchWO={refetchWO} isReadOnly={isReadOnly} setActiveTab={setActiveTab} />
       </div>
     </div>
   );

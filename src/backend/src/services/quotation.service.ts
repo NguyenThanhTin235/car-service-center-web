@@ -450,21 +450,50 @@ export class QuotationService {
         },
       });
 
-      // Gửi email thông báo cho khách hàng nếu có email
+      // Gửi email thông báo cho khách hàng nếu có email kèm Deep Link
       const customerEmail = quotation.work_order.customer?.email;
       if (customerEmail) {
         const grandTotalFormatted = Number(updated.grand_total).toLocaleString('vi-VN');
+        const trackingLink = `http://localhost:3000/tracking`;
         const emailHtml = `
-          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            <h2 style="color: #1e40af;">Trung tâm Kỹ thuật Ô tô - Car Service Center</h2>
-            <p>Kính gửi Quý khách <b>${quotation.work_order.customer?.full_name || 'Khách hàng'}</b>,</p>
-            <p>Trung tâm dịch vụ đã gửi Bảng báo giá chi tiết cho xe <b>${quotation.work_order.vehicle.license_plate}</b>.</p>
-            <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
-              <p style="margin: 0 0 8px 0;"><b>Số báo giá:</b> ${updated.quotation_number}</p>
-              <p style="margin: 0; font-size: 18px; color: #1e40af;"><b>Tổng thanh toán:</b> ${grandTotalFormatted} VNĐ</p>
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+            <div style="background-color: #1e40af; padding: 24px; text-align: center; color: #ffffff;">
+              <h2 style="margin: 0; font-size: 20px; font-weight: bold; letter-spacing: 0.5px;">CAR SERVICE CENTER</h2>
+              <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Bảng Báo Giá Dịch Vụ Sửa Chữa & Bảo Dưỡng Ô Tô</p>
             </div>
-            <p>Quý khách vui lòng truy cập ứng dụng khách hàng để xem chi tiết từng hạng mục và xác nhận đồng ý thực hiện.</p>
-            <p>Trân trọng cảm ơn Quý khách!</p>
+            <div style="padding: 24px; background: #ffffff;">
+              <p>Kính gửi Quý khách <b>${quotation.work_order.customer?.full_name || 'Khách hàng'}</b>,</p>
+              <p>Cố vấn dịch vụ đã hoàn tất lập dự toán kỹ thuật và kính gửi Quý khách Bảng báo giá chi tiết cho xe <b>${quotation.work_order.vehicle.license_plate}</b> (${quotation.work_order.vehicle.make} ${quotation.work_order.vehicle.model}).</p>
+              
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin: 20px 0;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="color: #64748b; font-size: 13px;">Số báo giá:</span>
+                  <span style="font-weight: bold; color: #0f172a; font-size: 13px;">${updated.quotation_number}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="color: #64748b; font-size: 13px;">Chính sách thuế:</span>
+                  <span style="font-weight: 600; color: #15803d; font-size: 13px;">0% VAT (Không thu thuế)</span>
+                </div>
+                <div style="border-top: 1px dashed #cbd5e1; margin: 10px 0; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                  <span style="color: #1e40af; font-size: 14px; font-weight: bold;">TỔNG THANH TOÁN:</span>
+                  <span style="font-size: 18px; font-weight: bold; color: #1e40af;">${grandTotalFormatted} đ</span>
+                </div>
+              </div>
+
+              <div style="text-align: center; margin: 28px 0;">
+                <a href="${trackingLink}" style="display: inline-block; background-color: #1e40af; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                  👉 Xem Chi Tiết & Phê Duyệt Báo Giá
+                </a>
+              </div>
+
+              <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 20px;">
+                * Báo giá có hiệu lực trong vòng 07 ngày kể từ ngày lập. Quý khách vui lòng kiểm tra và phê duyệt để xưởng tiến hành thi công.
+              </p>
+            </div>
+            <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+              Hotline hỗ trợ: 1900 6868 | Email: cskh@carservice.vn<br/>
+              Hệ thống Dịch vụ & Chăm sóc Kỹ thuật Ô tô Toàn diện
+            </div>
           </div>
         `;
 

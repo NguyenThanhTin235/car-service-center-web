@@ -661,6 +661,14 @@ export async function getAIPartSuggestions(
   return response.data;
 }
 
+/**
+ * Bắt đầu thi công phiếu công việc sau khi báo giá đã được phê duyệt
+ */
+export async function startWorkOrder(workOrderId: number): Promise<ApiResponse<WorkOrder>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/start-work`);
+  return response.data;
+}
+
 
 
 
