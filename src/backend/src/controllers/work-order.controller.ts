@@ -983,4 +983,50 @@ export const updateJobStatus = async (req: Request, res: Response): Promise<void
   }
 };
 
+/**
+ * POST /api/work-orders/:id/cancel-release
+ * Bàn giao xuất trả xe khi khách từ chối dịch vụ hoặc hủy lệnh
+ */
+export const cancelAndReleaseWorkOrder = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const userId = (req as any).user.id;
+    const { releaseNotes, diagnosticFee, mileage, fuelLevel } = req.body;
+
+    if (isNaN(workOrderId) || workOrderId <= 0) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Mã phiếu công việc không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const data = await workOrderService.cancelAndReleaseWorkOrder(workOrderId, userId, {
+      releaseNotes,
+      diagnosticFee: diagnosticFee !== undefined ? Number(diagnosticFee) : undefined,
+      mileage: mileage !== undefined ? Number(mileage) : undefined,
+      fuelLevel,
+    });
+
+    res.json({
+      success: true,
+      code: 200,
+      message: data.message,
+      data,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 400).json({
+      success: false,
+      code: error.statusCode || 400,
+      message: error.message || 'Lỗi khi bàn giao xuất trả xe',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
 

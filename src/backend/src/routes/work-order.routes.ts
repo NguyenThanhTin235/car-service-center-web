@@ -24,6 +24,7 @@ import {
   startService,
   updateServiceStatus,
   updateJobStatus,
+  cancelAndReleaseWorkOrder,
 } from '../controllers/work-order.controller';
 import { CheckInController } from '../controllers/check-in.controller';
 import { InspectionController } from '../controllers/inspection.controller';
@@ -85,6 +86,9 @@ router.delete('/:id/jobs/:jobId/parts/:partId', authorize('SA', 'ADMIN'), remove
 
 // BẮT ĐẦU THI CÔNG PHIẾU CÔNG VIỆC SAU KHI DUYỆT BÁO GIÁ
 router.post('/:id/start-work', authorize('SA', 'ADMIN'), startWorkOrder);
+
+// XUẤT TRẢ XE KHI KHÁCH HÀNG TỪ CHỐI DỊCH VỤ HOẶC HỦY LỆNH
+router.post('/:id/cancel-release', authorize('SA', 'ADMIN'), cancelAndReleaseWorkOrder);
 
 // LÊN KẾ HOẠCH CÔNG VIỆC TÍCH HỢP AI LLM (UC-34)
 router.use('/', aiJobRoutes);

@@ -1,4 +1,4 @@
-import { IntakeType, WorkOrderSourceType } from '@prisma/client';
+import { IntakeType, WorkOrderSourceType, FuelLevel } from '@prisma/client';
 import prisma from '../utils/prisma';
 import { WorkOrderRepository } from '../repositories/work-order.repository';
 import { IntakeRepository } from '../repositories/intake.repository';
@@ -1118,6 +1118,7 @@ export class WorkOrderService {
             created_by: { select: { id: true, full_name: true } },
           },
         },
+        release: true,
       },
     });
 
@@ -1305,6 +1306,16 @@ export class WorkOrderService {
           taxAmount: Number(latest.tax_amount),
           grandTotal: Number(latest.grand_total),
           rejectReason: latest.reject_reason,
+          rejectDetails: (() => {
+            if (!latest.reject_reason) return null;
+            try {
+              const p = JSON.parse(latest.reject_reason);
+              if (p && typeof p === 'object' && p.type) return p;
+              return { type: 'REVISE', reason: latest.reject_reason };
+            } catch {
+              return { type: 'REVISE', reason: latest.reject_reason };
+            }
+          })(),
           sentAt: latest.sent_at,
           approvedAt: latest.approved_at,
           createdAt: latest.created_at,
@@ -1319,6 +1330,11 @@ export class WorkOrderService {
           })),
         };
       })(),
+      release: wo.release ? {
+        id: wo.release.id,
+        releaseNotes: wo.release.release_notes,
+        releasedAt: wo.release.released_at,
+      } : null,
       invoice: wo.invoice ? {
         id: wo.invoice.id,
         invoiceNumber: wo.invoice.invoice_number,
@@ -2041,6 +2057,145 @@ export class WorkOrderService {
       }
 
       return updatedJob;
+    });
+  }
+
+  /**
+   * Bàn giao xuất trả xe khi khách từ chối dịch vụ hoặc hủy lệnh
+   * Giải phóng phụ tùng (nếu có giữ chỗ), tạo bản ghi VehicleRelease, cập nhật WorkOrder sang RELEASED
+   */
+  async cancelAndReleaseWorkOrder(
+    workOrderId: number,
+    userId: number,
+    data: {
+      releaseNotes?: string;
+      diagnosticFee?: number;
+      mileage?: number;
+      fuelLevel?: FuelLevel;
+    }
+  ) {
+    return await prisma.$transaction(async (tx) => {
+      const wo = await tx.workOrder.findUnique({
+        where: { id: workOrderId },
+        include: {
+          check_in: true,
+          vehicle: true,
+          customer: true,
+          advisor: true,
+          release: true,
+          services: {
+            include: {
+              jobs: {
+                include: {
+                  parts: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!wo) throw new Error('Không tìm thấy phiếu công việc.');
+      if (['CLOSED', 'RELEASED'].includes(wo.status)) {
+        throw new Error(`Phiếu công việc đã ở trạng thái ${wo.status}, không thể thực hiện xuất trả xe.`);
+      }
+
+      // 1. Hủy giữ chỗ phụ tùng nếu có
+      for (const svc of wo.services) {
+        for (const job of svc.jobs) {
+          for (const part of job.parts) {
+            if (part.status === 'RESERVED') {
+              await tx.jobPart.update({
+                where: { id: part.id },
+                data: { status: 'RETURNED' },
+              });
+            }
+          }
+        }
+      }
+
+      // 2. Định dạng ghi chú bàn giao
+      let notes = data.releaseNotes?.trim() || 'Xuất trả xe cho khách hàng (Khách không làm dịch vụ / từ chối báo giá).';
+      if (data.diagnosticFee && data.diagnosticFee > 0) {
+        notes += ` [Phí kiểm tra/chẩn đoán: ${data.diagnosticFee.toLocaleString('vi-VN')} đ]`;
+      }
+      if (data.mileage) {
+        notes += ` [ODO lúc trả: ${data.mileage.toLocaleString('vi-VN')} km]`;
+      }
+      if (data.fuelLevel) {
+        notes += ` [Mức xăng lúc trả: ${data.fuelLevel}]`;
+      }
+
+      const releaseRecord = await tx.vehicleRelease.upsert({
+        where: { work_order_id: workOrderId },
+        update: {
+          release_notes: notes,
+          released_by_id: userId,
+          released_at: new Date(),
+        },
+        create: {
+          work_order_id: workOrderId,
+          release_notes: notes,
+          released_by_id: userId,
+          released_at: new Date(),
+        },
+      });
+
+      // 3. Cập nhật trạng thái WorkOrder sang RELEASED
+      const updatedWo = await tx.workOrder.update({
+        where: { id: workOrderId },
+        data: {
+          status: 'RELEASED',
+        },
+        include: {
+          customer: true,
+          vehicle: true,
+          advisor: true,
+          release: true,
+        },
+      });
+
+      // 4. Gửi email xác nhận bàn giao nhận lại xe nếu khách hàng có email
+      if (wo.customer?.email) {
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+            <div style="background-color: #0f766e; padding: 24px; text-align: center; color: #ffffff;">
+              <h2 style="margin: 0; font-size: 20px; font-weight: bold;">CAR SERVICE CENTER</h2>
+              <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Xác Nhận Bàn Giao & Xuất Trả Phương Tiện</p>
+            </div>
+            <div style="padding: 24px; background: #ffffff;">
+              <p>Kính gửi Quý khách <b>${wo.customer?.full_name || 'Khách hàng'}</b>,</p>
+              <p>Trung tâm dịch vụ xin thông báo phương tiện <b>${wo.vehicle.license_plate}</b> (${wo.vehicle.make} ${wo.vehicle.model}) theo phiếu <b>${wo.wo_number}</b> đã hoàn tất thủ tục bàn giao và nhận lại xe.</p>
+              
+              <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                <p style="margin: 0 0 6px 0; color: #15803d; font-weight: bold;">Trạng thái: Đã bàn giao xe (Released)</p>
+                <p style="margin: 0 0 4px 0; font-size: 13px; color: #334155;"><b>Biên bản ghi chú:</b> ${notes}</p>
+                <p style="margin: 0; font-size: 13px; color: #64748b;">Thời gian bàn giao: ${new Date().toLocaleString('vi-VN')}</p>
+              </div>
+
+              <p style="font-size: 13px; color: #64748b;">Chân thành cảm ơn Quý khách đã ghé thăm trung tâm. Hẹn gặp lại Quý khách trong những dịp chăm sóc xe sắp tới!</p>
+            </div>
+            <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+              Hotline hỗ trợ: 1900 6868 | Email: cskh@carservice.vn
+            </div>
+          </div>
+        `;
+
+        notificationService
+          .sendEmail(
+            wo.customer.email,
+            `[Car Service Center] Biên bản xuất trả xe ${wo.vehicle.license_plate}`,
+            emailHtml
+          )
+          .catch((err: any) => console.warn('[ReleaseVehicle Email Error]', err?.message));
+      }
+
+      return {
+        success: true,
+        message: 'Đã hoàn tất bàn giao và xuất trả xe thành công',
+        workOrder: updatedWo,
+        release: releaseRecord,
+      };
     });
   }
 }

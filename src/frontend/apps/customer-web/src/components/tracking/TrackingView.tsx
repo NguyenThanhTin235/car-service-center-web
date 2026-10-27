@@ -330,30 +330,74 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                   </button>
                 </div>
               ) : activeOrder.activeQuotation.status === 'REJECTED' ? (
-                <div className="bg-rose-50 border border-rose-300 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm text-rose-900 shadow-2xs">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[22px]">history_edu</span>
-                    </div>
-                    <div>
-                      <p className="font-bold">
-                        Quý khách đã từ chối báo giá #{activeOrder.activeQuotation.quotationNumber}
-                      </p>
-                      <p className="text-rose-700 text-xs mt-0.5">
-                        Cố vấn dịch vụ đang ghi nhận yêu cầu và sẽ liên hệ để điều chỉnh phương án phù hợp nhất.
-                      </p>
-                    </div>
-                  </div>
+                (() => {
+                  let isCancel = false;
+                  let rejectNote = activeOrder.activeQuotation.rejectReason || '';
+                  if (activeOrder.activeQuotation.rejectDetails) {
+                    isCancel = activeOrder.activeQuotation.rejectDetails.type === 'CANCEL';
+                    rejectNote = activeOrder.activeQuotation.rejectDetails.reason || rejectNote;
+                  } else if (activeOrder.activeQuotation.rejectReason) {
+                    try {
+                      const p = JSON.parse(activeOrder.activeQuotation.rejectReason);
+                      if (p?.type === 'CANCEL') isCancel = true;
+                      if (p?.reason) rejectNote = p.reason;
+                    } catch {
+                      // plain string
+                    }
+                  }
 
-                  <button
-                    type="button"
-                    onClick={() => setIsQuotationModalOpen(true)}
-                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-rose-300 text-rose-800 hover:bg-rose-100 font-semibold text-xs transition-colors shrink-0 shadow-2xs"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">info</span>
-                    Xem chi tiết phản hồi
-                  </button>
-                </div>
+                  return isCancel ? (
+                    <div className="bg-rose-50 border border-rose-300 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm text-rose-950 shadow-2xs">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0">
+                          <span className="material-symbols-outlined text-[22px]">directions_car</span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-rose-900">
+                            Quý khách đã từ chối dịch vụ & Yêu cầu nhận lại xe
+                          </p>
+                          <p className="text-rose-700 text-xs mt-0.5">
+                            Lý do: <i>"{rejectNote}"</i>. Cố vấn dịch vụ đang hoàn tất thủ tục xuất trả xe tại sảnh tiếp nhận.
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsQuotationModalOpen(true)}
+                        className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-rose-300 text-rose-800 hover:bg-rose-100 font-semibold text-xs transition-colors shrink-0 shadow-2xs cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">info</span>
+                        Xem lại phản hồi
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm text-amber-950 shadow-2xs">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0">
+                          <span className="material-symbols-outlined text-[22px]">edit_note</span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-amber-900">
+                            Quý khách đã yêu cầu điều chỉnh báo giá #{activeOrder.activeQuotation.quotationNumber}
+                          </p>
+                          <p className="text-amber-800 text-xs mt-0.5">
+                            Yêu cầu: <i>"{rejectNote}"</i>. Cố vấn đang điều chỉnh và sẽ gửi phương án mới sớm nhất.
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsQuotationModalOpen(true)}
+                        className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 font-semibold text-xs transition-colors shrink-0 shadow-2xs cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">info</span>
+                        Xem chi tiết phản hồi
+                      </button>
+                    </div>
+                  );
+                })()
               ) : null}
             </section>
           )}

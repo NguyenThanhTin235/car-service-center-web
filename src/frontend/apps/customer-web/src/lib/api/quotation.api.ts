@@ -24,10 +24,17 @@ export async function approveQuotation(id: number): Promise<ApproveQuotationResp
 
 /**
  * Khách hàng từ chối báo giá và ghi rõ lý do (Reject)
+ * rejectType: 'REVISE' (Yêu cầu điều chỉnh) hoặc 'CANCEL' (Hủy dịch vụ & Nhận lại xe)
  */
-export async function rejectQuotation(id: number, rejectReason: string): Promise<RejectQuotationResponse> {
+export async function rejectQuotation(
+  id: number,
+  rejectReason: string,
+  rejectType: 'REVISE' | 'CANCEL' = 'REVISE'
+): Promise<RejectQuotationResponse> {
   const response = await api.post(`/api/quotations/${id}/reject`, {
+    reason: rejectReason,
     rejectReason,
+    rejectType,
   });
   return response.data;
 }

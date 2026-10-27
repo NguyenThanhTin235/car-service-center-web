@@ -246,7 +246,9 @@ export const rejectQuotation = async (req: Request, res: Response): Promise<void
     const id = Number(req.params.id);
     const userId = (req as any).user.id;
     const userRole = (req as any).user.role;
-    const { reason } = req.body;
+    const { reason, rejectReason, rejectType } = req.body;
+    const finalReason = reason || rejectReason;
+    const validRejectType = rejectType === 'CANCEL' ? 'CANCEL' : 'REVISE';
 
     if (isNaN(id) || id <= 0) {
       res.status(400).json({
@@ -259,7 +261,7 @@ export const rejectQuotation = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const data = await quotationService.rejectQuotation(id, reason, userId, userRole);
+    const data = await quotationService.rejectQuotation(id, finalReason, userId, userRole, validRejectType);
     res.json({
       success: true,
       code: 200,

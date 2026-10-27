@@ -704,6 +704,24 @@ export async function updateJobStatus(
   return response.data;
 }
 
+export interface CancelAndReleasePayload {
+  releaseNotes?: string;
+  diagnosticFee?: number;
+  mileage?: number;
+  fuelLevel?: string;
+}
+
+/**
+ * Bàn giao xuất trả xe khi khách từ chối dịch vụ hoặc hủy lệnh
+ */
+export async function cancelAndReleaseWorkOrder(
+  workOrderId: number,
+  payload: CancelAndReleasePayload
+): Promise<ApiResponse<any>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/cancel-release`, payload);
+  return response.data;
+}
+
 
 
 

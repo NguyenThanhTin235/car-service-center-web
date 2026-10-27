@@ -83,6 +83,11 @@ export interface WorkOrderTrackingDto {
     taxAmount: number;
     grandTotal: number;
     rejectReason?: string | null;
+    rejectDetails?: {
+      type: 'REVISE' | 'CANCEL';
+      reason: string;
+      createdAt?: string;
+    } | null;
     sentAt?: string | null;
     approvedAt?: string | null;
     createdAt: string;
@@ -95,6 +100,11 @@ export interface WorkOrderTrackingDto {
       amount: number;
       sortOrder: number;
     }>;
+  } | null;
+  release?: {
+    id: number;
+    releaseNotes?: string | null;
+    releasedAt: string;
   } | null;
   invoice?: {
     id: number;

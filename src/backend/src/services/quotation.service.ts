@@ -688,7 +688,13 @@ export class QuotationService {
    * Từ chối báo giá kèm lý do (Customer từ chối hoặc Advisor ghi nhận) (UC-39)
    * Kích hoạt: Quotation -> REJECTED, WorkOrder -> quay về IN_PLANNING
    */
-  async rejectQuotation(id: number, reason: string, rejecterUserId: number, rejecterRole: string) {
+  async rejectQuotation(
+    id: number,
+    reason: string,
+    rejecterUserId: number,
+    rejecterRole: string,
+    rejectType: 'REVISE' | 'CANCEL' = 'REVISE'
+  ) {
     return await prisma.$transaction(async (tx) => {
       const quotation = await tx.quotation.findUnique({
         where: { id },
@@ -705,17 +711,28 @@ export class QuotationService {
         throw new Error('Bạn không có quyền từ chối báo giá này');
       }
 
+      const defaultReason =
+        rejectType === 'CANCEL'
+          ? 'Khách hàng không làm dịch vụ, yêu cầu nhận lại xe.'
+          : 'Khách hàng yêu cầu điều chỉnh các hạng mục/chi phí trong báo giá.';
+
+      const structuredReason = JSON.stringify({
+        type: rejectType,
+        reason: reason?.trim() || defaultReason,
+        createdAt: new Date().toISOString(),
+      });
+
       // 1. Chuyển Quotation sang REJECTED
       const updatedQuotation = await tx.quotation.update({
         where: { id },
         data: {
           status: 'REJECTED',
           rejected_at: new Date(),
-          reject_reason: reason || 'Khách hàng không đồng ý với chi phí đề xuất.',
+          reject_reason: structuredReason,
         },
       });
 
-      // 2. Chuyển Work Order quay lại IN_PLANNING để Cố vấn điều chỉnh dịch vụ/job
+      // 2. Chuyển Work Order quay lại IN_PLANNING để Cố vấn điều chỉnh dịch vụ/job hoặc làm thủ tục xuất trả xe
       await tx.workOrder.update({
         where: { id: quotation.work_order_id },
         data: {
@@ -751,6 +768,20 @@ export class QuotationService {
   }
 
   private formatQuotation(q: any) {
+    let rejectDetails: { type: 'REVISE' | 'CANCEL'; reason: string; createdAt?: string } | null = null;
+    if (q.reject_reason) {
+      try {
+        const parsed = JSON.parse(q.reject_reason);
+        if (parsed && typeof parsed === 'object' && parsed.type) {
+          rejectDetails = parsed;
+        } else {
+          rejectDetails = { type: 'REVISE', reason: q.reject_reason };
+        }
+      } catch {
+        rejectDetails = { type: 'REVISE', reason: q.reject_reason };
+      }
+    }
+
     return {
       id: q.id,
       workOrderId: q.work_order_id,
@@ -768,6 +799,7 @@ export class QuotationService {
       approvedBy: q.approved_by,
       rejectedAt: q.rejected_at,
       rejectReason: q.reject_reason,
+      rejectDetails,
       snapshotAt: q.snapshot_at,
       createdBy: q.created_by,
       createdAt: q.created_at,

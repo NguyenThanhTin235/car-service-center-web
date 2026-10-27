@@ -49,9 +49,11 @@ export default function CustomerQuotationModal({
   const [loading, setLoading] = useState<boolean>(false);
   const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
   const [showRejectForm, setShowRejectForm] = useState<boolean>(false);
+  const [rejectType, setRejectType] = useState<'REVISE' | 'CANCEL'>('REVISE');
   const [rejectReason, setRejectReason] = useState<string>('');
   const [rejectError, setRejectError] = useState<string>('');
   const [isConfirmApproveOpen, setIsConfirmApproveOpen] = useState<boolean>(false);
+  const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState<boolean>(false);
   const [approveError, setApproveError] = useState<string>('');
 
   if (!isOpen) return null;
@@ -72,6 +74,33 @@ export default function CustomerQuotationModal({
       .replace(/Phân khúc xe:\s*TRUCK/gi, 'Phân khúc xe: Bán tải');
   };
 
+  const parsedReject = (() => {
+    if (!quotation.rejectReason) return null;
+    try {
+      const p = JSON.parse(quotation.rejectReason);
+      if (p && typeof p === 'object' && p.type) return p;
+      return { type: 'REVISE', reason: quotation.rejectReason };
+    } catch {
+      return { type: 'REVISE', reason: quotation.rejectReason };
+    }
+  })();
+
+  const REVISE_PRESETS = [
+    'Chi phí vượt quá ngân sách dự kiến',
+    'Chỉ muốn làm trước các hạng mục thiết yếu',
+    'Muốn đổi loại phụ tùng tiết kiệm / OEM hơn',
+    'Muốn tham khảo thêm chính sách ưu đãi giá',
+    'Cần trao đổi thêm qua điện thoại với Cố vấn',
+  ];
+
+  const CANCEL_PRESETS = [
+    'Bận việc đột xuất, sẽ quay lại sau',
+    'Chưa có nhu cầu sửa chữa / bảo dưỡng lúc này',
+    'Thời gian thực hiện dự kiến quá lâu',
+    'Mang xe về kiểm tra thêm ở nơi khác',
+    'Lý do cá nhân khác',
+  ];
+
   // Xử lý phê duyệt báo giá
   const handleExecuteApprove = async () => {
     try {
@@ -88,17 +117,26 @@ export default function CustomerQuotationModal({
     }
   };
 
-  // Xử lý từ chối báo giá
-  const handleReject = async () => {
+  // Xử lý từ chối hoặc yêu cầu điều chỉnh báo giá
+  const handleExecuteReject = async () => {
     if (!rejectReason.trim()) {
-      setRejectError('Vui lòng nhập lý do để Cố vấn hỗ trợ điều chỉnh phương án tốt nhất cho quý khách');
+      setRejectError(
+        rejectType === 'CANCEL'
+          ? 'Vui lòng chọn hoặc nhập lý do nhận lại xe để trung tâm hỗ trợ tốt nhất'
+          : 'Vui lòng nhập lý do để Cố vấn hỗ trợ điều chỉnh phương án tốt nhất cho quý khách'
+      );
       return;
     }
 
     try {
       setLoading(true);
-      await rejectQuotation(quotation.id, rejectReason.trim());
-      onActionSuccess('Đã gửi phản hồi từ chối báo giá. Cố vấn dịch vụ sẽ sớm liên hệ lại với quý khách.');
+      await rejectQuotation(quotation.id, rejectReason.trim(), rejectType);
+      setIsConfirmCancelOpen(false);
+      if (rejectType === 'CANCEL') {
+        onActionSuccess('Đã gửi phản hồi: Hủy dịch vụ & Đăng ký nhận lại xe. Cố vấn sẽ hỗ trợ bàn giao xe cho Quý khách.');
+      } else {
+        onActionSuccess('Đã gửi yêu cầu điều chỉnh phương án báo giá đến Cố vấn dịch vụ.');
+      }
       onClose();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Có lỗi xảy ra khi gửi phản hồi');
@@ -195,12 +233,29 @@ export default function CustomerQuotationModal({
 
           {/* Alert nếu đã từ chối */}
           {quotation.status === 'REJECTED' && quotation.rejectReason && (
-            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 space-y-1">
-              <div className="flex items-center gap-1.5 font-bold">
-                <span className="material-symbols-outlined text-[18px]">info</span>
-                Lý do từ chối trước đó:
+            <div className={`p-4 rounded-2xl border text-xs space-y-1.5 shadow-2xs ${
+              parsedReject?.type === 'CANCEL'
+                ? 'bg-rose-50 border-rose-300 text-rose-900'
+                : 'bg-amber-50 border-amber-300 text-amber-900'
+            }`}>
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <span className="material-symbols-outlined text-[20px]">
+                  {parsedReject?.type === 'CANCEL' ? 'car_crash' : 'edit_note'}
+                </span>
+                <span>
+                  {parsedReject?.type === 'CANCEL'
+                    ? 'Quý khách đã từ chối dịch vụ & Yêu cầu nhận lại xe'
+                    : 'Quý khách đã gửi yêu cầu điều chỉnh phương án dịch vụ'}
+                </span>
               </div>
-              <p className="pl-6 italic">{quotation.rejectReason}</p>
+              <p className="pl-7 italic text-on-surface font-medium">
+                <b>Nội dung phản hồi:</b> "{parsedReject?.reason || quotation.rejectReason}"
+              </p>
+              <p className="pl-7 text-[11px] opacity-80">
+                {parsedReject?.type === 'CANCEL'
+                  ? 'Cố vấn dịch vụ đang chuẩn bị thủ tục bàn giao xe để Quý khách nhận lại tại sảnh tiếp nhận.'
+                  : 'Cố vấn dịch vụ đang xem xét và sẽ cập nhật phương án báo giá mới gửi đến Quý khách sớm nhất.'}
+              </p>
             </div>
           )}
 
@@ -352,35 +407,96 @@ export default function CustomerQuotationModal({
             </p>
           </div>
 
-          {/* Form từ chối nếu khách hàng bấm Từ chối */}
+          {/* Form phản hồi nếu khách hàng bấm Yêu cầu tư vấn lại / Từ chối */}
           {showRejectForm && (
-            <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-300 space-y-3 animate-fade-in">
+            <div className={`p-4 sm:p-5 rounded-2xl border space-y-4 animate-fade-in ${
+              rejectType === 'REVISE'
+                ? 'bg-amber-50/80 border-amber-300'
+                : 'bg-rose-50/80 border-rose-300'
+            }`}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
-                  <span className="material-symbols-outlined text-[20px] text-amber-600">contact_support</span>
-                  Gửi yêu cầu điều chỉnh / Từ chối báo giá
+                <div className="flex items-center gap-2 font-bold text-sm">
+                  <span className={`material-symbols-outlined text-[22px] ${
+                    rejectType === 'REVISE' ? 'text-amber-600' : 'text-rose-600'
+                  }`}>
+                    {rejectType === 'REVISE' ? 'edit_note' : 'directions_car'}
+                  </span>
+                  <span className={rejectType === 'REVISE' ? 'text-amber-950' : 'text-rose-950'}>
+                    {rejectType === 'REVISE'
+                      ? 'Yêu cầu điều chỉnh phương án dịch vụ'
+                      : 'Hủy dịch vụ & Đăng ký nhận lại xe'}
+                  </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowRejectForm(false)}
-                  className="text-xs text-amber-800 hover:underline"
+                  className="text-xs text-on-surface-variant hover:underline"
                 >
-                  Hủy thao tác
+                  Đóng lại
                 </button>
               </div>
 
-              <p className="text-xs text-amber-800">
-                Vui lòng cho Cố vấn dịch vụ biết lý do quý khách chưa hài lòng hoặc muốn điều chỉnh hạng mục nào:
+              {/* Segmented Switcher for Intent */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1 bg-black/5 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRejectType('REVISE');
+                    setRejectReason('');
+                    setRejectError('');
+                  }}
+                  className={`flex items-start gap-2.5 p-3 rounded-xl text-left transition-all ${
+                    rejectType === 'REVISE'
+                      ? 'bg-white shadow-sm border border-amber-300 text-amber-950 font-bold'
+                      : 'text-on-surface-variant hover:bg-white/50 font-medium'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[20px] text-amber-600 shrink-0 mt-0.5">
+                    handyman
+                  </span>
+                  <div>
+                    <div className="text-xs sm:text-sm font-bold">1. Muốn điều chỉnh phương án</div>
+                    <div className="text-[11px] opacity-80 font-normal mt-0.5">
+                      Giảm bớt hạng mục, đổi phụ tùng tiết kiệm hoặc áp dụng ưu đãi
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRejectType('CANCEL');
+                    setRejectReason('');
+                    setRejectError('');
+                  }}
+                  className={`flex items-start gap-2.5 p-3 rounded-xl text-left transition-all ${
+                    rejectType === 'CANCEL'
+                      ? 'bg-white shadow-sm border border-rose-300 text-rose-950 font-bold'
+                      : 'text-on-surface-variant hover:bg-white/50 font-medium'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[20px] text-rose-600 shrink-0 mt-0.5">
+                    car_crash
+                  </span>
+                  <div>
+                    <div className="text-xs sm:text-sm font-bold">2. Hủy dịch vụ & Nhận lại xe</div>
+                    <div className="text-[11px] opacity-80 font-normal mt-0.5">
+                      Không làm dịch vụ lần này, yêu cầu bàn giao xuất trả xe
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {/* Guidance text */}
+              <p className="text-xs font-medium text-on-surface">
+                {rejectType === 'REVISE'
+                  ? 'Vui lòng chọn lý do hoặc nhập yêu cầu điều chỉnh để Cố vấn chuẩn bị báo giá mới tốt hơn:'
+                  : 'Vui lòng chọn lý do hủy dịch vụ để xưởng hỗ trợ xuất trả xe chu đáo nhất:'}
               </p>
 
               {/* Preset buttons */}
               <div className="flex flex-wrap gap-1.5">
-                {[
-                  'Chi phí vượt dự tính ban đầu',
-                  'Chỉ muốn làm trước các hạng mục thiết yếu',
-                  'Muốn đổi loại phụ tùng tiết kiệm hơn',
-                  'Cần trao đổi thêm qua điện thoại với Cố vấn',
-                ].map((reason) => (
+                {(rejectType === 'REVISE' ? REVISE_PRESETS : CANCEL_PRESETS).map((reason) => (
                   <button
                     key={reason}
                     type="button"
@@ -388,13 +504,20 @@ export default function CustomerQuotationModal({
                       setRejectReason(reason);
                       setRejectError('');
                     }}
-                    className="px-2.5 py-1 rounded-lg text-xs bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 transition-colors shadow-2xs text-left"
+                    className={`px-2.5 py-1 rounded-lg text-xs transition-colors shadow-2xs text-left border ${
+                      rejectReason === reason
+                        ? rejectType === 'REVISE'
+                          ? 'bg-amber-200 border-amber-400 text-amber-950 font-bold'
+                          : 'bg-rose-200 border-rose-400 text-rose-950 font-bold'
+                        : 'bg-white hover:bg-black/5 text-on-surface border-black/10'
+                    }`}
                   >
                     + {reason}
                   </button>
                 ))}
               </div>
 
+              {/* Textarea */}
               <textarea
                 value={rejectReason}
                 onChange={(e) => {
@@ -402,30 +525,63 @@ export default function CustomerQuotationModal({
                   setRejectError('');
                 }}
                 rows={3}
-                placeholder="Nhập ghi chú chi tiết cho Cố vấn..."
-                className="w-full p-3 rounded-xl border border-amber-300 bg-white text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-amber-500"
+                placeholder={
+                  rejectType === 'REVISE'
+                    ? 'Nhập chi tiết yêu cầu điều chỉnh (ví dụ: bớt gói vệ sinh buồng đốt, chỉ thay nhớt...)'
+                    : 'Nhập ghi chú thêm cho Cố vấn dịch vụ...'
+                }
+                className="w-full p-3 rounded-xl border border-outline-variant bg-white text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
               />
 
               {rejectError && (
-                <p className="text-xs text-error font-medium">{rejectError}</p>
+                <p className="text-xs text-rose-600 font-semibold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px]">error</span>
+                  {rejectError}
+                </p>
               )}
 
               <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowRejectForm(false)}
-                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-gray-100 text-on-surface border border-gray-300 transition-colors"
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-gray-100 text-on-surface border border-gray-300 transition-colors cursor-pointer"
                 >
                   Quay lại
                 </button>
-                <button
-                  type="button"
-                  onClick={handleReject}
-                  disabled={loading}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors shadow-sm disabled:opacity-50"
-                >
-                  {loading ? 'Đang gửi...' : 'Xác nhận từ chối báo giá'}
-                </button>
+
+                {rejectType === 'REVISE' ? (
+                  <button
+                    type="button"
+                    onClick={handleExecuteReject}
+                    disabled={loading}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+                  >
+                    {loading ? (
+                      'Đang gửi...'
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-[16px]">send</span>
+                        <span>Gửi yêu cầu điều chỉnh</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!rejectReason.trim()) {
+                        setRejectError('Vui lòng chọn hoặc nhập lý do nhận lại xe');
+                        return;
+                      }
+                      setIsConfirmCancelOpen(true);
+                    }}
+                    disabled={loading}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">cancel</span>
+                    <span>Xác nhận hủy dịch vụ & Nhận lại xe</span>
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -561,6 +717,67 @@ export default function CustomerQuotationModal({
                   <>
                     <span className="material-symbols-outlined text-[16px]">check_circle</span>
                     <span>Xác nhận đồng ý</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL XÁC NHẬN HỦY DỊCH VỤ & NHẬN LẠI XE ================= */}
+      {isConfirmCancelOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-surface-container-lowest rounded-3xl border border-rose-200 shadow-2xl p-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center mx-auto shadow-inner">
+              <span className="material-symbols-outlined text-[32px]">directions_car</span>
+            </div>
+
+            <div>
+              <h3 className="text-title-md font-bold text-on-surface">Xác nhận hủy dịch vụ & Nhận lại xe</h3>
+              <p className="text-body-xs text-on-surface-variant mt-1">
+                Quý khách xác nhận không thực hiện các hạng mục dịch vụ và muốn nhận lại xe ngay hôm nay?
+              </p>
+            </div>
+
+            <div className="bg-rose-50/60 rounded-2xl p-4 text-left space-y-2 border border-rose-200 text-xs">
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant">Phương tiện:</span>
+                <span className="font-semibold text-on-surface">{vehiclePlate} ({vehicleModel})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant">Cố vấn phụ trách:</span>
+                <span className="font-semibold text-on-surface">{advisorName}</span>
+              </div>
+              <div className="border-t border-rose-200 pt-2 text-[11px] text-rose-800">
+                <b>Lý do ghi nhận:</b> {rejectReason}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => setIsConfirmCancelOpen(false)}
+                className="flex-1 py-2.5 rounded-xl border border-outline-variant text-on-surface hover:bg-surface-container font-semibold text-xs transition-colors cursor-pointer"
+              >
+                Xem lại
+              </button>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handleExecuteReject}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Đang gửi...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">check</span>
+                    <span>Xác nhận nhận lại xe</span>
                   </>
                 )}
               </button>

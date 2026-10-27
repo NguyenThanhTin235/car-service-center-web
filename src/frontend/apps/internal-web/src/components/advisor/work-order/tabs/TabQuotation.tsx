@@ -16,6 +16,7 @@ import {
 import { WorkOrder } from '@/lib/api/work-order.api';
 import toast from 'react-hot-toast';
 import QuotationHistoryModal from '../modals/QuotationHistoryModal';
+import VehicleReturnModal from '../modals/VehicleReturnModal';
 
 interface TabQuotationProps {
   workOrder: WorkOrder;
@@ -49,6 +50,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isVehicleReturnModalOpen, setIsVehicleReturnModalOpen] = useState(false);
 
   const fetchQuotations = useCallback(async () => {
     if (!workOrder?.id) return;
@@ -88,6 +90,18 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
   const activeQuotation = useMemo(() => {
     return quotations.find((q) => q.id === activeQuotationId) || mainQuotation || null;
   }, [quotations, activeQuotationId, mainQuotation]);
+
+  const parsedReject = useMemo(() => {
+    if (!activeQuotation?.rejectReason) return null;
+    if (activeQuotation.rejectDetails) return activeQuotation.rejectDetails;
+    try {
+      const p = JSON.parse(activeQuotation.rejectReason);
+      if (p && typeof p === 'object' && p.type) return p;
+      return { type: 'REVISE' as const, reason: activeQuotation.rejectReason };
+    } catch {
+      return { type: 'REVISE' as const, reason: activeQuotation.rejectReason };
+    }
+  }, [activeQuotation]);
 
   // Phân nhóm dòng theo Service
   const groupedLines = useMemo(() => {
@@ -422,18 +436,106 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
 
       {/* Thông báo nếu Báo giá bị từ chối */}
       {activeQuotation?.status === 'REJECTED' && (
-        <div className="flex items-start gap-3 p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-xl text-rose-800 dark:text-rose-200 text-sm">
-          <span className="material-symbols-outlined text-[20px] text-rose-600 mt-0.5">report</span>
-          <div>
-            <div className="font-bold">Khách hàng đã từ chối báo giá này</div>
-            <div className="mt-1 text-xs opacity-90">
-              <b>Lý do:</b> {activeQuotation.rejectReason || 'Không có lý do cụ thể'}
+        parsedReject?.type === 'CANCEL' ? (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-900 rounded-2xl text-rose-950 dark:text-rose-200 shadow-sm animate-fade-in">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <span className="material-symbols-outlined text-[24px]">directions_car</span>
+              </div>
+              <div>
+                <div className="font-bold text-sm text-rose-900 dark:text-rose-100 flex items-center gap-2">
+                  <span>Khách hàng từ chối làm dịch vụ & Yêu cầu nhận lại xe</span>
+                  <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-rose-200 dark:bg-rose-900 text-rose-900 dark:text-rose-100 border border-rose-300">
+                    Hủy dịch vụ
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-rose-800 dark:text-rose-200">
+                  <b>Lý do ghi nhận:</b> <i>"{parsedReject.reason || 'Khách hàng không làm dịch vụ, yêu cầu nhận lại xe'}"</i>
+                </div>
+                <div className="mt-1.5 text-xs text-rose-700 dark:text-rose-300">
+                  Vui lòng kiểm tra xe, đối chiếu tài sản và thực hiện thủ tục xuất trả xe để hoàn tất hồ sơ.
+                </div>
+              </div>
             </div>
-            <div className="mt-2 text-xs">
-              Phiếu công việc đã chuyển về bước <i>Lập kế hoạch</i>. Bạn có thể điều chỉnh dịch vụ trong Tab 2 & 3 và nhấn <b>"Tạo báo giá mới"</b>.
+
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+              {workOrder.customer?.phone && (
+                <a
+                  href={`tel:${workOrder.customer.phone}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-rose-900/40 hover:bg-rose-100 text-rose-900 dark:text-rose-100 rounded-xl text-xs font-semibold border border-rose-300 transition-colors shadow-2xs"
+                  title="Gọi cho khách hàng"
+                >
+                  <span className="material-symbols-outlined text-[16px]">call</span>
+                  <span>Gọi khách: {workOrder.customer.phone}</span>
+                </a>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setIsVehicleReturnModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">key</span>
+                <span>Xuất trả xe cho khách</span>
+              </button>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-900 rounded-2xl text-amber-950 dark:text-amber-200 shadow-sm animate-fade-in">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <span className="material-symbols-outlined text-[24px]">edit_note</span>
+              </div>
+              <div>
+                <div className="font-bold text-sm text-amber-900 dark:text-amber-100 flex items-center gap-2">
+                  <span>Khách hàng yêu cầu điều chỉnh phương án dịch vụ</span>
+                  <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100 border border-amber-300">
+                    Cần báo giá lại
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-amber-800 dark:text-amber-200">
+                  <b>Ý kiến khách hàng:</b> <i>"{parsedReject?.reason || activeQuotation.rejectReason || 'Yêu cầu điều chỉnh phương án'}"</i>
+                </div>
+                <div className="mt-1.5 text-xs text-amber-700 dark:text-amber-300">
+                  Bạn có thể điều chỉnh các hạng mục dịch vụ/phụ tùng trong kế hoạch và tạo phiên bản báo giá mới để gửi lại khách.
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+              {setActiveTab && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('job')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-amber-900/40 hover:bg-amber-100 text-amber-900 dark:text-amber-100 rounded-xl text-xs font-semibold border border-amber-300 transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">handyman</span>
+                    <span>Sửa dịch vụ (Tab 2)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('parts')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-amber-900/40 hover:bg-amber-100 text-amber-900 dark:text-amber-100 rounded-xl text-xs font-semibold border border-amber-300 transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">build_circle</span>
+                    <span>Sửa phụ tùng (Tab 3)</span>
+                  </button>
+                </>
+              )}
+
+              <button
+                type="button"
+                onClick={() => handleCreateQuotation('PRIMARY')}
+                disabled={actionLoading}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                <span>Tạo báo giá mới</span>
+              </button>
+            </div>
+          </div>
+        )
       )}
 
       {/* 2. Bảng bóc tách chi tiết (Itemized Table) */}
@@ -918,6 +1020,15 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
         activeQuotationId={activeQuotationId}
         onSelectQuotation={(id) => setActiveQuotationId(id)}
         workOrder={workOrder}
+      />
+
+      {/* MODAL BÀN GIAO & XUẤT TRẢ XE */}
+      <VehicleReturnModal
+        isOpen={isVehicleReturnModalOpen}
+        onClose={() => setIsVehicleReturnModalOpen(false)}
+        workOrder={workOrder}
+        refetchWO={refetchWO}
+        initialReason={parsedReject?.reason}
       />
     </div>
   );

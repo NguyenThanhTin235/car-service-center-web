@@ -46,6 +46,11 @@ export interface Quotation {
   approvedBy: { id: number; full_name: string } | null;
   rejectedAt: string | null;
   rejectReason: string | null;
+  rejectDetails?: {
+    type: 'REVISE' | 'CANCEL';
+    reason: string;
+    createdAt?: string;
+  } | null;
   snapshotAt: string | null;
   createdBy: { id: number; full_name: string; phone?: string };
   createdAt: string;
@@ -128,8 +133,15 @@ export async function approveQuotation(id: number): Promise<ApiResponse<Quotatio
 /**
  * Từ chối báo giá (UC-39)
  */
-export async function rejectQuotation(id: number, reason: string): Promise<ApiResponse<Quotation>> {
-  const response = await api.post(`/api/quotations/${id}/reject`, { reason });
+export async function rejectQuotation(
+  id: number,
+  reason: string,
+  rejectType: 'REVISE' | 'CANCEL' = 'REVISE'
+): Promise<ApiResponse<Quotation>> {
+  const response = await api.post(`/api/quotations/${id}/reject`, {
+    reason,
+    rejectType,
+  });
   return response.data;
 }
 
