@@ -8,6 +8,7 @@ type Props = {
   vehicleName: string;
   customerName: string;
   statusBadge: string;
+  inlineStatus?: boolean;
 };
 
 const STATUS_PIPELINE = [
@@ -34,8 +35,46 @@ const statusMap: Record<string, string> = {
   'CANCELLED': 'Đã hủy'
 };
 
-export default function WOBadgeBar({ licensePlate, vehicleClass, vehicleName, customerName, statusBadge }: Props) {
+export default function WOBadgeBar({
+  licensePlate,
+  vehicleClass,
+  vehicleName,
+  customerName,
+  statusBadge,
+  inlineStatus = false
+}: Props) {
   const mappedStatus = statusMap[statusBadge] || statusBadge;
+
+  if (inlineStatus) {
+    return (
+      <div className="flex items-center justify-between gap-4 px-6 py-2 border-b border-outline-variant bg-surface-container-lowest overflow-x-auto no-scrollbar">
+        {/* Left: Vehicle and Customer Info */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* License Plate */}
+          <span className="px-2.5 py-1 border border-outline-variant rounded text-label-md font-bold font-code-mono text-on-surface shadow-2xs uppercase whitespace-nowrap bg-surface-container-low/40">
+            {licensePlate}
+          </span>
+          
+          {/* Vehicle Class (PHV, Normal, etc) */}
+          <span className="px-2 py-0.5 bg-tertiary-fixed text-on-tertiary-fixed rounded text-label-xs font-bold uppercase tracking-wide whitespace-nowrap">
+            {vehicleClass}
+          </span>
+          
+          {/* Vehicle Name & Customer */}
+          <div className="flex items-center gap-2 text-body-sm whitespace-nowrap">
+            <span className="font-semibold text-on-surface">{vehicleName}</span>
+            <span className="text-outline font-bold">·</span>
+            <span className="text-on-surface-variant">{customerName}</span>
+          </div>
+        </div>
+
+        {/* Right: Status Pipeline */}
+        <div className="shrink-0">
+          <ChevronPipeline statuses={STATUS_PIPELINE} currentStatus={mappedStatus} compact />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3 px-6 py-3 border-b border-outline-variant bg-surface-container-lowest overflow-hidden">

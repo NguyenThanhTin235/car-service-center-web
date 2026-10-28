@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   WorkOrder,
   createManualJob,
@@ -45,7 +45,7 @@ export default function CreateDispatchJobModal({
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // Form states - Chuẩn hóa toàn bộ dữ liệu Job
+  // Form states
   const [jobCode, setJobCode] = useState('');
   const [jobName, setJobName] = useState('');
   const [selectedServiceId, setSelectedServiceId] = useState<number | 'NEW'>('NEW');
@@ -55,6 +55,8 @@ export default function CreateDispatchJobModal({
   const [estimatedHours, setEstimatedHours] = useState<number>(1.0);
   const [labourPrice, setLabourPrice] = useState<number>(150000);
   const [description, setDescription] = useState('');
+
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Cho phép chỉnh sửa khi tạo mới HOẶC khi công việc ở trạng thái chưa phân công (PLANNED)
   const isJobAssigned = Boolean(job && job.status && job.status !== 'PLANNED');
@@ -140,8 +142,16 @@ export default function CreateDispatchJobModal({
 
       setEstimatedHours(1.0);
       setLabourPrice(150000);
+
+      // Auto-focus vào ô tên công việc sau khi modal hiển thị
+      setTimeout(() => {
+        if (nameInputRef.current && !isReadOnlyMode) {
+          nameInputRef.current.focus();
+          nameInputRef.current.select();
+        }
+      }, 100);
     }
-  }, [isOpen, finding, targetServiceId, targetServiceName, markerLabel, workOrder, job]);
+  }, [isOpen, finding, targetServiceId, targetServiceName, markerLabel, workOrder, job, isReadOnlyMode]);
 
   // Load danh mục Loại công việc & Nhân viên kỹ thuật
   useEffect(() => {
@@ -152,7 +162,7 @@ export default function CreateDispatchJobModal({
 
     Promise.allSettled([
       jobTypeApi.getAll({ limit: 50 }),
-      employeeApi.getAll({ limit: 50 }),
+      employeeApi.getAll({ limit: 100, position: 'TECHNICIAN' }),
     ])
       .then(([jobTypeRes, employeeRes]) => {
         if (!mounted) return;
@@ -169,7 +179,9 @@ export default function CreateDispatchJobModal({
         if (employeeRes.status === 'fulfilled') {
           const emps: EmployeeData[] =
             employeeRes.value?.data?.data || employeeRes.value?.data || [];
-          setEmployees(emps);
+          setEmployees(
+            emps.filter((e) => e.isActive !== false && e.position === 'TECHNICIAN')
+          );
         }
       })
       .finally(() => {
@@ -181,10 +193,25 @@ export default function CreateDispatchJobModal({
     };
   }, [isOpen]);
 
+  // Phím tắt bàn phím: Esc để đóng, Enter để lưu (khi không ở textarea)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        handleSave();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, jobName, selectedJobTypeId, selectedTechnicianId, estimatedHours, description]);
+
   // Submit Lưu / Cập nhật công việc
   const handleSave = async () => {
     if (!jobName.trim()) {
       toast.error('Vui lòng nhập tên công việc');
+      nameInputRef.current?.focus();
       return;
     }
 
@@ -280,138 +307,106 @@ export default function CreateDispatchJobModal({
       !isReadOnlyMode
   );
 
+  const resolvedServiceName = targetServiceName || workOrder.services?.find((s) => s.id === targetServiceId)?.name;
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
       <div
-        className="w-full max-w-2xl bg-surface-container-lowest text-on-surface rounded-2xl shadow-2xl border border-outline-variant/60 overflow-hidden flex flex-col max-h-[92vh]"
+        className="w-full max-w-xl bg-surface-container-lowest text-on-surface rounded-2xl shadow-2xl border border-outline-variant/60 overflow-hidden flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* HEADER MODAL */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/40 bg-surface-container-low">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shadow-xs">
+        {/* HEADER MODAL - Tinh gọn, hiển thị ngữ cảnh bằng Breadcrumb Tag */}
+        <div className="px-6 py-4 border-b border-outline-variant/30 bg-surface-container-low flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-2xs">
               <span className="material-symbols-outlined text-[22px]">
-                {job ? 'build_circle' : 'assignment_add'}
+                {job ? 'edit_note' : 'add_task'}
               </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-title-sm font-bold text-on-surface tracking-tight">
-                  {job ? 'Chi tiết công việc điều phối' : 'Tạo công việc điều phối'}
+                  {job ? (isReadOnlyMode ? 'Chi tiết công việc' : 'Chỉnh sửa công việc') : 'Thêm công việc mới'}
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
-                  {job
-                    ? isJobAssigned
-                      ? job.status === 'COMPLETED'
-                        ? 'Đã hoàn thành'
-                        : 'Đang thực hiện'
-                      : selectedTechnicianId
-                        ? 'Đã phân công'
-                        : 'Chờ điều phối'
-                    : selectedTechnicianId
-                      ? 'Đã chọn KTV'
-                      : 'Tạo thủ công'}
-                </span>
-              </div>
-              <p className="text-body-xs text-on-surface-variant">
-                Phiếu: <span className="font-semibold text-primary">#{workOrder.wo_number}</span>
-                {finding && (
-                  <span>
-                    {' '}• Vết lỗi: <strong className="text-amber-700">#{finding.id} ({markerLabel})</strong>
+                {job && (
+                  <span className="px-2 py-0.5 rounded-full text-label-xs font-semibold bg-surface-container text-on-surface-variant font-mono">
+                    {jobCode}
                   </span>
                 )}
-              </p>
+              </div>
+              {/* Context breadcrumb tag */}
+              <div className="flex items-center gap-1.5 text-body-xs text-on-surface-variant mt-0.5 truncate">
+                <span className="font-semibold text-primary">#{workOrder.wo_number}</span>
+                {resolvedServiceName && (
+                  <>
+                    <span>›</span>
+                    <span className="truncate text-on-surface font-medium max-w-[200px]" title={resolvedServiceName}>
+                      {resolvedServiceName}
+                    </span>
+                  </>
+                )}
+                {finding && (
+                  <>
+                    <span>›</span>
+                    <span className="inline-flex items-center gap-0.5 text-amber-700 dark:text-amber-400 font-semibold">
+                      <span className="material-symbols-outlined text-[13px]">report_problem</span>
+                      {markerLabel}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
+
           <button
             onClick={onClose}
             disabled={saving}
-            className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
-            title="Đóng cửa sổ"
+            className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer shrink-0"
+            title="Đóng (Esc)"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
-        {/* BODY - CHỈ GIỮ THÔNG TIN CÔNG VIỆC CHUẨN HÓA TIẾNG VIỆT */}
+        {/* BODY - Form 2 cột gọn gàng, tập trung vào thao tác chính */}
         <div className="p-6 overflow-y-auto space-y-4">
-          {/* Hàng 1: Mã công việc & Trạng thái */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-body-xs font-semibold text-on-surface-variant mb-1.5">
-                Mã công việc
-              </label>
-              <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-low rounded-xl border border-outline-variant/60 font-mono text-body-sm font-bold text-blue-800">
-                <span className="material-symbols-outlined text-[16px] text-blue-600">tag</span>
-                <span>{jobCode}</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-body-xs font-semibold text-on-surface-variant mb-1.5">
-                Trạng thái điều phối
-              </label>
-              <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-low rounded-xl border border-outline-variant/60 text-body-sm font-medium text-slate-700">
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    job?.status === 'COMPLETED'
-                      ? 'bg-emerald-500'
-                      : job?.status === 'IN_PROGRESS'
-                      ? 'bg-blue-500 animate-pulse'
-                      : selectedTechnicianId
-                      ? 'bg-blue-600'
-                      : 'bg-amber-500 animate-pulse'
-                  }`}
-                />
-                <span className="font-semibold text-blue-700">
-                  {job?.status === 'COMPLETED'
-                    ? 'Đã hoàn thành'
-                    : job?.status === 'IN_PROGRESS'
-                    ? 'Đang thực hiện'
-                    : selectedTechnicianId
-                    ? 'Đã phân công'
-                    : 'Chờ điều phối'}
-                </span>
-              </div>
-            </div>
+          {/* Tên công việc (Input chính, lớn, dễ nhận diện) */}
+          <div>
+            <label className="block text-body-xs font-bold text-on-surface mb-1.5">
+              Tên công việc <span className="text-error font-bold">*</span>
+            </label>
+            <input
+              ref={nameInputRef}
+              type="text"
+              value={jobName}
+              disabled={isReadOnlyMode}
+              onChange={(e) => setJobName(e.target.value)}
+              placeholder="VD: Kiểm tra, tháo tapi và gò nắn cánh cửa..."
+              className={`w-full px-3.5 py-2.5 bg-surface-container-lowest border border-outline-variant/80 rounded-xl text-body-sm font-semibold text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-2xs ${
+                isReadOnlyMode ? 'bg-surface-container-low/60 cursor-default opacity-80' : ''
+              }`}
+            />
           </div>
 
-          {/* Hàng: Hạng mục dịch vụ áp dụng */}
-          {targetServiceId || targetServiceName ? (
+          {/* Chọn Hạng mục áp dụng (Chỉ hiện khi chưa có targetServiceId chỉ định) */}
+          {!targetServiceId && !targetServiceName && !job && workOrder.services && workOrder.services.length > 0 && (
             <div>
               <label className="block text-body-xs font-semibold text-on-surface-variant mb-1.5">
-                Thuộc Hạng mục dịch vụ
-              </label>
-              <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 rounded-xl text-body-sm font-semibold text-blue-900 dark:text-blue-200">
-                <span className="material-symbols-outlined text-[18px] text-blue-600">category</span>
-                <span className="truncate">
-                  {targetServiceName ||
-                    workOrder.services?.find((s) => s.id === targetServiceId)?.name ||
-                    'Hạng mục dịch vụ'}
-                </span>
-                <span className="ml-auto text-[10px] bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">
-                  Hạng mục chỉ định
-                </span>
-              </div>
-            </div>
-          ) : !job && workOrder.services && workOrder.services.length > 0 ? (
-            <div>
-              <label className="block text-body-xs font-semibold text-on-surface-variant mb-1.5">
-                Thuộc Hạng mục dịch vụ <span className="text-red-500 font-bold">*</span>
+                Thuộc Hạng mục dịch vụ <span className="text-error font-bold">*</span>
               </label>
               <select
                 value={selectedServiceId}
                 onChange={(e) => setSelectedServiceId(e.target.value === 'NEW' ? 'NEW' : Number(e.target.value))}
-                className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm text-on-surface outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 h-[42px] cursor-pointer"
+                className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm text-on-surface outline-none focus:border-primary cursor-pointer"
               >
                 {workOrder.services.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
                 ))}
-                <option value="NEW">+ Tạo hạng mục mới...</option>
+                <option value="NEW">+ Tạo Hạng mục sửa chữa mới...</option>
               </select>
               {selectedServiceId === 'NEW' && (
                 <input
@@ -419,74 +414,27 @@ export default function CreateDispatchJobModal({
                   value={newServiceName}
                   onChange={(e) => setNewServiceName(e.target.value)}
                   placeholder="Nhập tên hạng mục mới..."
-                  className="mt-2 w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm text-on-surface outline-none focus:border-blue-600"
+                  className="mt-2 w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm text-on-surface outline-none focus:border-primary"
                 />
               )}
             </div>
-          ) : null}
+          )}
 
-          {/* Hàng 2: Tên công việc (Bắt buộc) */}
-          <div>
-            <label className="block text-body-xs font-semibold text-on-surface-variant mb-1.5">
-              Tên công việc khắc phục <span className="text-red-500 font-bold">*</span>
-            </label>
-            <input
-              type="text"
-              value={jobName}
-              disabled={isReadOnlyMode}
-              onChange={(e) => setJobName(e.target.value)}
-              placeholder="VD: Kiểm tra, tháo lắp và phục hồi chi tiết..."
-              className={`w-full px-3.5 py-2.5 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm font-medium text-on-surface outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-all shadow-2xs ${
-                isReadOnlyMode ? 'bg-surface-container-low/60 cursor-default' : ''
-              }`}
-            />
-          </div>
-
-          {/* Hàng 3: Vết lỗi kiểm tra liên quan & Loại công việc kỹ thuật */}
+          {/* Hàng 2: [Nhóm công việc] & [Kỹ thuật viên phụ trách] */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-body-xs font-semibold text-on-surface-variant mb-1.5">
-                Vết lỗi kiểm tra liên quan
-              </label>
-              <div className="p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/60 flex items-start gap-2 h-[42px] items-center">
-                <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0">
-                  report_problem
-                </span>
-                <div className="text-body-xs truncate">
-                  <span className="font-semibold text-on-surface">
-                    {finding ? (
-                      <>
-                        <span className="font-mono text-amber-800 font-bold">
-                          ISS-{String(finding.id).padStart(3, '0')}
-                        </span>{' '}
-                        • {markerLabel}
-                      </>
-                    ) : (
-                      'Công việc kỹ thuật chung'
-                    )}
-                  </span>
-                  {finding?.part_name && (
-                    <span className="text-on-surface-variant text-[11px] ml-1">
-                      ({finding.part_name})
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-body-xs font-semibold text-on-surface-variant mb-1.5">
-                Loại công việc kỹ thuật <span className="text-red-500 font-bold">*</span>
+                Nhóm công việc <span className="text-error font-bold">*</span>
               </label>
               <select
                 value={selectedJobTypeId || ''}
                 disabled={isReadOnlyMode}
                 onChange={(e) => setSelectedJobTypeId(Number(e.target.value))}
-                className={`w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm text-on-surface outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 h-[42px] ${
-                  isReadOnlyMode ? 'bg-surface-container-low/60 cursor-default' : 'cursor-pointer'
+                className={`w-full px-3 py-2.5 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary ${
+                  isReadOnlyMode ? 'bg-surface-container-low/60 cursor-default opacity-80' : 'cursor-pointer'
                 }`}
               >
-                <option value="">-- Chọn loại công việc --</option>
+                <option value="">-- Chọn nhóm công việc --</option>
                 {jobTypes.map((jt) => (
                   <option key={jt.id} value={jt.id}>
                     {jt.name}
@@ -494,10 +442,7 @@ export default function CreateDispatchJobModal({
                 ))}
               </select>
             </div>
-          </div>
 
-          {/* Hàng 4: Kỹ thuật viên phụ trách & Thời gian định mức ước tính */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-body-xs font-semibold text-on-surface-variant">
@@ -506,7 +451,7 @@ export default function CreateDispatchJobModal({
                 {selectedTechnicianId && !isReadOnlyMode && (
                   <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 animate-fade-in">
                     <span className="material-symbols-outlined text-[13px]">how_to_reg</span>
-                    Phân công ngay khi lưu
+                    Phân công ngay
                   </span>
                 )}
               </div>
@@ -514,126 +459,148 @@ export default function CreateDispatchJobModal({
                 value={selectedTechnicianId || ''}
                 disabled={isReadOnlyMode}
                 onChange={(e) => setSelectedTechnicianId(Number(e.target.value) || null)}
-                className={`w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm text-on-surface outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 h-[42px] ${
-                  isReadOnlyMode ? 'bg-surface-container-low/60 cursor-default' : 'cursor-pointer'
+                className={`w-full px-3 py-2.5 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary ${
+                  isReadOnlyMode ? 'bg-surface-container-low/60 cursor-default opacity-80' : 'cursor-pointer'
                 }`}
               >
                 <option value="">-- Chưa chỉ định (Điều phối sau) --</option>
+                {selectedTechnicianId && !employees.some((e) => e.id === selectedTechnicianId) && (
+                  <option value={selectedTechnicianId}>
+                    {job?.labours?.[0]?.employee?.full_name || `KTV #${selectedTechnicianId}`}
+                  </option>
+                )}
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.fullName} ({emp.position})
+                    {emp.fullName}
                   </option>
                 ))}
               </select>
             </div>
+          </div>
 
+          {/* Hàng 3: [Thời gian định mức] & [Đơn giá dự kiến / Giờ] */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-body-xs font-semibold text-on-surface-variant mb-1.5">
-                Thời gian định mức ước tính (Giờ)
+                Thời gian định mức (Giờ) <span className="text-error font-bold">*</span>
               </label>
               <div className="relative">
                 <input
                   type="number"
                   step="0.5"
                   min="0.1"
+                  max="40"
                   value={estimatedHours}
                   disabled={isReadOnlyMode}
                   onChange={(e) => setEstimatedHours(parseFloat(e.target.value) || 0)}
-                  className={`w-full pl-3 pr-10 py-2 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm font-semibold text-on-surface outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 font-mono h-[42px] ${
-                    isReadOnlyMode ? 'bg-surface-container-low/60 cursor-default' : ''
+                  className={`w-full pl-3 pr-10 py-2.5 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm font-bold text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary font-mono ${
+                    isReadOnlyMode ? 'bg-surface-container-low/60 cursor-default opacity-80' : ''
                   }`}
                 />
-                <span className="absolute right-3 top-2.5 text-on-surface-variant text-body-xs font-medium">
+                <span className="absolute right-3.5 top-2.5 text-on-surface-variant text-body-xs font-medium pointer-events-none">
                   giờ
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-body-xs font-semibold text-on-surface-variant mb-1.5">
+                Đơn giá nhân công (VNĐ)
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="10000"
+                  min="0"
+                  value={labourPrice}
+                  disabled={isReadOnlyMode}
+                  onChange={(e) => setLabourPrice(parseInt(e.target.value, 10) || 0)}
+                  className={`w-full pl-3 pr-12 py-2.5 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm font-bold text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary font-mono ${
+                    isReadOnlyMode ? 'bg-surface-container-low/60 cursor-default opacity-80' : ''
+                  }`}
+                />
+                <span className="absolute right-3.5 top-2.5 text-on-surface-variant text-body-xs font-medium pointer-events-none">
+                  đ
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Hàng 5: Mô tả công việc & Phương án xử lý chi tiết */}
+          {/* Hàng 4: Ghi chú & Yêu cầu kỹ thuật */}
           <div>
             <label className="block text-body-xs font-semibold text-on-surface-variant mb-1.5">
-              Mô tả chi tiết & Phương án xử lý kỹ thuật
+              Ghi chú & Hướng dẫn thi công (Tùy chọn)
             </label>
             <textarea
-              rows={3}
+              rows={2}
               value={description}
               disabled={isReadOnlyMode}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ghi chú chi tiết quy trình xử lý, lưu ý khi tháo lắp hoặc tiêu chuẩn kiểm tra lại sau khi hoàn thiện..."
-              className={`w-full px-3.5 py-2.5 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm text-on-surface outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-all resize-none ${
-                isReadOnlyMode ? 'bg-surface-container-low/60 cursor-default' : ''
+              placeholder="Ghi chú chi tiết quy trình xử lý, lưu ý khi tháo lắp hoặc tiêu chuẩn kiểm tra..."
+              className={`w-full px-3.5 py-2.5 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none ${
+                isReadOnlyMode ? 'bg-surface-container-low/60 cursor-default opacity-80' : ''
               }`}
             />
           </div>
         </div>
 
-        {/* FOOTER */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-outline-variant/40 bg-surface-container-low">
-          {isReadOnlyMode ? (
+        {/* FOOTER - Rõ ràng, phân cấp hành động */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-outline-variant/30 bg-surface-container-low">
+          {canDeleteJob ? (
+            confirmDelete ? (
+              <div className="flex items-center gap-1.5 bg-error-container/40 p-1 rounded-xl border border-error/30 animate-fade-in">
+                <span className="text-[12px] font-semibold text-error px-1.5">
+                  Xác nhận xóa?
+                </span>
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={handleDelete}
+                  className="px-2.5 py-1 bg-error hover:bg-error/90 text-white rounded-lg text-body-xs font-bold transition-all cursor-pointer"
+                >
+                  {deleting ? 'Đang xóa...' : 'Xóa ngay'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="p-1 text-on-surface-variant hover:bg-surface-container-high rounded-lg cursor-pointer"
+                  title="Hủy"
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={saving || deleting}
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-error hover:bg-error/10 rounded-xl text-body-sm font-semibold transition-colors cursor-pointer"
+                title="Xóa công việc này"
+              >
+                <span className="material-symbols-outlined text-[18px]">delete_outline</span>
+                <span>Xóa việc</span>
+              </button>
+            )
+          ) : (
+            <div />
+          )}
+
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-body-sm transition-all shadow-sm cursor-pointer"
+              disabled={saving || deleting}
+              className="px-4 py-2 rounded-xl border border-outline-variant/80 text-on-surface-variant hover:bg-surface-container-high text-body-sm font-semibold transition-colors cursor-pointer"
             >
-              Đóng
+              Hủy
             </button>
-          ) : (
-            <>
-              {/* Nút Xóa công việc khi chưa phân công */}
-              {canDeleteJob && (
-                <div className="mr-auto">
-                  {confirmDelete ? (
-                    <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-950/40 p-1 rounded-xl border border-red-200 dark:border-red-800 animate-fade-in">
-                      <span className="text-[12px] font-semibold text-red-600 dark:text-red-400 px-1">
-                        Chắc chắn xóa?
-                      </span>
-                      <button
-                        type="button"
-                        disabled={deleting}
-                        onClick={handleDelete}
-                        className="px-2.5 py-1 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-lg text-body-xs font-bold transition-all shadow-xs cursor-pointer"
-                      >
-                        {deleting ? 'Đang xóa...' : 'Xóa ngay'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDelete(false)}
-                        className="p-1 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-colors"
-                        title="Hủy"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">close</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={saving || deleting}
-                      onClick={() => setConfirmDelete(true)}
-                      className="flex items-center gap-1 px-3 py-2 text-error hover:bg-error/10 rounded-xl text-body-sm font-semibold transition-colors cursor-pointer"
-                      title="Xóa công việc chưa phân công này"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">delete_outline</span>
-                      <span>Xóa công việc</span>
-                    </button>
-                  )}
-                </div>
-              )}
 
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={saving || deleting}
-                className="px-4 py-2 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container-high text-body-sm font-semibold transition-colors cursor-pointer"
-              >
-                Hủy bỏ
-              </button>
-
+            {!isReadOnlyMode && (
               <button
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold text-body-sm transition-all shadow-sm disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 active:scale-95 text-white font-bold text-body-sm transition-all shadow-sm disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
               >
                 {saving ? (
                   <>
@@ -645,12 +612,12 @@ export default function CreateDispatchJobModal({
                 ) : (
                   <>
                     <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                    <span>{job ? 'Cập nhật thay đổi' : 'Lưu công việc'}</span>
+                    <span>{job ? 'Cập nhật' : 'Lưu công việc'}</span>
                   </>
                 )}
               </button>
-            </>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

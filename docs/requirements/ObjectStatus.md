@@ -30,34 +30,38 @@ Dùng để theo dõi quá trình từ khi khách hàng có nhu cầu đến khi
 
 ## 2. Phiếu công việc (Work Order)
 Đây là thực thể trung tâm của hệ thống, quản lý toàn bộ vòng đời của một lần xe vào xưởng (Visit).
+*(Xem tài liệu đặc tả chi tiết và sơ đồ máy trạng thái tại: [WORK_ORDER_STATUS_TRANSITION.md](WORK_ORDER_STATUS_TRANSITION.md))*
 
 ### 2.1. Định nghĩa trạng thái
 | Trạng thái | Ý nghĩa |
 |:---:|---|
-| **DRAFT** | Nháp. Đang trong quá trình ghi nhận thông tin xe (ODO, xăng, đồ đạc). |
-| **IN_PLANNING** | Đang lập kế hoạch. Đưa xe lên cầu nâng để kiểm tra, đánh dấu Finding, tạo Job, khai báo vật tư. |
-| **PENDING_APPROVAL**| Đang chờ phản hồi từ khách hàng về bảng Báo giá. |
-| **APPROVED** | Khách đã đồng ý báo giá. Hệ thống cho phép xuất kho và thợ bắt đầu làm việc. |
-| **IN_PROGRESS** | Thợ đang sửa chữa. Hoặc đang trong quá trình kiểm định QC (Rework). |
-| **BILLING_REQUESTED**| Đã gửi yêu cầu thanh toán sang Quầy dịch vụ để chốt bill. |
-| **FINANCIAL_CLEARED**| Đã thanh toán thành công (Clear tài chính). Khóa các thay đổi liên quan đến chi phí. |
-| **RELEASED** | Đã bàn giao xe cho khách hàng và rời xưởng. |
-| **CLOSED** | Phiếu công việc đã được đóng. Lịch sử dịch vụ được ghi nhận vĩnh viễn. |
+| **DRAFT** | Nháp. Đang trong quá trình ghi nhận thông tin xe (ODO, xăng, đồ đạc, ảnh hiện trạng). |
+| **IN_PLANNING** | Đang lập kế hoạch. Đưa xe lên cầu nâng để kiểm tra, chẩn đoán, đánh dấu Finding, tạo Job, khai báo vật tư. |
+| **PENDING_APPROVAL**| Đang chờ phản hồi từ khách hàng về bảng Báo giá (Quotation). |
+| **APPROVED** | Khách đã đồng ý báo giá. Tự động giữ chỗ phụ tùng (`RESERVED`) và cho phép bắt đầu thi công. |
+| **IN_PROGRESS** | Thợ đang sửa chữa. Hoặc đang trong quá trình kiểm định QC / Sửa lại lỗi (Rework). |
+| **BILLING_REQUESTED**| Đã gửi yêu cầu thanh toán sang Quầy dịch vụ để chốt bill (100% Jobs Completed & QC Passed). |
+| **FINANCIAL_CLEARED**| Đã thanh toán thành công 100% (Clear tài chính). Khóa các thay đổi liên quan đến chi phí. |
+| **RELEASED** | Đã bàn giao xe cho khách hàng và rời xưởng (có biên bản VehicleRelease). |
+| **CLOSED** | Phiếu công việc đã được đóng vĩnh viễn (thỏa mãn Closure Gate). Ghi nhận Lịch sử dịch vụ xe vĩnh viễn. |
+| **CANCELLED** | Hủy phiếu công việc (chỉ được phép khi chưa xuất kho vật tư và chưa bắt đầu thi công). |
 
 ### 2.2. Chuyển đổi trạng thái (Transitions)
-| Từ trạng thái | Trạng thái tiếp theo | Trigger (Sự kiện kích hoạt) | Actor thực hiện |
-|---|---|---|---|
-| *(Khởi tạo)* | **DRAFT** | Tạo Work Order (từ Intake Queue, Walk-in, Tow-in) | Service Advisor |
-| **DRAFT** | **IN_PLANNING** | Lưu xong thông tin tình trạng xe (Condition) | Service Advisor |
-| **IN_PLANNING** | **PENDING_APPROVAL**| Gửi báo giá (Quotation) cho khách hàng | Service Advisor |
-| **PENDING_APPROVAL**| **IN_PLANNING** | Khách từ chối báo giá (Rejected) -> Quay lại lập KH | Service Advisor |
-| **PENDING_APPROVAL**| **APPROVED** | Đánh dấu khách đồng ý báo giá (Approved) | Service Advisor |
-| **APPROVED** | **IN_PROGRESS** | Bắt đầu thao tác Xuất kho vật tư (Issue Part) cho Job đầu tiên | Service Advisor |
-| **IN_PROGRESS** | **BILLING_REQUESTED**| Gửi yêu cầu thanh toán (Khi toàn bộ Job Completed & QC Passed) | Service Advisor |
-| **BILLING_REQUESTED**| **FINANCIAL_CLEARED**| Trạng thái hóa đơn chuyển thành PAID (Trigger tự động) | Hệ thống (Tự động) |
-| **FINANCIAL_CLEARED**| **RELEASED** | Xác nhận bàn giao xe thành công | Service Advisor |
-| **RELEASED** | **CLOSED** | Nhấn Đóng phiếu (Chỉ khi thỏa mãn Closure Gate) | Service Advisor |
-| *(Tất cả)* | **CANCELLED** | Nhấn Hủy phiếu (Chỉ được phép khi chưa xuất kho) | Service Advisor |
+| Từ trạng thái | Trạng thái tiếp theo | Trigger (Sự kiện kích hoạt) | Actor thực hiện | Cổng kiểm soát (Gate Condition) |
+|---|---|---|---|---|
+| *(Khởi tạo)* | **DRAFT** | Tạo Work Order từ Intake Queue / Appointment / Walk-in / Tow-in | Service Advisor | Phiếu tiếp nhận ở trạng thái QUEUED |
+| **DRAFT** | **IN_PLANNING** | Lưu / Xác nhận thông tin tình trạng xe (Check-in) | Service Advisor | **Check-in Gate:** Có ODO km và mức nhiên liệu |
+| **IN_PLANNING** | **PENDING_APPROVAL**| Gửi báo giá (Quotation) cho khách hàng qua hệ thống/email | Service Advisor | **Quotation Gate:** Có ít nhất 1 Service & 1 Job, tổng tiền > 0 |
+| **PENDING_APPROVAL**| **APPROVED** | Khách hàng hoặc Cố vấn xác nhận phê duyệt báo giá | Customer / Service Advisor | **Approval Gate:** Báo giá đang ở trạng thái SENT; tự động RESERVED phụ tùng |
+| **PENDING_APPROVAL**| **IN_PLANNING** | Khách hàng từ chối báo giá & yêu cầu điều chỉnh (REVISE) | Customer / Service Advisor | Work Order mở lại cho phép sửa đổi danh mục dịch vụ |
+| **PENDING_APPROVAL** / **IN_PLANNING**| **RELEASED** | Khách hàng từ chối làm dịch vụ & nhận lại xe (CANCEL) | Service Advisor | **Early Release Gate:** Giải phóng toàn bộ kho (RETURNED), lập biên bản xuất trả xe |
+| **APPROVED** | **IN_PROGRESS** | Bắt đầu thi công / Xuất kho vật tư (Issue Part) cho Job đầu tiên | Service Advisor | **Execution Gate:** Báo giá phải APPROVED, phụ tùng đã sẵn sàng |
+| **IN_PROGRESS** | **IN_PROGRESS** (Loop) | Job Completed -> Kiểm tra QC Fail -> Rework -> QC Pass | Thợ / QC Staff / SA | Vòng lặp khắc phục lỗi kỹ thuật đến khi QC đạt |
+| **IN_PROGRESS** | **BILLING_REQUESTED**| Gửi yêu cầu thanh toán sang quầy Thu ngân / Lễ tân | Service Advisor | **QC & Billing Gate (BR-INV-03):** 100% Job COMPLETED & QC PASSED |
+| **BILLING_REQUESTED**| **FINANCIAL_CLEARED**| Thu ngân xác nhận hóa đơn đã thanh toán đủ tiền (Invoice PAID) | Hệ thống (Tự động) | **Financial Gate (BR-INV-04):** Amount Due = 0 đ, Invoice = PAID |
+| **FINANCIAL_CLEARED**| **RELEASED** | Khách đối chiếu tài sản, ký biên bản bàn giao và xuất xưởng | Service Advisor | **Release Gate (BR-REL-01):** Công nợ = 0 đ, lập VehicleRelease |
+| **RELEASED** | **CLOSED** | Quản lý kiểm tra và đóng hồ sơ phiếu công việc | Service Manager / SA | **Closure Gate (BR-CLO-01, QĐ-MGR10):** Xe đã Release + 0 Job mở + Invoice PAID |
+| **DRAFT** / **IN_PLANNING** / **PENDING_APPROVAL**| **CANCELLED** | Nhấn Hủy phiếu công việc do khách hủy lịch hoặc đổi ý | Service Advisor / Manager | **Cancellation Gate:** Chưa có phụ tùng nào bị xuất kho (ISSUED) |
 
 ---
 

@@ -51,7 +51,24 @@ const workOrderInclude = {
           },
           parts: {
             include: {
-              item: { select: { id: true, sku: true, part_category: { select: { name: true } } } },
+              item: {
+                select: {
+                  id: true,
+                  sku: true,
+                  selling_price: true,
+                  on_hand: true,
+                  part_category: {
+                    select: {
+                      id: true,
+                      code: true,
+                      name: true,
+                      item_type: true,
+                      uom: { select: { id: true, name: true } },
+                    },
+                  },
+                  brand: { select: { id: true, name: true } },
+                },
+              },
             },
           },
         },

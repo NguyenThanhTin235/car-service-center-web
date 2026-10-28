@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { WorkOrderService } from '../services/work-order.service';
 import { createWorkOrderSchema } from '../dtos/work-order.dto';
 import { addWoServiceSchema } from '../dtos/wo-service.dto';
+import { addJobPartSchema, updateJobPartSchema } from '../dtos/job-part.dto';
 
 const workOrderService = new WorkOrderService();
 
@@ -612,3 +613,420 @@ export const getMyTrackingOrderDetail = async (req: Request, res: Response): Pro
     });
   }
 };
+
+/**
+ * GET /api/work-orders/:id/parts
+ * UC-36: Lấy toàn bộ danh sách phụ tùng trong phiếu công việc
+ */
+export const getWorkOrderParts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    if (isNaN(workOrderId) || workOrderId <= 0) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Mã phiếu công việc không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const parts = await workOrderService.getWorkOrderParts(workOrderId);
+
+    res.json({
+      success: true,
+      code: 200,
+      message: 'Lấy danh sách phụ tùng thành công',
+      data: parts,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 400).json({
+      success: false,
+      code: error.statusCode || 400,
+      message: error.message || 'Lỗi khi lấy danh sách phụ tùng',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * POST /api/work-orders/:id/jobs/:jobId/parts
+ * UC-36: Khai báo thêm phụ tùng vào một Job
+ */
+export const addPartToJob = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const jobId = Number(req.params.jobId);
+
+    if (isNaN(workOrderId) || workOrderId <= 0 || isNaN(jobId) || jobId <= 0) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Mã phiếu công việc hoặc mã công việc không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const { error, value } = addJobPartSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: error.details.map((d: any) => d.message).join('; '),
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const createdPart = await workOrderService.addPartToJob(workOrderId, jobId, value);
+
+    res.status(201).json({
+      success: true,
+      code: 201,
+      message: 'Khai báo phụ tùng vào công việc thành công',
+      data: createdPart,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 400).json({
+      success: false,
+      code: error.statusCode || 400,
+      message: error.message || 'Lỗi khi thêm phụ tùng vào công việc',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * PATCH /api/work-orders/:id/jobs/:jobId/parts/:partId
+ * UC-36: Cập nhật thông tin phụ tùng trong Job (số lượng dự kiến, đơn giá...)
+ */
+export const updateJobPart = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const jobId = Number(req.params.jobId);
+    const partId = Number(req.params.partId);
+
+    if (isNaN(workOrderId) || isNaN(jobId) || isNaN(partId)) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Tham số đường dẫn không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const { error, value } = updateJobPartSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: error.details.map((d: any) => d.message).join('; '),
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const updatedPart = await workOrderService.updateJobPart(workOrderId, jobId, partId, value);
+
+    res.json({
+      success: true,
+      code: 200,
+      message: 'Cập nhật thông tin phụ tùng thành công',
+      data: updatedPart,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 400).json({
+      success: false,
+      code: error.statusCode || 400,
+      message: error.message || 'Lỗi khi cập nhật phụ tùng',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * DELETE /api/work-orders/:id/jobs/:jobId/parts/:partId
+ * UC-36: Xóa phụ tùng khỏi Job
+ */
+export const removePartFromJob = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const jobId = Number(req.params.jobId);
+    const partId = Number(req.params.partId);
+
+    if (isNaN(workOrderId) || isNaN(jobId) || isNaN(partId)) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Tham số đường dẫn không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const result = await workOrderService.removePartFromJob(workOrderId, jobId, partId);
+
+    res.json({
+      success: true,
+      code: 200,
+      message: result.message,
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 400).json({
+      success: false,
+      code: error.statusCode || 400,
+      message: error.message || 'Lỗi khi xóa phụ tùng',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * POST /api/work-orders/:id/start-work
+ * Bắt đầu thi công phiếu công việc sau khi báo giá đã được duyệt
+ */
+export const startWorkOrder = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const userId = req.user?.id;
+    const userRole = req.user?.roles?.[0] || (req.user as any)?.role || 'SA';
+
+    if (isNaN(workOrderId)) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Mã phiếu công việc không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        code: 401,
+        message: 'Không xác định được danh tính người thực hiện',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const result = await workOrderService.startWork(workOrderId, userId, userRole);
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: `Đã kích hoạt bắt đầu thi công phiếu công việc ${result.wo_number} thành công`,
+      data: result,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 400).json({
+      success: false,
+      code: error.statusCode || 400,
+      message: error.message || 'Lỗi khi bắt đầu thi công công việc',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * POST /api/work-orders/:id/services/:serviceId/start
+ * Bắt đầu thi công cho MỘT hạng mục dịch vụ cụ thể
+ */
+export const startService = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const serviceId = Number(req.params.serviceId);
+    const userId = req.user?.id;
+    const userRole = req.user?.roles?.[0] || (req.user as any)?.role || 'SA';
+
+    if (isNaN(workOrderId) || isNaN(serviceId)) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Mã phiếu công việc hoặc mã hạng mục không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        code: 401,
+        message: 'Không xác định được danh tính người thực hiện',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const result = await workOrderService.startService(workOrderId, serviceId, userId, userRole);
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: `Đã kích hoạt bắt đầu thi công hạng mục "${result.name}" thành công`,
+      data: result,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 400).json({
+      success: false,
+      code: error.statusCode || 400,
+      message: error.message || 'Lỗi khi bắt đầu thi công hạng mục',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * PATCH /api/work-orders/:id/services/:serviceId/status
+ * Cập nhật trạng thái hạng mục dịch vụ
+ */
+export const updateServiceStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const serviceId = Number(req.params.serviceId);
+    const { status } = req.body;
+
+    if (!['PENDING', 'IN_PROGRESS', 'COMPLETED'].includes(status)) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Trạng thái hạng mục không hợp lệ (PENDING, IN_PROGRESS, COMPLETED)',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const updated = await workOrderService.updateServiceStatus(workOrderId, serviceId, status);
+    res.json({
+      success: true,
+      code: 200,
+      message: 'Cập nhật trạng thái hạng mục thành công',
+      data: updated,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      code: 400,
+      message: error.message || 'Lỗi khi cập nhật trạng thái hạng mục',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * PATCH /api/work-orders/:id/jobs/:jobId/status
+ * Cập nhật trạng thái công việc
+ */
+export const updateJobStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const jobId = Number(req.params.jobId);
+    const { status } = req.body;
+
+    if (!['PLANNED', 'IN_PROGRESS', 'COMPLETED', 'REWORK', 'PASSED'].includes(status)) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Trạng thái công việc không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const updated = await workOrderService.updateJobStatus(workOrderId, jobId, status);
+    res.json({
+      success: true,
+      code: 200,
+      message: 'Cập nhật trạng thái công việc thành công',
+      data: updated,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      code: 400,
+      message: error.message || 'Lỗi khi cập nhật trạng thái công việc',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * POST /api/work-orders/:id/cancel-release
+ * Bàn giao xuất trả xe khi khách từ chối dịch vụ hoặc hủy lệnh
+ */
+export const cancelAndReleaseWorkOrder = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const userId = (req as any).user.id;
+    const { releaseNotes, diagnosticFee, mileage, fuelLevel } = req.body;
+
+    if (isNaN(workOrderId) || workOrderId <= 0) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Mã phiếu công việc không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const data = await workOrderService.cancelAndReleaseWorkOrder(workOrderId, userId, {
+      releaseNotes,
+      diagnosticFee: diagnosticFee !== undefined ? Number(diagnosticFee) : undefined,
+      mileage: mileage !== undefined ? Number(mileage) : undefined,
+      fuelLevel,
+    });
+
+    res.json({
+      success: true,
+      code: 200,
+      message: data.message,
+      data,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 400).json({
+      success: false,
+      code: error.statusCode || 400,
+      message: error.message || 'Lỗi khi bàn giao xuất trả xe',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+

@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { AiJobPlannerService } from '../services/ai-job-planner.service';
+import { AiPartPlannerService } from '../services/ai-part-planner.service';
 
 const aiService = new AiJobPlannerService();
+const aiPartService = new AiPartPlannerService();
 
 export class AiJobController {
   /**
@@ -81,6 +83,39 @@ export class AiJobController {
       return res.status(500).json({
         success: false,
         message: err.message || 'Lỗi khi lưu danh sách công việc vào phiếu',
+      });
+    }
+  }
+
+  /**
+   * GET /api/work-orders/:id/jobs/:jobId/ai-part-suggestions
+   * Đề xuất phụ tùng và vật tư tiêu hao cho một công việc bằng RAG
+   */
+  async getPartSuggestions(req: Request, res: Response) {
+    try {
+      const workOrderId = Number(req.params.id);
+      const jobId = Number(req.params.jobId);
+
+      if (isNaN(workOrderId) || isNaN(jobId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Mã phiếu công việc hoặc mã công việc không hợp lệ',
+        });
+      }
+
+      const forceRefresh = req.query.refresh === 'true';
+      const result = await aiPartService.suggestPartsForJob(workOrderId, jobId, forceRefresh);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Đề xuất phụ tùng bằng AI thành công',
+        data: result,
+      });
+    } catch (err: any) {
+      console.error('[AiJobController.getPartSuggestions Error]:', err);
+      return res.status(500).json({
+        success: false,
+        message: err.message || 'Lỗi khi đề xuất phụ tùng bằng AI',
       });
     }
   }

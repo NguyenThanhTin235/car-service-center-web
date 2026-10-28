@@ -256,10 +256,43 @@ export interface WoJob {
     employee_id?: number | null;
     employee?: { id: number; full_name: string } | null;
   }>;
-  parts?: Array<{
+  parts?: Array<WoJobPart>;
+}
+
+export interface JobPartItem {
+  id: number;
+  sku: string;
+  selling_price: number | string;
+  on_hand: number;
+  brand?: { id: number; name: string } | null;
+  part_category?: {
     id: number;
-    item?: { id: number; sku: string; part_category?: { name: string } } | null;
-  }>;
+    code: string;
+    name: string;
+    item_type: string;
+    uom?: { id: number; name: string } | null;
+  } | null;
+}
+
+export interface WoJobPart {
+  id: number;
+  job_id: number;
+  item_id: number;
+  status: 'PLANNED' | 'RESERVED' | 'ISSUED' | 'USED' | 'RETURNED';
+  planned_quantity: number | string;
+  issued_quantity: number | string;
+  returned_quantity: number | string;
+  unit_price: number | string;
+  job?: {
+    id: number;
+    name: string;
+    status?: string;
+    wo_service?: {
+      id: number;
+      name: string;
+    } | null;
+  } | null;
+  item?: JobPartItem | null;
 }
 
 export interface WoService {
@@ -322,8 +355,10 @@ export async function removeServiceFromWO(
 /**
  * Lấy danh mục dịch vụ (ServiceTemplate) để chọn khi thêm
  */
-export async function getServiceCatalog(): Promise<ServiceTemplateOption[]> {
-  const response = await api.get('/api/services');
+export async function getServiceCatalog(params?: { search?: string; all?: boolean }): Promise<ServiceTemplateOption[]> {
+  const response = await api.get('/api/services', {
+    params: { all: 'true', limit: 1000, ...(params?.search ? { search: params.search } : {}) },
+  });
   return response.data?.data || response.data;
 }
 
@@ -353,6 +388,15 @@ export interface AIJobFinding {
   recommendation?: string | null;
 }
 
+export interface AITechnician {
+  id: number;
+  full_name: string;
+  skills: string[];
+  active_jobs_count: number;
+  today_assigned_hours: number;
+  status: 'AVAILABLE' | 'BUSY' | 'OVERLOADED';
+}
+
 export interface AISuggestedJob {
   name: string;
   description: string;
@@ -363,6 +407,10 @@ export interface AISuggestedJob {
   matched_finding_ids?: number[];
   matched_findings?: AIJobFinding[];
   suggested_part_category_ids?: number[];
+  assigned_technician_id?: number | null;
+  assigned_technician_name?: string | null;
+  assignment_reason?: string | null;
+  match_score?: number;
 }
 
 export interface AISuggestedService {
@@ -388,6 +436,7 @@ export interface AIJobPlanResponse {
   suggested_services: AISuggestedService[];
   suggested_jobs: AISuggestedJob[];
   available_job_types: Array<{ id: number; name: string }>;
+  available_technicians?: AITechnician[];
   retrieved_parts_count: number;
 }
 
@@ -420,6 +469,7 @@ export async function applyAIJobs(
         job_type_id: number;
         estimated_hours: number;
         matched_finding_ids?: number[];
+        assigned_technician_id?: number | null;
       }>;
     }>;
     jobs?: Array<{
@@ -428,6 +478,7 @@ export async function applyAIJobs(
       job_type_id: number;
       estimated_hours: number;
       matched_finding_ids?: number[];
+      assigned_technician_id?: number | null;
     }>;
   } | Array<any>
 ): Promise<ApiResponse<{ applied_jobs_count: number; created_services_count?: number }>> {
@@ -517,6 +568,162 @@ export async function reorderJobs(
   });
   return response.data;
 }
+
+// ==========================================
+// WO JOB PARTS / MATERIALS (UC-36)
+// ==========================================
+
+/**
+ * Lấy toàn bộ danh sách phụ tùng khai báo cho Work Order
+ */
+export async function getWorkOrderParts(workOrderId: number): Promise<ApiResponse<WoJobPart[]>> {
+  const response = await api.get(`/api/work-orders/${workOrderId}/parts`);
+  return response.data;
+}
+
+/**
+ * Khai báo thêm phụ tùng vào một Job
+ */
+export async function addJobPart(
+  workOrderId: number,
+  jobId: number,
+  payload: { item_id: number; planned_quantity: number; unit_price?: number }
+): Promise<ApiResponse<WoJobPart>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/jobs/${jobId}/parts`, payload);
+  return response.data;
+}
+
+/**
+ * Cập nhật phụ tùng trong Job (số lượng dự kiến, đơn giá...)
+ */
+export async function updateJobPart(
+  workOrderId: number,
+  jobId: number,
+  partId: number,
+  payload: { planned_quantity?: number; unit_price?: number; status?: string }
+): Promise<ApiResponse<WoJobPart>> {
+  const response = await api.patch(`/api/work-orders/${workOrderId}/jobs/${jobId}/parts/${partId}`, payload);
+  return response.data;
+}
+
+/**
+ * Xóa phụ tùng khỏi Job
+ */
+export async function deleteJobPart(
+  workOrderId: number,
+  jobId: number,
+  partId: number
+): Promise<ApiResponse<null>> {
+  const response = await api.delete(`/api/work-orders/${workOrderId}/jobs/${jobId}/parts/${partId}`);
+  return response.data;
+}
+
+// ==========================================
+// AI PART PLANNER (AI ĐỀ XUẤT PHỤ TÙNG)
+// ==========================================
+
+export interface AIPartSuggestion {
+  item_id: number;
+  sku: string;
+  part_name: string;
+  brand_name?: string | null;
+  category_name?: string | null;
+  suggested_quantity: number;
+  uom: string;
+  unit_price: number;
+  on_hand: number;
+  is_in_stock: boolean;
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  reason: string;
+}
+
+export interface AIPartSuggestionData {
+  work_order_id: number;
+  work_order_number: string;
+  job_id: number;
+  job_name: string;
+  service_name: string;
+  vehicle_summary: string;
+  technical_advice: string;
+  suggestions: AIPartSuggestion[];
+}
+
+/**
+ * Lấy danh sách phụ tùng đề xuất từ AI RAG cho một công việc cụ thể
+ */
+export async function getAIPartSuggestions(
+  workOrderId: number,
+  jobId: number,
+  refresh: boolean = false
+): Promise<ApiResponse<AIPartSuggestionData>> {
+  const query = refresh ? '?refresh=true' : '';
+  const response = await api.get(`/api/work-orders/${workOrderId}/jobs/${jobId}/ai-part-suggestions${query}`);
+  return response.data;
+}
+
+/**
+ * Bắt đầu thi công phiếu công việc sau khi báo giá đã được phê duyệt
+ */
+export async function startWorkOrder(workOrderId: number): Promise<ApiResponse<WorkOrder>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/start-work`);
+  return response.data;
+}
+
+/**
+ * Bắt đầu thi công cho riêng MỘT hạng mục dịch vụ cụ thể
+ */
+export async function startService(
+  workOrderId: number,
+  serviceId: number
+): Promise<ApiResponse<WoService>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/services/${serviceId}/start`);
+  return response.data;
+}
+
+/**
+ * Cập nhật trạng thái hạng mục dịch vụ (WoService)
+ */
+export async function updateServiceStatus(
+  workOrderId: number,
+  serviceId: number,
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
+): Promise<ApiResponse<WoService>> {
+  const response = await api.patch(`/api/work-orders/${workOrderId}/services/${serviceId}/status`, { status });
+  return response.data;
+}
+
+/**
+ * Cập nhật trạng thái công việc (Job)
+ */
+export async function updateJobStatus(
+  workOrderId: number,
+  jobId: number,
+  status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'REWORK' | 'PASSED'
+): Promise<ApiResponse<WoJob>> {
+  const response = await api.patch(`/api/work-orders/${workOrderId}/jobs/${jobId}/status`, { status });
+  return response.data;
+}
+
+export interface CancelAndReleasePayload {
+  releaseNotes?: string;
+  diagnosticFee?: number;
+  mileage?: number;
+  fuelLevel?: string;
+}
+
+/**
+ * Bàn giao xuất trả xe khi khách từ chối dịch vụ hoặc hủy lệnh
+ */
+export async function cancelAndReleaseWorkOrder(
+  workOrderId: number,
+  payload: CancelAndReleasePayload
+): Promise<ApiResponse<any>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/cancel-release`, payload);
+  return response.data;
+}
+
+
+
 
 
 
