@@ -111,6 +111,7 @@ export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
             <WOOverviewCards data={dummyOverview} />
 
             <WOVehicleCustomerInfo 
+              isReadOnly={true}
               vehicle={{ vin: 'N/A', color: workOrder.vehicle?.color || 'N/A', class: workOrder.vehicle?.vehicle_size || 'N/A', classDesc: '' }} 
               customer={dummyCustomer} 
               workOrderInfo={{
@@ -120,7 +121,7 @@ export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
               }}
             />
 
-            <WOTabContainer workOrder={workOrder} refetchWO={fetchWO} />
+            <WOTabContainer workOrder={workOrder} refetchWO={fetchWO} isReadOnly={true} />
           </div>
         </div>
       </div>

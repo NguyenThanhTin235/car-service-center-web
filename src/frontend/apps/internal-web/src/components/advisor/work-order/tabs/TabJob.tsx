@@ -1,5 +1,6 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   WorkOrder,
   WoService,
@@ -12,21 +13,24 @@ import {
   updateManualJob,
   deleteJob,
   reorderJobs,
+  updateJobStatus,
 } from '@/lib/api/work-order.api';
 import { employeeApi, EmployeeData } from '@/lib/api/employees';
 import toast from 'react-hot-toast';
 import AIJobPlannerModal from '../modals/AIJobPlannerModal';
 import CreateDispatchJobModal from '../modals/CreateDispatchJobModal';
+import AddPartModal from '../modals/AddPartModal';
 
 interface TabJobProps {
   workOrder?: WorkOrder;
   refetchWO?: () => void;
+  isReadOnly?: boolean;
 }
 
 const SERVICE_STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: string }> = {
-  PENDING: { label: 'Chờ xử lý', color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-500/10 border-amber-500/20', icon: 'schedule' },
-  IN_PROGRESS: { label: 'Đang thực hiện', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-500/10 border-blue-500/20', icon: 'autorenew' },
-  COMPLETED: { label: 'Hoàn thành', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-500/10 border-emerald-500/20', icon: 'check_circle' },
+  PENDING: { label: 'Chờ xử lý', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', icon: 'schedule' },
+  IN_PROGRESS: { label: 'Đang thực hiện', color: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20', icon: 'autorenew' },
+  COMPLETED: { label: 'Hoàn thành', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', icon: 'check_circle' },
 };
 
 const getJobStatusInfo = (job: WoJob, currentEmployeeId: number | null) => {
@@ -40,7 +44,7 @@ const getJobStatusInfo = (job: WoJob, currentEmployeeId: number | null) => {
   }
   if (job.status === 'IN_PROGRESS') {
     return {
-      label: 'Đang thực hiện',
+      label: 'Đang làm',
       bg: 'bg-blue-500/10 border-blue-500/20',
       text: 'text-blue-700 dark:text-blue-400',
       icon: 'timelapse',
@@ -56,75 +60,46 @@ const getJobStatusInfo = (job: WoJob, currentEmployeeId: number | null) => {
   }
   if (job.status === 'PASSED') {
     return {
-      label: 'Đạt kiểm định',
+      label: 'Đạt KĐ',
       bg: 'bg-purple-500/10 border-purple-500/20',
       text: 'text-purple-700 dark:text-purple-400',
       icon: 'verified',
     };
   }
-  // PLANNED: Kiểm tra nếu đã phân công KTV
   if (currentEmployeeId) {
     return {
       label: 'Đã phân công',
-      bg: 'bg-blue-500/10 border-blue-500/20',
-      text: 'text-blue-700 dark:text-blue-300',
+      bg: 'bg-primary/10 border-primary/20',
+      text: 'text-primary',
       icon: 'how_to_reg',
     };
   }
   return {
     label: 'Chờ điều phối',
-    bg: 'bg-slate-500/10 border-slate-500/20',
-    text: 'text-slate-600 dark:text-slate-400',
+    bg: 'bg-surface-container border-outline-variant/60',
+    text: 'text-on-surface-variant',
     icon: 'pending',
   };
 };
 
-const getServiceStatusInfo = (svc: WoService) => {
-  if (svc.status === 'COMPLETED') {
-    return { label: 'Hoàn thành', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-500/10 border-emerald-500/20', icon: 'check_circle' };
-  }
-  if (svc.status === 'IN_PROGRESS') {
-    return { label: 'Đang thực hiện', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-500/10 border-blue-500/20', icon: 'autorenew' };
-  }
-
-  const jobs = svc.jobs || [];
-  if (jobs.length > 0) {
-    const allAssigned = jobs.every((j) => {
-      const empId = j.labours?.[0]?.employee_id || j.labours?.[0]?.employee?.id;
-      return j.status !== 'PLANNED' || Boolean(empId);
-    });
-    const someAssigned = jobs.some((j) => {
-      const empId = j.labours?.[0]?.employee_id || j.labours?.[0]?.employee?.id;
-      return j.status !== 'PLANNED' || Boolean(empId);
-    });
-
-    if (allAssigned) {
-      return { label: 'Đã phân công', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-500/10 border-blue-500/20', icon: 'how_to_reg' };
-    }
-    if (someAssigned) {
-      return { label: 'Đang điều phối', color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-500/10 border-amber-500/20', icon: 'pending_actions' };
-    }
-  }
-
-  return SERVICE_STATUS_MAP[svc.status] || SERVICE_STATUS_MAP.PENDING;
-};
-
 const PRICING_TYPE_MAP: Record<string, string> = {
   FIXED: 'Trọn gói',
-  VEHICLE_SIZE: 'Theo loại xe',
-  LABOUR_PARTS: 'Nhân công & Phụ tùng',
+  VEHICLE_SIZE: 'Theo cỡ xe',
+  LABOUR_PARTS: 'Công & Phụ tùng',
 };
 
-const SEVERITY_BADGE: Record<string, { bg: string; text: string }> = {
-  CRITICAL: { bg: 'bg-red-500/10 text-red-600 border-red-500/20', text: 'Khẩn cấp' },
-  HIGH: { bg: 'bg-amber-500/10 text-amber-600 border-amber-500/20', text: 'Cao' },
-  MEDIUM: { bg: 'bg-blue-500/10 text-blue-600 border-blue-500/20', text: 'Trung bình' },
-  LOW: { bg: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', text: 'Thấp' },
+// Hàm lấy chữ cái đầu của tên KTV (VD: "Nguyễn Văn A" -> "NA")
+const getInitials = (name?: string | null) => {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
+export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: TabJobProps) {
   const services = workOrder?.services || [];
-  const isWOClosed = ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '');
+  const isWOClosed = isReadOnly || ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '');
+  const isExecutionActive = workOrder?.status === 'IN_PROGRESS';
 
   // Trích xuất toàn bộ findings từ kiểm tra xe
   const allFindings = workOrder?.inspections?.flatMap((i) => i.findings) || [];
@@ -133,12 +108,14 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
     (f) => !f.job_findings || f.job_findings.length === 0
   );
 
-  // State tạo nhanh hạng mục từ finding
   const [creatingFindingId, setCreatingFindingId] = useState<number | null>(null);
   const [dispatchFinding, setDispatchFinding] = useState<any | null>(null);
 
   // Trạng thái thu gọn/mở rộng từng Hạng mục
   const [expandedServiceIds, setExpandedServiceIds] = useState<Set<number>>(new Set());
+
+  // Tìm kiếm theo tên hạng mục hoặc công việc
+  const [filterQuery, setFilterQuery] = useState('');
 
   // Tự động mở rộng tất cả các hạng mục khi mới load dữ liệu
   useEffect(() => {
@@ -183,15 +160,52 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
   const [manualJobTargetService, setManualJobTargetService] = useState<WoService | null>(null);
   const [editingJob, setEditingJob] = useState<any | null>(null);
 
+  // Modal Khai báo phụ tùng cho công việc (UC-36)
+  const [addPartJobId, setAddPartJobId] = useState<number | null>(null);
+
+  // Trạng thái của hạng mục phụ thuộc hoàn toàn vào các job con
+  const getServiceDerivedStatus = (service: WoService): 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' => {
+    const jobs = service.jobs || [];
+    if (jobs.length === 0) return (service.status as any) || 'PENDING';
+    const allPlanned = jobs.every((j) => j.status === 'PLANNED');
+    if (allPlanned) return 'PENDING';
+    const allDone = jobs.every((j) => j.status === 'COMPLETED' || j.status === 'PASSED');
+    if (allDone) return 'COMPLETED';
+    return 'IN_PROGRESS';
+  };
+
+  // Cập nhật trạng thái công việc trực tiếp (Trạng thái dịch vụ cha sẽ tự động đồng bộ theo các job)
+  const [updatingJobId, setUpdatingJobId] = useState<number | null>(null);
+
+  const handleUpdateJobStatus = async (jobId: number, newStatus: any) => {
+    if (!workOrder || updatingJobId) return;
+    try {
+      setUpdatingJobId(jobId);
+      const res = await updateJobStatus(workOrder.id, jobId, newStatus);
+      if (res.success) {
+        toast.success('Đã cập nhật trạng thái công việc');
+        if (refetchWO) refetchWO();
+      } else {
+        toast.error(res.message || 'Lỗi khi cập nhật trạng thái công việc');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Lỗi khi cập nhật');
+    } finally {
+      setUpdatingJobId(null);
+    }
+  };
+
   // Load danh sách nhân viên kỹ thuật
   useEffect(() => {
     let mounted = true;
     employeeApi
-      .getAll({ limit: 100 })
+      .getAll({ limit: 100, position: 'TECHNICIAN' })
       .then((res) => {
         if (!mounted) return;
         const list: EmployeeData[] = res.data?.data || res.data || [];
-        setTechnicians(list.filter((e) => e.isActive !== false));
+        setTechnicians(
+          list.filter((e) => e.isActive !== false && e.position === 'TECHNICIAN')
+        );
       })
       .catch((err) => {
         console.error('Lỗi khi tải danh sách kỹ thuật viên:', err);
@@ -250,34 +264,6 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
     }
   };
 
-  // Xóa toàn bộ công việc con trong hạng mục
-  const [confirmDeleteServiceJobsId, setConfirmDeleteServiceJobsId] = useState<number | null>(null);
-  const [deletingServiceJobsId, setDeletingServiceJobsId] = useState<number | null>(null);
-
-  const handleDeleteAllJobsInService = async (svc: WoService) => {
-    if (!workOrder || deletingServiceJobsId) return;
-    const targetJobs = (svc.jobs || []).filter((j) => j.status === 'PLANNED');
-    if (targetJobs.length === 0) {
-      toast.error('Không có công việc ở trạng thái Mới (PLANNED) để xóa');
-      return;
-    }
-    try {
-      setDeletingServiceJobsId(svc.id);
-      let deletedCount = 0;
-      for (const j of targetJobs) {
-        const res = await deleteJob(workOrder.id, j.id);
-        if (res.success) deletedCount++;
-      }
-      toast.success(`Đã xóa ${deletedCount} công việc trong hạng mục "${svc.name}"`);
-      setConfirmDeleteServiceJobsId(null);
-      if (refetchWO) refetchWO();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || 'Lỗi khi xóa công việc');
-    } finally {
-      setDeletingServiceJobsId(null);
-    }
-  };
-
   // Sắp xếp thứ tự công việc trong hạng mục
   const [reorderingServiceId, setReorderingServiceId] = useState<number | null>(null);
 
@@ -287,7 +273,6 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
     const targetIndex = currentIndex + direction;
     if (targetIndex < 0 || targetIndex >= currentJobs.length) return;
 
-    // Hoán đổi vị trí
     const [movedJob] = currentJobs.splice(currentIndex, 1);
     currentJobs.splice(targetIndex, 0, movedJob);
 
@@ -296,7 +281,7 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
       const jobIds = currentJobs.map((j) => j.id);
       const res = await reorderJobs(workOrder.id, svc.id, jobIds);
       if (res.success) {
-        toast.success(`Đã đổi thứ tự: "${movedJob.name}"`);
+        toast.success(`Đã chuyển: "${movedJob.name}"`);
         if (refetchWO) refetchWO();
       } else {
         toast.error(res.message || 'Lỗi khi sắp xếp thứ tự');
@@ -312,14 +297,12 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Load catalog dịch vụ
   useEffect(() => {
     if (isAdding && catalog.length === 0) {
       loadCatalog();
     }
   }, [isAdding]);
 
-  // Click outside dropdown
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -400,642 +383,735 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
     }
   };
 
-  // Lọc catalog: loại bỏ dịch vụ đã thêm
   const existingTemplateIds = services
     .map((s) => s.service_id)
     .filter((id): id is number => id !== null);
 
-  const filteredCatalog = catalog.filter(
-    (t) =>
-      !existingTemplateIds.includes(t.id) &&
-      t.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Tổng số lượng công việc & giờ định mức trong toàn bộ phiếu
-  let grandTotalJobs = 0;
-  let grandTotalHours = 0;
-
-  services.forEach((s) => {
-    const jobs = s.jobs || [];
-    grandTotalJobs += jobs.length;
-    jobs.forEach((j) => {
-      grandTotalHours += Number(j.estimated_hours) || 0;
-    });
+  const filteredCatalog = catalog.filter((t) => {
+    if (existingTemplateIds.includes(t.id)) return false;
+    if (!searchTerm.trim()) return true;
+    const q = searchTerm.toLowerCase().trim();
+    const matchName = t.name.toLowerCase().includes(q);
+    const matchCategory = ((t as any).category?.name || '').toLowerCase().includes(q);
+    return matchName || matchCategory;
   });
 
+  // Thống kê tổng số lượng công việc & giờ định mức
+  const { grandTotalJobs, grandTotalHours, grandAssignedJobs, grandCompletedJobs } = useMemo(() => {
+    let totalJobs = 0;
+    let totalHours = 0;
+    let assigned = 0;
+    let completed = 0;
+
+    services.forEach((s) => {
+      const jobs = s.jobs || [];
+      totalJobs += jobs.length;
+      jobs.forEach((j) => {
+        totalHours += Number(j.estimated_hours) || 0;
+        const empId = (j as any).technician_id || j.labours?.[0]?.employee_id || j.labours?.[0]?.employee?.id;
+        if (empId) assigned++;
+        if (j.status === 'COMPLETED' || j.status === 'PASSED') completed++;
+      });
+    });
+
+    return {
+      grandTotalJobs: totalJobs,
+      grandTotalHours: totalHours,
+      grandAssignedJobs: assigned,
+      grandCompletedJobs: completed,
+    };
+  }, [services]);
+
+  // Lọc theo tìm kiếm
+  const displayedServices = useMemo(() => {
+    if (!filterQuery.trim()) return services;
+    const q = filterQuery.toLowerCase().trim();
+    return services.filter((s) => {
+      if (s.name.toLowerCase().includes(q)) return true;
+      return (s.jobs || []).some((j) => j.name.toLowerCase().includes(q));
+    });
+  }, [services, filterQuery]);
+
   return (
-    <div className="flex flex-col gap-6">
-      {/* HEADER KHỐI CÔNG VIỆC */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/60 shadow-xs">
-        <div>
-          <div className="flex items-center gap-3">
-            <h3 className="text-title-md font-bold text-on-surface">
-              Hạng mục sửa chữa & Dịch vụ xưởng
-            </h3>
-            <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full bg-primary/10 text-primary text-label-sm font-bold">
-              {services.length} hạng mục
-            </span>
-            <span className="text-body-xs text-on-surface-variant font-medium bg-surface-container px-2.5 py-0.5 rounded-full">
-              {grandTotalJobs} công việc con • {grandTotalHours.toFixed(1)} giờ định mức
-            </span>
+    <div className="flex flex-col gap-4">
+      {/* 1. MINI KPI STATS BAR - Nắm bắt chỉ số trong 1 giây */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/60 shadow-2xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[20px]">category</span>
+          </div>
+          <div>
+            <div className="text-label-xs text-on-surface-variant font-medium">Hạng mục</div>
+            <div className="text-title-sm font-bold text-on-surface">{services.length} mục</div>
           </div>
         </div>
 
-        {/* CÁC NÚT THAO TÁC */}
-        {!isWOClosed && (
-          <div className="flex items-center gap-2.5 shrink-0">
-            {/* Nút Đề xuất công việc bằng AI RAG */}
+        <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/60 shadow-2xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-700 dark:text-blue-400 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[20px]">assignment</span>
+          </div>
+          <div>
+            <div className="text-label-xs text-on-surface-variant font-medium">Công việc con</div>
+            <div className="text-title-sm font-bold text-on-surface">{grandTotalJobs} việc</div>
+          </div>
+        </div>
+
+        <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/60 shadow-2xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[20px]">schedule</span>
+          </div>
+          <div>
+            <div className="text-label-xs text-on-surface-variant font-medium">Định mức giờ</div>
+            <div className="text-title-sm font-bold text-on-surface font-mono">{grandTotalHours.toFixed(1)}h</div>
+          </div>
+        </div>
+
+        <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/60 shadow-2xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[20px]">how_to_reg</span>
+          </div>
+          <div>
+            <div className="text-label-xs text-on-surface-variant font-medium">Đã phân công KTV</div>
+            <div className="text-title-sm font-bold text-on-surface font-mono">
+              {grandAssignedJobs}/{grandTotalJobs}
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
+
+      {workOrder?.status === 'IN_PROGRESS' && (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-500/15 via-indigo-500/10 to-transparent border border-blue-500/30 flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs animate-pulse">
+              <span className="material-symbols-outlined text-[20px]">engineering</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-body-sm font-bold text-blue-950 dark:text-blue-200">
+                  Đang trong quá trình thi công
+                </h4>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-600 text-white">
+                  ĐANG THI CÔNG
+                </span>
+              </div>
+              <p className="text-[12px] text-blue-800 dark:text-blue-300">
+                Các hạng mục và KTV đang tiến hành theo kế hoạch. Khách hàng đang theo dõi tiến độ thời gian thực.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. UNIFIED ACTION TOOLBAR */}
+      <div className="p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/60 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Tìm kiếm & Thu gọn/Mở rộng */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="relative flex-1 max-w-sm">
+            <span className="material-symbols-outlined text-[18px] text-on-surface-variant absolute left-3 top-2.5">
+              search
+            </span>
+            <input
+              type="text"
+              value={filterQuery}
+              onChange={(e) => setFilterQuery(e.target.value)}
+              placeholder="Tìm hạng mục hoặc công việc..."
+              className="w-full pl-9 pr-3 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-xl text-body-xs text-on-surface placeholder:text-on-surface-variant outline-none focus:border-primary focus:bg-surface-container-lowest transition-all"
+            />
+            {filterQuery && (
+              <button
+                type="button"
+                onClick={() => setFilterQuery('')}
+                className="absolute right-2.5 top-2 text-on-surface-variant hover:text-on-surface cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">close</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 border-l border-outline-variant/40 pl-2">
             <button
+              type="button"
+              onClick={expandAll}
+              className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
+              title="Mở rộng tất cả hạng mục"
+            >
+              <span className="material-symbols-outlined text-[18px]">unfold_more</span>
+            </button>
+            <button
+              type="button"
+              onClick={collapseAll}
+              className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
+              title="Thu gọn tất cả hạng mục"
+            >
+              <span className="material-symbols-outlined text-[18px]">unfold_less</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Action Buttons: Add service & AI suggest */}
+        {!isWOClosed && (
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Dropdown Thêm dịch vụ thủ công */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsAdding(!isAdding)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-xl text-label-sm font-semibold transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                <span>Thêm dịch vụ</span>
+              </button>
+
+              {isAdding && (
+                <div className="absolute right-0 top-full mt-2 w-80 bg-surface-container-lowest rounded-2xl shadow-xl border border-outline-variant p-3 z-30 animate-in fade-in duration-100">
+                  <div className="relative mb-2">
+                    <span className="material-symbols-outlined text-[18px] text-on-surface-variant absolute left-2.5 top-2">
+                      search
+                    </span>
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Tìm dịch vụ từ danh mục..."
+                      autoFocus
+                      className="w-full pl-8 pr-3 py-1.5 bg-surface-container-low border border-outline-variant rounded-xl text-body-xs text-on-surface outline-none focus:border-primary"
+                    />
+                  </div>
+
+                  <div className="max-h-60 overflow-y-auto space-y-1">
+                    {loadingCatalog ? (
+                      <div className="py-6 text-center text-on-surface-variant text-body-xs">
+                        Đang tải danh mục...
+                      </div>
+                    ) : filteredCatalog.length === 0 ? (
+                      <div className="py-6 text-center text-on-surface-variant text-body-xs">
+                        Không tìm thấy dịch vụ phù hợp
+                      </div>
+                    ) : (
+                      filteredCatalog.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          disabled={submitting}
+                          onClick={() => handleAddService(item.id)}
+                          className="w-full text-left p-2 rounded-xl hover:bg-surface-container transition-colors flex items-center justify-between gap-2 group cursor-pointer"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-body-xs font-semibold text-on-surface group-hover:text-primary truncate">
+                              {item.name}
+                            </div>
+                            <div className="text-[11px] text-on-surface-variant truncate">
+                              {(item as any).category?.name || 'Dịch vụ'} • {PRICING_TYPE_MAP[item.pricing_type] || item.pricing_type}
+                            </div>
+                          </div>
+                          <span className="material-symbols-outlined text-[16px] text-on-surface-variant group-hover:text-primary shrink-0">
+                            add_circle
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+
+
+            {/* Nút Đề xuất Job bằng AI (Nổi bật) */}
+            <button
+              type="button"
               onClick={() => {
                 setAiTargetService(null);
                 setIsAIModalOpen(true);
               }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-label-md font-bold transition-all shadow-md shadow-blue-500/20 active:scale-95"
-              title="Sử dụng trí tuệ nhân tạo RAG để tự động gom nhóm lỗi thành từng hạng mục sửa chữa kèm danh sách công việc con"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white rounded-xl text-label-sm font-bold shadow-xs transition-all cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
-              Đề xuất Job bằng AI (Tất cả)
+              <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+              <span>Đề xuất bằng AI</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* THANH THAO TÁC NHANH: MỞ RỘNG / THU GỌN */}
-      {services.length > 0 && (
-        <div className="flex items-center justify-between px-1 text-body-xs text-on-surface-variant">
-          <div className="flex items-center gap-3">
-            <span>Hiển thị theo từng Hạng mục kèm danh sách công việc giải quyết</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={expandAll}
-              className="hover:text-primary transition-colors flex items-center gap-1 font-medium"
-            >
-              <span className="material-symbols-outlined text-[16px]">unfold_more</span>
-              Mở rộng tất cả
-            </button>
-            <span>•</span>
-            <button
-              onClick={collapseAll}
-              className="hover:text-primary transition-colors flex items-center gap-1 font-medium"
-            >
-              <span className="material-symbols-outlined text-[16px]">unfold_less</span>
-              Thu gọn tất cả
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* DANH SÁCH CÁC HẠNG MỤC DỊCH VỤ / SỬA CHỮA */}
-      {services.length > 0 ? (
-        <div className="space-y-5">
-          {services.map((svc, idx) => {
+      {/* 4. DANH SÁCH HẠNG MỤC DỊCH VỤ / SỬA CHỮA */}
+      {displayedServices.length > 0 ? (
+        <div className="space-y-3.5">
+          {displayedServices.map((svc) => {
             const isExpanded = expandedServiceIds.has(svc.id);
-            const statusInfo = getServiceStatusInfo(svc);
-            const jobs: WoJob[] = svc.jobs || [];
+            const isRepair = Boolean(svc.service?.category?.name?.toLowerCase().includes('sửa chữa') || svc.service_id === null || (svc as any).finding_id);
+            const jobs = svc.jobs || [];
 
-            // Kiểm tra xem hạng mục này có phải là sửa chữa lỗi không
-            const isRepairCategory =
-              svc.name.toLowerCase().includes('lỗi') ||
-              svc.name.toLowerCase().includes('khắc phục') ||
-              svc.name.toLowerCase().includes('sửa chữa') ||
-              jobs.some((j) => j.findings && j.findings.length > 0);
-
-            const isMaintenanceCategory =
-              svc.name.toLowerCase().includes('bảo dưỡng') ||
-              svc.name.toLowerCase().includes('định kỳ');
-
-            const isCarWash =
-              svc.name.toLowerCase().includes('rửa xe') ||
-              svc.name.toLowerCase().includes('vệ sinh') ||
-              svc.name.toLowerCase().includes('nội thất');
-
-            const categoryIcon = isRepairCategory
-              ? 'handyman'
-              : isMaintenanceCategory
-              ? 'build_circle'
-              : isCarWash
-              ? 'local_car_wash'
-              : 'category';
-
-            const categoryTagLabel = isRepairCategory
-              ? 'Hạng mục sửa chữa lỗi'
-              : isMaintenanceCategory
-              ? 'Bảo dưỡng định kỳ'
-              : isCarWash
-              ? 'Chăm sóc & Rửa xe'
-              : 'Dịch vụ kỹ thuật';
-
-            const categoryTagClass = isRepairCategory
-              ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
-              : isMaintenanceCategory
-              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-              : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20';
-
-            const totalHours = jobs.reduce(
-              (sum, j) => sum + (Number(j.estimated_hours) || 0),
-              0
-            );
-
-            const isConfirmingDelete = deleteConfirm === svc.id;
+            // Thống kê riêng cho hạng mục
+            const totalHours = jobs.reduce((sum, j) => sum + (Number(j.estimated_hours) || 0), 0);
+            const completedJobs = jobs.filter((j) => j.status === 'COMPLETED' || j.status === 'PASSED').length;
+            const progressPercent = jobs.length > 0 ? Math.round((completedJobs / jobs.length) * 100) : 0;
 
             return (
               <div
                 key={svc.id}
-                className="rounded-2xl border border-outline-variant/70 overflow-hidden shadow-xs bg-surface-container-lowest transition-all"
+                className="rounded-2xl border border-outline-variant/60 bg-surface-container-lowest shadow-2xs overflow-hidden transition-all"
               >
-                {/* HEADER HẠNG MỤC (CARD ACCORDION HEADER) */}
+                {/* HEADER HẠNG MỤC (Thanh bar gọn gàng, rõ nét) */}
                 <div
                   onClick={() => toggleExpand(svc.id)}
-                  className="px-5 py-4 bg-surface-container-low/60 hover:bg-surface-container-low cursor-pointer transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-outline-variant/40 select-none"
+                  className="px-4 py-3 bg-surface-container-low/70 hover:bg-surface-container-low border-b border-outline-variant/30 flex items-center justify-between gap-3 cursor-pointer select-none transition-colors"
                 >
-                  <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                    {/* Nút toggle accordion */}
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    {/* Nút mở rộng chevron */}
                     <button
                       type="button"
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-transform shrink-0"
-                      style={{
-                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                      }}
+                      className="p-0.5 rounded text-on-surface-variant hover:text-on-surface transition-transform"
+                      style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
                     >
-                      <span className="material-symbols-outlined text-[20px]">
-                        keyboard_arrow_down
-                      </span>
+                      <span className="material-symbols-outlined text-[18px]">expand_more</span>
                     </button>
 
-                    {/* Icon phân loại */}
+                    {/* Icon loại hình */}
                     <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${categoryTagClass}`}
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                        isRepair
+                          ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                          : 'bg-primary/10 text-primary'
+                      }`}
                     >
-                      <span className="material-symbols-outlined text-[20px]">
-                        {categoryIcon}
+                      <span className="material-symbols-outlined text-[17px]">
+                        {isRepair ? 'handyman' : 'build_circle'}
                       </span>
                     </div>
 
-                    {/* Tên hạng mục & Tags */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <span className="text-label-xs font-bold text-on-surface-variant">
-                          #{idx + 1}
-                        </span>
-                        <h4 className="text-title-sm font-bold text-on-surface truncate">
-                          {svc.name}
-                        </h4>
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-label-xs font-bold border ${categoryTagClass}`}
-                        >
-                          {categoryTagLabel}
-                        </span>
-                        <span className="text-label-xs px-2 py-0.5 rounded-md bg-surface-container text-on-surface-variant font-medium">
-                          {PRICING_TYPE_MAP[svc.pricing_type] || svc.pricing_type}
-                        </span>
-                      </div>
+                    {/* Tên Hạng mục */}
+                    <h4 className="text-body-sm font-bold text-on-surface truncate">
+                      {svc.name}
+                    </h4>
 
-                      <div className="flex items-center gap-3 mt-1 text-body-xs text-on-surface-variant">
-                        <span>
-                          {jobs.length} công việc con
-                        </span>
+                    {/* Badge loại giá */}
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-container text-on-surface-variant shrink-0">
+                      {PRICING_TYPE_MAP[svc.pricing_type] || svc.pricing_type}
+                    </span>
+
+                    {/* Mini Progress Pill */}
+                    {jobs.length > 0 && (
+                      <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container text-body-xs font-mono text-on-surface-variant shrink-0">
+                        <span className="font-bold text-on-surface">{jobs.length} việc</span>
                         <span>•</span>
-                        <span>
-                          Định mức: <strong>{totalHours.toFixed(1)} giờ</strong>
-                        </span>
-                        {svc.service?.category?.name && (
+                        <span>{totalHours.toFixed(1)}h</span>
+                        {progressPercent > 0 && (
                           <>
                             <span>•</span>
-                            <span>Danh mục: {svc.service.category.name}</span>
+                            <span className="text-emerald-700 dark:text-emerald-400 font-bold">{progressPercent}%</span>
                           </>
                         )}
                       </div>
-                    </div>
+                    )}
+
+                    {/* Badge Trạng thái Hạng mục Dịch vụ (Tự động phụ thuộc vào các Job con) */}
+                    {(() => {
+                      const svcStatus = getServiceDerivedStatus(svc);
+                      const statusInfo = SERVICE_STATUS_MAP[svcStatus] || SERVICE_STATUS_MAP.PENDING;
+                      return (
+                        <div
+                          className="relative inline-flex items-center shrink-0 ml-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border shadow-2xs ${statusInfo.bg} ${statusInfo.color}`}
+                            title={`Trạng thái hạng mục tự động phụ thuộc vào các công việc con (${statusInfo.label})`}
+                          >
+                            <span
+                              className={`material-symbols-outlined text-[13px] ${
+                                svcStatus === 'IN_PROGRESS' ? 'animate-spin' : ''
+                              }`}
+                            >
+                              {statusInfo.icon}
+                            </span>
+                            <span>{statusInfo.label}</span>
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
-                  {/* Trạng thái & Thao tác */}
+                  {/* Actions Header */}
                   <div
-                    className="flex items-center gap-3 shrink-0 self-end sm:self-auto"
+                    className="flex items-center gap-1.5 shrink-0"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {/* Status Badge */}
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-label-xs font-bold border ${statusInfo.bg} ${statusInfo.color}`}
-                    >
-                      <span className="material-symbols-outlined text-[14px]">
-                        {statusInfo.icon}
-                      </span>
-                      {statusInfo.label}
-                    </span>
-
-                    {/* Nút Đề xuất Job bằng AI cho riêng hạng mục này */}
                     {!isWOClosed && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAiTargetService({ id: svc.id, name: svc.name });
-                          setIsAIModalOpen(true);
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-label-xs font-bold transition-all shadow-xs hover:shadow-sm active:scale-95"
-                        title={`Sử dụng AI đề xuất các bước công việc con cho riêng hạng mục "${svc.name}"`}
-                      >
-                        <span className="material-symbols-outlined text-[15px]">auto_awesome</span>
-                        <span>Đề xuất Job (AI)</span>
-                      </button>
-                    )}
-
-                    {/* Nút Thêm việc thủ công cho riêng hạng mục này */}
-                    {!isWOClosed && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingJob(null);
-                          setManualJobTargetService(svc);
-                          setManualJobModalOpen(true);
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-xl text-label-xs font-bold border border-outline-variant transition-all shadow-2xs hover:shadow-xs active:scale-95"
-                        title={`Thêm công việc con thủ công cho hạng mục "${svc.name}"`}
-                      >
-                        <span className="material-symbols-outlined text-[15px]">add_task</span>
-                        <span>+ Thêm việc</span>
-                      </button>
-                    )}
-
-                    {/* Nút Xóa toàn bộ việc con trong hạng mục */}
-                    {!isWOClosed && jobs.length > 0 && (
-                      confirmDeleteServiceJobsId === svc.id ? (
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center gap-1 bg-surface-container px-2 py-1 rounded-xl border border-error/30 animate-fade-in text-label-xs"
-                        >
-                          <span className="text-error font-medium">Xóa hết {jobs.length} việc?</span>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteAllJobsInService(svc)}
-                            disabled={deletingServiceJobsId === svc.id}
-                            className="text-error hover:bg-error/20 p-1 rounded transition-colors disabled:opacity-50 cursor-pointer"
-                            title="Xác nhận xóa toàn bộ công việc"
-                          >
-                            <span className="material-symbols-outlined text-[15px]">
-                              {deletingServiceJobsId === svc.id ? 'progress_activity' : 'check'}
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDeleteServiceJobsId(null)}
-                            className="text-on-surface-variant hover:bg-surface-container-high p-1 rounded transition-colors cursor-pointer"
-                            title="Hủy"
-                          >
-                            <span className="material-symbols-outlined text-[15px]">close</span>
-                          </button>
-                        </div>
-                      ) : (
+                      <>
+                        {/* Nút AI đề xuất riêng cho hạng mục */}
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConfirmDeleteServiceJobsId(svc.id);
+                          onClick={() => {
+                            setAiTargetService({ id: svc.id, name: svc.name });
+                            setIsAIModalOpen(true);
                           }}
-                          className="flex items-center gap-1 px-2.5 py-1.5 bg-error/5 hover:bg-error/15 text-error rounded-xl text-label-xs font-semibold border border-error/20 transition-all cursor-pointer shadow-2xs active:scale-95"
-                          title={`Xóa tất cả ${jobs.length} công việc trong hạng mục này`}
+                          className="flex items-center gap-1 px-2.5 py-1 text-label-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors cursor-pointer"
+                          title="AI đề xuất các bước thi công cho hạng mục này"
                         >
-                          <span className="material-symbols-outlined text-[15px]">playlist_remove</span>
-                          <span>Xóa việc ({jobs.length})</span>
+                          <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
+                          <span className="hidden md:inline">AI gợi ý việc</span>
                         </button>
-                      )
-                    )}
 
-                    {/* Nút Xóa hạng mục */}
-                    {!isWOClosed && (
-                      <div className="flex items-center">
-                        {isConfirmingDelete ? (
-                          <div className="flex items-center gap-1 bg-surface-container px-2 py-1 rounded-lg border border-error/30 animate-fade-in">
-                            <span className="text-body-xs text-error font-medium mr-1">Xóa?</span>
+                        {/* Nút thêm việc con */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingJob(null);
+                            setManualJobTargetService(svc);
+                            setManualJobModalOpen(true);
+                          }}
+                          className="flex items-center gap-1 px-2.5 py-1 text-label-xs font-semibold bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg transition-colors cursor-pointer"
+                          title="Thêm công việc thủ công"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">add</span>
+                          <span>Thêm việc</span>
+                        </button>
+
+                        {/* Xóa hạng mục */}
+                        {deleteConfirm === svc.id ? (
+                          <div className="flex items-center gap-1 bg-surface-container px-1 py-0.5 rounded-lg border border-error/30 animate-fade-in">
                             <button
+                              type="button"
                               onClick={() => handleRemoveService(svc.id)}
                               disabled={deleting}
-                              className="text-error hover:bg-error/20 p-1 rounded transition-colors disabled:opacity-50"
-                              title="Xác nhận xóa hạng mục"
+                              className="px-2 py-0.5 bg-error text-white rounded text-[11px] font-bold cursor-pointer"
                             >
-                              <span className="material-symbols-outlined text-[16px]">
-                                {deleting ? 'progress_activity' : 'check'}
-                              </span>
+                              Xóa?
                             </button>
                             <button
+                              type="button"
                               onClick={() => setDeleteConfirm(null)}
-                              className="text-on-surface-variant hover:bg-surface-container-high p-1 rounded transition-colors"
-                              title="Hủy"
+                              className="p-0.5 text-on-surface-variant hover:text-on-surface cursor-pointer"
                             >
-                              <span className="material-symbols-outlined text-[16px]">close</span>
+                              <span className="material-symbols-outlined text-[14px]">close</span>
                             </button>
                           </div>
                         ) : (
                           <button
+                            type="button"
                             onClick={() => setDeleteConfirm(svc.id)}
-                            className="text-on-surface-variant hover:text-error hover:bg-error/10 p-1.5 rounded-lg transition-colors"
-                            title="Xóa hạng mục dịch vụ này"
+                            className="p-1 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors cursor-pointer"
+                            title="Xóa hạng mục này"
                           >
-                            <span className="material-symbols-outlined text-[18px]">
-                              delete_outline
-                            </span>
+                            <span className="material-symbols-outlined text-[16px]">delete_outline</span>
                           </button>
                         )}
-                      </div>
+                      </>
                     )}
                   </div>
                 </div>
 
-                {/* KHỐI NỘI DUNG CON: BẢNG CÔNG VIỆC CON (JOBS LIST) */}
+                {/* NỘI DUNG JOBS TRONG HẠNG MỤC */}
                 {isExpanded && (
-                  <div className="p-5 animate-fade-in space-y-4">
+                  <div className="p-3">
                     {jobs.length > 0 ? (
-                      <div className="space-y-3">
-                        <div className="border border-outline-variant/60 rounded-xl overflow-hidden shadow-xs">
-                          <table className="w-full text-left">
-                            <thead>
-                              <tr className="bg-surface-container-low/70 border-b border-outline-variant/40 text-label-xs font-bold text-on-surface-variant uppercase tracking-wider">
-                                <th className="px-3 py-2.5 w-14 text-center">STT</th>
-                                <th className="px-3.5 py-2.5 w-[36%] min-w-[260px]">Công việc kỹ thuật cụ thể</th>
-                                <th className="px-3.5 py-2.5 min-w-[260px]">Kỹ thuật viên phụ trách</th>
-                                <th className="px-2 py-2.5 w-20 text-center">Định mức</th>
-                                <th className="px-3 py-2.5 w-36 text-center">Trạng thái</th>
-                                {!isWOClosed && <th className="px-2 py-2.5 w-16 text-center">Thao tác</th>}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-outline-variant/20">
-                              {jobs.map((job, jIdx) => {
-                                const currentEmployeeId =
-                                  job.labours && job.labours.length > 0
-                                    ? job.labours[0].employee_id || job.labours[0].employee?.id || null
-                                    : null;
-                                const jobStatus = getJobStatusInfo(job, currentEmployeeId);
-                                const technicianName =
-                                  job.labours && job.labours.length > 0 && job.labours[0]?.employee
-                                    ? job.labours[0].employee.full_name
-                                    : null;
+                      <div className="overflow-x-auto rounded-xl border border-outline-variant/40">
+                        <table className="w-full text-left text-body-xs border-collapse">
+                          <thead>
+                            <tr className="bg-surface-container-low/60 border-b border-outline-variant/40 text-[11px] text-on-surface-variant uppercase font-semibold">
+                              <th className="px-3 py-2 text-center w-12">#</th>
+                              <th className="px-3 py-2">Công việc & Loại thợ</th>
+                              <th className="px-3 py-2 w-56">Kỹ thuật viên phụ trách</th>
+                              <th className="px-3 py-2 text-center w-20">Định mức</th>
+                              <th className="px-3 py-2 text-center w-28">Trạng thái</th>
+                              {!isWOClosed && <th className="px-3 py-2 text-center w-20">Thao tác</th>}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-outline-variant/30">
+                            {jobs.map((job, jIdx) => {
+                              const currentEmployeeId =
+                                (job as any).technician_id ||
+                                job.labours?.[0]?.employee_id ||
+                                job.labours?.[0]?.employee?.id ||
+                                null;
+                              const currentEmp = technicians.find((t) => t.id === currentEmployeeId);
+                              const technicianName =
+                                currentEmp?.fullName ||
+                                job.labours?.[0]?.employee?.full_name ||
+                                (currentEmployeeId ? `KTV #${currentEmployeeId}` : '');
 
-                                return (
-                                  <tr
-                                    key={job.id}
-                                    onClick={() => {
-                                      setManualJobTargetService(svc);
-                                      setEditingJob(job);
-                                      setManualJobModalOpen(true);
-                                    }}
-                                    className="hover:bg-blue-50/50 dark:hover:bg-blue-950/25 transition-colors cursor-pointer group"
-                                    title="Nhấn để xem chi tiết / chỉnh sửa công việc này"
-                                  >
-                                    {/* STT & Nút chuyển thứ tự nhanh */}
-                                    <td className="px-2 py-3 text-center">
-                                      <div className="flex items-center justify-center gap-1">
-                                        <span className="font-bold text-body-xs text-on-surface-variant min-w-[14px]">
-                                          {jIdx + 1}
+                              const jobStatus = getJobStatusInfo(job, currentEmployeeId);
+
+                              return (
+                                <tr
+                                  key={job.id}
+                                  className="hover:bg-surface-container-low/40 transition-colors group"
+                                >
+                                  {/* STT & Di chuyển */}
+                                  <td className="px-3 py-2.5 text-center">
+                                    <div className="flex items-center justify-center gap-0.5">
+                                      <span className="font-mono text-on-surface-variant font-bold">
+                                        {jIdx + 1}
+                                      </span>
+                                      {!isWOClosed && jobs.length > 1 && (
+                                        <div className="opacity-0 group-hover:opacity-100 flex flex-col transition-opacity">
+                                          <button
+                                            type="button"
+                                            disabled={jIdx === 0 || reorderingServiceId === svc.id}
+                                            onClick={() => handleMoveJob(svc, jIdx, -1)}
+                                            className="text-on-surface-variant hover:text-primary disabled:opacity-20 cursor-pointer"
+                                            title="Lên trên"
+                                          >
+                                            <span className="material-symbols-outlined text-[13px]">expand_less</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            disabled={jIdx === jobs.length - 1 || reorderingServiceId === svc.id}
+                                            onClick={() => handleMoveJob(svc, jIdx, 1)}
+                                            className="text-on-surface-variant hover:text-primary disabled:opacity-20 cursor-pointer"
+                                            title="Xuống dưới"
+                                          >
+                                            <span className="material-symbols-outlined text-[13px]">expand_more</span>
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  {/* Tên công việc & Phân loại */}
+                                  <td className="px-3 py-2.5">
+                                    <div
+                                      onClick={() => {
+                                        setManualJobTargetService(svc);
+                                        setEditingJob(job);
+                                        setManualJobModalOpen(true);
+                                      }}
+                                      className="font-semibold text-body-xs text-on-surface hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5"
+                                    >
+                                      <span>{job.name}</span>
+                                      <span className="material-symbols-outlined text-[13px] opacity-0 group-hover:opacity-100 text-primary">
+                                        edit
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                      <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-surface-container text-on-surface-variant">
+                                        {job.job_type?.name || 'Kỹ thuật'}
+                                      </span>
+                                      {job.parts && job.parts.length > 0 ? (
+                                        <span
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isWOClosed) setAddPartJobId(job.id);
+                                          }}
+                                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20 ${!isWOClosed ? 'cursor-pointer hover:bg-primary/20' : ''}`}
+                                          title={!isWOClosed ? 'Nhấn để khai báo thêm phụ tùng' : ''}
+                                        >
+                                          <span className="material-symbols-outlined text-[11px]">construction</span>
+                                          {job.parts.length} phụ tùng
                                         </span>
-                                        {!isWOClosed && jobs.length > 1 && (
-                                          <div className="flex flex-col items-center -space-y-1">
-                                            <button
-                                              type="button"
-                                              disabled={jIdx === 0 || reorderingServiceId === svc.id}
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleMoveJob(svc, jIdx, -1);
-                                              }}
-                                              className={`p-0.5 rounded text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors ${
-                                                jIdx === 0 ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'
-                                              }`}
-                                              title="Chuyển lên trên"
-                                            >
-                                              <span className="material-symbols-outlined text-[15px]">expand_less</span>
-                                            </button>
-                                            <button
-                                              type="button"
-                                              disabled={jIdx === jobs.length - 1 || reorderingServiceId === svc.id}
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleMoveJob(svc, jIdx, 1);
-                                              }}
-                                              className={`p-0.5 rounded text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors ${
-                                                jIdx === jobs.length - 1 ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'
-                                              }`}
-                                              title="Chuyển xuống dưới"
-                                            >
-                                              <span className="material-symbols-outlined text-[15px]">expand_more</span>
-                                            </button>
-                                          </div>
+                                      ) : !isWOClosed ? (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setAddPartJobId(job.id);
+                                          }}
+                                          className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-medium text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors cursor-pointer"
+                                          title="Khai báo phụ tùng"
+                                        >
+                                          <span className="material-symbols-outlined text-[11px]">add</span>
+                                          + Phụ tùng
+                                        </button>
+                                      ) : null}
+                                      {job.description && (
+                                        <span className="text-[11px] text-on-surface-variant truncate max-w-xs">
+                                          {job.description}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  {/* Kỹ thuật viên phụ trách (Select box với initials avatar) */}
+                                  <td className="px-3 py-2.5">
+                                    {!isWOClosed && job.status === 'PLANNED' ? (
+                                      <div className="relative flex items-center w-full min-w-[190px]">
+                                        <div
+                                          className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold absolute left-2 pointer-events-none ${
+                                            currentEmployeeId
+                                              ? 'bg-primary text-white'
+                                              : 'bg-surface-container-high text-on-surface-variant'
+                                          }`}
+                                        >
+                                          {currentEmployeeId ? getInitials(technicianName) : '+'}
+                                        </div>
+                                        <select
+                                          value={currentEmployeeId || ''}
+                                          disabled={assigningJobId === job.id}
+                                          onChange={(e) =>
+                                            handleAssignTechnicianOnTable(
+                                              job,
+                                              e.target.value ? Number(e.target.value) : null
+                                            )
+                                          }
+                                          className={`w-full pl-9 pr-6 py-1 bg-surface-container-low hover:bg-surface-container border rounded-lg text-body-xs outline-none transition-all cursor-pointer appearance-none shadow-2xs ${
+                                            currentEmployeeId
+                                              ? 'border-primary/40 text-on-surface font-semibold bg-primary/5'
+                                              : 'border-outline-variant/60 text-on-surface-variant italic'
+                                          } focus:border-primary focus:bg-surface-container-lowest`}
+                                        >
+                                          <option value="">-- Chưa phân công --</option>
+                                          {currentEmployeeId && !technicians.some((t) => t.id === currentEmployeeId) && (
+                                            <option value={currentEmployeeId}>
+                                              {technicianName || `KTV #${currentEmployeeId}`}
+                                            </option>
+                                          )}
+                                          {technicians.map((emp) => (
+                                            <option key={emp.id} value={emp.id}>
+                                              {emp.fullName}
+                                            </option>
+                                          ))}
+                                        </select>
+                                        <span className="material-symbols-outlined text-[15px] absolute right-2 text-on-surface-variant pointer-events-none">
+                                          arrow_drop_down
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-1.5 text-body-xs">
+                                        {technicianName ? (
+                                          <>
+                                            <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                              {getInitials(technicianName)}
+                                            </div>
+                                            <span className="font-semibold text-on-surface truncate">{technicianName}</span>
+                                          </>
+                                        ) : (
+                                          <span className="text-on-surface-variant italic">Chưa phân công</span>
                                         )}
                                       </div>
-                                    </td>
+                                    )}
+                                  </td>
 
-                                    {/* Tên công việc & Mô tả (Cột hẹp lại vừa vặn) */}
-                                    <td className="px-3.5 py-3">
-                                      <div className="font-semibold text-body-sm text-on-surface group-hover:text-primary transition-colors flex items-center gap-1.5">
-                                        <span>{job.name}</span>
-                                        <span
-                                          className="material-symbols-outlined text-[14px] opacity-0 group-hover:opacity-100 text-primary transition-opacity shrink-0"
-                                          title="Nhấn xem chi tiết"
+                                  {/* Định mức giờ */}
+                                  <td className="px-3 py-2.5 text-center">
+                                    <span className="font-mono text-body-xs font-bold text-on-surface">
+                                      {Number(job.estimated_hours || 0).toFixed(1)}h
+                                    </span>
+                                  </td>
+
+                                  {/* Trạng thái */}
+                                  <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                                    {!isWOClosed && (isExecutionActive || workOrder?.status === 'APPROVED') ? (
+                                      <div className="relative inline-flex items-center group">
+                                        <div
+                                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border transition-all shadow-2xs group-hover:shadow-xs group-hover:brightness-95 ${jobStatus.bg} ${jobStatus.text}`}
                                         >
-                                          open_in_new
-                                        </span>
-                                      </div>
-                                      {job.description && (
-                                        <p className="text-body-xs text-on-surface-variant mt-0.5 line-clamp-2">
-                                          {job.description}
-                                        </p>
-                                      )}
-                                    </td>
-
-                                    {/* Kỹ thuật viên phụ trách: Phân công trực tiếp trên bảng */}
-                                    <td
-                                      className="px-3.5 py-2.5"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {!isWOClosed && job.status === 'PLANNED' ? (
-                                        <div className="relative flex items-center w-full min-w-[220px]">
-                                          <span className="material-symbols-outlined text-[16px] absolute left-2.5 text-on-surface-variant pointer-events-none">
-                                            {currentEmployeeId ? 'how_to_reg' : 'person_add'}
-                                          </span>
-                                          <select
-                                            value={currentEmployeeId || ''}
-                                            disabled={assigningJobId === job.id}
-                                            onChange={(e) =>
-                                              handleAssignTechnicianOnTable(
-                                                job,
-                                                e.target.value ? Number(e.target.value) : null
-                                              )
-                                            }
-                                            title="Chọn kỹ thuật viên để phân công trực tiếp"
-                                            className={`w-full pl-8 pr-7 py-1.5 bg-surface-container-low hover:bg-surface-container border rounded-lg text-body-xs outline-none transition-all cursor-pointer appearance-none shadow-2xs ${
-                                              currentEmployeeId
-                                                ? 'border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-100 font-semibold bg-blue-50/50 dark:bg-blue-950/20'
-                                                : 'border-outline-variant/60 text-on-surface-variant italic font-normal'
-                                            } focus:border-blue-600 focus:bg-surface-container-lowest`}
-                                          >
-                                            <option value="">-- Chưa phân công --</option>
-                                            {technicians.map((emp) => (
-                                              <option key={emp.id} value={emp.id}>
-                                                {emp.fullName} ({emp.position})
-                                              </option>
-                                            ))}
-                                          </select>
-                                          {assigningJobId === job.id ? (
-                                            <span className="material-symbols-outlined text-[14px] absolute right-2 text-blue-600 animate-spin pointer-events-none">
-                                              progress_activity
-                                            </span>
+                                          {updatingJobId === job.id ? (
+                                            <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
                                           ) : (
-                                            <span className="material-symbols-outlined text-[16px] absolute right-2 text-on-surface-variant pointer-events-none">
-                                              arrow_drop_down
+                                            <span
+                                              className={`material-symbols-outlined text-[13px] leading-none shrink-0 ${
+                                                job.status === 'IN_PROGRESS' ? 'animate-spin' : ''
+                                              }`}
+                                            >
+                                              {jobStatus.icon}
                                             </span>
                                           )}
+                                          <span className="whitespace-nowrap">{jobStatus.label}</span>
+                                          <span className="material-symbols-outlined text-[14px] leading-none opacity-60 shrink-0">
+                                            arrow_drop_down
+                                          </span>
                                         </div>
-                                      ) : technicianName ? (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container text-body-xs font-semibold text-primary">
-                                          <span className="material-symbols-outlined text-[16px]">
-                                            how_to_reg
-                                          </span>
-                                          {technicianName}
-                                        </span>
-                                      ) : (
-                                        <span className="inline-flex items-center gap-1 text-body-xs text-on-surface-variant italic">
-                                          <span className="material-symbols-outlined text-[14px]">
-                                            person_off
-                                          </span>
-                                          Chưa phân công
-                                        </span>
-                                      )}
-                                    </td>
-
-                                    {/* Định mức giờ công */}
-                                    <td className="px-2 py-3 text-center">
-                                      <span className="text-body-sm font-bold text-on-surface">
-                                        {Number(job.estimated_hours || 0).toFixed(1)}h
-                                      </span>
-                                    </td>
-
-                                    {/* Trạng thái công việc */}
-                                    <td className="px-3 py-3 text-center whitespace-nowrap">
+                                        <select
+                                          value={job.status}
+                                          disabled={updatingJobId === job.id}
+                                          onChange={(e) => handleUpdateJobStatus(job.id, e.target.value as any)}
+                                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                                          title="Nhấp để thay đổi trạng thái công việc"
+                                        >
+                                          <option value="PLANNED">Chờ thực hiện</option>
+                                          <option value="IN_PROGRESS">Đang làm</option>
+                                          <option value="COMPLETED">Đã hoàn thành</option>
+                                          <option value="REWORK">Cần làm lại</option>
+                                          <option value="PASSED">Đạt KĐ</option>
+                                        </select>
+                                      </div>
+                                    ) : (
                                       <span
-                                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-label-xs font-bold border whitespace-nowrap ${jobStatus.bg} ${jobStatus.text}`}
+                                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${jobStatus.bg} ${jobStatus.text}`}
                                       >
                                         <span className="material-symbols-outlined text-[13px]">
                                           {jobStatus.icon}
                                         </span>
-                                        {jobStatus.label}
+                                        <span>{jobStatus.label}</span>
                                       </span>
-                                    </td>
-
-                                    {/* Thao tác: Chỉnh sửa & Xóa job (nếu chưa phân công) */}
-                                    {!isWOClosed && (
-                                      <td
-                                        className="px-2 py-3 text-center"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        {job.status === 'PLANNED' && (
-                                          confirmDeleteJobId === job.id ? (
-                                            <div className="inline-flex items-center gap-1 bg-surface-container px-1.5 py-0.5 rounded-lg border border-error/30 animate-fade-in">
-                                              <span className="text-[11px] text-error font-medium">Xóa?</span>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleDeleteJob(job)}
-                                                disabled={deletingJobId === job.id}
-                                                className="text-error hover:bg-error/20 p-0.5 rounded transition-colors disabled:opacity-50 cursor-pointer"
-                                                title="Xác nhận xóa công việc"
-                                              >
-                                                <span className="material-symbols-outlined text-[15px]">
-                                                  {deletingJobId === job.id ? 'progress_activity' : 'check'}
-                                                </span>
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => setConfirmDeleteJobId(null)}
-                                                className="text-on-surface-variant hover:bg-surface-container-high p-0.5 rounded transition-colors cursor-pointer"
-                                                title="Hủy"
-                                              >
-                                                <span className="material-symbols-outlined text-[15px]">close</span>
-                                              </button>
-                                            </div>
-                                          ) : (
-                                            <div className="flex items-center justify-center gap-0.5">
-                                              {/* Nút Xem / Chỉnh sửa */}
-                                              <button
-                                                type="button"
-                                                onClick={() => {
-                                                  setManualJobTargetService(svc);
-                                                  setEditingJob(job);
-                                                  setManualJobModalOpen(true);
-                                                }}
-                                                className="p-1 rounded-lg text-on-surface-variant hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors cursor-pointer"
-                                                title="Xem / Chỉnh sửa công việc chi tiết"
-                                              >
-                                                <span className="material-symbols-outlined text-[16px]">
-                                                  edit
-                                                </span>
-                                              </button>
-
-                                              {/* Cho phép Xóa công việc trên bảng ở trạng thái PLANNED */}
-                                              <button
-                                                type="button"
-                                                onClick={() => setConfirmDeleteJobId(job.id)}
-                                                className="p-1 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors cursor-pointer"
-                                                title="Xóa công việc này"
-                                              >
-                                                <span className="material-symbols-outlined text-[16px]">
-                                                  delete_outline
-                                                </span>
-                                              </button>
-                                            </div>
-                                          )
-                                        )}
-                                      </td>
                                     )}
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
+                                  </td>
+
+                                  {/* Thao tác */}
+                                  {!isWOClosed && (
+                                    <td className="px-3 py-2.5 text-center">
+                                      {confirmDeleteJobId === job.id ? (
+                                        <div className="inline-flex items-center gap-1 bg-surface-container px-1 py-0.5 rounded border border-error/30 animate-fade-in">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteJob(job)}
+                                            disabled={deletingJobId === job.id}
+                                            className="px-1.5 py-0.2 bg-error text-white rounded text-[10px] font-bold cursor-pointer"
+                                          >
+                                            Xóa
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setConfirmDeleteJobId(null)}
+                                            className="text-on-surface-variant hover:text-on-surface cursor-pointer"
+                                          >
+                                            <span className="material-symbols-outlined text-[13px]">close</span>
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center justify-center gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setManualJobTargetService(svc);
+                                              setEditingJob(job);
+                                              setManualJobModalOpen(true);
+                                            }}
+                                            className="p-1 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors cursor-pointer"
+                                            title="Sửa công việc"
+                                          >
+                                            <span className="material-symbols-outlined text-[15px]">edit</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setAddPartJobId(job.id)}
+                                            className="p-1 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors cursor-pointer"
+                                            title="Khai báo phụ tùng cho công việc này"
+                                          >
+                                            <span className="material-symbols-outlined text-[15px]">construction</span>
+                                          </button>
+                                          {job.status === 'PLANNED' && (
+                                            <button
+                                              type="button"
+                                              onClick={() => setConfirmDeleteJobId(job.id)}
+                                              className="p-1 rounded text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors cursor-pointer"
+                                              title="Xóa công việc"
+                                            >
+                                              <span className="material-symbols-outlined text-[15px]">delete_outline</span>
+                                            </button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </td>
+                                  )}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     ) : (
                       /* HẠNG MỤC TRỐNG CHƯA CÓ JOB */
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-dashed border-outline-variant/60 bg-surface-container-low/30">
-                        <div className="flex items-center gap-3">
-                          <span className="material-symbols-outlined text-[22px] text-on-surface-variant shrink-0">
-                            info
-                          </span>
-                          <div>
-                            <p className="text-body-sm font-medium text-on-surface">
-                              Hạng mục này chưa có danh sách công việc con chi tiết
-                            </p>
-                            <p className="text-body-xs text-on-surface-variant">
-                              Dùng AI để tự động đề xuất quy trình, hoặc thêm thủ công công việc và phân công KTV ngay.
-                            </p>
-                          </div>
-                        </div>
-
-                        {!isWOClosed && (
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setAiTargetService({ id: svc.id, name: svc.name });
-                                setIsAIModalOpen(true);
-                              }}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-label-xs font-bold shadow-xs active:scale-95 cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-[15px]">auto_awesome</span>
-                              <span>Đề xuất Job (AI)</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingJob(null);
-                                setManualJobTargetService(svc);
-                                setManualJobModalOpen(true);
-                              }}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-highest hover:bg-surface-container text-on-surface border border-outline-variant rounded-xl text-label-xs font-bold shadow-2xs active:scale-95 cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-[15px]">add_task</span>
-                              <span>+ Thêm việc thủ công</span>
-                            </button>
-                          </div>
-                        )}
+                      <div className="flex items-center gap-2.5 p-3 rounded-xl border border-dashed border-outline-variant/60 bg-surface-container-low/30 text-body-xs text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[18px] text-on-surface-variant shrink-0">
+                          info
+                        </span>
+                        <span>
+                          Hạng mục này chưa có công việc con.
+                        </span>
                       </div>
                     )}
                   </div>
@@ -1046,37 +1122,41 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
         </div>
       ) : (
         /* TRẠNG THÁI CHƯA CÓ HẠNG MỤC NÀO */
-        <div className="flex flex-col items-center justify-center p-16 text-center border-2 border-dashed border-outline-variant rounded-2xl bg-surface-container-lowest">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
-            <span className="material-symbols-outlined text-[36px]">
+        <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-outline-variant rounded-2xl bg-surface-container-lowest">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3">
+            <span className="material-symbols-outlined text-[32px]">
               {unlinkedFindings.length > 0 ? 'warning' : 'playlist_add'}
             </span>
           </div>
-          <h3 className="text-title-md font-bold text-on-surface">
+          <h3 className="text-title-sm font-bold text-on-surface">
             {unlinkedFindings.length > 0
-              ? `Có ${unlinkedFindings.length} vết lỗi trên xe cần lập Hạng mục sửa chữa`
+              ? `Có ${unlinkedFindings.length} vết lỗi kiểm tra xe cần lập Hạng mục sửa chữa`
               : 'Chưa có hạng mục sửa chữa hay dịch vụ nào'}
           </h3>
-          <p className="text-body-md text-on-surface-variant mt-2 max-w-lg leading-relaxed">
-            {unlinkedFindings.length > 0
-              ? `Các dấu vết hư hại đã được đánh dấu trong quá trình khám xe. Nhấn "Đề xuất Job bằng AI" để AI tự động lập từng Hạng mục sửa chữa lỗi kèm danh sách các bước thi công giải quyết dứt điểm.`
-              : `Phiếu công việc này đang trống. Nhấn "Đề xuất Job bằng AI" để hệ thống tự động gom các vết lỗi kiểm tra xe thành từng Hạng mục sửa chữa cụ thể kèm các dịch vụ khác, hoặc nhấn "Thêm dịch vụ" để chọn thủ công từ danh mục.`}
+          <p className="text-body-xs text-on-surface-variant mt-1.5 max-w-md leading-relaxed">
+            {isReadOnly
+              ? 'Phiếu công việc này hiện chưa có hạng mục dịch vụ nào được thiết lập.'
+              : unlinkedFindings.length > 0
+              ? 'Dùng tính năng AI để tự động gom vết lỗi thành Hạng mục thi công dứt điểm, hoặc thêm dịch vụ thủ công.'
+              : 'Nhấn "Đề xuất bằng AI" để tự động lập kế hoạch theo xe hoặc chọn dịch vụ thủ công từ danh mục.'}
           </p>
 
           {!isWOClosed && (
-            <div className="flex items-center gap-3 mt-6">
+            <div className="flex items-center gap-2.5 mt-5">
               <button
+                type="button"
                 onClick={() => setIsAIModalOpen(true)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-label-md font-bold shadow-md shadow-blue-500/20 transition-all active:scale-95"
+                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white rounded-xl text-label-sm font-bold shadow-xs transition-all cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
-                Đề xuất Job bằng AI
+                <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+                Đề xuất bằng AI
               </button>
               <button
+                type="button"
                 onClick={() => setIsAdding(true)}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-xl text-label-md font-semibold border border-outline-variant transition-colors"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-xl text-label-sm font-semibold border border-outline-variant transition-colors cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[20px]">add</span>
+                <span className="material-symbols-outlined text-[18px]">add</span>
                 Thêm dịch vụ thủ công
               </button>
             </div>
@@ -1127,6 +1207,22 @@ export default function TabJob({ workOrder, refetchWO }: TabJobProps) {
           }}
         />
       )}
+
+      {/* MODAL KHAI BÁO PHỤ TÙNG (UC-36) */}
+      {workOrder && addPartJobId !== null && (
+        <AddPartModal
+          isOpen={addPartJobId !== null}
+          onClose={() => setAddPartJobId(null)}
+          workOrder={workOrder}
+          preselectedJobId={addPartJobId}
+          onSuccess={() => {
+            setAddPartJobId(null);
+            if (refetchWO) refetchWO();
+          }}
+        />
+      )}
+
+
     </div>
   );
 }

@@ -16,6 +16,15 @@ import {
   reorderJobs,
   getMyTrackingOrders,
   getMyTrackingOrderDetail,
+  getWorkOrderParts,
+  addPartToJob,
+  updateJobPart,
+  removePartFromJob,
+  startWorkOrder,
+  startService,
+  updateServiceStatus,
+  updateJobStatus,
+  cancelAndReleaseWorkOrder,
 } from '../controllers/work-order.controller';
 import { CheckInController } from '../controllers/check-in.controller';
 import { InspectionController } from '../controllers/inspection.controller';
@@ -61,10 +70,25 @@ router.post('/:id/services', authorize('SA', 'ADMIN'), addServiceToWO);
 router.post('/:id/services/from-finding', authorize('SA', 'ADMIN'), createServiceFromFinding);
 router.post('/:id/jobs', authorize('SA', 'ADMIN'), createManualJob);
 router.patch('/:id/jobs/:jobId', authorize('SA', 'ADMIN'), updateManualJob);
+router.patch('/:id/jobs/:jobId/status', authorize('SA', 'ADMIN'), updateJobStatus);
 router.delete('/:id/jobs/:jobId', authorize('SA', 'ADMIN'), deleteJob);
 router.put('/:id/services/:serviceId/reorder-jobs', authorize('SA', 'ADMIN'), reorderJobs);
 router.patch('/:id/services/:serviceId', authorize('SA', 'ADMIN'), updateServiceInWO);
+router.post('/:id/services/:serviceId/start', authorize('SA', 'ADMIN'), startService);
+router.patch('/:id/services/:serviceId/status', authorize('SA', 'ADMIN'), updateServiceStatus);
 router.delete('/:id/services/:serviceId', authorize('SA', 'ADMIN'), removeServiceFromWO);
+
+// KHAI BÁO VÀ QUẢN LÝ PHỤ TÙNG / VẬT TƯ CHO CÔNG VIỆC (UC-36)
+router.get('/:id/parts', authorize('SA', 'DESK STAFF', 'ADMIN'), getWorkOrderParts);
+router.post('/:id/jobs/:jobId/parts', authorize('SA', 'ADMIN'), addPartToJob);
+router.patch('/:id/jobs/:jobId/parts/:partId', authorize('SA', 'ADMIN'), updateJobPart);
+router.delete('/:id/jobs/:jobId/parts/:partId', authorize('SA', 'ADMIN'), removePartFromJob);
+
+// BẮT ĐẦU THI CÔNG PHIẾU CÔNG VIỆC SAU KHI DUYỆT BÁO GIÁ
+router.post('/:id/start-work', authorize('SA', 'ADMIN'), startWorkOrder);
+
+// XUẤT TRẢ XE KHI KHÁCH HÀNG TỪ CHỐI DỊCH VỤ HOẶC HỦY LỆNH
+router.post('/:id/cancel-release', authorize('SA', 'ADMIN'), cancelAndReleaseWorkOrder);
 
 // LÊN KẾ HOẠCH CÔNG VIỆC TÍCH HỢP AI LLM (UC-34)
 router.use('/', aiJobRoutes);

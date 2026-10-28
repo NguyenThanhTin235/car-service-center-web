@@ -25,23 +25,25 @@ export class ServiceService {
   /**
    * UC-59: Lấy danh sách danh mục dịch vụ
    */
-  async getServices(search?: string, categoryId?: number, page = 1, limit = 10) {
+  async getServices(search?: string, categoryId?: number, page = 1, limit = 10, all = false) {
     const where: any = {};
     if (search) where.name = { contains: search };
     if (categoryId) where.category_id = categoryId;
 
-    const skip = (page - 1) * limit;
+    const skip = all ? undefined : (page - 1) * limit;
+    const take = all ? undefined : limit;
+
     const [totalRecords, templates] = await Promise.all([
       prisma.service.count({ where }),
       prisma.service.findMany({
         where,
         skip,
-        take: limit,
+        take,
         include: {
           category: true,
           size_prices: true,
         },
-        orderBy: { created_at: 'desc' },
+        orderBy: { name: 'asc' },
       }),
     ]);
 
@@ -61,9 +63,9 @@ export class ServiceService {
       data,
       pagination: {
         totalRecords,
-        totalPages: Math.ceil(totalRecords / limit),
+        totalPages: all ? 1 : Math.ceil(totalRecords / (limit || 10)),
         currentPage: page,
-        limit,
+        limit: all ? totalRecords : limit,
       },
     };
   }

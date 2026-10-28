@@ -58,7 +58,12 @@ export default function WOOverviewCards({ data }: { data: OverviewData }) {
         <span className="text-label-sm text-on-surface-variant font-bold uppercase tracking-wider mb-2">
           Báo giá
         </span>
-        <div className="text-headline-sm font-bold text-primary leading-tight mt-1 whitespace-nowrap">S$ {data.quotationTotal.toLocaleString()}</div>
+        <div className="text-title-lg font-bold text-primary leading-tight mt-1 whitespace-nowrap">
+          {data.quotationTotal.toLocaleString('vi-VN')} đ
+        </div>
+        <div className="text-body-sm text-on-surface-variant mt-2 leading-tight">
+          {data.quotationQuotes} báo giá · {data.quotationApproved.toLocaleString('vi-VN')} đ đã duyệt
+        </div>
       </div>
       
       {/* Billing */}
@@ -66,9 +71,11 @@ export default function WOOverviewCards({ data }: { data: OverviewData }) {
         <span className="text-label-sm text-on-surface-variant font-bold uppercase tracking-wider mb-2">
           Thanh toán
         </span>
-        <div className="text-title-md font-bold text-on-surface leading-tight">S$ {data.billingCollected.toLocaleString()} đã thu</div>
+        <div className="text-title-md font-bold text-on-surface leading-tight">
+          {data.billingCollected.toLocaleString('vi-VN')} đ đã thu
+        </div>
         <div className="text-body-sm text-on-surface-variant mt-2 leading-tight">
-          {data.billingInvoices} hóa đơn · S$ {data.billingInsurer.toLocaleString()} BH trả
+          {data.billingInvoices} hóa đơn · {data.billingInsurer.toLocaleString('vi-VN')} đ BH trả
         </div>
       </div>
     </div>

@@ -57,16 +57,55 @@ export interface WorkOrderTrackingDto {
   services: WorkOrderServiceItem[];
   findings: WorkOrderFinding[];
   checkIn?: {
+    id?: number;
     mileage: number;
     fuelLevel: string;
     complaint: string;
+    belongings?: string | null;
     exteriorCondition: string;
-    confirmedAt?: string;
-    evidenceUrls?: any;
+    status?: string;
+    confirmedAt?: string | null;
+    evidenceUrls?: string[] | null;
+    createdAt?: string;
   } | null;
   steps: WorkOrderStep[];
   currentStep: number;
   progressPercent: number;
+  activeQuotation?: {
+    id: number;
+    quotationNumber: string;
+    quotationType: string;
+    version: number;
+    status: 'DRAFT' | 'SENT' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+    subtotal: number;
+    discountAmount: number;
+    taxRate: number;
+    taxAmount: number;
+    grandTotal: number;
+    rejectReason?: string | null;
+    rejectDetails?: {
+      type: 'REVISE' | 'CANCEL';
+      reason: string;
+      createdAt?: string;
+    } | null;
+    sentAt?: string | null;
+    approvedAt?: string | null;
+    createdAt: string;
+    lines: Array<{
+      id: number;
+      lineType: 'LABOUR' | 'PART';
+      description: string;
+      quantity: number;
+      unitPrice: number;
+      amount: number;
+      sortOrder: number;
+    }>;
+  } | null;
+  release?: {
+    id: number;
+    releaseNotes?: string | null;
+    releasedAt: string;
+  } | null;
   invoice?: {
     id: number;
     invoiceNumber: string;

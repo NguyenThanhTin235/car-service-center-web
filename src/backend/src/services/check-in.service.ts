@@ -33,9 +33,9 @@ export class CheckInService {
         throw new Error('Không tìm thấy phiếu công việc.');
       }
 
-      // 2. Chỉ cho phép chỉnh sửa check-in khi WO ở trạng thái DRAFT hoặc IN_PLANNING
-      if (!['DRAFT', 'IN_PLANNING'].includes(workOrder.status)) {
-        throw new Error(`Không thể cập nhật tình trạng xe ở trạng thái ${workOrder.status}`);
+      // 2. Chỉ cho phép chỉnh sửa check-in khi khách hàng chưa xác nhận báo giá
+      if (['APPROVED', 'IN_PROGRESS', 'BILLING_REQUESTED', 'FINANCIAL_CLEARED', 'RELEASED', 'CLOSED'].includes(workOrder.status)) {
+        throw new Error(`Không thể cập nhật thông tin tiếp nhận xe sau khi khách hàng đã xác nhận báo giá (trạng thái ${workOrder.status})`);
       }
 
       let checkIn;
@@ -75,7 +75,14 @@ export class CheckInService {
         });
       }
 
-      // Note: Trạng thái WO chỉ chuyển sang IN_PLANNING khi khách hàng đã ký xác nhận
+      // Tự động chuyển trạng thái WO sang IN_PLANNING (Lập kế hoạch) sau khi lưu thông tin tiếp nhận
+      if (workOrder.status === 'DRAFT') {
+        await tx.workOrder.update({
+          where: { id: workOrderId },
+          data: { status: 'IN_PLANNING' },
+        });
+      }
+
       return checkIn;
     });
   }

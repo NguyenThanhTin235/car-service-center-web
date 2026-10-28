@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
 import {
   AISuggestedJob,
@@ -39,10 +40,16 @@ export default function AIJobPlannerModal({
   const [applying, setApplying] = useState(false);
   const [planData, setPlanData] = useState<AIJobPlanResponse | null>(null);
 
-  // Danh sách các Hạng mục dịch vụ/sửa chữa (mỗi hạng mục gồm danh sách jobs con)
+  // Danh sách các Hạng mục dịch vụ/sửa chữa
   const [editableServices, setEditableServices] = useState<AISuggestedService[]>([]);
   // Set chứa key định danh job được chọn: `${serviceIdx}-${jobIdx}`
   const [selectedJobKeys, setSelectedJobKeys] = useState<Set<string>>(new Set());
+
+  // Trạng thái thu gọn/mở rộng phân tích chẩn đoán AI
+  const [showAiDetails, setShowAiDetails] = useState(false);
+
+  // Key của job đang mở chế độ inline edit: `${serviceIdx}-${jobIdx}` hoặc null
+  const [editingJobKey, setEditingJobKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -51,6 +58,8 @@ export default function AIJobPlannerModal({
       setPlanData(null);
       setEditableServices([]);
       setSelectedJobKeys(new Set());
+      setShowAiDetails(false);
+      setEditingJobKey(null);
     }
   }, [isOpen, workOrderId, targetServiceId]);
 
@@ -107,18 +116,32 @@ export default function AIJobPlannerModal({
     setSelectedJobKeys(next);
   };
 
-  const toggleSelectAll = () => {
-    let totalJobs = 0;
-    editableServices.forEach((s) => (totalJobs += s.jobs.length));
+  const selectAll = () => {
+    const allKeys = new Set<string>();
+    editableServices.forEach((s, sIdx) => {
+      s.jobs.forEach((_, jIdx) => allKeys.add(`${sIdx}-${jIdx}`));
+    });
+    setSelectedJobKeys(allKeys);
+  };
 
-    if (selectedJobKeys.size === totalJobs) {
-      setSelectedJobKeys(new Set());
-    } else {
-      const allKeys = new Set<string>();
-      editableServices.forEach((s, sIdx) => {
-        s.jobs.forEach((_, jIdx) => allKeys.add(`${sIdx}-${jIdx}`));
+  const deselectAll = () => {
+    setSelectedJobKeys(new Set());
+  };
+
+  const selectUrgentOnly = () => {
+    const urgentKeys = new Set<string>();
+    editableServices.forEach((s, sIdx) => {
+      s.jobs.forEach((j, jIdx) => {
+        if (j.severity === 'CRITICAL' || j.severity === 'HIGH') {
+          urgentKeys.add(`${sIdx}-${jIdx}`);
+        }
       });
-      setSelectedJobKeys(allKeys);
+    });
+    setSelectedJobKeys(urgentKeys);
+    if (urgentKeys.size === 0) {
+      toast('Không có công việc khẩn cấp (Critical / High)', { icon: 'ℹ️' });
+    } else {
+      toast.success(`Đã chọn ${urgentKeys.size} công việc khẩn cấp`);
     }
   };
 
@@ -147,6 +170,7 @@ export default function AIJobPlannerModal({
 
   const handleAddJobToService = (serviceIdx: number) => {
     const defaultJobType = planData?.available_job_types[0];
+    const defaultTech = planData?.available_technicians?.[0];
     const newJob: AISuggestedJob = {
       name: 'Công việc kỹ thuật bổ sung',
       description: 'Kiểm tra và xử lý bổ sung',
@@ -157,6 +181,10 @@ export default function AIJobPlannerModal({
       matched_finding_ids: editableServices[serviceIdx]?.finding_id
         ? [editableServices[serviceIdx].finding_id!]
         : [],
+      assigned_technician_id: defaultTech?.id || null,
+      assigned_technician_name: defaultTech?.full_name || null,
+      assignment_reason: defaultTech ? `Tự động phân công cho KTV: ${defaultTech.full_name}` : null,
+      match_score: 80,
     };
 
     setEditableServices((prev) => {
@@ -168,6 +196,7 @@ export default function AIJobPlannerModal({
 
     const newKey = `${serviceIdx}-${editableServices[serviceIdx].jobs.length}`;
     setSelectedJobKeys((prev) => new Set(prev).add(newKey));
+    setEditingJobKey(newKey);
   };
 
   const handleRemoveJobFromService = (serviceIdx: number, jobIdx: number) => {
@@ -178,13 +207,15 @@ export default function AIJobPlannerModal({
       return clone;
     });
 
-    // Rebuild selected keys
     const targetKey = `${serviceIdx}-${jobIdx}`;
     setSelectedJobKeys((prev) => {
       const next = new Set(prev);
       next.delete(targetKey);
       return next;
     });
+    if (editingJobKey === targetKey) {
+      setEditingJobKey(null);
+    }
   };
 
   const handleApply = async () => {
@@ -193,7 +224,6 @@ export default function AIJobPlannerModal({
       return;
     }
 
-    // Lọc ra các services và jobs được chọn
     const servicesToApply = editableServices
       .map((svc, sIdx) => {
         const selectedJobs = svc.jobs.filter((_, jIdx) =>
@@ -214,6 +244,7 @@ export default function AIJobPlannerModal({
             job_type_id: Number(j.job_type_id),
             estimated_hours: Number(j.estimated_hours),
             matched_finding_ids: j.matched_finding_ids,
+            assigned_technician_id: j.assigned_technician_id ? Number(j.assigned_technician_id) : null,
           })),
         };
       })
@@ -261,102 +292,152 @@ export default function AIJobPlannerModal({
   const totalAllJobsCount = editableServices.reduce((acc, s) => acc + s.jobs.length, 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-5xl max-h-[92vh] bg-surface rounded-2xl shadow-2xl border border-outline-variant flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="relative w-full max-w-4xl max-h-[90vh] bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant/60 flex flex-col overflow-hidden">
         {/* MODAL HEADER */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-              <span className="material-symbols-outlined text-[24px]">auto_awesome</span>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/30 bg-surface-container-low">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
+              <span className="material-symbols-outlined text-[22px]">auto_awesome</span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-title-md font-bold text-on-surface">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-title-sm font-bold text-on-surface truncate">
                   {targetServiceName ? (
-                    <span>AI Đề xuất công việc cho hạng mục: <span className="text-primary font-extrabold">{targetServiceName}</span></span>
+                    <span>Đề xuất quy trình cho: <strong className="text-primary">{targetServiceName}</strong></span>
                   ) : (
                     'Trợ lý Kỹ thuật AI - Lập kế hoạch Hạng mục & Công việc'
                   )}
                 </h3>
-                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-label-xs font-semibold uppercase">
-                  {targetServiceName ? 'Hạng mục riêng lẻ' : 'RAG Toàn bộ'}
+                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-label-xs font-bold uppercase">
+                  {targetServiceName ? 'Hạng mục đơn' : 'RAG Toàn diện'}
                 </span>
               </div>
-              <p className="text-body-xs text-on-surface-variant">
-                Phiếu: <span className="font-semibold text-primary">{workOrderNumber}</span> • {targetServiceName ? `Chỉ đề xuất danh sách các bước công việc con kỹ thuật phục vụ riêng cho "${targetServiceName}"` : 'Mỗi lỗi kỹ thuật tương ứng 1 Hạng mục sửa chữa gồm danh sách công việc con, kết hợp cùng các dịch vụ khác (bảo dưỡng, rửa xe,..)'}
+              <p className="text-body-xs text-on-surface-variant truncate mt-0.5">
+                Phiếu: <span className="font-semibold text-primary">#{workOrderNumber}</span> • Tự động gom lỗi thành Hạng mục và phân công kỹ thuật viên tối ưu
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             disabled={applying}
-            className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors"
+            className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer shrink-0"
+            title="Đóng (Esc)"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
         {/* MODAL BODY */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
           {loading ? (
             <div className="py-24 flex flex-col items-center justify-center gap-4 text-center">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-                <span className="material-symbols-outlined absolute inset-0 m-auto text-primary text-[28px] animate-pulse">
+              <div className="relative w-14 h-14 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full border-3 border-primary/20 border-t-primary animate-spin" />
+                <span className="material-symbols-outlined text-primary text-[26px] animate-pulse select-none flex items-center justify-center leading-none">
                   smart_toy
                 </span>
               </div>
               <div>
-                <h4 className="text-title-sm font-bold text-on-surface">
-                  {targetServiceName ? `Đang phân tích và lập quy trình cho "${targetServiceName}"...` : 'Đang phân tích dữ liệu xe & RAG...'}
+                <h4 className="text-body-md font-bold text-on-surface">
+                  {targetServiceName ? `Đang phân tích các bước cho "${targetServiceName}"...` : 'AI đang phân tích các vết lỗi khám xe & đối soát tiền lệ...'}
                 </h4>
-                <p className="text-body-sm text-on-surface-variant mt-1 max-w-md">
-                  {targetServiceName
-                    ? `AI đang đối soát tiêu chuẩn kỹ thuật xưởng để đề xuất danh sách các bước thi công tối ưu cho hạng mục này.`
-                    : 'AI đang đối sánh các vết lỗi kiểm tra xe với tiền lệ kỹ thuật xưởng để đề xuất danh sách hạng mục và công việc giải quyết dứt điểm lỗi.'}
+                <p className="text-body-xs text-on-surface-variant mt-1 max-w-sm">
+                  Tự động đề xuất thời gian định mức và kỹ thuật viên lành nghề nhất.
                 </p>
               </div>
             </div>
           ) : planData ? (
             <>
-              {/* CHẨN ĐOÁN TỔNG QUAN TỪ AI */}
-              <div className="p-4 rounded-xl bg-gradient-to-br from-blue-500/5 to-blue-600/5 border border-blue-500/20 space-y-2">
-                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 font-bold text-label-sm uppercase tracking-wider">
-                  <span className="material-symbols-outlined text-[18px]">psychology</span>
-                  Đánh giá chẩn đoán kỹ thuật tổng quan
+              {/* COLLAPSIBLE SMART SUMMARY BAR */}
+              <div className="rounded-xl bg-primary/5 border border-primary/15 p-3.5 transition-all">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="material-symbols-outlined text-primary text-[20px] shrink-0">
+                      psychology
+                    </span>
+                    <span className="text-body-xs text-on-surface font-medium truncate">
+                      <strong>Chẩn đoán:</strong> {planData.summary}
+                    </span>
+                  </div>
+                  {planData.risk_assessment && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAiDetails(!showAiDetails)}
+                      className="text-label-xs font-semibold text-primary hover:underline flex items-center gap-0.5 shrink-0 cursor-pointer"
+                    >
+                      <span>{showAiDetails ? 'Thu gọn' : 'Chi tiết rủi ro'}</span>
+                      <span className="material-symbols-outlined text-[16px]">
+                        {showAiDetails ? 'expand_less' : 'expand_more'}
+                      </span>
+                    </button>
+                  )}
                 </div>
-                <p className="text-body-sm text-on-surface leading-relaxed">{planData.summary}</p>
-                {planData.risk_assessment && (
-                  <div className="flex items-start gap-2 pt-2 border-t border-blue-500/10 text-body-xs text-amber-700 dark:text-amber-300">
-                    <span className="material-symbols-outlined text-[16px] shrink-0 text-amber-600">warning</span>
-                    <span><strong>Đánh giá an toàn & rủi ro:</strong> {planData.risk_assessment}</span>
+
+                {showAiDetails && planData.risk_assessment && (
+                  <div className="mt-2.5 pt-2.5 border-t border-primary/10 text-body-xs text-amber-800 dark:text-amber-300 flex items-start gap-2 animate-fade-in">
+                    <span className="material-symbols-outlined text-[16px] text-amber-600 shrink-0 mt-0.5">
+                      warning
+                    </span>
+                    <div>
+                      <strong>Đánh giá rủi ro an toàn:</strong> {planData.risk_assessment}
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* THANH ĐIỀU HƯỚNG TỔNG QUÁT */}
-              <div className="flex items-center justify-between pb-2 border-b border-outline-variant/40">
+              {/* QUICK SELECTION TOOLBAR */}
+              <div className="flex flex-wrap items-center justify-between gap-2 py-1.5 border-b border-outline-variant/30">
                 <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 text-label-md font-bold text-on-surface cursor-pointer select-none">
+                  <label className="flex items-center gap-2 text-label-sm font-bold text-on-surface cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={selectedJobKeys.size === totalAllJobsCount && totalAllJobsCount > 0}
-                      onChange={toggleSelectAll}
+                      onChange={() => {
+                        if (selectedJobKeys.size === totalAllJobsCount) {
+                          deselectAll();
+                        } else {
+                          selectAll();
+                        }
+                      }}
                       className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
                     />
-                    Chọn tất cả ({totalSelectedJobsCount}/{totalAllJobsCount} công việc)
+                    <span>Chọn tất cả ({totalSelectedJobsCount}/{totalAllJobsCount})</span>
                   </label>
-                  <span className="text-body-xs text-on-surface-variant">
-                    • Tổng thời gian: <strong>{totalSelectedHours.toFixed(1)} giờ</strong>
+                  <span className="text-body-xs text-on-surface-variant font-mono">
+                    • <strong>{totalSelectedHours.toFixed(1)}h</strong> công
                   </span>
                 </div>
-                <span className="text-body-xs text-on-surface-variant italic">
-                  * Mỗi hạng mục sửa chữa bao gồm danh sách công việc cần làm để khắc phục 1 lỗi
-                </span>
+
+                {/* Quick filter chips */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={selectAll}
+                    className="px-2.5 py-1 rounded-lg text-label-xs font-semibold bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors cursor-pointer"
+                  >
+                    Chọn hết
+                  </button>
+                  <button
+                    type="button"
+                    onClick={selectUrgentOnly}
+                    className="px-2.5 py-1 rounded-lg text-label-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">bolt</span>
+                    Khẩn cấp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={deselectAll}
+                    className="px-2.5 py-1 rounded-lg text-label-xs font-semibold hover:bg-surface-container text-on-surface-variant transition-colors cursor-pointer"
+                  >
+                    Bỏ chọn
+                  </button>
+                </div>
               </div>
 
-              {/* DANH SÁCH CÁC HẠNG MỤC DỊCH VỤ & SỬA CHỮA */}
-              <div className="space-y-6">
+              {/* DANH SÁCH HẠNG MỤC & CÔNG VIỆC CON */}
+              <div className="space-y-4">
                 {editableServices.map((svc, sIdx) => {
                   const isRepair = svc.category_type === 'REPAIR';
                   const finding = svc.finding_info;
@@ -376,12 +457,11 @@ export default function AIJobPlannerModal({
                   return (
                     <div
                       key={sIdx}
-                      className="rounded-2xl border border-outline-variant/70 overflow-hidden shadow-sm bg-surface-container-lowest/80 transition-all hover:border-primary/40"
+                      className="rounded-2xl border border-outline-variant/60 overflow-hidden shadow-2xs bg-surface-container-lowest transition-all hover:border-primary/40"
                     >
-                      {/* HEADER CỦA HẠNG MỤC */}
-                      <div className="px-5 py-3.5 bg-surface-container-low/80 border-b border-outline-variant/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {/* Checkbox chọn cả hạng mục */}
+                      {/* HEADER HẠNG MỤC */}
+                      <div className="px-4 py-3 bg-surface-container-low border-b border-outline-variant/30 flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
                           <input
                             type="checkbox"
                             checked={allSelectedInService}
@@ -392,74 +472,53 @@ export default function AIJobPlannerModal({
                             className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer shrink-0"
                           />
 
-                          {/* Icon phân loại */}
                           <div
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                               isRepair
-                                ? 'bg-red-500/10 text-red-600'
+                                ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
                                 : svc.category_type === 'MAINTENANCE'
-                                ? 'bg-emerald-500/10 text-emerald-600'
-                                : 'bg-blue-500/10 text-blue-600'
+                                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                                : 'bg-primary/10 text-primary'
                             }`}
                           >
-                            <span className="material-symbols-outlined text-[18px]">
-                              {isRepair ? 'handyman' : svc.category_type === 'MAINTENANCE' ? 'build_circle' : 'local_car_wash'}
+                            <span className="material-symbols-outlined text-[17px]">
+                              {isRepair ? 'handyman' : svc.category_type === 'MAINTENANCE' ? 'build_circle' : 'category'}
                             </span>
                           </div>
 
-                          {/* Tên Hạng mục có thể sửa trực tiếp */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <input
-                                type="text"
-                                value={svc.service_name}
-                                onChange={(e) => handleUpdateServiceName(sIdx, e.target.value)}
-                                className="text-title-sm font-bold text-on-surface bg-transparent border-b border-dashed border-transparent hover:border-outline focus:border-primary focus:outline-none px-1 py-0.5 max-w-xl transition-colors"
-                              />
+                          <input
+                            type="text"
+                            value={svc.service_name}
+                            onChange={(e) => handleUpdateServiceName(sIdx, e.target.value)}
+                            className="text-body-sm font-bold text-on-surface bg-transparent border-b border-dashed border-transparent hover:border-outline focus:border-primary focus:outline-none px-1 py-0.5 transition-colors flex-1 min-w-[200px]"
+                            title="Nhấp để đổi tên hạng mục"
+                          />
 
-                              {/* Badges */}
-                              {isRepair && finding && (
-                                <span
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-label-xs font-bold border ${severityConfig?.bg} ${severityConfig?.text} ${severityConfig?.border}`}
-                                >
-                                  <span className="material-symbols-outlined text-[12px]">build</span>
-                                  Xử lý lỗi #{finding.id} ({severityConfig?.label})
-                                </span>
-                              )}
+                          {/* Badges */}
+                          {isRepair && finding && (
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-label-xs font-bold border ${severityConfig?.bg} ${severityConfig?.text} ${severityConfig?.border} shrink-0`}
+                            >
+                              Lỗi #{finding.id} ({severityConfig?.label})
+                            </span>
+                          )}
 
-                              {!isRepair && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-label-xs font-bold bg-secondary/10 text-secondary border border-secondary/20">
-                                  {svc.category_type === 'MAINTENANCE' ? 'Bảo dưỡng định kỳ' : 'Dịch vụ xưởng'}
-                                </span>
-                              )}
-
-                              {svc.is_existing_service && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-label-xs font-bold bg-emerald-500/10 text-emerald-700 border border-emerald-500/30">
-                                  <span className="material-symbols-outlined text-[12px]">check_circle</span>
-                                  Đã có sẵn trên phiếu
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Mô tả lỗi nếu có */}
-                            {finding && (
-                              <p className="text-body-xs text-on-surface-variant truncate mt-0.5">
-                                Vết lỗi: &ldquo;{finding.description}&rdquo;
-                              </p>
-                            )}
-                          </div>
+                          {svc.is_existing_service && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-label-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                              Đã có trên phiếu
+                            </span>
+                          )}
                         </div>
 
-                        {/* Thống kê giờ & Nút thêm job con */}
-                        <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-                          <span className="text-body-xs text-on-surface-variant bg-surface-container px-2.5 py-1 rounded-md font-medium">
-                            {svc.jobs.length} công việc • {totalServiceHours.toFixed(1)}h
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-body-xs font-semibold text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-md font-mono">
+                            {svc.jobs.length} việc • {totalServiceHours.toFixed(1)}h
                           </span>
                           <button
                             type="button"
                             onClick={() => handleAddJobToService(sIdx)}
-                            className="flex items-center gap-1 px-2.5 py-1 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-md text-label-xs font-semibold transition-colors"
-                            title="Thêm công việc con vào hạng mục này"
+                            className="flex items-center gap-1 px-2 py-1 text-label-xs font-semibold bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg transition-colors cursor-pointer"
+                            title="Thêm công việc vào hạng mục này"
                           >
                             <span className="material-symbols-outlined text-[14px]">add</span>
                             Thêm việc
@@ -467,115 +526,77 @@ export default function AIJobPlannerModal({
                         </div>
                       </div>
 
-                      {/* DANH SÁCH CÁC CÔNG VIỆC CON (JOBS) CỦA HẠNG MỤC NÀY */}
-                      <div className="p-4 space-y-3">
+                      {/* DANH SÁCH JOBS CON TRONG HẠNG MỤC */}
+                      <div className="p-3 space-y-2">
                         {svc.jobs.length === 0 ? (
-                          <div className="py-6 text-center text-on-surface-variant text-body-sm italic">
-                            Chưa có công việc nào trong hạng mục này. Nhấn &ldquo;Thêm việc&rdquo; để tạo công việc con.
+                          <div className="py-4 text-center text-on-surface-variant text-body-xs italic">
+                            Chưa có việc nào. Bấm &quot;Thêm việc&quot; để tạo bước kỹ thuật.
                           </div>
                         ) : (
                           svc.jobs.map((job, jIdx) => {
                             const jobKey = `${sIdx}-${jIdx}`;
                             const isJobSelected = selectedJobKeys.has(jobKey);
+                            const isEditing = editingJobKey === jobKey;
                             const jobSeverity = SEVERITY_CONFIG[job.severity] || SEVERITY_CONFIG.MEDIUM;
 
                             return (
                               <div
                                 key={jIdx}
-                                className={`p-3.5 rounded-xl border transition-all ${
+                                className={`rounded-xl border transition-all ${
                                   isJobSelected
-                                    ? 'bg-surface-container-low/40 border-primary/30 shadow-xs'
-                                    : 'bg-surface-container-lowest/40 border-outline-variant/30 opacity-60'
+                                    ? 'bg-surface-container-lowest border-outline-variant/60 shadow-2xs'
+                                    : 'bg-surface-container-low/40 border-transparent opacity-60'
                                 }`}
                               >
-                                <div className="flex items-start gap-3">
-                                  {/* Checkbox job con */}
-                                  <input
-                                    type="checkbox"
-                                    checked={isJobSelected}
-                                    onChange={() => toggleJobKey(jobKey)}
-                                    className="mt-1 w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer shrink-0"
-                                  />
-
-                                  {/* Nội dung job con */}
-                                  <div className="flex-1 space-y-2">
-                                    {/* Dòng 1: Tên job & Severity */}
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                      <div className="flex items-center gap-2 flex-1">
-                                        <span className="text-label-xs font-bold text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded shrink-0">
-                                          Việc {jIdx + 1}
-                                        </span>
-                                        <input
-                                          type="text"
-                                          value={job.name}
-                                          onChange={(e) =>
-                                            handleUpdateJobField(sIdx, jIdx, 'name', e.target.value)
-                                          }
-                                          className="flex-1 text-body-sm font-semibold text-on-surface bg-transparent border-b border-transparent hover:border-outline focus:border-primary focus:outline-none px-1 py-0.5 transition-colors"
-                                        />
-                                      </div>
-
-                                      <div className="flex items-center gap-2 shrink-0">
-                                        <span
-                                          className={`px-2 py-0.5 rounded-full text-label-xs font-bold border ${jobSeverity.bg} ${jobSeverity.text} ${jobSeverity.border}`}
-                                        >
-                                          {jobSeverity.label}
-                                        </span>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRemoveJobFromService(sIdx, jIdx)}
-                                          className="text-on-surface-variant hover:text-error p-1 rounded transition-colors"
-                                          title="Xóa công việc này"
-                                        >
-                                          <span className="material-symbols-outlined text-[16px]">close</span>
-                                        </button>
-                                      </div>
+                                {isEditing ? (
+                                  /* INLINE EDIT MODE */
+                                  <div className="p-3 space-y-2 bg-surface-container-low/60 rounded-xl">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <input
+                                        type="text"
+                                        value={job.name}
+                                        onChange={(e) =>
+                                          handleUpdateJobField(sIdx, jIdx, 'name', e.target.value)
+                                        }
+                                        className="flex-1 px-2.5 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-sm font-semibold text-on-surface outline-none focus:border-primary"
+                                        placeholder="Tên công việc..."
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingJobKey(null)}
+                                        className="px-3 py-1 bg-primary text-white rounded-lg text-label-xs font-bold transition-all hover:bg-primary/90 cursor-pointer"
+                                      >
+                                        Xong
+                                      </button>
                                     </div>
 
-                                    {/* Dòng 2: Mô tả thao tác */}
-                                    <input
-                                      type="text"
-                                      value={job.description || ''}
-                                      placeholder="Mô tả kỹ thuật..."
-                                      onChange={(e) =>
-                                        handleUpdateJobField(sIdx, jIdx, 'description', e.target.value)
-                                      }
-                                      className="w-full text-body-xs text-on-surface-variant bg-transparent border-b border-transparent hover:border-outline focus:border-primary focus:outline-none px-1 py-0.5"
-                                    />
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                      {/* Job type */}
+                                      <select
+                                        value={job.job_type_id}
+                                        onChange={(e) =>
+                                          handleUpdateJobField(
+                                            sIdx,
+                                            jIdx,
+                                            'job_type_id',
+                                            Number(e.target.value)
+                                          )
+                                        }
+                                        className="px-2 py-1 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-xs text-on-surface"
+                                      >
+                                        {planData.available_job_types.map((jt) => (
+                                          <option key={jt.id} value={jt.id}>
+                                            {jt.name}
+                                          </option>
+                                        ))}
+                                      </select>
 
-                                    {/* Dòng 3: Cấu hình Nhóm thợ & Giờ công */}
-                                    <div className="flex flex-wrap items-center gap-4 pt-1.5 border-t border-outline-variant/20 text-body-xs">
-                                      {/* JobType select */}
+                                      {/* Hours */}
                                       <div className="flex items-center gap-1.5">
-                                        <span className="text-on-surface-variant font-medium">Nhóm thợ:</span>
-                                        <select
-                                          value={job.job_type_id}
-                                          onChange={(e) =>
-                                            handleUpdateJobField(
-                                              sIdx,
-                                              jIdx,
-                                              'job_type_id',
-                                              Number(e.target.value)
-                                            )
-                                          }
-                                          className="text-body-xs bg-surface-container px-2 py-1 rounded-md border border-outline-variant text-on-surface focus:outline-none focus:border-primary"
-                                        >
-                                          {planData.available_job_types.map((jt) => (
-                                            <option key={jt.id} value={jt.id}>
-                                              {jt.name}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </div>
-
-                                      {/* Giờ công */}
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-on-surface-variant font-medium">Giờ công:</span>
                                         <input
                                           type="number"
-                                          step="0.1"
+                                          step="0.5"
                                           min="0.1"
-                                          max="12"
                                           value={job.estimated_hours}
                                           onChange={(e) =>
                                             handleUpdateJobField(
@@ -585,13 +606,113 @@ export default function AIJobPlannerModal({
                                               parseFloat(e.target.value) || 0
                                             )
                                           }
-                                          className="w-16 text-body-xs bg-surface-container px-2 py-1 rounded-md border border-outline-variant text-on-surface focus:outline-none focus:border-primary text-center font-bold"
+                                          className="w-20 px-2 py-1 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-xs font-bold font-mono text-center"
                                         />
-                                        <span className="text-on-surface-variant">giờ</span>
+                                        <span className="text-body-xs text-on-surface-variant">giờ</span>
+                                      </div>
+
+                                      {/* Technician */}
+                                      <select
+                                        value={job.assigned_technician_id || ''}
+                                        onChange={(e) => {
+                                          const empId = e.target.value ? Number(e.target.value) : null;
+                                          const found = planData.available_technicians?.find((t) => t.id === empId);
+                                          handleUpdateJobField(sIdx, jIdx, 'assigned_technician_id', empId);
+                                          handleUpdateJobField(sIdx, jIdx, 'assigned_technician_name', found?.full_name || null);
+                                        }}
+                                        className="px-2 py-1 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-xs text-on-surface"
+                                      >
+                                        <option value="">-- Chưa gán thợ --</option>
+                                        {planData.available_technicians?.map((t) => (
+                                          <option key={t.id} value={t.id}>
+                                            {t.full_name} ({t.today_assigned_hours}h việc)
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  /* COMPACT CARD VIEW */
+                                  <div className="p-3 flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                                      <input
+                                        type="checkbox"
+                                        checked={isJobSelected}
+                                        onChange={() => toggleJobKey(jobKey)}
+                                        className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer shrink-0"
+                                      />
+
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-body-sm font-semibold text-on-surface truncate">
+                                            {job.name}
+                                          </span>
+                                          <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-surface-container text-on-surface-variant shrink-0">
+                                            {job.job_type_name || 'Kỹ thuật'}
+                                          </span>
+                                          {job.severity && (
+                                            <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold border ${jobSeverity.bg} ${jobSeverity.text} ${jobSeverity.border}`}>
+                                              {jobSeverity.label}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {job.description && (
+                                          <p className="text-body-xs text-on-surface-variant truncate mt-0.5">
+                                            {job.description}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Right side: KTV + Hours + Quick Edit */}
+                                    <div className="flex items-center gap-3 shrink-0">
+                                      {/* Suggested Technician */}
+                                      {job.assigned_technician_name ? (
+                                        <div
+                                          className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/5 text-primary text-body-xs font-medium"
+                                          title={job.assignment_reason || 'Đề xuất bởi AI'}
+                                        >
+                                          <span className="material-symbols-outlined text-[15px]">how_to_reg</span>
+                                          <span className="font-semibold">{job.assigned_technician_name}</span>
+                                          {job.match_score && (
+                                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                              ({job.match_score}%)
+                                            </span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <span className="text-body-xs text-on-surface-variant italic">
+                                          Chưa chọn thợ
+                                        </span>
+                                      )}
+
+                                      {/* Hours */}
+                                      <span className="text-body-xs font-bold text-on-surface font-mono min-w-[36px] text-right">
+                                        {Number(job.estimated_hours).toFixed(1)}h
+                                      </span>
+
+                                      {/* Action buttons */}
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditingJobKey(jobKey)}
+                                          className="p-1 rounded-md text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors cursor-pointer"
+                                          title="Chỉnh sửa công việc này"
+                                        >
+                                          <span className="material-symbols-outlined text-[16px]">edit</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveJobFromService(sIdx, jIdx)}
+                                          className="p-1 rounded-md text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors cursor-pointer"
+                                          title="Xóa công việc này khỏi đề xuất"
+                                        >
+                                          <span className="material-symbols-outlined text-[16px]">delete_outline</span>
+                                        </button>
                                       </div>
                                     </div>
                                   </div>
-                                </div>
+                                )}
                               </div>
                             );
                           })
@@ -603,49 +724,48 @@ export default function AIJobPlannerModal({
               </div>
             </>
           ) : (
-            <div className="py-20 text-center text-on-surface-variant">
-              Không có dữ liệu đề xuất từ AI.
+            <div className="py-16 text-center text-on-surface-variant text-body-sm">
+              Không có dữ liệu đề xuất từ AI cho phiếu này.
             </div>
           )}
         </div>
 
         {/* MODAL FOOTER */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-outline-variant bg-surface-container-lowest">
-          <div className="flex items-center gap-2 text-body-sm text-on-surface-variant">
+        <div className="px-6 py-3.5 border-t border-outline-variant/30 bg-surface-container-low flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-body-xs text-on-surface-variant">
             <span>Đã chọn:</span>
-            <span className="font-bold text-primary">
-              {totalSelectedJobsCount} công việc
+            <span className="font-bold text-primary font-mono text-body-sm">
+              {totalSelectedJobsCount}
             </span>
-            <span>• Tổng định mức:</span>
-            <span className="font-bold text-on-surface">
-              {totalSelectedHours.toFixed(1)} giờ công
-            </span>
+            <span>công việc (<strong>{totalSelectedHours.toFixed(1)}</strong> giờ)</span>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={onClose}
               disabled={applying}
-              className="flex-1 sm:flex-none px-4 py-2 rounded-lg border border-outline-variant text-body-sm font-semibold text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-xl border border-outline-variant/80 text-on-surface-variant hover:bg-surface-container-high text-body-sm font-semibold transition-colors cursor-pointer"
             >
-              Hủy bỏ
+              Hủy
             </button>
             <button
+              type="button"
               onClick={handleApply}
               disabled={applying || totalSelectedJobsCount === 0}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-body-sm font-bold shadow-md shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white font-bold text-body-sm transition-all shadow-sm disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
             >
               {applying ? (
                 <>
-                  <span className="material-symbols-outlined text-[18px] animate-spin">
+                  <span className="material-symbols-outlined text-[16px] animate-spin">
                     progress_activity
                   </span>
-                  Đang ghi nhận vào phiếu...
+                  <span>Đang áp dụng...</span>
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-[18px]">done_all</span>
-                  Áp dụng {totalSelectedJobsCount} công việc vào phiếu
+                  <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+                  <span>Áp dụng vào Phiếu ({totalSelectedJobsCount})</span>
                 </>
               )}
             </button>

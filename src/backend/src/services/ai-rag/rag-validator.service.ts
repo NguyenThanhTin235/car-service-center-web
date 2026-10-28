@@ -1,3 +1,5 @@
+import { RetrievedTechnician } from './rag-retriever.service';
+
 export interface RawAIJobSuggestion {
   name: string;
   description: string;
@@ -6,6 +8,10 @@ export interface RawAIJobSuggestion {
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   matched_finding_ids?: number[];
   suggested_part_category_ids?: number[];
+  assigned_technician_id?: number | null;
+  assigned_technician_name?: string | null;
+  assignment_reason?: string | null;
+  match_score?: number;
 }
 
 export interface RawAIServiceGroup {
@@ -38,7 +44,8 @@ export class RagValidatorService {
     raw: RawAIPlanResponse,
     validJobTypeIds: number[],
     validFindingIds: number[],
-    validPartCategoryIds: number[]
+    validPartCategoryIds: number[],
+    validTechnicians: RetrievedTechnician[] = []
   ): SanitizedPlanResponse {
     const fallbackJobTypeId = validJobTypeIds[0] || 1;
 
@@ -70,6 +77,32 @@ export class RagValidatorService {
       const validSeverities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
       const severity = validSeverities.includes(job.severity) ? job.severity : 'MEDIUM';
 
+      // Kỹ thuật viên phân công
+      let assignedTechId: number | null = null;
+      let assignedTechName: string | null = null;
+      let assignmentReason: string | null = job.assignment_reason || null;
+      let matchScore: number = Number(job.match_score) || 85;
+
+      const requestedTechId = job.assigned_technician_id ? Number(job.assigned_technician_id) : null;
+      if (requestedTechId && validTechnicians.some((t) => t.id === requestedTechId)) {
+        const found = validTechnicians.find((t) => t.id === requestedTechId)!;
+        assignedTechId = found.id;
+        assignedTechName = found.full_name;
+        if (!assignmentReason) {
+          assignmentReason = `Được AI đề xuất dựa trên chuyên môn [${found.skills.join(', ') || 'Kỹ thuật viên'}] và cân bằng tải.`;
+        }
+      } else if (validTechnicians.length > 0) {
+        // Fallback tự động chọn KTV có tải việc thấp nhất trong ngày
+        const sortedTechs = [...validTechnicians].sort(
+          (a, b) => (a.today_assigned_hours + a.active_jobs_count * 2) - (b.today_assigned_hours + b.active_jobs_count * 2)
+        );
+        const leastBusy = sortedTechs[0];
+        assignedTechId = leastBusy.id;
+        assignedTechName = leastBusy.full_name;
+        assignmentReason = `Tự động phân công: Có tải công việc thấp nhất trong ngày (${leastBusy.today_assigned_hours}h).`;
+        matchScore = 80;
+      }
+
       return {
         name: (job.name || 'Công việc kỹ thuật').trim(),
         description: (job.description || '').trim(),
@@ -78,6 +111,10 @@ export class RagValidatorService {
         severity: severity as any,
         matched_finding_ids: matchedFindingIds,
         suggested_part_category_ids: suggestedPartCategoryIds,
+        assigned_technician_id: assignedTechId,
+        assigned_technician_name: assignedTechName,
+        assignment_reason: assignmentReason,
+        match_score: matchScore,
       };
     };
 

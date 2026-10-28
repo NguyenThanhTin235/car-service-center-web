@@ -48,7 +48,14 @@ QUY TẮC BẮT BUỘC (GROUNDING RULES):
 5. Liên kết Finding: Nếu Job giải quyết lỗi nào, phải có \`matched_finding_ids\` chứa ID của Finding đó.
 6. Thời gian ước tính (\`estimated_hours\`): Phải thực tế theo định mức sửa chữa xe (từ 0.2 giờ đến 4.0 giờ cho mỗi đầu việc).
 7. Gợi ý phụ tùng: Chỉ gợi ý các phụ tùng có trong [DANH MỤC PHỤ TÙNG CÓ SẴN TRONG KHO].
-8. Trả về đúng định dạng JSON Schema được chỉ định.`;
+8. TỰ ĐỘNG PHÂN CÔNG KỸ THUẬT VIÊN (INTELLIGENT TECHNICIAN DISPATCHING):
+   Với MỖI công việc con (Job), bạn BẮT BUỘC chỉ định một kỹ thuật viên tối ưu nhất từ [DANH SÁCH KỸ THUẬT VIÊN & TẢI VIỆC HIỆN TẠI] dựa theo 4 nguyên tắc vận hành:
+   a) Phù hợp chuyên môn (Skill Match): Kỹ năng của KTV phải khớp với loại công việc (ví dụ: Job Gò hàn/Sơn -> Thợ Đồng Sơn; Job Phanh/Gầm/Máy -> Thợ Gầm Máy; Bảo dưỡng -> Thợ Bảo dưỡng nhanh).
+   b) Cân bằng tải & Công bằng (Workload Balancing): Ưu tiên KTV có tổng giờ làm hôm nay (today_assigned_hours) và số job đang làm thấp hơn để khối lượng công việc được chia đều.
+   c) Tránh chồng chéo (Availability): Không giao thêm việc nặng cho KTV đang OVERLOADED hoặc có quá nhiều việc đang chạy.
+   d) Tính liên tục: Các công việc trên cùng một chiếc xe nên ưu tiên gom cho cùng 1 KTV nếu người đó có đủ chuyên môn và còn thời gian khả dụng.
+   Điền đầy đủ: assigned_technician_id (bắt buộc đúng ID), assigned_technician_name, assignment_reason (lý do phân công súc tích), match_score (điểm phù hợp từ 70 đến 100).
+9. Trả về đúng định dạng JSON Schema được chỉ định.`;
   }
 
   /**
@@ -108,6 +115,16 @@ QUY TẮC BẮT BUỘC (GROUNDING RULES):
             .join('\n\n')
         : 'Chưa có tiền lệ tương tự.';
 
+    const techniciansStr =
+      knowledge.technicians && knowledge.technicians.length > 0
+        ? knowledge.technicians
+            .map(
+              (t) =>
+                `- [KTV ID: ${t.id}] Họ tên: "${t.full_name}" | Kỹ năng: [${t.skills.join(', ') || 'Kỹ thuật tổng hợp'}] | Tải việc hôm nay: ${t.today_assigned_hours}h | Job đang làm: ${t.active_jobs_count} | Trạng thái: ${t.status}`
+            )
+            .join('\n')
+        : 'Hiện không có thông tin kỹ thuật viên khả dụng.';
+
     const targetServiceBlock = context.targetService
       ? `\n### *** [YÊU CẦU ĐẶC BIỆT: CHỈ ĐỀ XUẤT JOB CHO DUY NHẤT 1 HẠNG MỤC NÀY] ***
 Bạn ĐANG ĐƯỢC YÊU CẦU CHỈ ĐỀ XUẤT các bước công việc kỹ thuật (jobs) cho RIÊNG hạng mục sau đây:
@@ -150,6 +167,9 @@ ${partsStr}
 ### [RAG KNOWLEDGE 4] TIỀN LỆ SỬA CHỮA TƯƠNG TỰ TRONG QUÁ KHỨ:
 ${historicalStr}
 
+### [RAG KNOWLEDGE 5] DANH SÁCH KỸ THUẬT VIÊN & TẢI CÔNG VIỆC HIỆN TẠI (ĐỂ PHÂN CÔNG):
+${techniciansStr}
+
 Hãy phân tích và trả về kế hoạch công việc dưới dạng JSON gồm:
 - summary: Tóm tắt tình trạng và phương án kỹ thuật tổng quan cho Cố vấn dịch vụ
 - risk_assessment: Đánh giá rủi ro an toàn vận hành
@@ -166,7 +186,11 @@ Hãy phân tích và trả về kế hoạch công việc dưới dạng JSON g�
     * estimated_hours: Giờ công định mức (số thực, ví dụ: 0.8, 1.2)
     * severity: Mức độ ưu tiên ("LOW" | "MEDIUM" | "HIGH" | "CRITICAL")
     * matched_finding_ids: Mảng chứa ID Finding mà job này giải quyết
-    * suggested_part_category_ids: Mảng chứa các PartCategory ID cần dùng`;
+    * suggested_part_category_ids: Mảng chứa các PartCategory ID cần dùng
+    * assigned_technician_id: ID của kỹ thuật viên được chọn (phải lấy từ [RAG KNOWLEDGE 5], tối ưu theo kỹ năng và tải việc)
+    * assigned_technician_name: Họ tên kỹ thuật viên được phân công
+    * assignment_reason: Lý do ngắn gọn phân công cho KTV này (ví dụ: "Chuyên môn Phanh-Gầm, tải trong ngày thấp (1.0h)")
+    * match_score: Điểm phù hợp (từ 70 đến 100)`;
   }
 }
 
