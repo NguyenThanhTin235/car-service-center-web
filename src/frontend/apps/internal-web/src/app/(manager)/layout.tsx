@@ -4,12 +4,12 @@ import LogoutButton from '@/components/shared/LogoutButton';
 import AuthGuard from '@/components/auth/AuthGuard';
 
 export const metadata: Metadata = {
-  title: 'Manager Portal – Car Service Center',
+  title: 'Quản lý Dịch vụ - Car Service Center',
   description: 'Hệ thống quản lý trung tâm dịch vụ ô tô',
 };
 
 const NAV_ITEMS = [
-  { href: '/dashboard', icon: 'dashboard', label: 'Bảng điều khiển' },
+  { href: '/dashboard', icon: 'dashboard', label: 'Bảng điều hành' },
   {
     icon: 'inventory_2', label: 'Quản lý vật tư',
     children: [
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
       { href: '/inventory', label: 'Kho phụ tùng' },
     ]
   },
+  { href: '/reports', icon: 'bar_chart', label: 'Báo cáo vận hành' },
 ];
 
 export default function ManagerLayout({ children }: { children: React.ReactNode }) {
@@ -37,8 +38,8 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {/* Logo */}
               <div style={{ height: '3.5rem', padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(194,198,216,0.2)' }}>
-                <div style={{ width: '2rem', height: '2rem', borderRadius: '0.5rem', background: '#059669', display: 'flex', alignItems: 'center', justifyItems: 'center' }}>
-                  <span className="material-symbols-outlined text-white m-auto" style={{ fontSize: '18px' }}>monitoring</span>
+                <div style={{ width: '2rem', height: '2rem', borderRadius: '0.5rem', background: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span className="material-symbols-outlined text-white" style={{ fontSize: '18px' }}>monitoring</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: '13px', fontWeight: 600, color: '#0b1c30', lineHeight: 1 }}>Car Service</span>
@@ -60,19 +61,19 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
                           </summary>
                           <div className="flex flex-col gap-1 pl-10 mt-1 mb-1">
                             {item.children.map(child => (
-                              <a key={child.href} href={child.href} className="px-3 py-1.5 rounded-lg text-[#727687] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[12px] font-medium transition-colors no-underline">
+                              <Link key={child.href} href={child.href} className="px-3 py-1.5 rounded-lg text-[#727687] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[12px] font-medium transition-colors no-underline">
                                 {child.label}
-                              </a>
+                              </Link>
                             ))}
                           </div>
                         </details>
                       );
                     }
                     return (
-                      <a key={item.href || idx} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#424656] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[13px] font-medium transition-colors no-underline">
+                      <Link key={item.href || idx} href={item.href!} className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#424656] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[13px] font-medium transition-colors no-underline">
                         <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{item.icon}</span>
                         <span>{item.label}</span>
-                      </a>
+                      </Link>
                     );
                   })}
                 </nav>
@@ -81,14 +82,14 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
 
             {/* Footer */}
             <div style={{ padding: '1rem', borderTop: '1px solid rgba(194,198,216,0.2)', background: 'rgba(239,244,255,0.4)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', background: '#059669', color: 'white', display: 'flex', alignItems: 'center', justifyItems: 'center', fontSize: '11px', fontWeight: 700 }}>
-                    <span className="m-auto">MG</span>
+                  <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', background: '#059669', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>
+                    <span>MG</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#0b1c30', lineHeight: 1 }}>Manager</span>
-                    <span style={{ fontSize: '11px', color: '#424656' }}>Quản lý xưởng</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#0b1c30', lineHeight: 1 }}>Quản lý dịch vụ</span>
+                    <span style={{ fontSize: '11px', color: '#424656' }}>Service Manager</span>
                   </div>
                 </div>
                 <LogoutButton iconOnly className="w-7 h-7 rounded flex items-center justify-center text-[#424656] hover:bg-[#fef2f2] hover:text-[#ef4444] transition-colors no-underline" />
