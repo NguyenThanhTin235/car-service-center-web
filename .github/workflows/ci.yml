@@ -21,6 +21,11 @@ jobs:
     defaults:
       run:
         working-directory: src/backend
+    env:
+      DATABASE_URL: "mysql://ci_user:ci_pass@localhost:3306/car_service_center"
+      JWT_SECRET: "ci_jwt_secret_key_123456789"
+      PORT: 5000
+      NODE_ENV: test
 
     steps:
       - name: Checkout Code
@@ -90,3 +95,4 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: 1
           NODE_ENV: production
+          NEXT_PUBLIC_API_URL: "http://localhost:5000"
