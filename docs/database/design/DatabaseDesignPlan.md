@@ -138,7 +138,7 @@
 | is_active | BOOLEAN DEFAULT TRUE | |
 | sort_order | INT DEFAULT 0 | |
 
-#### `service_templates`
+#### `services`
 | Cột | Kiểu | Ghi chú |
 |-----|------|---------|
 | id | INT AI PK | |
@@ -154,10 +154,10 @@
 | Cột | Kiểu | Ghi chú |
 |-----|------|---------|
 | id | INT AI PK | |
-| service_template_id | INT FK(service_templates) NOT NULL | |
+| service_id | INT FK(services) NOT NULL | |
 | vehicle_size | ENUM('SMALL','MEDIUM','LARGE','SUV','TRUCK') NOT NULL | |
 | price | DECIMAL(12,2) NOT NULL | |
-| UNIQUE(service_template_id, vehicle_size) | | |
+| UNIQUE(service_id, vehicle_size) | | |
 
 #### `job_types`
 | Cột | Kiểu | Ghi chú |
@@ -173,7 +173,7 @@
 |-----|------|---------|
 | id | INT AI PK | |
 | job_type_id | INT FK(job_types) NOT NULL | |
-| service_template_id | INT FK(service_templates) NULL | Sinh Job từ mẫu dịch vụ |
+| service_id | INT FK(services) NULL | Sinh Job từ mẫu dịch vụ |
 | name | VARCHAR(150) NOT NULL | |
 | estimated_hours | DECIMAL(5,2) NOT NULL | |
 | requires_qc | BOOLEAN DEFAULT TRUE | |
@@ -196,7 +196,7 @@
 | Cột | Kiểu | Ghi chú |
 |-----|------|---------|
 | id | INT AI PK | |
-| service_template_id | INT FK(service_templates) NULL | NULL = áp dụng chung |
+| service_id | INT FK(services) NULL | NULL = áp dụng chung |
 | template_type | ENUM('INSPECTION','QC') NOT NULL | Kiểm tra ban đầu vs Kiểm định chất lượng |
 | name | VARCHAR(150) NOT NULL | |
 | is_active | BOOLEAN DEFAULT TRUE | |
@@ -237,7 +237,7 @@
 |-----|------|---------|
 | id | INT AI PK | |
 | appointment_id | INT FK(appointments) NOT NULL | |
-| service_template_id | INT FK(service_templates) NOT NULL | |
+| service_id | INT FK(services) NOT NULL | |
 
 #### `intake_records` (Walk-in / Tow-in — nguồn tiếp nhận ngoài Appointment)
 | Cột | Kiểu | Ghi chú |
@@ -301,7 +301,7 @@
 |-----|------|---------|
 | id | INT AI PK | |
 | work_order_id | INT FK(work_orders) NOT NULL | |
-| service_template_id | INT FK(service_templates) NULL | NULL = custom service |
+| service_id | INT FK(services) NULL | NULL = custom service |
 | name | VARCHAR(255) NOT NULL | Snapshot tên service |
 | pricing_type | ENUM('FIXED','VEHICLE_SIZE','LABOUR_PARTS') NOT NULL | Snapshot |
 | status | ENUM('PENDING','IN_PROGRESS','COMPLETED') DEFAULT 'PENDING' | QC Pass → COMPLETED |
@@ -683,7 +683,7 @@
 ## Các quy định thiết kế bổ sung (MVP Scope)
 
 1. **Service History:** Không dùng bảng riêng. Lịch sử dịch vụ được query từ các **Work Order** đã `CLOSED` hoặc `RELEASED`. Đây là view tổng hợp.
-2. **Pricing Policy (UC-44):** Được triển khai đơn giản hóa thông qua các bảng `service_templates.fixed_price`, `vehicle_size_prices`, và `job_types.hourly_rate`. Không tạo bảng `pricing_policies` versioning riêng trong MVP.
+2. **Pricing Policy (UC-44):** Được triển khai đơn giản hóa thông qua các bảng `services.fixed_price`, `vehicle_size_prices`, và `job_types.hourly_rate`. Không tạo bảng `pricing_policies` versioning riêng trong MVP.
 3. **Polymorphic Reference (`notifications`, `audit_logs`):** Các trường `entity_type` và `entity_id` không có Foreign Key DB constraint. Application layer phải quản lý tính toàn vẹn (không hard delete các entity gốc).
 4. **Chi nhánh & Kho (Branch/Warehouse):** Hệ thống được thiết kế theo giả định **1 chi nhánh, 1 kho tổng** theo chuẩn MVP. Nếu mở rộng sau này sẽ phải sửa DB thêm `branch_id` và `warehouse_id`.
 
@@ -732,9 +732,9 @@ erDiagram
     inventory_items ||--o{ goods_receipt_items : received_via
     suppliers ||--o{ goods_receipts : supplies
 
-    service_categories ||--o{ service_templates : groups
-    service_templates ||--o{ vehicle_size_prices : priced_by
-    service_templates ||--o{ job_templates : defines
+    service_categories ||--o{ services : groups
+    services ||--o{ vehicle_size_prices : priced_by
+    services ||--o{ job_templates : defines
     job_types ||--o{ job_templates : categorizes
     job_types ||--o{ jobs : typed_as
 
@@ -831,7 +831,7 @@ python database-schema-designer/scripts/schema_validator.py schema.sql --strict
 |------|---------|------------|
 | Identity & Access | 6 | users, roles, user_roles, employees, skills, employee_skills |
 | Customer & Vehicle | 1 | vehicles |
-| Service Catalog & Pricing | 5 | service_categories, service_templates, vehicle_size_prices, job_types, job_templates (+1 junction) |
+| Service Catalog & Pricing | 5 | service_categories, services, vehicle_size_prices, job_types, job_templates (+1 junction) |
 | Inspection & QC Templates | 2 | inspection_templates, inspection_template_items |
 | Appointment & Intake | 3 | appointments, appointment_services, intake_records |
 | Work Order Core | 9 | work_orders, check_ins, wo_services, inspections, inspection_results, findings, jobs, job_findings, job_labours, job_parts |

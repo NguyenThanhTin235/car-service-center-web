@@ -5,13 +5,11 @@ const prisma = new PrismaClient();
 export interface CreateJobTypeDto {
   name: string;
   description?: string;
-  hourlyRate: number;
 }
 
 export interface UpdateJobTypeDto {
   name?: string;
   description?: string;
-  hourlyRate?: number;
   isActive?: boolean;
 }
 
@@ -38,7 +36,6 @@ export class JobTypeService {
       id: j.id,
       name: j.name,
       description: j.description,
-      hourlyRate: j.hourly_rate,
       isActive: j.is_active,
     }));
 
@@ -64,7 +61,6 @@ export class JobTypeService {
       data: {
         name: data.name,
         description: data.description,
-        hourly_rate: data.hourlyRate,
       },
     });
   }
@@ -86,7 +82,6 @@ export class JobTypeService {
       data: {
         name: data.name,
         description: data.description,
-        hourly_rate: data.hourlyRate,
         is_active: data.isActive,
       },
     });

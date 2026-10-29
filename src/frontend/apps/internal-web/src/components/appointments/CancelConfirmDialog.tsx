@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAppDispatch } from '@/store';
 import { cancelAppointment, Appointment } from '@/store/slices/appointmentSlice';
+import toast from 'react-hot-toast';
 
 interface CancelConfirmDialogProps {
   appointment: Appointment;
@@ -29,9 +30,12 @@ export default function CancelConfirmDialog({ appointment, onClose }: CancelConf
         id: appointment.id,
         reason: finalReason
       })).unwrap();
+      toast.success(`Hủy lịch hẹn #${appointment.id} thành công!`);
       onClose();
     } catch (err: any) {
-      setError(err || 'Đã có lỗi xảy ra khi hủy lịch');
+      const errMsg = typeof err === 'string' ? err : (err?.message || 'Đã có lỗi xảy ra khi hủy lịch');
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }

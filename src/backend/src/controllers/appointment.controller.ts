@@ -11,13 +11,23 @@ export const getAppointments = async (req: Request, res: Response): Promise<void
     const pageNumber = page ? parseInt(page as string) : 1;
     const limitNumber = limit ? parseInt(limit as string) : 50;
 
+    const isCustomer = req.user?.roles?.some((r: string) => r.toUpperCase() === 'CUSTOMER');
+
+    let customerId: number | undefined = undefined;
+    if (isCustomer) {
+      customerId = req.user?.id;
+    } else if (req.query.customer_id) {
+      customerId = parseInt(req.query.customer_id as string);
+    }
+
     const result = await appointmentService.getAppointments(
       search as string,
       pageNumber,
       limitNumber,
       startDate as string,
       endDate as string,
-      status as string
+      status as string,
+      customerId
     );
 
     res.json({
@@ -33,7 +43,9 @@ export const getAppointments = async (req: Request, res: Response): Promise<void
 export const getAppointmentById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const appointment = await appointmentService.getAppointmentById(Number(id));
+    const isCustomer = req.user?.roles?.some((r: string) => r.toUpperCase() === 'CUSTOMER');
+    const customerId = isCustomer ? req.user?.id : undefined;
+    const appointment = await appointmentService.getAppointmentById(Number(id), customerId);
     
     res.json({
       status: 'success',
@@ -55,8 +67,23 @@ export const createAppointment = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Assume user is attached to req by auth middleware, for now mock user ID 1
-    const createdById = (req as any).user?.id || 1;
+    // If customer_id is not explicitly passed (e.g. from customer portal), default to authenticated user ID
+    if (!value.customer_id && req.user?.id) {
+      value.customer_id = req.user.id;
+    }
+
+    // If caller has CUSTOMER role, restrict customer_id to their own ID
+    const isCustomer = req.user?.roles?.some((r: string) => r.toUpperCase() === 'CUSTOMER');
+    if (isCustomer && req.user?.id) {
+      value.customer_id = req.user.id;
+    }
+
+    if (!value.customer_id) {
+      res.status(400).json({ status: 'error', message: 'Vui lòng chọn khách hàng' });
+      return;
+    }
+
+    const createdById = req.user?.id || 1;
 
     const newAppointment = await appointmentService.createAppointment(value, createdById);
     
@@ -83,7 +110,18 @@ export const updateAppointment = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const updatedAppointment = await appointmentService.updateAppointment(Number(id), value);
+    const referer = req.headers.referer || '';
+    const origin = req.headers.origin || '';
+    const isInternalPortal = referer.includes(':3001') || referer.includes('/staff') || origin.includes(':3001');
+
+    const userRoles = (req.user?.roles || []).map((r: string) => r.toUpperCase());
+    const hasStaffRole = userRoles.some((r: string) => 
+      ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA', 'STAFF', 'SERVICE_ADVISOR', 'TECHNICIAN'].includes(r)
+    );
+    const isStaff = hasStaffRole || isInternalPortal;
+    const isCustomer = !isStaff;
+    const customerId = isCustomer ? req.user?.id : undefined;
+    const updatedAppointment = await appointmentService.updateAppointment(Number(id), value, customerId, isStaff);
     
     res.json({
       status: 'success',
@@ -126,7 +164,18 @@ export const cancelAppointment = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const cancelledAppointment = await appointmentService.cancelAppointment(Number(id), value.cancel_reason);
+    const referer = req.headers.referer || '';
+    const origin = req.headers.origin || '';
+    const isInternalPortal = referer.includes(':3001') || referer.includes('/staff') || origin.includes(':3001');
+
+    const userRoles = (req.user?.roles || []).map((r: string) => r.toUpperCase());
+    const hasStaffRole = userRoles.some((r: string) => 
+      ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA', 'STAFF', 'SERVICE_ADVISOR', 'TECHNICIAN'].includes(r)
+    );
+    const isStaff = hasStaffRole || isInternalPortal;
+    const isCustomer = !isStaff;
+    const customerId = isCustomer ? req.user?.id : undefined;
+    const cancelledAppointment = await appointmentService.cancelAppointment(Number(id), value.cancel_reason, customerId, isStaff);
     
     res.json({
       status: 'success',

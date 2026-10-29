@@ -12,12 +12,88 @@ const workOrderInclude = {
       intake_type: true,
       arrived_at: true,
       notes: true,
-      services: { include: { service_template: { select: { id: true, name: true } } } },
+      services: { include: { service: { select: { id: true, name: true, category: { select: { name: true } } } } } },
     },
   },
   appointment: { select: { id: true, scheduled_date: true, scheduled_time: true } },
   check_in: true,
+  services: {
+    include: {
+      service: {
+        select: {
+          id: true,
+          name: true,
+          category_id: true,
+          pricing_type: true,
+          fixed_price: true,
+          category: { select: { id: true, name: true } },
+        },
+      },
+      jobs: {
+        include: {
+          job_type: { select: { id: true, name: true } },
+          findings: {
+            include: {
+              finding: {
+                select: {
+                  id: true,
+                  description: true,
+                  severity: true,
+                  marker_type: true,
+                },
+              },
+            },
+          },
+          labours: {
+            include: {
+              employee: { select: { id: true, full_name: true } },
+            },
+          },
+          parts: {
+            include: {
+              item: {
+                select: {
+                  id: true,
+                  sku: true,
+                  selling_price: true,
+                  on_hand: true,
+                  part_category: {
+                    select: {
+                      id: true,
+                      code: true,
+                      name: true,
+                      item_type: true,
+                      uom: { select: { id: true, name: true } },
+                    },
+                  },
+                  brand: { select: { id: true, name: true } },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { created_at: 'asc' as const },
+      },
+    },
+    orderBy: { sort_order: 'asc' as const },
+  },
+  inspections: {
+    include: {
+      findings: {
+        include: {
+          job_findings: {
+            include: {
+              job: { select: { id: true, name: true } },
+            },
+          },
+        },
+        orderBy: { id: 'asc' as const },
+      },
+    },
+    orderBy: { created_at: 'asc' as const },
+  },
 } satisfies Prisma.WorkOrderInclude;
+
 
 export interface WorkOrderFilters {
   status?: WorkOrderStatus;

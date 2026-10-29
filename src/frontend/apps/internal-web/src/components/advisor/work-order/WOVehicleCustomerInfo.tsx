@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 
 type Props = {
+  isReadOnly?: boolean;
   vehicle: {
     vin: string;
     color: string;
@@ -23,20 +24,22 @@ type Props = {
   };
 };
 
-export default function WOVehicleCustomerInfo({ vehicle, customer, workOrderInfo }: Props) {
+export default function WOVehicleCustomerInfo({ isReadOnly = false, vehicle, customer, workOrderInfo }: Props) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-3 mb-8">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <h3 className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider">Thông tin Xe & Khách hàng</h3>
-        <button 
-          onClick={() => setIsEditModalOpen(true)}
-          className="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-highest text-on-surface-variant transition-colors"
-          title="Chỉnh sửa thông tin"
-        >
-          <span className="material-symbols-outlined text-[18px]">edit</span>
-        </button>
+        {!isReadOnly && (
+          <button 
+            onClick={() => setIsEditModalOpen(true)}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-highest text-on-surface-variant transition-colors"
+            title="Chỉnh sửa thông tin"
+          >
+            <span className="material-symbols-outlined text-[18px]">edit</span>
+          </button>
+        )}
       </div>
       
       <div className="grid grid-cols-2 gap-12">

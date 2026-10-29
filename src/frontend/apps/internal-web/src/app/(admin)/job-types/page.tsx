@@ -8,10 +8,9 @@ import Toast from '@/components/shared/Toast';
 interface FormData {
   name: string;
   description: string;
-  hourlyRate: string;
 }
 
-const defaultForm: FormData = { name: '', description: '', hourlyRate: '' };
+const defaultForm: FormData = { name: '', description: '' };
 
 type ToastState = { message: string; type: 'success' | 'error' } | null;
 type ConfirmAction = { type: 'toggle'; item: JobTypeData } | { type: 'delete'; item: JobTypeData } | null;
@@ -64,7 +63,7 @@ export default function JobTypesPage() {
 
   const openEdit = (j: JobTypeData) => {
     setEditing(j);
-    setFormData({ name: j.name, description: j.description || '', hourlyRate: String(j.hourlyRate) });
+    setFormData({ name: j.name, description: j.description || '' });
     setFormError('');
     setShowModal(true);
   };
@@ -77,7 +76,6 @@ export default function JobTypesPage() {
       const payload = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        hourlyRate: parseFloat(formData.hourlyRate),
       };
       if (editing) {
         await jobTypeApi.update(editing.id, payload);
@@ -245,20 +243,19 @@ export default function JobTypesPage() {
                 <tr className="h-9 bg-[#f8f9ff] text-[#424656] text-[11px] uppercase tracking-wider font-semibold border-b border-[#e5eeff]">
                   <th className="px-4 font-mono">ID</th>
                   <th className="px-4">Tên loại công việc</th>
-                  <th className="px-4">Đơn giá / giờ</th>
                   <th className="px-4 text-right pr-6">Trạng thái & Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f1f5f9]">
                 {loading ? (
                   <tr>
-                    <td colSpan={4} className="py-12 text-center text-sm text-[#424656]">
+                    <td colSpan={3} className="py-12 text-center text-sm text-[#424656]">
                       <span className="material-symbols-outlined animate-spin text-2xl text-[#0866ff]">progress_activity</span>
                     </td>
                   </tr>
                 ) : jobTypes.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-12 text-center text-sm text-[#424656]">
+                    <td colSpan={3} className="py-12 text-center text-sm text-[#424656]">
                       <span className="material-symbols-outlined text-3xl text-[#c2c6d8] block mb-1">search_off</span>
                       Không tìm thấy loại công việc
                     </td>
@@ -273,9 +270,6 @@ export default function JobTypesPage() {
                       {j.description && (
                         <div className="text-[10px] text-[#727687] truncate max-w-[320px]">{j.description}</div>
                       )}
-                    </td>
-                    <td className="px-4 font-mono text-xs text-[#0b1c30] font-semibold">
-                      {Number(j.hourlyRate).toLocaleString('vi-VN')} ₫/h
                     </td>
                     <td className="px-4 pr-6">
                       <div className="flex items-center justify-end gap-2">
@@ -395,23 +389,6 @@ export default function JobTypesPage() {
                   onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
                   className="h-9 px-3 border border-[#c2c6d8] rounded text-sm focus:outline-none focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff]/20 transition-all"
                   placeholder="VD: Thay dầu động cơ, Kiểm tra phanh..."
-                />
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-[#424656]">
-                  Đơn giá / giờ (VNĐ) <span className="text-[#ef4444]">*</span>
-                </span>
-                <input
-                  id="input-jt-hourly-rate"
-                  required
-                  type="number"
-                  min="0"
-                  step="1000"
-                  value={formData.hourlyRate}
-                  onChange={e => setFormData(p => ({ ...p, hourlyRate: e.target.value }))}
-                  className="h-9 px-3 border border-[#c2c6d8] rounded text-sm focus:outline-none focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff]/20 transition-all"
-                  placeholder="150000"
                 />
               </label>
 

@@ -140,7 +140,6 @@ export default function CustomerFormModal({ isOpen, onClose, onSave, initialData
       await onSave(payload, initialData?.id);
       onClose();
     } catch (error: any) {
-      console.error(error);
       const msg = error.response?.data?.message || 'Có lỗi xảy ra khi lưu khách hàng';
       setErrors({ api: msg });
     } finally {
@@ -306,8 +305,9 @@ export default function CustomerFormModal({ isOpen, onClose, onSave, initialData
                         >
                           <option value="SMALL">Nhỏ (Mini, Hatchback)</option>
                           <option value="MEDIUM">Vừa (Sedan, Crossover)</option>
-                          <option value="LARGE">Lớn (SUV 7 chỗ, Bán tải)</option>
-                          <option value="EXTRA_LARGE">Rất lớn (Limousine, Van)</option>
+                          <option value="LARGE">Lớn (CUV, MPV)</option>
+                          <option value="SUV">SUV (7 chỗ, Khung gầm rời)</option>
+                          <option value="TRUCK">Bán tải (Pickup, Van)</option>
                         </select>
                       </div>
                     </div>

@@ -49,17 +49,17 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
         {/* Body */}
         <div className="p-6 overflow-y-auto flex flex-col gap-6">
           {/* Status Bar */}
-          <div className="flex items-center justify-between bg-surface-container-low p-3 rounded-lg border border-outline-variant/30">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-container-low p-3 rounded-lg border border-outline-variant/30">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-on-surface-variant">schedule</span>
                 <span className="text-label-md font-bold text-on-surface">Giờ đến: {new Date(record.arrived_at).toLocaleString('vi-VN')}</span>
               </div>
-              <div className="w-px h-4 bg-outline-variant/50"></div>
-              <span className="px-2 py-0.5 bg-primary-container text-on-primary-container rounded text-label-sm font-bold uppercase">{getTypeName(record.intake_type)}</span>
+              <div className="hidden sm:block w-px h-4 bg-outline-variant/50"></div>
+              <span className="px-2 py-0.5 bg-primary-container text-on-primary-container rounded text-label-sm font-bold uppercase whitespace-nowrap">{getTypeName(record.intake_type)}</span>
             </div>
-            <div>
-              <span className="px-3 py-1 bg-surface-variant text-on-surface-variant rounded-full text-label-sm font-bold">
+            <div className="flex-shrink-0">
+              <span className="px-3 py-1 bg-surface-variant text-on-surface-variant rounded-full text-label-sm font-bold whitespace-nowrap">
                 Trạng thái: {getStatusName(record.status)}
               </span>
             </div>
@@ -104,7 +104,7 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
               {record.services && record.services.length > 0 ? (
                 <ul className="list-disc list-inside text-body-md text-on-surface flex flex-col gap-1">
                   {record.services.map((s: any) => (
-                    <li key={s.id}>{s.service_template?.name}</li>
+                    <li key={s.id}>{s.service?.name || 'Dịch vụ'}</li>
                   ))}
                 </ul>
               ) : (

@@ -32,7 +32,7 @@ export class ServiceCategoryService {
         orderBy: { sort_order: 'asc' },
         include: {
           _count: {
-            select: { templates: true }
+            select: { services: true }
           }
         }
       }),
@@ -44,7 +44,7 @@ export class ServiceCategoryService {
       description: c.description,
       isActive: c.is_active,
       sortOrder: c.sort_order,
-      templatesCount: c._count.templates
+      templatesCount: c._count.services
     }));
 
     return {
@@ -96,13 +96,13 @@ export class ServiceCategoryService {
   async deleteCategory(id: number) {
     const existing = await prisma.serviceCategory.findUnique({ 
       where: { id },
-      include: { _count: { select: { templates: true } } }
+      include: { _count: { select: { services: true } } }
     });
     
     if (!existing) throw new Error('Không tìm thấy nhóm dịch vụ.');
 
     // Nếu đã có dịch vụ tham chiếu, chỉ vô hiệu hóa
-    if (existing._count.templates > 0) {
+    if (existing._count.services > 0) {
       if (existing.is_active) {
         await prisma.serviceCategory.update({
           where: { id },

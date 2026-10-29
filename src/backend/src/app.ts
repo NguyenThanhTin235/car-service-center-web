@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+﻿import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -14,28 +14,42 @@ import workOrderRoutes from './routes/work-order.routes';
 import userRoutes from './routes/user.routes';
 import employeeRoutes from './routes/employee.routes';
 import serviceCategoryRoutes from './routes/service-category.routes';
-import serviceTemplateRoutes from './routes/service-template.routes';
+
 import jobTypeRoutes from './routes/job-type.routes';
 import catalogRoutes from './routes/system-catalog.routes';
 import vehicleRoutes from './routes/vehicle.routes';
+import inventoryRoutes from './routes/inventory.routes';
+import invoiceRoutes from './routes/invoice.routes';
+import dashboardRoutes from './routes/dashboard.routes';
+import reportRoutes from './routes/report.routes';
+import quotationRoutes from './routes/quotation.routes';
 
 const app = express();
 
 // Middlewares
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'http://localhost:3000',
-  'http://localhost:3001'
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
 ];
 
 app.use(cors({ 
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    if (!origin) return callback(null, true);
+    if (
+      allowedOrigins.includes(origin) ||
+      origin.startsWith('http://localhost:') ||
+      origin.startsWith('http://127.0.0.1:')
+    ) {
+      return callback(null, true);
     }
+    return callback(null, false);
   }, 
-  credentials: true 
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-portal', 'Cookie', 'Accept', 'X-Requested-With', 'Cache-Control', 'Pragma'],
+  exposedHeaders: ['Set-Cookie']
 }));
 app.use(helmet());
 app.use(morgan('dev'));
@@ -58,9 +72,16 @@ app.use('/api/work-orders', workOrderRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/service-categories', serviceCategoryRoutes);
-app.use('/api/service-templates', serviceTemplateRoutes);
+
 app.use('/api/job-types', jobTypeRoutes);
-app.use('/api/catalogs', catalogRoutes);
+app.use('/api/system-catalogs', catalogRoutes);
 app.use('/api/vehicles', vehicleRoutes);
+app.use('/api', inventoryRoutes);
+app.use('/api/invoices', invoiceRoutes);
+app.use('/api/quotations', quotationRoutes);
+
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/reports', reportRoutes);
 
 export default app;
+

@@ -40,7 +40,7 @@ export const createIntakeSchema = Joi.object({
 
   notes: Joi.string().allow('', null).optional(),
 
-  serviceTemplateIds: Joi.array().items(Joi.number().integer()).optional().messages({
+  serviceIds: Joi.array().items(Joi.number().integer()).optional().messages({
     'array.base': 'Danh sách dịch vụ không hợp lệ',
     'number.base': 'ID dịch vụ phải là số',
   }),

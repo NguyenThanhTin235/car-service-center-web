@@ -13,20 +13,32 @@ export default function RegisterPage() {
   const router = useRouter();
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
 
-  React.useEffect(() => {
-    if (isAuthenticated && user) {
-      const redirectPath = getDashboardPathByRole(user.roles);
-      router.push(redirectPath);
-    }
-  }, [isAuthenticated, user, router]);
-
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  if (isAuthenticated) {
-    return null;
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (mounted && isAuthenticated && user) {
+      const redirectPath = getDashboardPathByRole(user.roles);
+      window.location.href = redirectPath;
+    }
+  }, [mounted, isAuthenticated, user]);
+
+  if (mounted && isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface-container-low">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-on-surface-variant font-medium">Đang chuyển hướng...</p>
+        </div>
+      </div>
+    );
   }
 
   const [form, setForm] = useState({

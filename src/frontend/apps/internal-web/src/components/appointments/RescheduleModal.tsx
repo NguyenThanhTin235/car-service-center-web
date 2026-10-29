@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAppDispatch } from '@/store';
 import { rescheduleAppointment, Appointment } from '@/store/slices/appointmentSlice';
+import toast from 'react-hot-toast';
 
 interface RescheduleModalProps {
   appointment: Appointment;
@@ -14,7 +15,9 @@ export default function RescheduleModal({ appointment, onClose }: RescheduleModa
 
   // Form state
   const [date, setDate] = useState<string>(
-    new Date(appointment.scheduled_date).toISOString().split('T')[0]
+    typeof appointment.scheduled_date === 'string'
+      ? appointment.scheduled_date.substring(0, 10)
+      : new Date(appointment.scheduled_date).toISOString().split('T')[0]
   );
   const [time, setTime] = useState<string>(appointment.scheduled_time_str);
   const [notes, setNotes] = useState<string>(appointment.notes || '');
@@ -44,14 +47,17 @@ export default function RescheduleModal({ appointment, onClose }: RescheduleModa
       await dispatch(rescheduleAppointment({
         id: appointment.id,
         updateData: {
-          scheduled_date: new Date(date).toISOString(),
+          scheduled_date: date,
           scheduled_time: time,
           notes
         }
       })).unwrap();
+      toast.success(`Dời lịch hẹn #${appointment.id} thành công!`);
       onClose();
     } catch (err: any) {
-      setError(err || 'Đã có lỗi xảy ra khi dời lịch');
+      const errMsg = typeof err === 'string' ? err : (err?.message || 'Đã có lỗi xảy ra khi dời lịch');
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }

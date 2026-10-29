@@ -31,16 +31,16 @@ export interface CreateServiceTemplatePayload {
 
 export const serviceTemplateApi = {
   getAll: (params?: { search?: string; categoryId?: number; page?: number; limit?: number }) =>
-    api.get('/api/service-templates', { params }),
+    api.get('/api/services', { params }),
 
-  getCategories: () => api.get('/api/service-templates/categories'),
+  getCategories: () => api.get('/api/services/categories'),
 
   create: (data: CreateServiceTemplatePayload) =>
-    api.post('/api/service-templates', data),
+    api.post('/api/services', data),
 
   update: (id: number, data: Partial<CreateServiceTemplatePayload> & { isActive?: boolean }) =>
-    api.put(`/api/service-templates/${id}`, data),
+    api.put(`/api/services/${id}`, data),
 
   toggle: (id: number) =>
-    api.patch(`/api/service-templates/${id}/toggle`),
+    api.patch(`/api/services/${id}/toggle`),
 };

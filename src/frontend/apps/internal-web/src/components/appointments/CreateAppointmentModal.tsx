@@ -101,7 +101,7 @@ export default function CreateAppointmentModal({ onClose, onSuccess, selectedDat
       await dispatch(createAppointment({
         customer_id: Number(customerId),
         vehicle_id: Number(vehicleId),
-        scheduled_date: new Date(date).toISOString(),
+        scheduled_date: date,
         scheduled_time: time,
         service_ids: selectedServiceIds,
         notes: finalNotes

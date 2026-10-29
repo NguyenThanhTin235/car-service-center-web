@@ -17,7 +17,7 @@ export class PublicController {
           description: true,
           sort_order: true,
           _count: {
-            select: { templates: { where: { is_active: true } } },
+            select: { services: { where: { is_active: true } } },
           },
         },
       });
@@ -33,11 +33,11 @@ export class PublicController {
    * GET /api/public/services?categoryId=N
    * Lấy danh sách dịch vụ active (có thể filter theo category)
    */
-  async getServiceTemplates(req: Request, res: Response): Promise<void> {
+  async getServices(req: Request, res: Response): Promise<void> {
     try {
       const categoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined;
 
-      const services = await prisma.serviceTemplate.findMany({
+      const services = await prisma.service.findMany({
         where: {
           is_active: true,
           ...(categoryId ? { category_id: categoryId } : {}),
@@ -71,7 +71,7 @@ export class PublicController {
 
       res.json({ status: 'success', data: formatted });
     } catch (err) {
-      console.error('[PublicController] getServiceTemplates error:', err);
+      console.error('[PublicController] getServices error:', err);
       res.status(500).json({ status: 'error', message: 'Không thể tải danh sách dịch vụ.' });
     }
   }

@@ -4,6 +4,8 @@ import authReducer from './slices/authSlice';
 import appointmentReducer from './slices/appointmentSlice';
 import profileReducer from './slices/profileSlice';
 import vehicleReducer from './slices/vehicleSlice';
+import trackingReducer from './slices/trackingSlice';
+import invoiceReducer from './slices/invoiceSlice';
 
 export const store = configureStore({
   reducer: {
@@ -11,6 +13,8 @@ export const store = configureStore({
     appointments: appointmentReducer,
     profile: profileReducer,
     vehicles: vehicleReducer,
+    tracking: trackingReducer,
+    invoices: invoiceReducer,
   },
 });
 

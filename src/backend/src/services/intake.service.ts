@@ -11,7 +11,7 @@ export interface CreateIntakeDto {
   arrivedAt: string;
   towCompany?: string;
   notes?: string;
-  serviceTemplateIds?: number[];
+  serviceIds?: number[];
   // Quick-create customer (khi KH chưa có trong hệ thống)
   newCustomer?: {
     fullName: string;
@@ -132,11 +132,11 @@ export class IntakeService {
       });
 
       // Tạo IntakeService nếu có chọn dịch vụ
-      if (dto.serviceTemplateIds && dto.serviceTemplateIds.length > 0) {
+      if (dto.serviceIds && dto.serviceIds.length > 0) {
         await tx.intakeService.createMany({
-          data: dto.serviceTemplateIds.map((serviceId) => ({
+          data: dto.serviceIds.map((serviceId) => ({
             intake_id: intakeRecord.id,
-            service_template_id: serviceId,
+            service_id: serviceId,
           })),
         });
       }

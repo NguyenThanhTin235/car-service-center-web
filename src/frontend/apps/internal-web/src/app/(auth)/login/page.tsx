@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useDispatch } from 'react-redux';
 import api from '@/lib/axios';
-import { setCredentials } from '@/store/slices/authSlice';
+import { setCredentials, logout } from '@/store/slices/authSlice';
 import { getDashboardPathByRole } from '@/utils/roleRedirect';
 
 import { useSelector } from 'react-redux';
@@ -24,15 +24,21 @@ export default function LoginPage() {
   const router = useRouter();
   const dispatch = useDispatch();
 
-  React.useEffect(() => {
+    React.useEffect(() => {
     if (isAuthenticated && user) {
+      const isInternalRole = user.roles?.some((r: string) => ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA'].includes(r));
+      if (!isInternalRole) {
+        // Clear invalid customer session on internal portal
+        dispatch(logout());
+        setError('Phiên đăng nhập trước là tài khoản Khách hàng. Cổng nội bộ yêu cầu tài khoản Quản lý / Nhân viên (Admin, Manager, SA, Desk Staff).');
+        return;
+      }
       const redirectPath = getDashboardPathByRole(user.roles);
-      // Dùng setTimeout để Next.js router không bỏ qua lệnh replace khi người dùng back trang
       setTimeout(() => {
         router.replace(redirectPath);
       }, 50);
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, dispatch]);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -48,7 +54,11 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   React.useEffect(() => setMounted(true), []);
 
-  if (!mounted || isAuthenticated) {
+  const isInternalRole = Boolean(
+    isAuthenticated && user?.roles?.some((r: string) => ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA'].includes(r))
+  );
+
+  if (!mounted || isInternalRole) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-container-low">
         <div className="w-8 h-8 rounded-full border-2 border-outline-variant border-t-primary-container animate-spin"></div>
@@ -64,8 +74,15 @@ export default function LoginPage() {
     try {
       const res = await api.post('/api/auth/login', { email, password });
       
-      const { user } = res.data.data;
-      dispatch(setCredentials({ user }));
+      const { user, token } = res.data.data;
+      const isInternal = user.roles?.some((r: string) => ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA'].includes(r));
+      if (!isInternal) {
+        setError('Tài khoản này là tài khoản Khách hàng, không có quyền truy cập Cổng Quản trị nội bộ. Vui lòng đăng nhập bằng tài khoản Quản lý / Nhân viên hoặc truy cập Cổng Khách hàng (port 3000).');
+        setLoading(false);
+        return;
+      }
+
+      dispatch(setCredentials({ user, token }));
       
       // Redirect based on role
       const redirectPath = getDashboardPathByRole(user.roles);
@@ -93,7 +110,7 @@ export default function LoginPage() {
       {/* Minimal Brand Header */}
       <header className="bg-surface-container-lowest shadow-sm docked full-width top-0 z-30 sticky">
         <div className="flex justify-between items-center w-full px-6 py-3 max-w-7xl mx-auto">
-          <Link className="flex items-center gap-3 group focus:outline-none" href="/home">
+          <Link className="flex items-center gap-3 group focus:outline-none" href="/login">
             <div className="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center text-on-primary shadow-sm group-hover:scale-105 transition-transform duration-200">
               <span className="material-symbols-outlined text-[24px]">directions_car</span>
             </div>
@@ -222,6 +239,53 @@ export default function LoginPage() {
                   <span>{loading ? 'Đang xử lý...' : 'Đăng nhập'}</span>
                   {!loading && <span className="material-symbols-outlined text-xl">arrow_forward</span>}
                 </button>
+              </div>
+
+              {/* Quick Login Role Shortcuts */}
+              <div className="pt-3 border-t border-outline-variant/40">
+                <p className="text-[12px] font-semibold text-on-surface-variant mb-2 text-center">Tài khoản demo nội bộ (Mật khẩu: password123):</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => { setEmail('manager3@carservice.com'); setPassword('password123'); }}
+                    className="p-2 text-left rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors"
+                  >
+                    <div className="font-bold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs">monitoring</span> Quản lý (Manager)
+                    </div>
+                    <div className="text-[10px] text-emerald-700 truncate">manager3@carservice.com</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEmail('admin1@carservice.com'); setPassword('password123'); }}
+                    className="p-2 text-left rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 transition-colors"
+                  >
+                    <div className="font-bold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs">admin_panel_settings</span> Quản trị (Admin)
+                    </div>
+                    <div className="text-[10px] text-blue-700 truncate">admin1@carservice.com</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEmail('advisor5@carservice.com'); setPassword('password123'); }}
+                    className="p-2 text-left rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors"
+                  >
+                    <div className="font-bold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs">engineering</span> Cố vấn (SA)
+                    </div>
+                    <div className="text-[10px] text-amber-700 truncate">advisor5@carservice.com</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEmail('desk9@carservice.com'); setPassword('password123'); }}
+                    className="p-2 text-left rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition-colors"
+                  >
+                    <div className="font-bold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs">support_agent</span> Lễ tân (Desk)
+                    </div>
+                    <div className="text-[10px] text-purple-700 truncate">desk9@carservice.com</div>
+                  </button>
+                </div>
               </div>
             </form>
           </div>

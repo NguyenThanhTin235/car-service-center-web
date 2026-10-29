@@ -36,6 +36,99 @@ function getIntakeTypeBadge(type: string) {
   }
 }
 
+/**
+ * Trích xuất loại danh mục dịch vụ chuẩn xác dựa trên service, category hoặc tên công việc/hạng mục
+ */
+function resolveServiceCategory(svc: any): string {
+  if (svc.service?.category?.name) return svc.service.category.name;
+  if (svc.category) return svc.category;
+
+  const text = (svc.name || svc.service?.name || '').toLowerCase();
+  if (
+    text.includes('móp') ||
+    text.includes('trầy') ||
+    text.includes('xước') ||
+    text.includes('sơn') ||
+    text.includes('thân') ||
+    text.includes('nóc') ||
+    text.includes('cửa') ||
+    text.includes('panel') ||
+    text.includes('gò') ||
+    text.includes('vỏ')
+  ) {
+    return 'Sơn & Đồng';
+  }
+  if (text.includes('phanh') || text.includes('thắng') || text.includes('má phanh') || text.includes('đĩa phanh')) {
+    return 'Hệ thống phanh';
+  }
+  if (
+    text.includes('động cơ') ||
+    text.includes('quá nhiệt') ||
+    text.includes('nổ máy') ||
+    text.includes('bugi') ||
+    text.includes('kim phun')
+  ) {
+    return 'Sửa chữa động cơ';
+  }
+  if (text.includes('hộp số') || text.includes('trượt số') || text.includes('ly hợp') || text.includes('côn')) {
+    return 'Sửa chữa hộp số';
+  }
+  if (
+    text.includes('treo') ||
+    text.includes('gầm') ||
+    text.includes('giảm xóc') ||
+    text.includes('phuộc') ||
+    text.includes('rotuyn') ||
+    text.includes('thước lái') ||
+    text.includes('lốp')
+  ) {
+    return 'Hệ thống treo & Gầm';
+  }
+  if (
+    text.includes('điện') ||
+    text.includes('ắc quy') ||
+    text.includes('đèn') ||
+    text.includes('máy phát') ||
+    text.includes('cầu chì')
+  ) {
+    return 'Hệ thống điện & Ắc quy';
+  }
+  if (
+    text.includes('vệ sinh') ||
+    text.includes('chăm sóc') ||
+    text.includes('rửa xe') ||
+    text.includes('detailing') ||
+    text.includes('nội thất')
+  ) {
+    return 'Chăm sóc & Vệ sinh';
+  }
+  if (text.includes('bảo dưỡng') || text.includes('thay dầu') || text.includes('nhớt') || text.includes('lọc')) {
+    return 'Bảo dưỡng định kỳ';
+  }
+  if (text.includes('khắc phục lỗi') || text.includes('hư hỏng')) {
+    return 'Sơn & Đồng';
+  }
+  return svc.name || 'Dịch vụ sửa chữa';
+}
+
+function getEffectiveServices(item: IntakeQueueItem): Array<{ id: number | string; name: string; category: string }> {
+  if (item.work_order?.services && item.work_order.services.length > 0) {
+    return item.work_order.services.map((s: any) => ({
+      id: s.id,
+      name: s.name || s.service?.name || 'Dịch vụ',
+      category: resolveServiceCategory(s),
+    }));
+  }
+  if (item.services && item.services.length > 0) {
+    return item.services.map((s: any) => ({
+      id: s.id,
+      name: s.service?.name || 'Dịch vụ',
+      category: resolveServiceCategory(s),
+    }));
+  }
+  return [];
+}
+
 function IntakeDetailModal({ intake, onClose, onCreateWO, onViewWO, isLoading }: { intake: IntakeQueueItem, onClose: () => void, onCreateWO: (id: number) => void, onViewWO: (id: number) => void, isLoading: boolean }) {
   if (!intake) return null;
   const waitTime = calcWaitTime(intake.arrived_at);
@@ -113,18 +206,29 @@ function IntakeDetailModal({ intake, onClose, onCreateWO, onViewWO, isLoading }:
           <div className="flex flex-col gap-3">
             <h3 className="text-label-lg font-bold text-secondary flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px]">build</span>
-              Dịch vụ yêu cầu
+              {intake.work_order ? 'Hạng mục dịch vụ (Phiếu công việc)' : 'Dịch vụ yêu cầu ban đầu'}
             </h3>
             <div className="bg-surface-container-lowest border border-outline-variant/50 rounded-lg p-3">
-              {intake.services.length > 0 ? (
-                <ul className="list-disc list-inside text-body-md text-on-surface flex flex-col gap-1">
-                  {intake.services.map(s => (
-                    <li key={s.id}>{s.service_template.name}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-body-md text-outline italic">Không có dịch vụ cụ thể được yêu cầu</p>
-              )}
+              {(() => {
+                const effectiveServices = getEffectiveServices(intake);
+                if (effectiveServices.length === 0) {
+                  return <p className="text-body-md text-outline italic">Không có dịch vụ cụ thể được yêu cầu</p>;
+                }
+                return (
+                  <ul className="divide-y divide-outline-variant/30 flex flex-col">
+                    {effectiveServices.map((s, idx) => (
+                      <li key={idx} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-4">
+                        <span className="text-body-md text-on-surface font-medium">{s.name}</span>
+                        {s.category && (
+                          <span className="inline-flex px-2 py-0.5 rounded text-label-sm font-medium bg-secondary/10 text-secondary border border-secondary/20 flex-shrink-0">
+                            {s.category}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                );
+              })()}
             </div>
           </div>
 
@@ -194,6 +298,13 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
   const router = useRouter();
   const [loadingId, setLoadingId] = useState<number | null>(null);
   const [selectedIntake, setSelectedIntake] = useState<IntakeQueueItem | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(6);
+
+  // Reset to page 1 when items change (e.g. tab changes)
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [items]);
 
   const handleCreateWorkOrder = async (intakeId: number) => {
     setLoadingId(intakeId);
@@ -223,9 +334,13 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
     );
   }
 
+  const totalPages = Math.ceil(items.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedItems = items.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <>
-      <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/60 overflow-hidden">
+      <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/60 overflow-hidden flex flex-col">
         {/* Table Header */}
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -233,14 +348,14 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
               <tr className="border-b border-outline-variant/60 bg-surface-container-low/50">
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider w-10">#</th>
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Thông tin xe & Biển số</th>
-                <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Hạng mục dịch vụ đã xong</th>
+                <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Loại dịch vụ</th>
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Khách hàng</th>
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Thời gian chờ</th>
                 <th className="px-5 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider text-right">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/40">
-              {items.map((item, index) => {
+              {paginatedItems.map((item, index) => {
                 const waitTime = calcWaitTime(item.arrived_at);
                 const intakeTypeBadge = getIntakeTypeBadge(item.intake_type);
                 const isLoading = loadingId === item.id;
@@ -253,7 +368,7 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                   >
                     {/* Row Number */}
                     <td className="px-5 py-4 text-body-sm font-body-sm text-on-surface-variant">
-                      {String(index + 1).padStart(2, '0')}
+                      {String(startIndex + index + 1).padStart(2, '0')}
                     </td>
 
                     {/* Vehicle Info */}
@@ -276,18 +391,36 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                       </div>
                     </td>
 
-                    {/* Services */}
+                    {/* Services / Service Categories */}
                     <td className="px-5 py-4">
-                      <div className="flex flex-col gap-0.5">
-                        {item.services.length > 0 ? (
-                          item.services.map((s) => (
-                            <span key={s.id} className="text-body-sm font-body-sm text-on-surface">
-                              {s.service_template.name}
+                      <div className="flex flex-col items-start gap-1.5">
+                        {(() => {
+                          const effectiveServices = getEffectiveServices(item);
+
+                          if (effectiveServices.length === 0) {
+                            return <span className="text-body-sm font-body-sm text-outline italic">Chưa xác định</span>;
+                          }
+
+                          // Gom nhóm theo Loại dịch vụ (Danh mục)
+                          const categoryMap = new Map<string, string[]>();
+                          effectiveServices.forEach((s) => {
+                            const cat = s.category || 'Dịch vụ khác';
+                            if (!categoryMap.has(cat)) {
+                              categoryMap.set(cat, []);
+                            }
+                            categoryMap.get(cat)!.push(s.name);
+                          });
+
+                          return Array.from(categoryMap.entries()).map(([catName, serviceNames], idx) => (
+                            <span
+                              key={idx}
+                              title={`Chi tiết: ${serviceNames.join(', ')}`}
+                              className="inline-flex px-2 py-0.5 rounded text-label-sm font-medium bg-secondary/10 text-secondary border border-secondary/20 cursor-default hover:bg-secondary/20 transition-colors"
+                            >
+                              {catName}
                             </span>
-                          ))
-                        ) : (
-                          <span className="text-body-sm font-body-sm text-outline italic">Chưa xác định</span>
-                        )}
+                          ));
+                        })()}
                       </div>
                     </td>
 
@@ -370,15 +503,47 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
         {/* Footer */}
         <div className="px-5 py-3 border-t border-outline-variant/40 flex items-center justify-between bg-surface-container-low/30">
           <span className="text-label-sm font-label-sm text-on-surface-variant">
-            Hiển thị 1 - {items.length} trên tổng số {items.length} xe đang chờ
+            Hiển thị {startIndex + 1} - {Math.min(startIndex + itemsPerPage, items.length)} trên tổng số {items.length} xe
           </span>
-          <div className="flex items-center gap-2 text-label-sm font-label-sm text-on-surface-variant">
-            <span>Số dòng:</span>
-            <select className="bg-surface-container-lowest border border-outline-variant rounded px-2 py-0.5 text-label-sm font-label-sm text-on-surface">
-              <option>6</option>
-              <option>10</option>
-              <option>20</option>
-            </select>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 text-label-sm font-label-sm text-on-surface-variant">
+              <span>Số dòng:</span>
+              <select 
+                value={itemsPerPage} 
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-surface-container-lowest border border-outline-variant rounded px-2 py-0.5 text-label-sm font-label-sm text-on-surface"
+              >
+                <option value={6}>6</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+            
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button 
+                  disabled={currentPage === 1} 
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  className="p-1 rounded-full hover:bg-surface-container disabled:opacity-50 text-on-surface-variant transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                </button>
+                <span className="text-label-md font-semibold text-on-surface px-2">
+                  {currentPage} / {totalPages}
+                </span>
+                <button 
+                  disabled={currentPage === totalPages} 
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  className="p-1 rounded-full hover:bg-surface-container disabled:opacity-50 text-on-surface-variant transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

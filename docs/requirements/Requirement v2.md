@@ -194,7 +194,8 @@ _Bảng 1-6: Quy định/công thức – Cố vấn dịch vụ (Service Adviso
 | --- | --- | --- | --- | --- |
 | **Mã** | **Công việc** | **Loại** | **Rule** | **Mô tả** |
 | MGR-B01 | Xem bảng điều hành cơ bản | Tra cứu | QĐ-MGR01 | Theo dõi Work Order, Service và Job. |
-| MGR-B02 | Quản lý Part/Material Master | Lưu trữ/Cập nhật | QĐ-MGR03 | Quản lý SKU, tên, loại, UoM, giá vốn và giá bán. |
+| MGR-B02a | Quản lý Danh mục phụ tùng (Part Category) | Lưu trữ/Cập nhật | QĐ-MGR03a | Thêm, sửa, xóa mềm các danh mục phụ tùng dùng làm Master Data cho Inventory Item. |
+| MGR-B02b | Quản lý Phụ tùng thực tế (Inventory Item/SKU) | Lưu trữ/Cập nhật | QĐ-MGR03b | Thêm, sửa, ngừng kinh doanh mã SKU theo từng hãng; hệ thống hỗ trợ tự sinh mã SKU từ tên danh mục và thương hiệu. |
 | MGR-B03 | Quản lý Supplier cơ bản | Lưu trữ/Cập nhật | QĐ-MGR04 | Lưu thông tin nhà cung cấp phục vụ Direct Goods Receipt. |
 | MGR-B04 | Nhập tồn đầu kỳ/Direct Goods Receipt | Lưu trữ | QĐ-MGR05 | Tăng On-hand và tạo Stock Movement. |
 | MGR-B05 | Tính Average Cost | Tính toán | QĐ-MGR06 | Tính giá vốn bình quân gia quyền sau mỗi lần nhập. |
@@ -304,7 +305,7 @@ _Bảng 1-13: Yêu cầu chức năng hệ thống_
 | FR-09 | Job–Part Traceability | Mỗi Job có nhiều Part/Material; Planned/Used Quantity và unit price được lưu theo line. | Must |
 | FR-10 | Pricing Engine | Tính fixed package, vehicle-size, labour/parts và các tổng tiền cơ bản. | Must |
 | FR-11 | Quotation | Tạo, gửi, approve/reject và freeze snapshot Quotation chính, Supplementary Quotation. | Must |
-| FR-12 | Inventory Basic | Item/Supplier, direct receipt, moving average cost, issue/return theo Job và stock card. | Must |
+| FR-12 | Inventory Basic | Part Category (Master Data) và Inventory Item (Variant/SKU theo hãng); Supplier cơ bản; direct receipt; moving average cost; issue/return theo Job và stock card. | Must |
 | FR-13 | Job Execution | Start/Complete, ghi result và Used Part. | Must |
 | FR-14 | QC & Rework Basic | Checklist Pass/Fail và tạo Rework Job đơn giản. | Must |
 | FR-15 | Billing & Payment Basic | Hỗ trợ Billing Request, tích hợp Payment gateway, tạo/phát hành Invoice và quản lý Payment tại Front Desk. Hỗ trợ Manual Payment và QR Payment. Payment thành công tự động ghi nhận Financial Clearance và thông báo cho Cố vấn dịch vụ. | Must |
@@ -488,12 +489,16 @@ _Bảng 2-5: Use Case baseline – Quản lý dịch vụ (Service Manager)_
 | **UC ID** | **Use Case** | **Ưu tiên** | **Mô tả ngắn** |
 | --- | --- | --- | --- |
 | UC-43 | **Theo dõi hoạt động xưởng (Monitor Workshop)** | Must | Quản lý xem bảng tổng quan để nắm bắt tình hình vận hành: số xe đang trong xư... |
-| UC-44 | **Thêm phụ tùng (Create Part Catalog)** | Must | Quản lý dịch vụ tạo mới dữ liệu phụ tùng vào hệ thống để lưu trữ và quản lý. |
-| UC-45 | **Xem phụ tùng (View Part Catalog)** | Must | Quản lý dịch vụ tra cứu, tìm kiếm và xem chi tiết thông tin của phụ tùng đã c... |
-| UC-46 | **Cập nhật phụ tùng (Update Part Catalog)** | Must | Quản lý dịch vụ chỉnh sửa và cập nhật lại thông tin của phụ tùng hiện có tron... |
-| UC-47 | **Xóa phụ tùng (Delete Part Catalog)** | Must | Quản lý dịch vụ thực hiện xóa hoặc vô hiệu hóa bản ghi phụ tùng khỏi hệ thống... |
-| UC-48 | **Nhập kho (Receive Inventory)** | Must | Quản lý ghi nhận hàng nhập từ nhà cung cấp hoặc nhập tồn đầu kỳ. Sau mỗi lần ... |
-| UC-49 | **Xem báo cáo vận hành (View Operational Report)** | Must | Quản lý xem các báo cáo cơ bản: số lượng dịch vụ theo loại, doanh thu theo kh... |
+| UC-44 | **Thêm danh mục phụ tùng (Create Part Category)** | Must | Quản lý dịch vụ tạo mới danh mục phụ tùng vào hệ thống để lưu trữ và quản lý. |
+| UC-45 | **Xem danh mục phụ tùng (View Part Category)** | Must | Quản lý dịch vụ tra cứu, tìm kiếm và xem chi tiết danh mục phụ tùng đã có ... |
+| UC-46 | **Cập nhật danh mục phụ tùng (Update Part Category)** | Must | Quản lý dịch vụ chỉnh sửa và cập nhật lại thông tin của danh mục phụ tùng ... |
+| UC-47 | **Xóa danh mục phụ tùng (Delete Part Category)** | Must | Quản lý dịch vụ thực hiện xóa hoặc vô hiệu hóa danh mục phụ tùng khỏi hệ thống... |
+| UC-48 | **Thêm phụ tùng (Create Inventory Item)** | Must | Quản lý dịch vụ tạo mới mã phụ tùng thực tế (Variant/SKU) theo từng hãng vào hệ thống để theo dõi tồn kho và định giá. |
+| UC-49 | **Xem phụ tùng (View Inventory Item)** | Must | Quản lý tra cứu, tìm kiếm và xem chi tiết thông tin, giá bán và số lượng tồn kho của các mã phụ tùng. |
+| UC-50 | **Cập nhật phụ tùng (Update Inventory Item)** | Must | Quản lý chỉnh sửa thông tin của mã phụ tùng hiện có (giá bán, mức cảnh báo tồn kho,...). |
+| UC-51 | **Xóa phụ tùng (Delete/Deactivate Inventory Item)** | Must | Quản lý thay đổi trạng thái hoạt động của mã phụ tùng (ngừng hoặc kích hoạt lại). |
+| UC-52 | **Nhập kho (Receive Inventory)** | Must | Quản lý ghi nhận hàng nhập từ nhà cung cấp hoặc nhập tồn đầu kỳ. Sau mỗi lần ... |
+| UC-53 | **Xem báo cáo vận hành (View Operational Report)** | Must | Quản lý xem các báo cáo cơ bản: số lượng dịch vụ theo loại, doanh thu theo kh... |
 
 ### 2.3.6. Quản trị viên (Administrator)
 
@@ -501,34 +506,30 @@ _Bảng 2-6: Use Case baseline – Quản trị viên (Administrator)_
 
 | **UC ID** | **Use Case** | **Ưu tiên** | **Mô tả ngắn** |
 | --- | --- | --- | --- |
-| UC-50 | **Thêm tài khoản (Create Account)** | Must | Quản trị viên tạo mới dữ liệu tài khoản vào hệ thống để lưu trữ và quản lý. |
-| UC-51 | **Xem tài khoản (View Account)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của tài khoản đã có... |
-| UC-52 | **Cập nhật tài khoản (Update Account)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của tài khoản hiện có trong... |
-| UC-53 | **Xóa tài khoản (Delete Account)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi tài khoản khỏi hệ thống ... |
-| UC-54 | **Thêm nhân viên (Create Employee)** | Must | Quản trị viên tạo mới dữ liệu nhân viên vào hệ thống để lưu trữ và quản lý. |
-| UC-55 | **Xem nhân viên (View Employee)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của nhân viên đã có... |
-| UC-56 | **Cập nhật nhân viên (Update Employee)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của nhân viên hiện có trong... |
-| UC-57 | **Xóa nhân viên (Delete Employee)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi nhân viên khỏi hệ thống ... |
-| UC-58 | **Thêm danh mục dịch vụ (Create Service Catalog)** | Must | Quản trị viên tạo mới dữ liệu danh mục dịch vụ vào hệ thống để lưu trữ và quả... |
-| UC-59 | **Xem danh mục dịch vụ (View Service Catalog)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của danh mục dịch v... |
-| UC-60 | **Cập nhật danh mục dịch vụ (Update Service Catalog)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của danh mục dịch vụ hiện c... |
-| UC-61 | **Xóa danh mục dịch vụ (Delete Service Catalog)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi danh mục dịch vụ khỏi hệ... |
-| UC-62 | **Thêm loại công việc (Create Job Type)** | Must | Quản trị viên tạo mới dữ liệu loại công việc vào hệ thống để lưu trữ và quản lý. |
-| UC-63 | **Xem loại công việc (View Job Type)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của loại công việc ... |
-| UC-64 | **Cập nhật loại công việc (Update Job Type)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của loại công việc hiện có ... |
-| UC-65 | **Xóa loại công việc (Delete Job Type)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi loại công việc khỏi hệ t... |
-| UC-66 | **Thêm chính sách tính giá (Create Pricing Policy)** | Must | Quản trị viên tạo mới dữ liệu chính sách tính giá vào hệ thống để lưu trữ và ... |
-| UC-67 | **Xem chính sách tính giá (View Pricing Policy)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của chính sách tính... |
-| UC-68 | **Cập nhật chính sách tính giá (Update Pricing Policy)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của chính sách tính giá hiệ... |
-| UC-69 | **Xóa chính sách tính giá (Delete Pricing Policy)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi chính sách tính giá khỏi... |
-| UC-70 | **Thêm danh mục chung (Create System Catalog)** | Must | Quản trị viên tạo mới dữ liệu danh mục chung vào hệ thống để lưu trữ và quản lý. |
-| UC-71 | **Xem danh mục chung (View System Catalog)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của danh mục chung ... |
-| UC-72 | **Cập nhật danh mục chung (Update System Catalog)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của danh mục chung hiện có ... |
-| UC-73 | **Xóa danh mục chung (Delete System Catalog)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi danh mục chung khỏi hệ t... |
-| UC-70 | **Xem mẫu kiểm tra (View Inspection Template)** | Must | Quản trị viên xem danh sách và chi tiết các mẫu kiểm tra cấu hình sẵn. |
-| UC-71 | **Thêm mẫu kiểm tra (Create Inspection Template)** | Must | Quản trị viên tạo mới một mẫu kiểm tra xe (gồm nhiều hạng mục) để kỹ thuật vi... |
-| UC-72 | **Cập nhật mẫu kiểm tra (Update Inspection Template)** | Must | Quản trị viên chỉnh sửa nội dung mẫu kiểm tra đã có. |
-| UC-73 | **Xóa mẫu kiểm tra (Delete Inspection Template)** | Must | Quản trị viên xóa một mẫu kiểm tra không còn sử dụng. |
+| UC-54 | **Thêm tài khoản (Create Account)** | Must | Quản trị viên tạo mới dữ liệu tài khoản vào hệ thống để lưu trữ và quản lý. |
+| UC-55 | **Xem tài khoản (View Account)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của tài khoản đã có... |
+| UC-56 | **Cập nhật tài khoản (Update Account)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của tài khoản hiện có trong... |
+| UC-57 | **Xóa tài khoản (Delete Account)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi tài khoản khỏi hệ thống ... |
+| UC-58 | **Thêm nhân viên (Create Employee)** | Must | Quản trị viên tạo mới dữ liệu nhân viên vào hệ thống để lưu trữ và quản lý. |
+| UC-59 | **Xem nhân viên (View Employee)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của nhân viên đã có... |
+| UC-60 | **Cập nhật nhân viên (Update Employee)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của nhân viên hiện có trong... |
+| UC-61 | **Xóa nhân viên (Delete Employee)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi nhân viên khỏi hệ thống ... |
+| UC-62 | **Thêm dịch vụ (Create Service)** | Must | Quản trị viên tạo mới dữ liệu dịch vụ vào hệ thống để lưu trữ và quản lý. |
+| UC-63 | **Xem dịch vụ (View Service)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của dịch vụ đã có... |
+| UC-64 | **Cập nhật dịch vụ (Update Service)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của dịch vụ hiện có trong... |
+| UC-65 | **Xóa dịch vụ (Delete Service)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi dịch vụ khỏi hệ thống... |
+| UC-66 | **Thêm danh mục dịch vụ (Create Service Category)** | Must | Quản trị viên tạo mới dữ liệu danh mục dịch vụ vào hệ thống để lưu trữ và quả... |
+| UC-67 | **Xem danh mục dịch vụ (View Service Category)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của danh mục dịch v... |
+| UC-68 | **Cập nhật danh mục dịch vụ (Update Service Category)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của danh mục dịch vụ hiện c... |
+| UC-69 | **Xóa danh mục dịch vụ (Delete Service Category)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi danh mục dịch vụ khỏi hệ... |
+| UC-70 | **Thêm loại công việc (Create Job Type)** | Must | Quản trị viên tạo mới dữ liệu loại công việc vào hệ thống để lưu trữ và quản lý. |
+| UC-71 | **Xem loại công việc (View Job Type)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của loại công việc ... |
+| UC-72 | **Cập nhật loại công việc (Update Job Type)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của loại công việc hiện có ... |
+| UC-73 | **Xóa loại công việc (Delete Job Type)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi loại công việc khỏi hệ t... |
+| UC-74 | **Thêm danh mục chung (Create System Catalog)** | Must | Quản trị viên tạo mới dữ liệu danh mục chung vào hệ thống để lưu trữ và quản lý. |
+| UC-75 | **Xem danh mục chung (View System Catalog)** | Must | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của danh mục chung ... |
+| UC-76 | **Cập nhật danh mục chung (Update System Catalog)** | Must | Quản trị viên chỉnh sửa và cập nhật lại thông tin của danh mục chung hiện có ... |
+| UC-77 | **Xóa danh mục chung (Delete System Catalog)** | Must | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi danh mục chung khỏi hệ t... |
 
 ## 2.4. Tiêu chí hoàn thành Tiểu luận
 

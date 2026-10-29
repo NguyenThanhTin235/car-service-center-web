@@ -20,7 +20,7 @@ export class IntakeRepository {
         customer: { select: { id: true, full_name: true, phone: true, email: true } },
         vehicle: { select: { id: true, license_plate: true, make: true, model: true, color: true, vehicle_size: true } },
         created_by: { select: { id: true, full_name: true } },
-        services: { include: { service_template: true } },
+        services: { include: { service: { include: { category: true } } } },
       },
     });
   }
@@ -38,7 +38,7 @@ export class IntakeRepository {
         customer: { select: { id: true, full_name: true, phone: true, email: true } },
         vehicle: { select: { id: true, license_plate: true, make: true, model: true, color: true, vehicle_size: true } },
         created_by: { select: { id: true, full_name: true } },
-        services: { include: { service_template: true } },
+        services: { include: { service: { include: { category: true } } } },
       },
     });
   }
@@ -82,8 +82,24 @@ export class IntakeRepository {
           customer: { select: { id: true, full_name: true, phone: true, email: true } },
           vehicle: { select: { id: true, license_plate: true, make: true, model: true, color: true, vehicle_size: true } },
           created_by: { select: { id: true, full_name: true } },
-          services: { include: { service_template: true } },
-          work_order: { select: { id: true, wo_number: true } },
+          services: { include: { service: { include: { category: true } } } },
+          work_order: {
+            select: {
+              id: true,
+              wo_number: true,
+              status: true,
+              services: {
+                orderBy: { sort_order: 'asc' },
+                include: {
+                  service: {
+                    include: {
+                      category: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
         orderBy: { arrived_at: 'desc' },
       }),
@@ -110,8 +126,24 @@ export class IntakeRepository {
         customer: { select: { id: true, full_name: true, phone: true, email: true, address: true } },
         vehicle: { select: { id: true, license_plate: true, make: true, model: true, year: true, color: true, vehicle_size: true } },
         created_by: { select: { id: true, full_name: true } },
-        work_order: { select: { id: true, wo_number: true, status: true } },
-        services: { include: { service_template: true } },
+        work_order: {
+          select: {
+            id: true,
+            wo_number: true,
+            status: true,
+            services: {
+              orderBy: { sort_order: 'asc' },
+              include: {
+                service: {
+                  include: {
+                    category: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        services: { include: { service: { include: { category: true } } } },
       },
     });
   }

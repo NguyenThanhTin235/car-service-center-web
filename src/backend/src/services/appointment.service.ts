@@ -1,19 +1,25 @@
 import { PrismaClient, Prisma, AppointmentStatus } from '@prisma/client';
 import { notificationService } from './notification.service';
+import { 
+  renderAppointmentCreatedTemplate, 
+  renderAppointmentRescheduledTemplate, 
+  renderAppointmentCancelledTemplate,
+  renderAppointmentConfirmedTemplate
+} from '../utils/appointment-email.templates';
 
 const prisma = new PrismaClient();
 
 export interface CreateAppointmentDto {
   customer_id: number;
   vehicle_id: number;
-  scheduled_date: Date;
+  scheduled_date: Date | string;
   scheduled_time: string;
   notes?: string;
   service_ids?: number[];
 }
 
 export interface UpdateAppointmentDto {
-  scheduled_date?: Date;
+  scheduled_date?: Date | string;
   scheduled_time?: string;
   notes?: string;
 }
@@ -28,9 +34,14 @@ export class AppointmentService {
     limit: number = 50,
     startDate?: string,
     endDate?: string,
-    status?: string
+    status?: string,
+    customerId?: number
   ) {
     let whereClause: Prisma.AppointmentWhereInput = {};
+
+    if (customerId) {
+      whereClause.customer_id = customerId;
+    }
 
     if (searchQuery) {
       whereClause = {
@@ -46,15 +57,21 @@ export class AppointmentService {
     if (startDate || endDate) {
       whereClause.scheduled_date = {};
       if (startDate) {
-        whereClause.scheduled_date.gte = new Date(startDate);
+        const rawStart = typeof startDate === 'string' ? startDate.substring(0, 10) : new Date(startDate).toISOString().substring(0, 10);
+        whereClause.scheduled_date.gte = new Date(`${rawStart}T00:00:00.000Z`);
       }
       if (endDate) {
-        whereClause.scheduled_date.lte = new Date(endDate);
+        const rawEnd = typeof endDate === 'string' ? endDate.substring(0, 10) : new Date(endDate).toISOString().substring(0, 10);
+        whereClause.scheduled_date.lte = new Date(`${rawEnd}T23:59:59.999Z`);
       }
     }
 
     if (status) {
-      whereClause.status = status as AppointmentStatus;
+      if (status.includes(',')) {
+        whereClause.status = { in: status.split(',').map((s) => s.trim() as AppointmentStatus) };
+      } else {
+        whereClause.status = status as AppointmentStatus;
+      }
     }
 
     const skip = (page - 1) * limit;
@@ -70,7 +87,7 @@ export class AppointmentService {
           vehicle: { select: { id: true, license_plate: true, make: true, model: true } },
           services: {
             include: {
-              service_template: { select: { id: true, name: true, pricing_type: true } }
+              service: { select: { id: true, name: true, pricing_type: true } }
             }
           }
         },
@@ -87,7 +104,7 @@ export class AppointmentService {
       // Provide an easy string for scheduled_time (originally stored as DateTime @db.Time)
       // Node.js Prisma returns time as a Date object set to 1970-01-01
       scheduled_time_str: apt.scheduled_time.toISOString().substring(11, 16),
-      services: apt.services.map((s: any) => s.service_template)
+      services: apt.services.map((s: any) => s.service)
     }));
 
     return {
@@ -104,7 +121,7 @@ export class AppointmentService {
   /**
    * Lấy chi tiết lịch hẹn
    */
-  async getAppointmentById(id: number) {
+  async getAppointmentById(id: number, customerId?: number) {
     const appointment = await prisma.appointment.findUnique({
       where: { id },
       include: {
@@ -112,7 +129,7 @@ export class AppointmentService {
         vehicle: true,
         services: {
           include: {
-            service_template: true
+            service: true
           }
         },
         created_by: { select: { id: true, full_name: true } }
@@ -120,12 +137,15 @@ export class AppointmentService {
     });
 
     if (!appointment) throw new Error('Không tìm thấy lịch hẹn');
+    if (customerId && appointment.customer_id !== customerId) {
+      throw new Error('Bạn không có quyền xem lịch hẹn này');
+    }
 
     const aptAny = appointment as any;
     return {
       ...aptAny,
       scheduled_time_str: aptAny.scheduled_time.toISOString().substring(11, 16),
-      services: aptAny.services.map((s: any) => s.service_template)
+      services: aptAny.services.map((s: any) => s.service)
     };
   }
 
@@ -174,15 +194,20 @@ export class AppointmentService {
       throw new Error('Chỉ có thể đặt lịch trong giờ hành chính (8:00 - 17:00)');
     }
 
-    const timeDate = new Date();
-    timeDate.setUTCHours(hour, minute, 0, 0);
+    const timeDate = new Date(Date.UTC(1970, 0, 1, hour, minute, 0));
+
+    // Normalize date to UTC midnight (YYYY-MM-DD)
+    const rawDateStr = typeof data.scheduled_date === 'string'
+      ? data.scheduled_date.substring(0, 10)
+      : new Date(data.scheduled_date).toISOString().substring(0, 10);
+    const scheduledDateObj = new Date(`${rawDateStr}T00:00:00.000Z`);
 
     return prisma.$transaction(async (tx) => {
       const appointment = await tx.appointment.create({
         data: {
           customer_id: data.customer_id,
           vehicle_id: data.vehicle_id,
-          scheduled_date: new Date(data.scheduled_date),
+          scheduled_date: scheduledDateObj,
           scheduled_time: timeDate,
           notes: data.notes,
           status: 'REQUESTED',
@@ -191,15 +216,46 @@ export class AppointmentService {
       });
 
       // Create appointment services if provided
+      let registeredServices: string[] = [];
       if (data.service_ids && data.service_ids.length > 0) {
         const serviceData = data.service_ids.map(serviceId => ({
           appointment_id: appointment.id,
-          service_template_id: serviceId
+          service_id: serviceId
         }));
 
         await tx.appointmentService.createMany({
           data: serviceData
         });
+
+        const serviceEntities = await tx.service.findMany({
+          where: { id: { in: data.service_ids } },
+          select: { name: true }
+        });
+        registeredServices = serviceEntities.map(s => s.name);
+      }
+
+      // Gửi email xác nhận đặt lịch (UC-11 & UC-17)
+      const customerForEmail = await tx.user.findUnique({ where: { id: appointment.customer_id } });
+      if (customerForEmail?.email) {
+        const dateStr = new Date(appointment.scheduled_date).toLocaleDateString('vi-VN');
+        const timeStr = data.scheduled_time;
+        const vehicleInfo = `${vehicle.make} ${vehicle.model}`;
+
+        const html = renderAppointmentCreatedTemplate({
+          customerName: customerForEmail.full_name,
+          licensePlate: vehicle.license_plate,
+          vehicleModel: vehicleInfo,
+          scheduledDate: dateStr,
+          scheduledTime: timeStr,
+          services: registeredServices,
+          notes: data.notes
+        });
+
+        notificationService.sendEmail(
+          customerForEmail.email,
+          `[Car Service Center] Xác nhận đặt lịch hẹn ngày ${dateStr}`,
+          html
+        ).catch(err => console.error('Failed to send email:', err));
       }
 
       return appointment;
@@ -209,23 +265,56 @@ export class AppointmentService {
   /**
    * Dời lịch hẹn (UC-19)
    */
-  async updateAppointment(id: number, data: UpdateAppointmentDto) {
-    const appointment = await prisma.appointment.findUnique({ where: { id } });
+  async updateAppointment(id: number, data: UpdateAppointmentDto, customerId?: number, isStaff: boolean = false) {
+    const appointment = await prisma.appointment.findUnique({ 
+      where: { id },
+      include: {
+        vehicle: true
+      }
+    });
     if (!appointment) throw new Error('Không tìm thấy lịch hẹn');
 
-    if (appointment.status !== 'REQUESTED' && appointment.status !== 'CONFIRMED' && appointment.status !== 'RESCHEDULED') {
-      throw new Error(`Không thể dời lịch hẹn đang ở trạng thái ${appointment.status}`);
+    if (customerId && appointment.customer_id !== customerId) {
+      throw new Error('Bạn không có quyền chỉnh sửa lịch hẹn này');
     }
+
+    if (appointment.status === 'ARRIVED') {
+      throw new Error('Không thể dời lịch hẹn khi khách đã mang xe đến xưởng');
+    }
+
+    if (appointment.status === 'CANCELLED') {
+      throw new Error('Không thể dời lịch hẹn đã bị hủy trước đó');
+    }
+
+    // Khách hàng không được phép tự ý dời lịch khi đã được xác nhận (phải liên hệ hotline)
+    if (!isStaff) {
+      if (appointment.status === 'CONFIRMED') {
+        throw new Error('Lịch hẹn đã được xác nhận, không thể dời ngày/giờ. Vui lòng liên hệ hotline trung tâm để được hỗ trợ.');
+      }
+
+      if (appointment.status !== 'REQUESTED' && appointment.status !== 'RESCHEDULED') {
+        throw new Error(`Không thể dời lịch hẹn đang ở trạng thái ${appointment.status}`);
+      }
+    }
+
+    const oldDateStr = new Date(appointment.scheduled_date).toLocaleDateString('vi-VN');
+    const oldTimeStr = appointment.scheduled_time.toISOString().substring(11, 16);
 
     const updateData: any = {
       notes: data.notes !== undefined ? data.notes : undefined,
     };
 
+    let hasTimeOrDateChanged = false;
+
     if (data.scheduled_date || data.scheduled_time) {
       updateData.status = 'RESCHEDULED'; // Status transition
+      hasTimeOrDateChanged = true;
       
       if (data.scheduled_date) {
-        const reqDate = new Date(data.scheduled_date);
+        const rawDateStr = typeof data.scheduled_date === 'string'
+          ? data.scheduled_date.substring(0, 10)
+          : new Date(data.scheduled_date).toISOString().substring(0, 10);
+        const reqDate = new Date(`${rawDateStr}T00:00:00.000Z`);
         
         // Validate duplicate for reschedule
         const startOfDay = new Date(reqDate);
@@ -262,8 +351,7 @@ export class AppointmentService {
           throw new Error('Chỉ có thể đặt lịch trong giờ hành chính (8:00 - 17:00)');
         }
 
-        const timeDate = new Date();
-        timeDate.setUTCHours(hour, minute, 0, 0);
+        const timeDate = new Date(Date.UTC(1970, 0, 1, hour, minute, 0));
         updateData.scheduled_time = timeDate;
       }
     }
@@ -272,17 +360,33 @@ export class AppointmentService {
       where: { id },
       data: updateData,
       include: {
-        customer: { select: { full_name: true, email: true } }
+        customer: { select: { full_name: true, email: true } },
+        vehicle: { select: { license_plate: true, make: true, model: true } }
       }
     });
 
-    if (data.scheduled_date && updated.customer?.email) {
-      const dateStr = new Date(updated.scheduled_date).toLocaleDateString('vi-VN');
-      await notificationService.sendEmail(
+    // Gửi email thông báo dời lịch (UC-13 & UC-19) nếu có thay đổi ngày hoặc giờ
+    if (hasTimeOrDateChanged && updated.customer?.email) {
+      const newDateStr = new Date(updated.scheduled_date).toLocaleDateString('vi-VN');
+      const newTimeStr = updated.scheduled_time.toISOString().substring(11, 16);
+      const vehicleInfo = updated.vehicle ? `${updated.vehicle.make} ${updated.vehicle.model}` : undefined;
+
+      const html = renderAppointmentRescheduledTemplate({
+        customerName: updated.customer.full_name,
+        licensePlate: updated.vehicle?.license_plate,
+        vehicleModel: vehicleInfo,
+        scheduledDate: newDateStr,
+        scheduledTime: newTimeStr,
+        oldScheduledDate: oldDateStr,
+        oldScheduledTime: oldTimeStr,
+        notes: data.notes || appointment.notes || undefined
+      });
+
+      notificationService.sendEmail(
         updated.customer.email,
-        'Thông báo dời lịch hẹn - Car Service Center',
-        `<p>Kính chào ${updated.customer.full_name},</p><p>Lịch hẹn của quý khách đã được dời sang ngày <b>${dateStr}</b>.</p><p>Vui lòng sắp xếp thời gian đến đúng giờ.</p>`
-      );
+        `[Car Service Center] Thông báo dời lịch hẹn sang ngày ${newDateStr}`,
+        html
+      ).catch(err => console.error('Failed to send email:', err));
     }
 
     return updated;
@@ -303,17 +407,37 @@ export class AppointmentService {
       where: { id },
       data: { status: 'CONFIRMED' },
       include: {
-        customer: { select: { full_name: true, email: true } }
+        customer: { select: { full_name: true, email: true, phone: true } },
+        vehicle: { select: { license_plate: true, make: true, model: true } },
+        services: {
+          include: {
+            service: { select: { name: true } }
+          }
+        }
       }
     });
 
     if (updated.customer?.email) {
       const dateStr = new Date(updated.scheduled_date).toLocaleDateString('vi-VN');
-      await notificationService.sendEmail(
+      const timeStr = updated.scheduled_time.toISOString().substring(11, 16);
+      const vehicleModel = `${updated.vehicle.make} ${updated.vehicle.model}`.trim();
+      const services = updated.services.map((s: any) => s.service.name);
+
+      const html = renderAppointmentConfirmedTemplate({
+        customerName: updated.customer.full_name,
+        licensePlate: updated.vehicle.license_plate,
+        vehicleModel,
+        scheduledDate: dateStr,
+        scheduledTime: timeStr,
+        services,
+        notes: updated.notes || undefined,
+      });
+
+      notificationService.sendEmail(
         updated.customer.email,
-        'Xác nhận lịch hẹn thành công - Car Service Center',
-        `<p>Kính chào ${updated.customer.full_name},</p><p>Lịch hẹn của quý khách vào ngày <b>${dateStr}</b> đã được xác nhận thành công.</p><p>Hân hạnh được đón tiếp quý khách.</p>`
-      );
+        `[Car Service Center] Xác nhận lịch hẹn thành công - Ngày ${dateStr}`,
+        html
+      ).catch(err => console.error('Failed to send email:', err));
     }
 
     return updated;
@@ -322,15 +446,29 @@ export class AppointmentService {
   /**
    * Hủy lịch hẹn (UC-20)
    */
-  async cancelAppointment(id: number, cancelReason: string) {
-    const appointment = await prisma.appointment.findUnique({ where: { id } });
+  async cancelAppointment(id: number, cancelReason: string, customerId?: number, isStaff: boolean = false) {
+    const appointment = await prisma.appointment.findUnique({ 
+      where: { id },
+      include: {
+        vehicle: true
+      }
+    });
     if (!appointment) throw new Error('Không tìm thấy lịch hẹn');
+
+    if (customerId && appointment.customer_id !== customerId) {
+      throw new Error('Bạn không có quyền hủy lịch hẹn này');
+    }
 
     if (appointment.status === 'ARRIVED') {
       throw new Error('Không thể hủy lịch hẹn khi khách đã mang xe đến xưởng');
     }
     if (appointment.status === 'CANCELLED') {
       throw new Error('Lịch hẹn đã bị hủy trước đó');
+    }
+
+    // Khách hàng không được phép tự hủy khi lịch hẹn đã xác nhận (phải liên hệ hotline)
+    if (!isStaff && appointment.status === 'CONFIRMED') {
+      throw new Error('Lịch hẹn đã được xác nhận, không thể hủy. Vui lòng liên hệ hotline trung tâm để được hỗ trợ.');
     }
 
     const updated = await prisma.appointment.update({
@@ -340,17 +478,31 @@ export class AppointmentService {
         cancel_reason: cancelReason
       },
       include: {
-        customer: { select: { full_name: true, email: true } }
+        customer: { select: { full_name: true, email: true } },
+        vehicle: { select: { license_plate: true, make: true, model: true } }
       }
     });
 
+    // Gửi email hủy lịch hẹn (UC-14 & UC-20)
     if (updated.customer?.email) {
       const dateStr = new Date(updated.scheduled_date).toLocaleDateString('vi-VN');
-      await notificationService.sendEmail(
+      const timeStr = updated.scheduled_time.toISOString().substring(11, 16);
+      const vehicleInfo = updated.vehicle ? `${updated.vehicle.make} ${updated.vehicle.model}` : undefined;
+
+      const html = renderAppointmentCancelledTemplate({
+        customerName: updated.customer.full_name,
+        licensePlate: updated.vehicle?.license_plate,
+        vehicleModel: vehicleInfo,
+        scheduledDate: dateStr,
+        scheduledTime: timeStr,
+        cancelReason: cancelReason
+      });
+
+      notificationService.sendEmail(
         updated.customer.email,
-        'Thông báo hủy lịch hẹn - Car Service Center',
-        `<p>Kính chào ${updated.customer.full_name},</p><p>Lịch hẹn của quý khách vào ngày <b>${dateStr}</b> đã bị hủy.</p><p>Lý do: <i>${cancelReason}</i></p>`
-      );
+        `[Car Service Center] Thông báo hủy lịch hẹn ngày ${dateStr}`,
+        html
+      ).catch(err => console.error('Failed to send email:', err));
     }
 
     return updated;
@@ -370,8 +522,8 @@ export class AppointmentService {
     });
     if (!appointment) throw new Error('Không tìm thấy lịch hẹn');
 
-    if (appointment.status !== 'CONFIRMED') {
-      throw new Error(`Chỉ có thể tiếp nhận xe từ lịch hẹn đã được xác nhận (CONFIRMED). Trạng thái hiện tại: ${appointment.status}`);
+    if (appointment.status !== 'CONFIRMED' && appointment.status !== 'RESCHEDULED') {
+      throw new Error(`Chỉ có thể tiếp nhận xe từ lịch hẹn đã được xác nhận (CONFIRMED) hoặc đã dời lịch (RESCHEDULED). Trạng thái hiện tại: ${appointment.status}`);
     }
 
     // Kiểm tra xe đã có trong hàng đợi chưa
@@ -390,7 +542,7 @@ export class AppointmentService {
         include: {
           customer: { select: { id: true, full_name: true, phone: true } },
           vehicle: { select: { id: true, license_plate: true, make: true, model: true } },
-          services: { include: { service_template: { select: { id: true, name: true } } } },
+          services: { include: { service: { select: { id: true, name: true } } } },
         },
       });
 
@@ -409,7 +561,7 @@ export class AppointmentService {
           customer: { select: { id: true, full_name: true, phone: true } },
           vehicle: { select: { id: true, license_plate: true, make: true, model: true } },
           created_by: { select: { id: true, full_name: true } },
-          services: { include: { service_template: true } },
+          services: { include: { service: true } },
         },
       });
 
@@ -418,7 +570,7 @@ export class AppointmentService {
         await tx.intakeService.createMany({
           data: updatedAppointment.services.map((svc) => ({
             intake_id: intakeRecord.id,
-            service_template_id: svc.service_template_id,
+            service_id: svc.service_id,
           })),
         });
         
@@ -429,7 +581,7 @@ export class AppointmentService {
             customer: { select: { id: true, full_name: true, phone: true } },
             vehicle: { select: { id: true, license_plate: true, make: true, model: true } },
             created_by: { select: { id: true, full_name: true } },
-            services: { include: { service_template: true } },
+            services: { include: { service: true } },
           }
         });
         return { appointment: updatedAppointment, intakeRecord: finalIntakeRecord };
