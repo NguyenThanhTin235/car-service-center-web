@@ -411,6 +411,8 @@ export interface AISuggestedJob {
   assigned_technician_name?: string | null;
   assignment_reason?: string | null;
   match_score?: number;
+  is_already_exist?: boolean;
+  existing_job_id?: number | null;
 }
 
 export interface AISuggestedService {

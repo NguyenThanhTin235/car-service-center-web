@@ -2,7 +2,7 @@ import prisma from '../utils/prisma';
 import { executeWithGeminiFailover, GEMINI_MODEL } from '../utils/ai-client.util';
 import { RagRetrieverService } from './ai-rag/rag-retriever.service';
 import { RagPromptBuilder, WorkOrderContextInput } from './ai-rag/rag-prompt.builder';
-import { RagValidatorService, RawAIPlanResponse } from './ai-rag/rag-validator.service';
+import { RagValidatorService, RawAIPlanResponse, cleanJobName } from './ai-rag/rag-validator.service';
 
 const retriever = new RagRetrieverService();
 const promptBuilder = new RagPromptBuilder();
@@ -19,6 +19,8 @@ export interface ApplyJobItemInput {
   assigned_technician_name?: string | null;
   assignment_reason?: string | null;
   match_score?: number;
+  is_already_exist?: boolean;
+  existing_job_id?: number | null;
 }
 
 export interface ApplyServiceGroupInput {
@@ -42,7 +44,7 @@ export class AiJobPlannerService {
    * Sinh danh sách công việc đề xuất bằng kiến trúc RAG
    */
   async generateJobSuggestions(workOrderId: number, targetServiceId?: number) {
-    // 1. Truy vấn Work Order và các quan hệ liên quan
+    // 1. Truy vấn Work Order và các quan hệ liên quan (bao gồm cả jobs hiện có của các services)
     const workOrder = await prisma.workOrder.findUnique({
       where: { id: workOrderId },
       include: {
@@ -74,6 +76,15 @@ export class AiJobPlannerService {
                 category: true,
               },
             },
+            jobs: {
+              select: {
+                id: true,
+                name: true,
+                job_type_id: true,
+                estimated_hours: true,
+                status: true,
+              },
+            },
           },
         },
       },
@@ -88,6 +99,37 @@ export class AiJobPlannerService {
       targetService = workOrder.services.find((s) => s.id === targetServiceId);
       if (!targetService) {
         throw new Error(`Không tìm thấy hạng mục dịch vụ với ID: ${targetServiceId}`);
+      }
+
+      // CHỈ ĐỀ XUẤT CHO HẠNG MỤC Ở TRẠNG THÁI "CHỜ XỬ LÝ" (PENDING)
+      if (targetService.status !== 'PENDING') {
+        const statusLabel =
+          targetService.status === 'IN_PROGRESS'
+            ? 'Đang thực hiện'
+            : targetService.status === 'COMPLETED'
+            ? 'Đã hoàn thành'
+            : targetService.status;
+        return {
+          work_order_id: workOrderId,
+          work_order_number: workOrder.wo_number,
+          summary: `Hạng mục "${targetService.name}" đang ở trạng thái "${statusLabel}". Hệ thống chỉ đề xuất công việc cho các hạng mục ở trạng thái "Chờ xử lý".`,
+          risk_assessment: 'Không áp dụng đề xuất AI cho hạng mục không ở trạng thái Chờ xử lý.',
+          suggested_services: [
+            {
+              service_id: targetService.id,
+              service_name: targetService.name,
+              is_existing_service: true,
+              category_type: 'OTHER',
+              finding_id: null,
+              finding_info: null,
+              jobs: [],
+            },
+          ],
+          suggested_jobs: [],
+          available_job_types: [],
+          available_technicians: [],
+          retrieved_parts_count: 0,
+        };
       }
     }
 
@@ -115,11 +157,16 @@ export class AiJobPlannerService {
       }
     }
 
-    // Trích xuất các dịch vụ hiện có trong Work Order (Cố vấn đã thêm/chọn)
+    // Trích xuất các dịch vụ hiện có trong Work Order kèm các công việc đã tồn tại và trạng thái
     const existingServices = (workOrder.services || []).map((s) => ({
       id: s.id,
       name: s.name || s.service?.name || 'Dịch vụ',
       category: s.service?.category?.name,
+      status: s.status,
+      existingJobs: (s.jobs || []).map((j: any) => ({
+        id: j.id,
+        name: j.name,
+      })),
     }));
 
     // Gom toàn bộ findings của tất cả phiên inspection
@@ -155,7 +202,7 @@ export class AiJobPlannerService {
       })
     );
 
-    // Chuẩn bị context input
+    // Chuẩn bị context input kèm danh sách công việc đã có của targetService
     const contextInput: WorkOrderContextInput = {
       workOrderNumber: workOrder.wo_number,
       existingServices,
@@ -183,6 +230,11 @@ export class AiJobPlannerService {
             id: targetService.id,
             name: targetService.name || targetService.service?.name || 'Hạng mục dịch vụ',
             category: targetService.service?.category?.name,
+            status: targetService.status,
+            existingJobs: (targetService.jobs || []).map((j: any) => ({
+              id: j.id,
+              name: j.name,
+            })),
           }
         : null,
     };
@@ -215,7 +267,7 @@ export class AiJobPlannerService {
         config: {
           systemInstruction: { parts: [{ text: systemInstruction }] },
           responseMimeType: 'application/json',
-          temperature: 0.2,
+          temperature: 0.1, // Giảm temperature để AI bám sát quy tắc và không bịa thêm việc
         },
       });
 
@@ -251,6 +303,7 @@ export class AiJobPlannerService {
     const enrichedServices = sanitizedPlan.suggested_services.map((grp) => {
       let matchedServiceId = grp.service_id || null;
       let finalName = grp.service_name;
+      let matchedExistingService: any = null;
 
       // Nếu AI chưa gán service_id, tự động đối soát với existingServices
       if (!matchedServiceId && existingServices.length > 0) {
@@ -265,18 +318,41 @@ export class AiJobPlannerService {
         });
         if (found) {
           matchedServiceId = found.id;
-          finalName = found.name; // Dùng lại chính xác tên của dịch vụ đã có trên phiếu
+          finalName = found.name;
+          matchedExistingService = found;
         }
+      } else if (matchedServiceId) {
+        matchedExistingService = existingServices.find((es) => es.id === matchedServiceId);
       }
 
+      const existingJobNames = new Set(
+        (matchedExistingService?.existingJobs || []).map((j: any) => cleanJobName(j.name))
+      );
+
       const findingInfo = grp.finding_id ? findingMap.get(grp.finding_id) : null;
-      const enrichedJobs = grp.jobs.map((job) => ({
-        ...job,
-        job_type_name: jobTypeMap.get(job.job_type_id) || 'Công việc kỹ thuật',
-        matched_findings: (job.matched_finding_ids || [])
-          .map((fid) => findingMap.get(fid))
-          .filter(Boolean),
-      }));
+      const seenGroupJobNames = new Set<string>();
+      const deduplicatedGroupJobs: any[] = [];
+
+      for (const job of grp.jobs) {
+        const normName = cleanJobName(job.name);
+        if (!normName || seenGroupJobNames.has(normName)) continue;
+        seenGroupJobNames.add(normName);
+
+        const isAlreadyExist = existingJobNames.has(normName);
+        const existingJob = (matchedExistingService?.existingJobs || []).find(
+          (j: any) => cleanJobName(j.name) === normName
+        );
+
+        deduplicatedGroupJobs.push({
+          ...job,
+          job_type_name: jobTypeMap.get(job.job_type_id) || 'Công việc kỹ thuật',
+          matched_findings: (job.matched_finding_ids || [])
+            .map((fid) => findingMap.get(fid))
+            .filter(Boolean),
+          is_already_exist: isAlreadyExist,
+          existing_job_id: existingJob ? existingJob.id : null,
+        });
+      }
 
       return {
         service_id: matchedServiceId,
@@ -292,7 +368,7 @@ export class AiJobPlannerService {
               marker_type: findingInfo.marker_type,
             }
           : null,
-        jobs: enrichedJobs,
+        jobs: deduplicatedGroupJobs,
       };
     });
 
@@ -309,14 +385,44 @@ export class AiJobPlannerService {
     let finalSummary = sanitizedPlan.summary;
 
     if (targetServiceId && targetService) {
-      const allJobsForTarget: any[] = [];
-      enrichedServices.forEach((s) => {
-        allJobsForTarget.push(...s.jobs);
-      });
-
+      // Tìm nhóm khớp nhất với target service
       const matchedGroup = enrichedServices.find(
         (s) => s.service_id === targetServiceId || cleanServiceName(s.service_name) === cleanServiceName(targetService.name)
       );
+
+      // Thu thập jobs từ matchedGroup hoặc từ tất cả groups nếu matchedGroup không có đủ
+      const candidateJobs: any[] = [];
+      if (matchedGroup && matchedGroup.jobs.length > 0) {
+        candidateJobs.push(...matchedGroup.jobs);
+      } else {
+        enrichedServices.forEach((s) => candidateJobs.push(...s.jobs));
+      }
+
+      // Tập hợp các tên job đã tồn tại trong database của targetService
+      const existingJobNames = new Set(
+        (targetService.jobs || []).map((j: any) => cleanJobName(j.name))
+      );
+
+      const seenJobNames = new Set<string>();
+      const deduplicatedJobs: any[] = [];
+
+      for (const job of candidateJobs) {
+        const normName = cleanJobName(job.name);
+        if (!normName) continue;
+        if (seenJobNames.has(normName)) continue;
+        seenJobNames.add(normName);
+
+        const isAlreadyExist = existingJobNames.has(normName);
+        const existingJob = (targetService.jobs || []).find(
+          (j: any) => cleanJobName(j.name) === normName
+        );
+
+        deduplicatedJobs.push({
+          ...job,
+          is_already_exist: isAlreadyExist,
+          existing_job_id: existingJob ? existingJob.id : null,
+        });
+      }
 
       finalServices = [
         {
@@ -326,12 +432,22 @@ export class AiJobPlannerService {
           category_type: matchedGroup?.category_type || (targetService.name.toLowerCase().includes('khắc phục') ? 'REPAIR' : 'OTHER'),
           finding_id: matchedGroup?.finding_id || null,
           finding_info: matchedGroup?.finding_info || null,
-          jobs: allJobsForTarget.length > 0 ? allJobsForTarget : (matchedGroup?.jobs || []),
+          jobs: deduplicatedJobs,
         },
       ];
 
-      finalJobs = finalServices[0].jobs;
-      finalSummary = `Đề xuất các bước kỹ thuật thực hiện cho riêng hạng mục: "${targetService.name}"`;
+      finalJobs = deduplicatedJobs;
+      finalSummary = deduplicatedJobs.length === 0
+        ? (parsed.summary || `Các công việc hiện tại của hạng mục "${targetService.name}" đã phù hợp và đầy đủ quy trình kỹ thuật, không cần bổ sung thêm.`)
+        : (parsed.summary || `Đề xuất các bước kỹ thuật bổ sung cho riêng hạng mục: "${targetService.name}"`);
+    } else {
+      // Khi đề xuất tổng thể toàn phiếu: CHỈ GIỮ LẠI các hạng mục đang ở trạng thái PENDING hoặc dịch vụ mới cho Finding
+      finalServices = enrichedServices.filter((s) => {
+        if (!s.service_id) return true; // Dịch vụ mới đề xuất cho finding chưa giải quyết
+        const matchWoSvc = workOrder.services.find((ws) => ws.id === s.service_id);
+        return !matchWoSvc || matchWoSvc.status === 'PENDING';
+      });
+      finalJobs = finalServices.flatMap((s) => s.jobs);
     }
 
     return {
@@ -471,8 +587,30 @@ export class AiJobPlannerService {
           totalCreatedServices++;
         }
 
-        // 2. Tạo các công việc con (Job) thuộc về hạng mục này
+        // 2. Lấy danh sách các jobs hiện có trong woService để chống trùng lặp / chồng job
+        const currentJobs = await tx.job.findMany({
+          where: { wo_service_id: woService.id },
+          select: { id: true, name: true, job_type_id: true },
+        });
+
+        const currentJobNamesSet = new Set(
+          currentJobs.map((j) => cleanJobName(j.name))
+        );
+
+        // 3. Tạo các công việc con (Job) thuộc về hạng mục này (bỏ qua nếu đã tồn tại)
         for (const jobItem of group.jobs) {
+          const normName = cleanJobName(jobItem.name);
+          if (!normName) continue;
+
+          // BỎ QUA nếu job đã tồn tại trong hạng mục này
+          if (currentJobNamesSet.has(normName)) {
+            console.log(`[AI Apply Guardrail] Bỏ qua công việc trùng lặp: "${jobItem.name}" đã tồn tại trong hạng mục "${woService.name}".`);
+            continue;
+          }
+
+          // Đánh dấu đã thêm để không bị trùng lặp ngay trong payload
+          currentJobNamesSet.add(normName);
+
           const jt = jobTypeMap.get(jobItem.job_type_id);
           const hours = Number(jobItem.estimated_hours) || 1.0;
 

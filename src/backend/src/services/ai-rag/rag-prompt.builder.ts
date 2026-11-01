@@ -13,7 +13,13 @@ export interface WorkOrderContextInput {
   };
   customerComplaint?: string | null;
   exteriorCondition?: string | null;
-  existingServices?: Array<{ id: number; name: string; category?: string }>;
+  existingServices?: Array<{
+    id: number;
+    name: string;
+    category?: string;
+    status: string;
+    existingJobs?: Array<{ id: number; name: string }>;
+  }>;
   requestedServices?: Array<{ name: string; category?: string }>;
   findings: Array<{
     id: number;
@@ -27,6 +33,8 @@ export interface WorkOrderContextInput {
     id: number;
     name: string;
     category?: string;
+    status: string;
+    existingJobs?: Array<{ id: number; name: string }>;
   } | null;
 }
 
@@ -40,34 +48,75 @@ Nhiệm vụ của bạn là phân tích thông tin xe, CÁC HẠNG MỤC DỊCH
 
 QUY TẮC BẮT BUỘC (GROUNDING RULES):
 0. YÊU CẦU ĐẶC BIỆT KHI CÓ HẠNG MỤC MỤC TIÊU (TARGET SERVICE): Nếu trong yêu cầu có chỉ định [HẠNG MỤC DỊCH VỤ MỤC TIÊU DUY NHẤT], bạn BẮT BUỘC CHỈ ĐỀ XUẤT các công việc con (jobs) cho RIÊNG hạng mục đó. Trong suggested_services chỉ trả về đúng 1 phần tử với service_id và service_name của hạng mục được chỉ định. TUYỆT ĐỐI KHÔNG đề xuất thêm hạng mục nào khác!
-1. BẮT BUỘC ƯU TIÊN SỐ 1 - SỬ DỤNG HẠNG MỤC ĐÃ CÓ: Nếu phiếu (Work Order) ĐÃ CÓ các Hạng mục dịch vụ (trong mục [CÁC HẠNG MỤC DỊCH VỤ ĐÃ CÓ TRÊN PHIẾU]), bạn PHẢI TẠO CÁC CÔNG VIỆC CON TRỰC TIẾP VÀO CÁC HẠNG MỤC NÀY! Điền đúng "service_id" và giữ nguyên chính xác "service_name".
-   => TUYỆT ĐỐI NGHIÊM CẤM tạo thêm Hạng mục mới có tên tương tự hoặc trùng lặp với dịch vụ đã có!
-2. HẠNG MỤC SỬA CHỮA LỖI (Repair Category): Chỉ tạo Hạng mục sửa chữa mới cho một lỗi (Finding) nếu lỗi đó CHƯA ĐƯỢC GIẢI QUYẾT bởi các Hạng mục đã có. Mỗi lỗi cần giải quyết sẽ là một hạng mục (ví dụ: "Khắc phục lỗi: [Tên lỗi]"), gán đúng finding_id. Bên trong là danh sách công việc con kỹ thuật chuẩn xác.
-3. TUYỆT ĐỐI CẤM TỰ Ý BỊA RA GÓI "Bảo dưỡng định kỳ" nếu khách hàng KHÔNG yêu cầu bảo dưỡng! Chỉ được tạo hạng mục bảo dưỡng định kỳ nếu trong [DỊCH VỤ KHÁCH HÀNG YÊU CẦU] hoặc [Triệu chứng khách khai] có ghi rõ yêu cầu bảo dưỡng.
-4. CHỈ ĐƯỢC CHỌN \`job_type_id\` từ danh mục [DANH MỤC JOB TYPE HỢP LỆ]. Tuyệt đối không tự bịa ID ngoài danh sách.
-5. Liên kết Finding: Nếu Job giải quyết lỗi nào, phải có \`matched_finding_ids\` chứa ID của Finding đó.
-6. Thời gian ước tính (\`estimated_hours\`): Phải thực tế theo định mức sửa chữa xe (từ 0.2 giờ đến 4.0 giờ cho mỗi đầu việc).
-7. Gợi ý phụ tùng: Chỉ gợi ý các phụ tùng có trong [DANH MỤC PHỤ TÙNG CÓ SẴN TRONG KHO].
-8. TỰ ĐỘNG PHÂN CÔNG KỸ THUẬT VIÊN (INTELLIGENT TECHNICIAN DISPATCHING):
+
+1. CHỈ ĐỀ XUẤT CHO HẠNG MỤC Ở TRẠNG THÁI "CHỜ XỬ LÝ" (PENDING ONLY):
+   - Bạn CHỈ ĐƯỢC PHÉP đề xuất công việc con cho các hạng mục dịch vụ đang ở trạng thái "Chờ xử lý" (PENDING).
+   - TUYỆT ĐỐI KHÔNG sinh công việc cho các hạng mục đã ở trạng thái "Đang thực hiện" (IN_PROGRESS) hoặc "Đã hoàn thành" (COMPLETED) vì các hạng mục này đã được triển khai trên thực tế.
+
+2. ĐÁNH GIÁ SỰ PHÙ HỢP & ĐẦY ĐỦ CỦA CÔNG VIỆC (STOP GENERATING IF SUITABLE & SUFFICIENT - CỰC KỲ QUAN TRỌNG):
+   - Với mỗi hạng mục, bạn PHẢI phân tích kỹ danh sách các công việc đã có sẵn trong hạng mục đó.
+   - NẾU các công việc đã có ĐÃ ĐẦY ĐỦ, HỢP LÝ và PHÙ HỢP với quy trình kỹ thuật sửa chữa/bảo dưỡng cho hạng mục này (ví dụ: đã có đủ bước kiểm tra/chẩn đoán, tháo lắp thay thế linh kiện, căn chỉnh hoặc kiểm tra hoàn thiện cần thiết), HOẶC không còn bước kỹ thuật trọng yếu nào bị thiếu:
+     => BẠN BẮT BUỘC TRẢ VỀ mảng "jobs": [] (MẢNG RỖNG) cho hạng mục đó!
+     => TUYỆT ĐỐI KHÔNG ĐƯỢC TỰ Ý BỊA THÊM các công việc dư thừa, thao tác phụ, kiểm tra vu vơ không cần thiết!
+     => Trong phần "summary", nêu rõ: "Các công việc hiện tại của hạng mục đã phù hợp và đầy đủ theo quy chuẩn kỹ thuật, không cần bổ sung thêm."
+   - CHỈ đề xuất thêm công việc MỚI khi và chỉ khi quy trình kỹ thuật đang THỰC SỰ THIẾU một bước cốt lõi chưa từng xuất hiện.
+
+3. NGUYÊN TẮC CHỐNG TRÙNG LẶP / CHỒNG CHÉO CÔNG VIỆC (ANTI-DUPLICATION RULES):
+   a) TUYỆT ĐỐI KHÔNG ĐỀ XUẤT LẠI bất kỳ công việc nào ĐÃ CÓ trong danh sách công việc hiện có của hạng mục đó.
+   b) Không đề xuất 2 công việc có tên hoặc nội dung kỹ thuật tương tự/trùng lặp nhau trong cùng một danh sách.
+   c) Giữ nguyên "service_id" và chính xác "service_name" của hạng mục đã có trên phiếu.
+
+4. HẠNG MỤC SỬA CHỮA LỖI (Repair Category): Chỉ tạo Hạng mục sửa chữa mới cho một lỗi (Finding) nếu lỗi đó CHƯA ĐƯỢC GIẢI QUYẾT bởi các Hạng mục đã có. Mỗi lỗi cần giải quyết sẽ là một hạng mục (ví dụ: "Khắc phục lỗi: [Tên lỗi]"), gán đúng finding_id. Bên trong là danh sách công việc con kỹ thuật chuẩn xác.
+5. TUYỆT ĐỐI CẤM TỰ Ý BỊA RA GÓI "Bảo dưỡng định kỳ" nếu khách hàng KHÔNG yêu cầu bảo dưỡng! Chỉ được tạo hạng mục bảo dưỡng định kỳ nếu trong [DỊCH VỤ KHÁCH HÀNG YÊU CẦU] hoặc [Triệu chứng khách khai] có ghi rõ yêu cầu bảo dưỡng.
+6. CHỈ ĐƯỢC CHỌN \`job_type_id\` từ danh mục [DANH MỤC JOB TYPE HỢP LỆ]. Tuyệt đối không tự bịa ID ngoài danh sách.
+7. Liên kết Finding: Nếu Job giải quyết lỗi nào, phải có \`matched_finding_ids\` chứa ID của Finding đó.
+8. Thời gian ước tính (\`estimated_hours\`): Phải thực tế theo định mức sửa chữa xe (từ 0.2 giờ đến 4.0 giờ cho mỗi đầu việc).
+9. Gợi ý phụ tùng: Chỉ gợi ý các phụ tùng có trong [DANH MỤC PHỤ TÙNG CÓ SẴN TRONG KHO].
+10. TỰ ĐỘNG PHÂN CÔNG KỸ THUẬT VIÊN (INTELLIGENT TECHNICIAN DISPATCHING):
    Với MỖI công việc con (Job), bạn BẮT BUỘC chỉ định một kỹ thuật viên tối ưu nhất từ [DANH SÁCH KỸ THUẬT VIÊN & TẢI VIỆC HIỆN TẠI] dựa theo 4 nguyên tắc vận hành:
    a) Phù hợp chuyên môn (Skill Match): Kỹ năng của KTV phải khớp với loại công việc (ví dụ: Job Gò hàn/Sơn -> Thợ Đồng Sơn; Job Phanh/Gầm/Máy -> Thợ Gầm Máy; Bảo dưỡng -> Thợ Bảo dưỡng nhanh).
    b) Cân bằng tải & Công bằng (Workload Balancing): Ưu tiên KTV có tổng giờ làm hôm nay (today_assigned_hours) và số job đang làm thấp hơn để khối lượng công việc được chia đều.
    c) Tránh chồng chéo (Availability): Không giao thêm việc nặng cho KTV đang OVERLOADED hoặc có quá nhiều việc đang chạy.
    d) Tính liên tục: Các công việc trên cùng một chiếc xe nên ưu tiên gom cho cùng 1 KTV nếu người đó có đủ chuyên môn và còn thời gian khả dụng.
    Điền đầy đủ: assigned_technician_id (bắt buộc đúng ID), assigned_technician_name, assignment_reason (lý do phân công súc tích), match_score (điểm phù hợp từ 70 đến 100).
-9. Trả về đúng định dạng JSON Schema được chỉ định.`;
+11. Trả về đúng định dạng JSON Schema được chỉ định.`;
   }
 
   /**
    * Tổng hợp User Prompt kết hợp RAG Knowledge
    */
   buildUserPrompt(context: WorkOrderContextInput, knowledge: RetrievedKnowledge): string {
-    const existingServicesStr =
-      context.existingServices && context.existingServices.length > 0
-        ? context.existingServices
-            .map((s) => `- [Service ID: ${s.id}] "${s.name}"${s.category ? ` (Nhóm: ${s.category})` : ''}`)
+    // Phân loại các hạng mục PENDING và NON-PENDING
+    const pendingServices = (context.existingServices || []).filter((s) => s.status === 'PENDING');
+    const nonPendingServices = (context.existingServices || []).filter((s) => s.status !== 'PENDING');
+
+    const pendingServicesStr =
+      pendingServices.length > 0
+        ? pendingServices
+            .map((s) => {
+              const jobsInfo =
+                s.existingJobs && s.existingJobs.length > 0
+                  ? `\n  + Các việc đã có sẵn (${s.existingJobs.length} việc): ${s.existingJobs.map((j) => `"${j.name}"`).join(', ')}`
+                  : '\n  + Hiện chưa có công việc con nào.';
+              return `- [Service ID: ${s.id}] "${s.name}"${s.category ? ` (Nhóm: ${s.category})` : ''} [Trạng thái: Chờ xử lý]${jobsInfo}`;
+            })
             .join('\n')
-        : 'Phiếu chưa có hạng mục dịch vụ nào được thêm trước đó.';
+        : 'Không có hạng mục nào ở trạng thái Chờ xử lý.';
+
+    const nonPendingServicesStr =
+      nonPendingServices.length > 0
+        ? nonPendingServices
+            .map((s) => {
+              const statusLabel =
+                s.status === 'IN_PROGRESS'
+                  ? 'Đang thực hiện'
+                  : s.status === 'COMPLETED'
+                  ? 'Đã hoàn thành'
+                  : s.status;
+              return `- [Service ID: ${s.id}] "${s.name}" [Trạng thái: ${statusLabel}] (CẤM SINH JOB MỚI CHO HẠNG MỤC NÀY)`;
+            })
+            .join('\n')
+        : '';
 
     const requestedServicesStr =
       context.requestedServices && context.requestedServices.length > 0
@@ -125,17 +174,31 @@ QUY TẮC BẮT BUỘC (GROUNDING RULES):
             .join('\n')
         : 'Hiện không có thông tin kỹ thuật viên khả dụng.';
 
+    const targetExistingJobsStr =
+      context.targetService?.existingJobs && context.targetService.existingJobs.length > 0
+        ? context.targetService.existingJobs.map((j, idx) => `  ${idx + 1}. "${j.name}"`).join('\n')
+        : '  (Hạng mục này hiện chưa có công việc con nào)';
+
     const targetServiceBlock = context.targetService
-      ? `\n### *** [YÊU CẦU ĐẶC BIỆT: CHỈ ĐỀ XUẤT JOB CHO DUY NHẤT 1 HẠNG MỤC NÀY] ***
-Bạn ĐANG ĐƯỢC YÊU CẦU CHỈ ĐỀ XUẤT các bước công việc kỹ thuật (jobs) cho RIÊNG hạng mục sau đây:
+      ? `\n### *** [YÊU CẦU ĐẶC BIỆT: CHỈ ĐỀ XUẤT CHO DUY NHẤT 1 HẠNG MỤC NÀY] ***
+Bạn ĐANG ĐƯỢC YÊU CẦU ĐÁNH GIÁ VÀ ĐỀ XUẤT CÔNG VIỆC CHO RIÊNG HẠNG MỤC SAU:
 - ID Hạng mục (service_id): ${context.targetService.id}
 - Tên Hạng mục (service_name): "${context.targetService.name}"
+- Trạng thái: ${context.targetService.status === 'PENDING' ? 'Chờ xử lý (PENDING)' : context.targetService.status}
 ${context.targetService.category ? `- Danh mục liên quan: "${context.targetService.category}"` : ''}
 
-=> QUY TẮC BẮT BUỘC ĐỐI VỚI YÊU CẦU NÀY:
-1. Mảng "suggested_services" BẮT BUỘC CHỈ CHỨA DUY NHẤT 1 PHẦN TỬ với "service_id": ${context.targetService.id} và "service_name": "${context.targetService.name}".
-2. TUYỆT ĐỐI KHÔNG TẠO THÊM BẤT KỲ HẠNG MỤC NÀO KHÁC trong "suggested_services".
-3. Mọi công việc con (jobs) được đề xuất phải phục vụ trực tiếp cho việc hoàn thành hạng mục "${context.targetService.name}".\n`
+- DANH SÁCH CÁC CÔNG VIỆC ĐÃ CÓ SẴN TRONG HẠNG MỤC NÀY:
+${targetExistingJobsStr}
+
+=> QUY TẮC ĐÁNH GIÁ VÀ DỪNG ĐỀ XUẤT (COMPLETION & SUITABILITY EVALUATION - BẮT BUỘC):
+1. Hãy phân tích kỹ các công việc đã có sẵn ở trên:
+   - NẾU các công việc đã có ĐÃ PHÙ HỢP và ĐÃ ĐỦ để hoàn thành dịch vụ "${context.targetService.name}" (ví dụ: đã có đủ công việc chẩn đoán lỗi, tháo lắp thay thế linh kiện hỏng, hoặc bảo dưỡng các chi tiết chính):
+     => BẠN BẮT BUỘC TRẢ VỀ "jobs": [] (MẢNG RỖNG trong suggested_services)!
+     => TUYỆT ĐỐI KHÔNG CỐ TÌNH BỊA THÊM bất kỳ công việc nào nữa!
+     => Trong "summary", ghi rõ: "Các công việc hiện tại của hạng mục '${context.targetService.name}' đã đầy đủ và phù hợp với tiêu chuẩn kỹ thuật, không cần bổ sung thêm."
+2. CHỈ KHI NÀO quy trình kỹ thuật đang THỰC SỰ THIẾU bước then chốt bắt buộc chưa ai làm, bạn mới đề xuất thêm bước còn thiếu đó.
+3. TUYỆT ĐỐI KHÔNG đề xuất lại bất kỳ công việc nào có tên trùng hoặc nội dung tương tự với các việc đã có ở trên.
+4. Mảng "suggested_services" BẮT BUỘC CHỈ CHỨA DUY NHẤT 1 PHẦN TỬ với "service_id": ${context.targetService.id} và "service_name": "${context.targetService.name}". TUYỆT ĐỐI KHÔNG TẠO THÊM HẠNG MỤC NÀO KHÁC.\n`
       : '';
 
     return `### THÔNG TIN XE & TIẾP NHẬN HIỆN TẠI:
@@ -145,14 +208,15 @@ ${context.targetService.category ? `- Danh mục liên quan: "${context.targetSe
 - Triệu chứng khách khai: "${context.customerComplaint || 'Không có yêu cầu đặc biệt'}"
 - Ghi chú ngoại quan của Cố vấn: "${context.exteriorCondition || 'Bình thường'}"
 ${targetServiceBlock}
-### [ƯU TIÊN SỐ 1 - BẮT BUỘC DÙNG LẠI] CÁC HẠNG MỤC DỊCH VỤ ĐÃ CÓ TRÊN PHIẾU (WORK ORDER):
-${existingServicesStr}
-*(CHÚ Ý CỰC KỲ QUAN TRỌNG: Nếu danh sách trên có dịch vụ, bạn PHẢI phân bổ các công việc con (jobs) vào trực tiếp các Hạng mục dịch vụ đã có này bằng cách đặt "service_id" tương ứng và giữ nguyên "service_name". TUYỆT ĐỐI KHÔNG TẠO DỊCH VỤ MỚI TRÙNG LẶP với các dịch vụ đã có ở trên!)*
+### [DANH SÁCH HẠNG MỤC Ở TRẠNG THÁI 'CHỜ XỬ LÝ' (PENDING) - ĐỐI TƯỢNG ĐỀ XUẤT]:
+${pendingServicesStr}
+*(CHÚ Ý QUAN TRỌNG: Bạn chỉ được phép đề xuất công việc con vào các Hạng mục ở trạng thái Chờ xử lý ở trên. NẾU một hạng mục đã có sẵn các công việc phù hợp và đầy đủ, bạn BẮT BUỘC trả về mảng "jobs": [] cho hạng mục đó, TUYỆT ĐỐI KHÔNG cố tình sinh thêm việc!)*
 
-### [ƯU TIÊN SỐ 2] DỊCH VỤ KHÁCH HÀNG YÊU CẦU LÚC TIẾP NHẬN XE:
+${nonPendingServicesStr ? `### [CÁC HẠNG MỤC ĐANG THỰC HIỆN HOẶC ĐÃ HOÀN THÀNH - CHỈ ĐỂ THAM KHẢO]:\n${nonPendingServicesStr}\n*(CẤM SINH BẤT KỲ CÔNG VIỆC NÀO CHO CÁC HẠNG MỤC NÀY!)*\n` : ''}
+### [ƯU TIÊN] DỊCH VỤ KHÁCH HÀNG YÊU CẦU LÚC TIẾP NHẬN XE:
 ${requestedServicesStr}
 
-### [ƯU TIÊN SỐ 3] CÁC LỖI PHÁT HIỆN TẠI XE (FINDINGS):
+### [ƯU TIÊN] CÁC LỖI PHÁT HIỆN TẠI XE (FINDINGS):
 ${findingsStr}
 
 ### [RAG KNOWLEDGE 1] DANH MỤC JOB TYPE HỢP LỆ (BẮT BUỘC DÙNG ID NÀY):
@@ -171,15 +235,15 @@ ${historicalStr}
 ${techniciansStr}
 
 Hãy phân tích và trả về kế hoạch công việc dưới dạng JSON gồm:
-- summary: Tóm tắt tình trạng và phương án kỹ thuật tổng quan cho Cố vấn dịch vụ
+- summary: Tóm tắt tình trạng và nhận xét về tính đầy đủ của các hạng mục công việc
 - risk_assessment: Đánh giá rủi ro an toàn vận hành
-- suggested_services: Mảng các Hạng mục dịch vụ & sửa chữa.
+- suggested_services: Mảng các Hạng mục dịch vụ & sửa chữa (chỉ thuộc trạng thái PENDING hoặc sửa chữa Finding mới).
   Mỗi hạng mục gồm:
-  + service_id: ID của dịch vụ đã có trên phiếu (nếu thuộc danh sách Hạng mục đã có ở trên), hoặc null nếu là hạng mục mới tạo riêng cho Finding
-  + service_name: Tên hạng mục (nếu có service_id thì PHẢI GIỮ NGUYÊN chính xác tên của dịch vụ đã có đó, không thêm bớt tiền tố)
+  + service_id: ID của dịch vụ PENDING đã có trên phiếu, hoặc null nếu là hạng mục mới tạo riêng cho Finding
+  + service_name: Tên hạng mục (nếu có service_id thì PHẢI GIỮ NGUYÊN chính xác tên của dịch vụ đã có đó)
   + category_type: Loại hạng mục ("REPAIR" nếu dùng để giải quyết 1 lỗi Finding mới, "OTHER" nếu là dịch vụ có sẵn hoặc dịch vụ theo yêu cầu của khách, "MAINTENANCE" nếu là bảo dưỡng)
-  + finding_id: ID của Finding nếu là hạng mục sửa chữa lỗi đó (hoặc null nếu là dịch vụ có sẵn / dịch vụ khách yêu cầu)
-  + jobs: Danh sách các công việc con để giải quyết lỗi đó hoặc thực hiện dịch vụ đó, mỗi job gồm:
+  + finding_id: ID của Finding nếu là hạng mục sửa chữa lỗi đó (hoặc null nếu là dịch vụ có sẵn)
+  + jobs: Mảng các công việc con mới cần bổ sung (TRẢ VỀ MẢNG RỖNG [] NẾU HẠNG MỤC ĐÃ ĐẦY ĐỦ CÔNG VIỆC PHÙ HỢP). Mỗi job gồm:
     * name: Tên công việc con cụ thể (ví dụ: "Kiểm tra bố thắng và đĩa phanh 4 bánh")
     * description: Thao tác kỹ thuật chi tiết
     * job_type_id: ID loại công việc (phải có trong RAG Knowledge 1)
@@ -189,8 +253,7 @@ Hãy phân tích và trả về kế hoạch công việc dưới dạng JSON g�
     * suggested_part_category_ids: Mảng chứa các PartCategory ID cần dùng
     * assigned_technician_id: ID của kỹ thuật viên được chọn (phải lấy từ [RAG KNOWLEDGE 5], tối ưu theo kỹ năng và tải việc)
     * assigned_technician_name: Họ tên kỹ thuật viên được phân công
-    * assignment_reason: Lý do ngắn gọn phân công cho KTV này (ví dụ: "Chuyên môn Phanh-Gầm, tải trong ngày thấp (1.0h)")
+    * assignment_reason: Lý do ngắn gọn phân công cho KTV này
     * match_score: Điểm phù hợp (từ 70 đến 100)`;
   }
 }
-

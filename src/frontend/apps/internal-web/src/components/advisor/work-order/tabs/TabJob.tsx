@@ -741,19 +741,21 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                   >
                     {!isWOClosed && (
                       <>
-                        {/* Nút AI đề xuất riêng cho hạng mục */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAiTargetService({ id: svc.id, name: svc.name });
-                            setIsAIModalOpen(true);
-                          }}
-                          className="flex items-center gap-1 px-2.5 py-1 text-label-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors cursor-pointer"
-                          title="AI đề xuất các bước thi công cho hạng mục này"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
-                          <span className="hidden md:inline">AI gợi ý việc</span>
-                        </button>
+                        {/* Nút AI đề xuất riêng cho hạng mục (Chỉ khả dụng khi hạng mục ở trạng thái Chờ xử lý) */}
+                        {svc.status === 'PENDING' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAiTargetService({ id: svc.id, name: svc.name });
+                              setIsAIModalOpen(true);
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1 text-label-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors cursor-pointer"
+                            title="AI đề xuất các bước thi công cho hạng mục này"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
+                            <span className="hidden md:inline">AI gợi ý việc</span>
+                          </button>
+                        )}
 
                         {/* Nút thêm việc con */}
                         <button

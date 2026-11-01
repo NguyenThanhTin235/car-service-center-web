@@ -36,6 +36,16 @@ export interface SanitizedPlanResponse {
   suggested_jobs: RawAIJobSuggestion[];
 }
 
+export function cleanJobName(name: string): string {
+  return (name || '')
+    .toLowerCase()
+    .replace(/đ/g, 'd')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '')
+    .trim();
+}
+
 export class RagValidatorService {
   /**
    * Hậu kiểm tra và chuẩn hóa dữ liệu trả về từ LLM
@@ -131,16 +141,28 @@ export class RagValidatorService {
           ? grp.category_type
           : findingId ? 'REPAIR' : 'OTHER';
 
-        const validJobs = Array.isArray(grp.jobs)
-          ? grp.jobs.map((j) => {
-              const sj = sanitizeJob(j);
-              // Nếu hạng mục là REPAIR và có finding_id nhưng job chưa có matched_finding_ids thì tự động bổ sung
-              if (findingId && (!sj.matched_finding_ids || sj.matched_finding_ids.length === 0)) {
-                sj.matched_finding_ids = [findingId];
-              }
-              return sj;
-            })
-          : [];
+        const validJobs: RawAIJobSuggestion[] = [];
+        const seenInGroup = new Set<string>();
+
+        if (Array.isArray(grp.jobs)) {
+          for (const j of grp.jobs) {
+            const sj = sanitizeJob(j);
+            const normName = cleanJobName(sj.name);
+            if (!normName) continue;
+            // Chống trùng lặp trong cùng nhóm công việc
+            if (seenInGroup.has(normName)) {
+              console.warn(`[AI Guardrail] Bỏ qua công việc trùng lặp trong nhóm "${grp.service_name}": ${sj.name}`);
+              continue;
+            }
+            seenInGroup.add(normName);
+
+            // Nếu hạng mục là REPAIR và có finding_id nhưng job chưa có matched_finding_ids thì tự động bổ sung
+            if (findingId && (!sj.matched_finding_ids || sj.matched_finding_ids.length === 0)) {
+              sj.matched_finding_ids = [findingId];
+            }
+            validJobs.push(sj);
+          }
+        }
 
         return {
           service_id: grp.service_id ? Number(grp.service_id) : null,
@@ -153,9 +175,14 @@ export class RagValidatorService {
     } else if (Array.isArray(raw.suggested_jobs) && raw.suggested_jobs.length > 0) {
       // Trường hợp 2: AI trả về mảng phẳng suggested_jobs -> Tự động nhóm theo finding_id
       const findingGroups = new Map<number | 'OTHER', RawAIJobSuggestion[]>();
+      const seenJobs = new Set<string>();
 
       for (const job of raw.suggested_jobs) {
         const sj = sanitizeJob(job);
+        const normName = cleanJobName(sj.name);
+        if (!normName || seenJobs.has(normName)) continue;
+        seenJobs.add(normName);
+
         const firstFinding = sj.matched_finding_ids && sj.matched_finding_ids.length > 0
           ? sj.matched_finding_ids[0]
           : 'OTHER';

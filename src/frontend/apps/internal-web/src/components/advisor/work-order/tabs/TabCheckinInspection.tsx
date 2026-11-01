@@ -267,7 +267,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
   useEffect(() => {
     if (workOrder?.check_in) {
       const ci = workOrder.check_in;
-      setMileage(ci.mileage.toString());
+      setMileage((ci.mileage ?? '').toString());
       setFuelLevel(ci.fuel_level);
       setExteriorCondition(ci.exterior_condition);
       setBelongings(ci.belongings || '');
@@ -344,8 +344,9 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
   };
 
   // Khách hàng chỉ xác nhận 1 lần khi duyệt báo giá -> Sau khi duyệt báo giá sẽ khóa thông tin tiếp nhận
-  const isCustomerApproved = ['APPROVED', 'IN_PROGRESS', 'BILLING_REQUESTED', 'FINANCIAL_CLEARED', 'RELEASED', 'CLOSED'].includes(workOrder?.status || '') || workOrder?.check_in?.status === 'CONFIRMED';
-  const isReadOnly = propIsReadOnly || !isEditing || isCustomerApproved;
+  const isCustomerApproved = ['APPROVED', 'IN_PROGRESS', 'BILLING_REQUESTED', 'FINANCIAL_CLEARED', 'RELEASED', 'CLOSED'].includes(workOrder?.status || '');
+  const isCancelled = workOrder?.status === 'CANCELLED';
+  const isReadOnly = propIsReadOnly || !isEditing || isCustomerApproved || isCancelled;
   const showRejectReason = workOrder?.check_in?.status === 'REJECTED' || workOrder?.check_in?.status === 'REVISION_REQUIRED';
 
   return (
@@ -553,7 +554,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
         <div className="px-6 py-4 border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-low">
           <h3 className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider">TÌNH TRẠNG XE LÚC TIẾP NHẬN</h3>
           <div className="flex items-center gap-4">
-            {workOrder?.check_in && !isCustomerApproved && !isEditing && !propIsReadOnly && (
+            {workOrder?.check_in && !isCustomerApproved && !isCancelled && !isEditing && !propIsReadOnly && (
               <button 
                 onClick={() => setIsEditing(true)}
                 className="flex items-center gap-1.5 text-primary hover:bg-primary/10 px-3 py-1 rounded-full text-label-sm font-bold transition-colors border border-primary/20"
@@ -566,9 +567,11 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
               <span className={`px-2.5 py-1 text-label-sm font-bold rounded-full ${
                 isCustomerApproved
                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  : isCancelled
+                  ? 'bg-rose-100 text-rose-800 border border-rose-300'
                   : 'bg-amber-100 text-amber-800 border border-amber-300'
               }`}>
-                {isCustomerApproved ? 'Đã khóa (Khách đã duyệt báo giá)' : 'Có thể chỉnh sửa (Chưa duyệt báo giá)'}
+                {isCustomerApproved ? 'Đã khóa (Khách đã duyệt báo giá)' : isCancelled ? 'Đã khóa (Lệnh đã hủy)' : 'Có thể chỉnh sửa (Chưa duyệt báo giá)'}
               </span>
             )}
           </div>

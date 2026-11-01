@@ -42,7 +42,7 @@ export const getMyInvoices = async (req: Request, res: Response): Promise<void> 
 export const getInvoiceById = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
-    const userRole = (req as any).user.role;
+    const userRole = (req as any).user.role || (req as any).user.roles?.[0];
     const invoiceId = Number(req.params.id);
 
     if (isNaN(invoiceId) || invoiceId <= 0) {

@@ -728,21 +728,24 @@ export default function ProfilePage() {
 
               {/* Form fields */}
               <div className="space-y-5">
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
-                    Họ và tên <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={form.fullName}
-                    onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                    readOnly={!isEditing}
-                    className={inputClass(isEditing)}
-                    placeholder="Nhập họ và tên"
-                  />
-                </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
+                      Họ và tên <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">person</span>
+                      <input
+                        type="text"
+                        value={form.fullName}
+                        onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                        readOnly={!isEditing}
+                        className={`${inputClass(isEditing)} pl-10`}
+                        placeholder="Nhập họ và tên"
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
                       Số điện thoại
@@ -759,6 +762,7 @@ export default function ProfilePage() {
                       />
                     </div>
                   </div>
+
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
                       Email
@@ -775,22 +779,22 @@ export default function ProfilePage() {
                       />
                     </div>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
-                    Địa chỉ liên hệ
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-3 material-symbols-outlined text-slate-400 text-[18px]">location_on</span>
-                    <textarea
-                      value={form.address}
-                      onChange={(e) => setForm({ ...form, address: e.target.value })}
-                      readOnly={!isEditing}
-                      rows={2}
-                      className={`${inputClass(isEditing)} pl-10 resize-none`}
-                      placeholder="Nhập địa chỉ của bạn"
-                    />
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
+                      Địa chỉ liên hệ
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">location_on</span>
+                      <input
+                        type="text"
+                        value={form.address}
+                        onChange={(e) => setForm({ ...form, address: e.target.value })}
+                        readOnly={!isEditing}
+                        className={`${inputClass(isEditing)} pl-10`}
+                        placeholder="Nhập địa chỉ của bạn"
+                      />
+                    </div>
                   </div>
                 </div>
 

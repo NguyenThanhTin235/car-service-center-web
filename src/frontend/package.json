@@ -11,9 +11,13 @@
     "dev:customer": "npm run dev -w @car-service-center/customer-web",
     "dev:internal": "npm run dev -w @car-service-center/internal-web",
     "build": "npm run build --workspaces",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "install:all": "npm install"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^20.0.0",
     "concurrently": "^10.0.5"
   }
 }
