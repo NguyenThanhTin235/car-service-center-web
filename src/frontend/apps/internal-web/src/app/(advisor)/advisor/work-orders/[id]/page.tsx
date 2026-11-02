@@ -100,8 +100,8 @@ export default function WorkOrderDetailPage() {
     jobsTotal: workOrder?.services?.reduce((acc, s) => acc + (s.jobs?.length || 0), 0) || 0,
     jobsInProgress: workOrder?.services?.reduce((acc, s) => acc + (s.jobs?.filter(j => j.status === 'IN_PROGRESS').length || 0), 0) || 0,
     jobsPending: workOrder?.services?.reduce((acc, s) => acc + (s.jobs?.filter(j => j.status === 'PLANNED').length || 0), 0) || 0,
-    partsTotal: 0,
-    partsIn: 0,
+    partsTotal: workOrder?.services?.reduce((acc, s) => acc + (s.jobs?.reduce((jAcc, j) => jAcc + (j.parts?.length || 0), 0) || 0), 0) || 0,
+    partsIn: workOrder?.services?.reduce((acc, s) => acc + (s.jobs?.reduce((jAcc, j) => jAcc + (j.parts?.filter(p => p.status === 'ISSUED' || p.status === 'USED' || j.status === 'IN_PROGRESS' || j.status === 'COMPLETED' || j.status === 'PASSED').length || 0), 0) || 0), 0) || 0,
     quotationTotal: quoStats.total,
     quotationQuotes: quoStats.quotes,
     quotationApproved: quoStats.approved,
@@ -174,7 +174,7 @@ export default function WorkOrderDetailPage() {
             }}
           />
 
-          {/* 8 Tabs */}
+          {/* 6 Tabs */}
           <WOTabContainer workOrder={workOrder} refetchWO={fetchWO} />
         </div>
 

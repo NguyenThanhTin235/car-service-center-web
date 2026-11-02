@@ -25,12 +25,17 @@ interface TabJobProps {
   workOrder?: WorkOrder;
   refetchWO?: () => void;
   isReadOnly?: boolean;
+  setActiveTab?: (tabId: string) => void;
 }
 
-const SERVICE_STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: string }> = {
+export type ServiceDerivedStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'PASSED' | 'REWORK';
+
+const SERVICE_STATUS_MAP: Record<ServiceDerivedStatus, { label: string; color: string; bg: string; icon: string }> = {
   PENDING: { label: 'Chờ xử lý', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', icon: 'schedule' },
   IN_PROGRESS: { label: 'Đang thực hiện', color: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20', icon: 'autorenew' },
-  COMPLETED: { label: 'Hoàn thành', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', icon: 'check_circle' },
+  COMPLETED: { label: 'Hoàn thành thi công', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', icon: 'check_circle' },
+  REWORK: { label: 'Cần làm lại', color: 'text-rose-700 dark:text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20', icon: 'refresh' },
+  PASSED: { label: 'Đạt KCS', color: 'text-purple-700 dark:text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20', icon: 'verified' },
 };
 
 const getJobStatusInfo = (job: WoJob, currentEmployeeId: number | null) => {
@@ -96,7 +101,7 @@ const getInitials = (name?: string | null) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: TabJobProps) {
+export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setActiveTab }: TabJobProps) {
   const services = workOrder?.services || [];
   const isWOClosed = isReadOnly || ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '');
   const isExecutionActive = workOrder?.status === 'IN_PROGRESS';
@@ -164,15 +169,32 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
   const [addPartJobId, setAddPartJobId] = useState<number | null>(null);
 
   // Trạng thái của hạng mục phụ thuộc hoàn toàn vào các job con
-  const getServiceDerivedStatus = (service: WoService): 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' => {
+  const getServiceDerivedStatus = (service: WoService): ServiceDerivedStatus => {
     const jobs = service.jobs || [];
-    if (jobs.length === 0) return (service.status as any) || 'PENDING';
-    const allPlanned = jobs.every((j) => j.status === 'PLANNED');
-    if (allPlanned) return 'PENDING';
+    if (jobs.length === 0) return (service.status as ServiceDerivedStatus) || 'PENDING';
+
+    // 1. Nếu có bất kỳ job nào REWORK (hoặc is_rework chưa hoàn thành/passed)
+    const hasRework = jobs.some(
+      (j) => j.status === 'REWORK' || (Boolean((j as any).is_rework) && j.status !== 'PASSED' && j.status !== 'COMPLETED')
+    );
+    if (hasRework) return 'REWORK';
+
+    // 2. Nếu tất cả jobs đã đạt kiểm định (PASSED)
+    const allPassed = jobs.every((j) => j.status === 'PASSED');
+    if (allPassed) return 'PASSED';
+
+    // 3. Nếu tất cả jobs đã hoàn thành (bao gồm COMPLETED hoặc PASSED)
     const allDone = jobs.every((j) => j.status === 'COMPLETED' || j.status === 'PASSED');
     if (allDone) return 'COMPLETED';
+
+    // 4. Nếu tất cả jobs mới chỉ lên kế hoạch (PLANNED)
+    const allPlanned = jobs.every((j) => j.status === 'PLANNED');
+    if (allPlanned) return 'PENDING';
+
     return 'IN_PROGRESS';
   };
+
+
 
   // Cập nhật trạng thái công việc trực tiếp (Trạng thái dịch vụ cha sẽ tự động đồng bộ theo các job)
   const [updatingJobId, setUpdatingJobId] = useState<number | null>(null);
@@ -482,23 +504,114 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
 
 
 
-      {workOrder?.status === 'IN_PROGRESS' && (
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-500/15 via-indigo-500/10 to-transparent border border-blue-500/30 flex items-center justify-between gap-3 shadow-xs">
+      {/* 2. DYNAMIC WORK ORDER EXECUTION BANNER */}
+      {workOrder?.status === 'IN_PROGRESS' && (() => {
+        const allServicesCompleted = services.length > 0 && services.every((s) => s.status === 'COMPLETED');
+        const allJobsCompleted = grandTotalJobs > 0 && grandCompletedJobs === grandTotalJobs;
+        const hasReworkJobs = services.some((s) => (s.jobs || []).some((j) => j.status === 'REWORK'));
+
+        if (allServicesCompleted || allJobsCompleted) {
+          return (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fade-in">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <span className="material-symbols-outlined text-[20px]">task_alt</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-body-sm font-bold text-emerald-950 dark:text-emerald-200">
+                      Toàn bộ công việc thi công đã hoàn thành
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-600 text-white">
+                      HOÀN THÀNH 100%
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-emerald-800 dark:text-emerald-300">
+                    Tất cả {grandTotalJobs} công việc ({services.length} hạng mục) đã hoàn tất. Sẵn sàng chuyển sang Tab Kiểm tra chất lượng (KCS) hoặc gửi lệnh thanh toán.
+                  </p>
+                </div>
+              </div>
+
+              {setActiveTab && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('qc')}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 shrink-0 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[16px]">verified</span>
+                  <span>Kiểm tra chất lượng (KCS)</span>
+                </button>
+              )}
+            </div>
+          );
+        }
+
+        if (hasReworkJobs) {
+          return (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-rose-500/15 via-amber-500/10 to-transparent border border-rose-500/30 flex items-center justify-between gap-3 shadow-xs animate-fade-in">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <span className="material-symbols-outlined text-[20px]">build_circle</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-body-sm font-bold text-rose-950 dark:text-rose-200">
+                      Có công việc cần sửa lại (Rework)
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-rose-600 text-white">
+                      CẦN LÀM LẠI
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-rose-800 dark:text-rose-300">
+                    Kiểm định viên KCS đã phát hiện hạng mục chưa đạt. Vui lòng phân công KTV và khắc phục trước khi nghiệm thu lại.
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-500/15 via-indigo-500/10 to-transparent border border-blue-500/30 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs animate-pulse">
+                <span className="material-symbols-outlined text-[20px]">engineering</span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-body-sm font-bold text-blue-950 dark:text-blue-200">
+                    Đang trong quá trình thi công
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-600 text-white">
+                    ĐANG THI CÔNG
+                  </span>
+                </div>
+                <p className="text-[12px] text-blue-800 dark:text-blue-300">
+                  Các hạng mục và KTV đang tiến hành theo kế hoạch ({grandCompletedJobs}/{grandTotalJobs} công việc hoàn thành). Khách hàng đang theo dõi tiến độ thời gian thực.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {workOrder?.status === 'BILLING_REQUESTED' && (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-500/15 via-indigo-500/10 to-transparent border border-purple-500/30 flex items-center justify-between gap-3 shadow-xs animate-fade-in">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs animate-pulse">
-              <span className="material-symbols-outlined text-[20px]">engineering</span>
+            <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <span className="material-symbols-outlined text-[20px]">receipt_long</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="text-body-sm font-bold text-blue-950 dark:text-blue-200">
-                  Đang trong quá trình thi công
+                <h4 className="text-body-sm font-bold text-purple-950 dark:text-purple-200">
+                  Đã hoàn tất nghiệm thu & Chờ thanh toán
                 </h4>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-600 text-white">
-                  ĐANG THI CÔNG
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-purple-600 text-white">
+                  CHỜ THANH TOÁN
                 </span>
               </div>
-              <p className="text-[12px] text-blue-800 dark:text-blue-300">
-                Các hạng mục và KTV đang tiến hành theo kế hoạch. Khách hàng đang theo dõi tiến độ thời gian thực.
+              <p className="text-[12px] text-purple-800 dark:text-purple-300">
+                Toàn bộ công việc thi công và kiểm định chất lượng KCS đã hoàn tất đạt chuẩn. Đang chờ thu ngân xác nhận thanh toán.
               </p>
             </div>
           </div>
@@ -707,18 +820,18 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                       </div>
                     )}
 
-                    {/* Badge Trạng thái Hạng mục Dịch vụ (Tự động phụ thuộc vào các Job con) */}
+                    {/* Badge Trạng thái Hạng mục Dịch vụ (Chỉ hiện trạng thái, không phải comboBox) */}
                     {(() => {
                       const svcStatus = getServiceDerivedStatus(svc);
                       const statusInfo = SERVICE_STATUS_MAP[svcStatus] || SERVICE_STATUS_MAP.PENDING;
                       return (
                         <div
-                          className="relative inline-flex items-center shrink-0 ml-1"
+                          className="inline-flex items-center shrink-0 ml-1"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <span
                             className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border shadow-2xs ${statusInfo.bg} ${statusInfo.color}`}
-                            title={`Trạng thái hạng mục tự động phụ thuộc vào các công việc con (${statusInfo.label})`}
+                            title={`Trạng thái hạng mục: ${statusInfo.label}`}
                           >
                             <span
                               className={`material-symbols-outlined text-[13px] ${
@@ -928,7 +1041,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
 
                                   {/* Kỹ thuật viên phụ trách (Select box với initials avatar) */}
                                   <td className="px-3 py-2.5">
-                                    {!isWOClosed && job.status === 'PLANNED' ? (
+                                    {!isWOClosed && (job.status === 'PLANNED' || job.status === 'REWORK') ? (
                                       <div className="relative flex items-center w-full min-w-[190px]">
                                         <div
                                           className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold absolute left-2 pointer-events-none ${

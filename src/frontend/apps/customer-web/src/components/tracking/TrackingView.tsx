@@ -7,6 +7,7 @@ import { fetchMyTrackingOrders, setSelectedOrder, WorkOrderTrackingDto } from '@
 import Toast from '@/components/shared/Toast';
 import CustomerQuotationModal from './CustomerQuotationModal';
 import CustomerCheckInModal from './CustomerCheckInModal';
+import CustomerQCModal from './CustomerQCModal';
 
 export default function TrackingView({ isEmbedded = false }: { isEmbedded?: boolean }) {
   const dispatch = useAppDispatch();
@@ -16,6 +17,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
   const [currentTime, setCurrentTime] = useState<string>('');
   const [isQuotationModalOpen, setIsQuotationModalOpen] = useState<boolean>(false);
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState<boolean>(false);
+  const [isQCModalOpen, setIsQCModalOpen] = useState<boolean>(false);
 
   // Tải danh sách ban đầu
   const loadData = useCallback(async (isManual = false) => {
@@ -514,6 +516,24 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                           </div>
                         )}
 
+                        {/* Nút xem chứng nhận nghiệm thu KCS ở Bước 3 */}
+                        {step.stepIndex === 3 && activeOrder.qcReport?.hasQc && (
+                          <div className="mt-3 pt-3 border-t border-surface-container-high/60 flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-xs text-on-surface-variant flex items-center gap-1.5 font-medium">
+                              <span className="material-symbols-outlined text-[16px] text-emerald-600">verified</span>
+                              Biên bản nghiệm thu KCS ({activeOrder.qcReport.passedItems}/{activeOrder.qcReport.totalItems} tiêu chí Đạt)
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setIsQCModalOpen(true)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-300 shadow-2xs cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">verified</span>
+                              Xem chứng nhận KCS
+                            </button>
+                          </div>
+                        )}
+
                         {/* Chi tiết dịch vụ nếu ở Bước 2 */}
                         {step.stepIndex === 2 && activeOrder.services.length > 0 && (
                           <div className="mt-3 pt-3 border-t border-surface-container-high space-y-2">
@@ -530,15 +550,32 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                                     {srv.name}
                                   </span>
                                   <span
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0 ${
-                                      srv.status === 'COMPLETED'
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0 flex items-center gap-0.5 ${
+                                      srv.status === 'PASSED'
+                                        ? 'bg-purple-100 text-purple-800'
+                                        : srv.status === 'COMPLETED'
                                         ? 'bg-emerald-100 text-emerald-800'
+                                        : srv.status === 'REWORK'
+                                        ? 'bg-rose-100 text-rose-800'
                                         : srv.status === 'IN_PROGRESS'
                                         ? 'bg-blue-100 text-primary animate-pulse'
                                         : 'bg-surface-container text-on-surface-variant'
                                     }`}
                                   >
-                                    {srv.status === 'COMPLETED' ? 'Xong' : srv.status === 'IN_PROGRESS' ? 'Đang làm' : 'Chờ'}
+                                    {srv.status === 'PASSED' && (
+                                      <span className="material-symbols-outlined text-[11px]">verified</span>
+                                    )}
+                                    <span>
+                                      {srv.status === 'PASSED'
+                                        ? 'Đạt KCS'
+                                        : srv.status === 'COMPLETED'
+                                        ? 'Xong'
+                                        : srv.status === 'REWORK'
+                                        ? 'Hiệu chỉnh'
+                                        : srv.status === 'IN_PROGRESS'
+                                        ? 'Đang làm'
+                                        : 'Chờ'}
+                                    </span>
                                   </span>
                                 </div>
                               ))}
@@ -872,6 +909,18 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
               checkIn={activeOrder.checkIn}
               vehicle={activeOrder.vehicle}
               advisor={activeOrder.advisor}
+              woNumber={activeOrder.woNumber}
+            />
+          )}
+
+          {/* Customer QC Certificate Modal */}
+          {activeOrder.qcReport && (
+            <CustomerQCModal
+              isOpen={isQCModalOpen}
+              onClose={() => setIsQCModalOpen(false)}
+              qcReport={activeOrder.qcReport}
+              vehiclePlate={activeOrder.vehicle.licensePlate}
+              vehicleModel={`${activeOrder.vehicle.make} ${activeOrder.vehicle.model}`}
               woNumber={activeOrder.woNumber}
             />
           )}

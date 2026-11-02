@@ -825,10 +825,10 @@ export class WorkOrderService {
       throw new Error('Công việc không thuộc phiếu công việc này.');
     }
 
-    // Chỉ có thể sửa khi chưa phân công (status === 'PLANNED')
-    if (job.status !== 'PLANNED') {
+    // Chỉ có thể sửa khi chưa phân công (status === 'PLANNED') hoặc khi làm lại (status === 'REWORK')
+    if (job.status !== 'PLANNED' && job.status !== 'REWORK') {
       throw new Error(
-        `Không thể chỉnh sửa công việc đã ở trạng thái ${job.status}. Chỉ có thể sửa khi chưa phân công (Chờ điều phối).`
+        `Không thể chỉnh sửa công việc đã ở trạng thái ${job.status}. Chỉ có thể sửa khi chưa phân công hoặc cần làm lại (Rework).`
       );
     }
 
@@ -1027,7 +1027,18 @@ export class WorkOrderService {
                   }
                 }
               }
-            }
+            },
+            qc_records: {
+              orderBy: { created_at: 'desc' },
+              include: {
+                inspector: { select: { id: true, full_name: true } },
+                items: {
+                  include: {
+                    rework_jobs: { select: { id: true, description: true } },
+                  },
+                },
+              },
+            },
           },
           orderBy: { sort_order: 'asc' },
         },
@@ -1089,7 +1100,18 @@ export class WorkOrderService {
                   }
                 }
               }
-            }
+            },
+            qc_records: {
+              orderBy: { created_at: 'desc' },
+              include: {
+                inspector: { select: { id: true, full_name: true } },
+                items: {
+                  include: {
+                    rework_jobs: { select: { id: true, description: true } },
+                  },
+                },
+              },
+            },
           },
           orderBy: { sort_order: 'asc' },
         },
@@ -1141,6 +1163,67 @@ export class WorkOrderService {
    */
   private mapToTrackingDto(wo: any) {
     const status = wo.status;
+
+    // 1. Tổng hợp biên bản KCS kiểm định chất lượng xuất xưởng cho khách hàng
+    // Lấy biên bản QC mới nhất của từng dịch vụ (tránh lặp do đánh giá nhiều lần / rework)
+    const qcItemsMap = new Map<string, { id: number; itemName: string; serviceNames: Set<string>; result: string; notes?: string }>();
+    let latestQcInspector = '';
+    let latestQcTime = '';
+
+    for (const s of (wo.services || [])) {
+      const latestQcr = s.qc_records?.[0];
+      if (!latestQcr) continue;
+
+      if (!latestQcInspector && latestQcr.inspector?.full_name) {
+        latestQcInspector = latestQcr.inspector.full_name;
+        latestQcTime = latestQcr.created_at
+          ? new Date(latestQcr.created_at).toLocaleDateString('vi-VN') +
+            ' ' +
+            new Date(latestQcr.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+          : '';
+      }
+
+      for (const it of (latestQcr.items || [])) {
+        // Gom nhóm các tiêu chuẩn an toàn trùng tên để không hiển thị lặp lại trên biên bản xuất xưởng của xe
+        const rawNote = it.notes || it.rework_jobs?.[0]?.description || '';
+        const itemNote = rawNote.split(/\s*\(Sửa lại:/i)[0].trim() || undefined;
+        const key = it.item_name.trim().toLowerCase();
+        if (qcItemsMap.has(key)) {
+          const existing = qcItemsMap.get(key)!;
+          existing.serviceNames.add(s.name);
+          // Nếu có bất kỳ dịch vụ nào chưa đạt tiêu chí này thì giữ kết quả FAIL
+          if (it.result === 'FAIL') {
+            existing.result = 'FAIL';
+          }
+          if (itemNote && !existing.notes) {
+            existing.notes = itemNote;
+          }
+        } else {
+          qcItemsMap.set(key, {
+            id: it.id,
+            itemName: it.item_name,
+            serviceNames: new Set([s.name]),
+            result: it.result,
+            notes: itemNote,
+          });
+        }
+      }
+    }
+
+    const qcItemsDetail = Array.from(qcItemsMap.values()).map((item) => ({
+      id: item.id,
+      itemName: item.itemName,
+      serviceName: Array.from(item.serviceNames).join(', '),
+      result: item.result,
+      notes: item.notes,
+    }));
+
+    const totalQcItems = qcItemsDetail.length;
+    const passedQcItems = qcItemsDetail.filter((i) => i.result === 'PASS').length;
+    const failedQcItems = qcItemsDetail.filter((i) => i.result === 'FAIL').length;
+    const isQcPassed = totalQcItems > 0 && failedQcItems === 0;
+
+    // 2. Tính toán tiến trình và giai đoạn kỹ thuật
     let currentStep = 1;
     let progressPercent = 25;
 
@@ -1155,8 +1238,15 @@ export class WorkOrderService {
       progressPercent = 95;
     } else if (status === 'IN_PROGRESS') {
       if (totalServices > 0 && completedServices === totalServices) {
-        currentStep = 3;
-        progressPercent = 85;
+        if (isQcPassed) {
+          // Toàn bộ dịch vụ đã hoàn thành và 100% tiêu chí KCS đã đạt chuẩn xuất xưởng
+          currentStep = 4;
+          progressPercent = 95;
+        } else {
+          // Các dịch vụ thi công đã xong, đang trong giai đoạn kiểm định KCS
+          currentStep = 3;
+          progressPercent = 85;
+        }
       } else {
         currentStep = 2;
         const serviceRatio = totalServices > 0 ? (completedServices / totalServices) : 0.5;
@@ -1186,26 +1276,32 @@ export class WorkOrderService {
         stepIndex: 2,
         title: 'Đang thực hiện dịch vụ',
         status: currentStep > 2 ? 'COMPLETED' : (currentStep === 2 ? 'IN_PROGRESS' : 'PENDING'),
-        time: currentStep >= 2 ? 'Đang triển khai' : 'Dự kiến',
+        time: currentStep > 2 ? 'Hoàn thành' : (currentStep === 2 ? 'Đang triển khai' : 'Dự kiến'),
         description: totalServices > 0 
-          ? `Đang tiến hành thực hiện ${totalServices} hạng mục dịch vụ yêu cầu (${completedServices}/${totalServices} hạng mục đã hoàn thành).`
+          ? `Đã tiến hành thực hiện ${totalServices} hạng mục dịch vụ yêu cầu (${completedServices}/${totalServices} hạng mục đã hoàn thành).`
           : 'Kỹ thuật viên đang thực hiện các dịch vụ theo phiếu công việc.',
       },
       {
         stepIndex: 3,
         title: 'Kiểm định chất lượng (KCS)',
-        status: currentStep > 3 ? 'COMPLETED' : (currentStep === 3 ? 'IN_PROGRESS' : 'PENDING'),
-        time: currentStep >= 3 ? 'Đang kiểm định' : 'Chờ thực hiện',
-        description: 'Kiểm tra chất lượng và nghiệm thu kỹ thuật theo tiêu chuẩn an toàn của trung tâm.',
+        status: (isQcPassed || currentStep > 3) ? 'COMPLETED' : (currentStep === 3 ? 'IN_PROGRESS' : 'PENDING'),
+        time: isQcPassed 
+          ? (latestQcTime || 'Đã đạt chuẩn') 
+          : (currentStep >= 3 ? 'Đang kiểm định' : 'Chờ thực hiện'),
+        description: isQcPassed 
+          ? `Đã hoàn tất kiểm định chất lượng xuất xưởng, phương tiện đạt ${passedQcItems}/${totalQcItems} tiêu chuẩn an toàn kỹ thuật.`
+          : 'Kiểm tra chất lượng và nghiệm thu kỹ thuật theo tiêu chuẩn an toàn của trung tâm.',
       },
       {
         stepIndex: 4,
         title: 'Hoàn tất & Sẵn sàng bàn giao',
-        status: currentStep === 4 && ['RELEASED', 'CLOSED'].includes(status) ? 'COMPLETED' : (currentStep === 4 ? 'IN_PROGRESS' : 'PENDING'),
-        time: currentStep === 4 ? 'Sẵn sàng' : 'Dự kiến bàn giao',
-        description: currentStep === 4 
-          ? 'Phương tiện đã hoàn thiện toàn bộ dịch vụ và sẵn sàng bàn giao cho quý khách.'
-          : 'Bàn giao xe và nghiệm thu hoàn tất tại sảnh tiếp nhận.',
+        status: ['RELEASED', 'CLOSED'].includes(status) ? 'COMPLETED' : (currentStep === 4 ? 'IN_PROGRESS' : 'PENDING'),
+        time: ['RELEASED', 'CLOSED'].includes(status) ? 'Đã bàn giao' : (currentStep === 4 ? 'Sẵn sàng' : 'Dự kiến bàn giao'),
+        description: ['RELEASED', 'CLOSED'].includes(status) 
+          ? 'Phương tiện đã hoàn thiện toàn bộ dịch vụ và được bàn giao cho quý khách.'
+          : (currentStep === 4 
+            ? 'Phương tiện đã hoàn thiện toàn bộ dịch vụ và đạt chuẩn kiểm định an toàn, sẵn sàng bàn giao cho quý khách.'
+            : 'Bàn giao xe và nghiệm thu hoàn tất tại sảnh tiếp nhận.'),
       },
     ];
 
@@ -1244,10 +1340,19 @@ export class WorkOrderService {
         }
       }
     }
-
     return {
       id: wo.id,
       woNumber: wo.wo_number,
+      qcReport: {
+        hasQc: totalQcItems > 0,
+        isPassed: isQcPassed || ['BILLING_REQUESTED', 'FINANCIAL_CLEARED', 'RELEASED', 'CLOSED'].includes(status),
+        totalItems: totalQcItems,
+        passedItems: passedQcItems,
+        failedItems: failedQcItems,
+        inspectorName: latestQcInspector || wo.advisor?.full_name || 'Kỹ thuật viên KCS',
+        inspectedAt: latestQcTime,
+        items: qcItemsDetail,
+      },
       status: wo.status,
       createdAt: wo.created_at,
       updatedAt: wo.updated_at,
@@ -1267,13 +1372,34 @@ export class WorkOrderService {
         phone: wo.advisor.phone,
       },
       mechanic: assignedMechanic,
-      services: (wo.services || []).map((s: any) => ({
-        id: s.id,
-        name: s.name,
-        status: s.status,
-        pricingType: s.pricing_type,
-        categoryName: s.service?.category?.name || 'Dịch vụ kỹ thuật',
-      })),
+      services: (wo.services || []).map((s: any) => {
+        let derivedStatus = s.status;
+        const jobs = s.jobs || [];
+        if (jobs.length > 0) {
+          const hasRework = jobs.some(
+            (j: any) => j.status === 'REWORK' || (j.is_rework && j.status !== 'PASSED' && j.status !== 'COMPLETED')
+          );
+          const allPassed = jobs.every((j: any) => j.status === 'PASSED');
+          if (hasRework) {
+            derivedStatus = 'REWORK';
+          } else if (allPassed) {
+            derivedStatus = 'PASSED';
+          } else if (jobs.every((j: any) => j.status === 'COMPLETED' || j.status === 'PASSED')) {
+            derivedStatus = 'COMPLETED';
+          } else if (jobs.some((j: any) => j.status === 'IN_PROGRESS' || j.status === 'COMPLETED')) {
+            derivedStatus = 'IN_PROGRESS';
+          } else {
+            derivedStatus = 'PENDING';
+          }
+        }
+        return {
+          id: s.id,
+          name: s.name,
+          status: derivedStatus,
+          pricingType: s.pricing_type,
+          categoryName: s.service?.category?.name || 'Dịch vụ kỹ thuật',
+        };
+      }),
       findings: publicFindings,
       checkIn: wo.check_in ? {
         id: wo.check_in.id,
@@ -1400,6 +1526,41 @@ export class WorkOrderService {
       orderBy: { id: 'asc' },
     });
 
+    // Tự động đồng bộ trạng thái phụ tùng theo từng giai đoạn trạng thái của công việc
+    for (const part of parts) {
+      const jStatus = part.job?.status;
+      let targetStatus = part.status;
+      let targetIssued = Number(part.issued_quantity);
+
+      if (jStatus === 'COMPLETED' || jStatus === 'PASSED') {
+        targetStatus = 'USED';
+        targetIssued = Number(part.planned_quantity);
+      } else if (jStatus === 'IN_PROGRESS' || jStatus === 'REWORK') {
+        if (part.status !== 'USED') {
+          targetStatus = 'ISSUED';
+          targetIssued = Number(part.planned_quantity);
+        }
+      } else if (jStatus === 'PLANNED') {
+        if (part.status === 'ISSUED' || part.status === 'USED') {
+          const isApproved = ['APPROVED', 'IN_PROGRESS', 'BILLING_REQUESTED', 'COMPLETED', 'CLOSED'].includes(wo.status);
+          targetStatus = isApproved ? 'RESERVED' : 'PLANNED';
+          targetIssued = 0;
+        }
+      }
+
+      if (targetStatus !== part.status || targetIssued !== Number(part.issued_quantity)) {
+        await prisma.jobPart.update({
+          where: { id: part.id },
+          data: {
+            status: targetStatus as any,
+            issued_quantity: targetIssued,
+          },
+        });
+        part.status = targetStatus as any;
+        (part as any).issued_quantity = targetIssued;
+      }
+    }
+
     return parts;
   }
 
@@ -1446,14 +1607,29 @@ export class WorkOrderService {
 
     const unitPrice = data.unit_price !== undefined ? data.unit_price : Number(item.selling_price);
 
-    // 4. Tạo JobPart record
+    // 4. Xác định trạng thái ban đầu của phụ tùng theo trạng thái hiện tại của Job
+    let initialPartStatus: 'PLANNED' | 'RESERVED' | 'ISSUED' | 'USED' = 'PLANNED';
+    let initialIssuedQty = 0;
+    const currentJobStatus = (job as any).status;
+    if (currentJobStatus === 'COMPLETED' || currentJobStatus === 'PASSED') {
+      initialPartStatus = 'USED';
+      initialIssuedQty = Number(data.planned_quantity);
+    } else if (currentJobStatus === 'IN_PROGRESS' || currentJobStatus === 'REWORK') {
+      initialPartStatus = 'ISSUED';
+      initialIssuedQty = Number(data.planned_quantity);
+    } else if (['APPROVED', 'IN_PROGRESS', 'BILLING_REQUESTED', 'COMPLETED'].includes(wo.status)) {
+      initialPartStatus = 'RESERVED';
+    }
+
+    // Tạo JobPart record
     const jobPart = await prisma.jobPart.create({
       data: {
         job_id: jobId,
         item_id: data.item_id,
         planned_quantity: data.planned_quantity,
+        issued_quantity: initialIssuedQty,
         unit_price: unitPrice,
-        status: 'PLANNED',
+        status: initialPartStatus,
       },
       include: {
         job: {
@@ -1684,6 +1860,26 @@ export class WorkOrderService {
             status: 'IN_PROGRESS',
           },
         });
+
+        // Xuất kho phụ tùng cho tất cả các công việc bắt đầu thi công
+        const allJobParts = await tx.jobPart.findMany({
+          where: {
+            job: {
+              wo_service_id: { in: serviceIds },
+            },
+          },
+        });
+        for (const p of allJobParts) {
+          if (p.status !== 'USED') {
+            await tx.jobPart.update({
+              where: { id: p.id },
+              data: {
+                status: 'ISSUED',
+                issued_quantity: p.planned_quantity,
+              },
+            });
+          }
+        }
       }
 
       // 4. Gửi email thông báo cho khách hàng
@@ -1964,6 +2160,57 @@ export class WorkOrderService {
   }
 
   /**
+   * Đồng bộ trạng thái và số lượng xuất kho của phụ tùng theo từng giai đoạn trạng thái của công việc:
+   * - COMPLETED / PASSED: Phụ tùng đã lắp ráp trên xe (USED), issued_quantity = planned_quantity
+   * - IN_PROGRESS / REWORK: Phụ tùng đã xuất kho giao cho KTV (ISSUED), issued_quantity = planned_quantity
+   * - PLANNED: Nếu WO đã duyệt báo giá thì Giữ chỗ (RESERVED), ngược lại Đã lên kế hoạch (PLANNED), issued_quantity = 0
+   */
+  async syncJobPartsStatusFromJob(
+    tx: any,
+    jobId: number,
+    jobStatus: string,
+    woStatus?: string
+  ) {
+    const parts = await tx.jobPart.findMany({
+      where: { job_id: jobId },
+    });
+    if (parts.length === 0) return;
+
+    for (const part of parts) {
+      if (jobStatus === 'COMPLETED' || jobStatus === 'PASSED') {
+        await tx.jobPart.update({
+          where: { id: part.id },
+          data: {
+            status: 'USED',
+            issued_quantity: part.planned_quantity,
+          },
+        });
+      } else if (jobStatus === 'IN_PROGRESS' || jobStatus === 'REWORK') {
+        if (part.status !== 'USED') {
+          await tx.jobPart.update({
+            where: { id: part.id },
+            data: {
+              status: 'ISSUED',
+              issued_quantity: part.planned_quantity,
+            },
+          });
+        }
+      } else if (jobStatus === 'PLANNED') {
+        const isApprovedOrLater = ['APPROVED', 'IN_PROGRESS', 'BILLING_REQUESTED', 'COMPLETED', 'CLOSED'].includes(
+          woStatus || ''
+        );
+        await tx.jobPart.update({
+          where: { id: part.id },
+          data: {
+            status: isApprovedOrLater ? 'RESERVED' : 'PLANNED',
+            issued_quantity: 0,
+          },
+        });
+      }
+    }
+  }
+
+  /**
    * Cập nhật trạng thái công việc (Job)
    * Trạng thái: PLANNED | IN_PROGRESS | COMPLETED | REWORK | PASSED
    */
@@ -2015,6 +2262,9 @@ export class WorkOrderService {
 
       // Đồng bộ trạng thái của WoService cha dựa hoàn toàn vào các job con
       await this.syncServiceStatusFromJobs(tx, job.wo_service_id);
+
+      // Đồng bộ trạng thái phụ tùng thuộc Job này theo từng giai đoạn trạng thái công việc
+      await this.syncJobPartsStatusFromJob(tx, jobId, status, wo.status);
 
       // Nếu lần đầu WorkOrder chuyển sang IN_PROGRESS, gửi email thông báo khách hàng
       if (transitionedWo && wo.customer?.email) {

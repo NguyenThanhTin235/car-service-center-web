@@ -28,6 +28,7 @@ import {
 } from '../controllers/work-order.controller';
 import { CheckInController } from '../controllers/check-in.controller';
 import { InspectionController } from '../controllers/inspection.controller';
+import { getQcDetails, submitQcEvaluation, requestBilling } from '../controllers/qc.controller';
 import aiJobRoutes from './ai-job.routes';
 
 const router = Router();
@@ -83,6 +84,11 @@ router.get('/:id/parts', authorize('SA', 'DESK STAFF', 'ADMIN'), getWorkOrderPar
 router.post('/:id/jobs/:jobId/parts', authorize('SA', 'ADMIN'), addPartToJob);
 router.patch('/:id/jobs/:jobId/parts/:partId', authorize('SA', 'ADMIN'), updateJobPart);
 router.delete('/:id/jobs/:jobId/parts/:partId', authorize('SA', 'ADMIN'), removePartFromJob);
+
+// KIỂM ĐỊNH CHẤT LƯỢNG (QC / KCS) & VÒNG LẶP REWORK (UC-41)
+router.get('/:id/qc', authorize('SA', 'QC_STAFF', 'DESK STAFF', 'ADMIN', 'CUSTOMER'), getQcDetails);
+router.post('/:id/qc', authorize('SA', 'QC_STAFF', 'ADMIN'), submitQcEvaluation);
+router.post('/:id/request-billing', authorize('SA', 'ADMIN'), requestBilling);
 
 // BẮT ĐẦU THI CÔNG PHIẾU CÔNG VIỆC SAU KHI DUYỆT BÁO GIÁ
 router.post('/:id/start-work', authorize('SA', 'ADMIN'), startWorkOrder);

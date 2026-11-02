@@ -71,6 +71,22 @@ export interface WorkOrderTrackingDto {
   steps: WorkOrderStep[];
   currentStep: number;
   progressPercent: number;
+  qcReport?: {
+    hasQc: boolean;
+    isPassed: boolean;
+    totalItems: number;
+    passedItems: number;
+    failedItems: number;
+    inspectorName: string;
+    inspectedAt: string;
+    items: Array<{
+      id: number;
+      itemName: string;
+      serviceName: string;
+      result: string;
+      notes?: string;
+    }>;
+  } | null;
   activeQuotation?: {
     id: number;
     quotationNumber: string;

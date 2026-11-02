@@ -38,7 +38,7 @@ export default function WOOverviewCards({ data }: { data: OverviewData }) {
         </span>
         <div className="text-title-md font-bold text-on-surface leading-tight">{data.jobsTotal} công việc</div>
         <div className="text-body-sm text-on-surface-variant mt-2">
-          {data.jobsInProgress} đang làm · {data.jobsPending} chờ
+          {data.jobsInProgress === 0 && data.jobsPending === 0 && data.jobsTotal > 0 ? 'Đã hoàn tất thi công' : `${data.jobsInProgress} đang làm · ${data.jobsPending} chờ`}
         </div>
       </div>
 
@@ -49,7 +49,7 @@ export default function WOOverviewCards({ data }: { data: OverviewData }) {
         </span>
         <div className="text-title-md font-bold text-on-surface leading-tight">{data.partsIn} / {data.partsTotal}</div>
         <div className="text-body-sm text-on-surface-variant mt-2">
-          {data.partsIn === data.partsTotal ? 'đã đủ phụ tùng' : 'đang chờ phụ tùng'}
+          {data.partsTotal === 0 ? 'không dùng phụ tùng' : data.partsIn === data.partsTotal ? 'đã cấp phát / lắp ráp đủ' : 'đang chờ xuất kho'}
         </div>
       </div>
 
