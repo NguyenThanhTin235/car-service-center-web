@@ -912,15 +912,50 @@ export class WorkOrderService {
     const job = await prisma.job.findUnique({
       where: { id: jobId },
       include: {
-        wo_service: true,
+        wo_service: {
+          include: {
+            work_order: {
+              include: {
+                quotations: {
+                  where: { status: 'APPROVED' },
+                },
+              },
+            },
+          },
+        },
         labours: true,
         findings: true,
+        quotation_lines: {
+          include: {
+            quotation: true,
+          },
+        },
       },
     });
 
     if (!job) throw new Error('Không tìm thấy công việc.');
     if (job.wo_service.work_order_id !== workOrderId) {
       throw new Error('Công việc không thuộc phiếu công việc này.');
+    }
+
+    const wo = job.wo_service.work_order;
+    const approvedWoStatuses = [
+      'APPROVED',
+      'IN_PROGRESS',
+      'BILLING_REQUESTED',
+      'FINANCIAL_CLEARED',
+      'RELEASED',
+      'CLOSED',
+    ];
+    const hasApprovedQuotation = wo.quotations && wo.quotations.length > 0;
+    const isJobInApprovedQuotation = job.quotation_lines?.some(
+      (ql: any) => ql.quotation?.status === 'APPROVED'
+    );
+
+    if (approvedWoStatuses.includes(wo.status) || hasApprovedQuotation || isJobInApprovedQuotation) {
+      throw new Error(
+        'Không thể xóa công việc khi báo giá đã được khách hàng phê duyệt. Mọi điều chỉnh công việc sau khi duyệt cần thông qua quy trình Báo giá bổ sung.'
+      );
     }
 
     // Cho phép xóa công việc khi còn ở trạng thái lập kế hoạch (PLANNED)
@@ -1420,11 +1455,13 @@ export class WorkOrderService {
         const latest = wo.quotations && wo.quotations.length > 0 ? wo.quotations[0] : null;
         if (!latest) return null;
         const vMatch = latest.quotation_number.match(/-V(\d+)$/i);
+        const seqMatch = latest.quotation_number.match(/-(\d+)$/);
+        const version = vMatch ? parseInt(vMatch[1], 10) : (seqMatch ? parseInt(seqMatch[1], 10) : 1);
         return {
           id: latest.id,
           quotationNumber: latest.quotation_number,
           quotationType: latest.quotation_type,
-          version: vMatch ? parseInt(vMatch[1], 10) : 1,
+          version,
           status: latest.status,
           subtotal: Number(latest.subtotal),
           discountAmount: Number(latest.discount_amount),
@@ -1454,6 +1491,58 @@ export class WorkOrderService {
             amount: Number(l.amount),
             sortOrder: l.sort_order,
           })),
+        };
+      })(),
+      quotations: (wo.quotations || []).map((q: any) => {
+        const vMatch = q.quotation_number.match(/-V(\d+)$/i);
+        const seqMatch = q.quotation_number.match(/-(\d+)$/);
+        const version = vMatch ? parseInt(vMatch[1], 10) : (seqMatch ? parseInt(seqMatch[1], 10) : 1);
+        return {
+          id: q.id,
+          quotationNumber: q.quotation_number,
+          quotationType: q.quotation_type,
+          version,
+          status: q.status,
+          subtotal: Number(q.subtotal),
+          discountAmount: Number(q.discount_amount),
+          taxRate: Number(q.tax_rate),
+          taxAmount: Number(q.tax_amount),
+          grandTotal: Number(q.grand_total),
+          rejectReason: q.reject_reason,
+          rejectDetails: (() => {
+            if (!q.reject_reason) return null;
+            try {
+              const p = JSON.parse(q.reject_reason);
+              if (p && typeof p === 'object' && p.type) return p;
+              return { type: 'REVISE', reason: q.reject_reason };
+            } catch {
+              return { type: 'REVISE', reason: q.reject_reason };
+            }
+          })(),
+          sentAt: q.sent_at,
+          approvedAt: q.approved_at,
+          createdAt: q.created_at,
+          lines: (q.lines || []).map((l: any) => ({
+            id: l.id,
+            lineType: l.line_type,
+            description: l.description,
+            quantity: Number(l.quantity),
+            unitPrice: Number(l.snapshot_unit_price),
+            amount: Number(l.amount),
+            sortOrder: l.sort_order,
+          })),
+        };
+      }),
+      cumulativeSummary: (() => {
+        const approvedQuotes = (wo.quotations || []).filter((q: any) => q.status === 'APPROVED');
+        const approvedSubtotal = approvedQuotes.reduce((acc: number, q: any) => acc + Number(q.subtotal), 0);
+        const approvedDiscount = approvedQuotes.reduce((acc: number, q: any) => acc + Number(q.discount_amount), 0);
+        const approvedGrandTotal = approvedQuotes.reduce((acc: number, q: any) => acc + Number(q.grand_total), 0);
+        return {
+          totalApprovedGrandTotal: approvedGrandTotal,
+          totalApprovedSubtotal: approvedSubtotal,
+          totalApprovedDiscount: approvedDiscount,
+          approvedCount: approvedQuotes.length,
         };
       })(),
       release: wo.release ? {

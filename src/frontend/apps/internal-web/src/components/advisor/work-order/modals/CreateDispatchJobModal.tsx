@@ -300,11 +300,21 @@ export default function CreateDispatchJobModal({
     }
   };
 
-  // Cho phép xóa khi công việc đã tồn tại và ở trạng thái PLANNED
+  const isApprovedOrBeyond = [
+    'APPROVED',
+    'IN_PROGRESS',
+    'BILLING_REQUESTED',
+    'FINANCIAL_CLEARED',
+    'RELEASED',
+    'CLOSED',
+  ].includes(workOrder?.status || '');
+
+  // Cho phép xóa khi công việc đã tồn tại, ở trạng thái PLANNED và chưa được khách duyệt báo giá
   const canDeleteJob = Boolean(
     job?.id &&
       job.status === 'PLANNED' &&
-      !isReadOnlyMode
+      !isReadOnlyMode &&
+      !isApprovedOrBeyond
   );
 
   const resolvedServiceName = targetServiceName || workOrder.services?.find((s) => s.id === targetServiceId)?.name;

@@ -19,7 +19,10 @@ export interface SubmitQcDto {
   items: SubmitQcItemDto[];
 }
 
+export interface SubmitBatchQcDto {
+  evaluations: SubmitQcDto[];
+}
+
 export interface RequestBillingDto {
   notes?: string;
 }
-

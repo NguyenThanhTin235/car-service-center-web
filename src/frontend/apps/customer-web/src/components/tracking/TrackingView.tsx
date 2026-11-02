@@ -891,6 +891,8 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
               isOpen={isQuotationModalOpen}
               onClose={() => setIsQuotationModalOpen(false)}
               quotation={activeOrder.activeQuotation as any}
+              allQuotations={activeOrder.quotations as any}
+              cumulativeSummary={activeOrder.cumulativeSummary}
               advisorName={activeOrder.advisor.fullName}
               vehiclePlate={activeOrder.vehicle.licensePlate}
               vehicleModel={`${activeOrder.vehicle.make} ${activeOrder.vehicle.model}`}

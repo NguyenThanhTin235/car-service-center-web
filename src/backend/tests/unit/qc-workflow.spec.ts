@@ -191,6 +191,53 @@ describe('Unit Test - QC Workflow & Rework Loop (UC-41 / SPEC-QC-01)', () => {
       );
       expect(result.createdReworkJobs.length).toBe(1);
     });
+
+    it('QC-03b: submitBatchQcEvaluation() - Lưu hàng loạt tất cả services trong 1 transaction', async () => {
+      const mockWorkOrder = {
+        id: 101,
+        status: WorkOrderStatus.IN_PROGRESS,
+        services: [
+          { id: 1, name: 'Bảo dưỡng 10K', status: ServiceStatus.IN_PROGRESS },
+          { id: 2, name: 'Sửa chữa động cơ', status: ServiceStatus.IN_PROGRESS },
+        ],
+      };
+
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
+        const txMock = {
+          workOrder: { findUnique: vi.fn().mockResolvedValue(mockWorkOrder) },
+          qcRecord: {
+            create: vi.fn().mockResolvedValue({ id: 501, overall_result: QcResult.PASS }),
+          },
+          qcItem: {
+            create: vi.fn().mockResolvedValue({ id: 1001, result: QcResult.PASS }),
+          },
+          job: {
+            updateMany: vi.fn().mockResolvedValue({ count: 2 }),
+            create: vi.fn(),
+          },
+          woService: {
+            update: vi.fn().mockResolvedValue({ id: 1, status: ServiceStatus.COMPLETED }),
+          },
+          jobType: { findFirst: vi.fn().mockResolvedValue({ id: 1 }) },
+        };
+        return callback(txMock);
+      });
+
+      const batchResult = await qcService.submitBatchQcEvaluation(101, 1, [
+        {
+          woServiceId: 1,
+          items: [{ itemName: 'Dầu máy', result: QcResult.PASS }],
+        },
+        {
+          woServiceId: 2,
+          items: [{ itemName: 'Nước làm mát', result: QcResult.PASS }],
+        },
+      ]);
+
+      expect(batchResult.successCount).toBe(2);
+      expect(batchResult.overallPassCount).toBe(2);
+      expect(batchResult.totalFailCount).toBe(0);
+    });
   });
 
   describe('requestBilling()', () => {

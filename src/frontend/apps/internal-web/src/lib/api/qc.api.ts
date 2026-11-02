@@ -108,9 +108,27 @@ export async function getWOQcDetails(workOrderId: number) {
 }
 
 /**
- * Gửi đánh giá kiểm định chất lượng (QC) cho một dịch vụ
+ * Gửi đánh giá kiểm định chất lượng (QC) cho một dịch vụ hoặc toàn bộ các dịch vụ (batch)
  */
-export async function submitQcEvaluation(workOrderId: number, payload: SubmitQcPayload) {
+export async function submitQcEvaluation(
+  workOrderId: number,
+  payload: SubmitQcPayload | { evaluations: SubmitQcPayload[] }
+) {
+  const res = await api.post<{
+    success: boolean;
+    message: string;
+    data: any;
+  }>(`/api/work-orders/${workOrderId}/qc`, payload);
+  return res.data;
+}
+
+/**
+ * Gửi đánh giá kiểm định chất lượng (QC) hàng loạt cho tất cả dịch vụ
+ */
+export async function submitBatchQcEvaluation(
+  workOrderId: number,
+  payload: { evaluations: SubmitQcPayload[] }
+) {
   const res = await api.post<{
     success: boolean;
     message: string;

@@ -88,6 +88,16 @@ export default function VehicleInspectionPanel({
   // Modal tạo / xem chi tiết công việc liên kết với vết lỗi
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [selectedJobForModal, setSelectedJobForModal] = useState<any | null>(null);
+
+  // Không cho phép xóa job nếu báo giá đã được phê duyệt hoặc WO đã chuyển sang thi công
+  const isApprovedOrBeyond = [
+    'APPROVED',
+    'IN_PROGRESS',
+    'BILLING_REQUESTED',
+    'FINANCIAL_CLEARED',
+    'RELEASED',
+    'CLOSED',
+  ].includes(workOrder?.status || '');
   const [selectedFindingForJobModal, setSelectedFindingForJobModal] = useState<InspectionFinding | null>(null);
 
   // Modal xác nhận xóa công việc thay cho alert/confirm
@@ -191,7 +201,10 @@ export default function VehicleInspectionPanel({
   };
 
   const promptDeleteJob = (jobId: number, jobName: string) => {
-    if (isReadOnly) return;
+    if (isReadOnly || isApprovedOrBeyond) {
+      toast.error('Không thể xóa công việc khi báo giá đã được khách hàng phê duyệt.');
+      return;
+    }
     setDeleteJobConfirm({ jobId, jobName });
   };
 
@@ -676,7 +689,7 @@ export default function VehicleInspectionPanel({
                                   {job.status === 'PLANNED' ? 'Mới' : job.status === 'IN_PROGRESS' ? 'Đang làm' : job.status}
                                 </span>
                               )}
-                              {!isReadOnly && (job.status === 'PLANNED' || !job.status) && (
+                              {!isReadOnly && !isApprovedOrBeyond && (job.status === 'PLANNED' || !job.status) && (
                                 <button
                                   type="button"
                                   onClick={(e) => {

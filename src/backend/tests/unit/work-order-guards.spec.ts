@@ -86,6 +86,46 @@ export function validateVehicleRelease(params: {
   };
 }
 
+
+/**
+ * Kiểm tra quyền xóa Job trong phiếu công việc (SPEC-JOB-DELETE)
+ */
+export function canDeleteJobGuard(params: {
+  jobStatus: string;
+  workOrderStatus: string;
+  hasApprovedQuotation?: boolean;
+  isJobInApprovedQuotation?: boolean;
+}): { allowed: boolean; reason?: string } {
+  const approvedWoStatuses = [
+    'APPROVED',
+    'IN_PROGRESS',
+    'BILLING_REQUESTED',
+    'FINANCIAL_CLEARED',
+    'RELEASED',
+    'CLOSED',
+  ];
+
+  if (
+    approvedWoStatuses.includes(params.workOrderStatus) ||
+    params.hasApprovedQuotation ||
+    params.isJobInApprovedQuotation
+  ) {
+    return {
+      allowed: false,
+      reason: 'Không thể xóa công việc khi báo giá đã được khách hàng phê duyệt. Mọi điều chỉnh công việc sau khi duyệt cần thông qua quy trình Báo giá bổ sung.',
+    };
+  }
+
+  if (params.jobStatus !== 'PLANNED') {
+    return {
+      allowed: false,
+      reason: 'Không thể xóa công việc đang ở trạng thái ' + params.jobStatus + '.',
+    };
+  }
+
+  return { allowed: true };
+}
+
 describe('Work Order State Machine & Release Guard (SPEC-WO-TRANSITION / UC-29, UC-42)', () => {
   describe('State Machine Transitions (canTransitionWorkOrderStatus)', () => {
     it('WO-ST-01: Cho phép luồng chuyển trạng thái chuẩn (Happy Path)', () => {
@@ -173,5 +213,55 @@ describe('Work Order State Machine & Release Guard (SPEC-WO-TRANSITION / UC-29, 
       expect(result.errors[0]).toContain('Phiếu công việc đã được bàn giao');
     });
   });
+
+  describe('Job Deletion Guard (canDeleteJobGuard - UC-34 / UC-24)', () => {
+    it('JOB-DEL-01: Cho phép xóa Job ở trạng thái PLANNED khi Work Order đang ở IN_PLANNING', () => {
+      const result = canDeleteJobGuard({
+        jobStatus: 'PLANNED',
+        workOrderStatus: 'IN_PLANNING',
+        hasApprovedQuotation: false,
+      });
+      expect(result.allowed).toBe(true);
+    });
+
+    it('JOB-DEL-02: Chặn xóa Job khi khách hàng đã duyệt báo giá (WO status là APPROVED hoặc IN_PROGRESS)', () => {
+      const resApproved = canDeleteJobGuard({
+        jobStatus: 'PLANNED',
+        workOrderStatus: 'APPROVED',
+        hasApprovedQuotation: true,
+      });
+      expect(resApproved.allowed).toBe(false);
+      expect(resApproved.reason).toContain('đã được khách hàng phê duyệt');
+
+      const resInProgress = canDeleteJobGuard({
+        jobStatus: 'PLANNED',
+        workOrderStatus: 'IN_PROGRESS',
+        hasApprovedQuotation: true,
+      });
+      expect(resInProgress.allowed).toBe(false);
+      expect(resInProgress.reason).toContain('đã được khách hàng phê duyệt');
+    });
+
+    it('JOB-DEL-03: Chặn xóa Job nếu Job đã được đưa vào một báo giá đã APPROVED', () => {
+      const result = canDeleteJobGuard({
+        jobStatus: 'PLANNED',
+        workOrderStatus: 'IN_PLANNING',
+        isJobInApprovedQuotation: true,
+      });
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain('đã được khách hàng phê duyệt');
+    });
+
+    it('JOB-DEL-04: Chặn xóa Job khi Job đã chuyển sang IN_PROGRESS hoặc COMPLETED', () => {
+      const result = canDeleteJobGuard({
+        jobStatus: 'IN_PROGRESS',
+        workOrderStatus: 'IN_PLANNING',
+        hasApprovedQuotation: false,
+      });
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain('Không thể xóa công việc đang ở trạng thái IN_PROGRESS');
+    });
+  });
+
 });
 

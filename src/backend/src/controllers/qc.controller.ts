@@ -40,7 +40,7 @@ export const getQcDetails = async (req: Request, res: Response): Promise<void> =
 
 /**
  * POST /api/work-orders/:id/qc
- * Lưu kết quả đánh giá kiểm định chất lượng (QC / KCS)
+ * Lưu kết quả đánh giá kiểm định chất lượng (QC / KCS) - Hỗ trợ cả đơn lẻ và hàng loạt (toàn bộ services)
  */
 export const submitQcEvaluation = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -53,6 +53,23 @@ export const submitQcEvaluation = async (req: Request, res: Response): Promise<v
         code: 400,
         message: 'Mã phiếu công việc không hợp lệ',
         data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    // Kiểm tra xem là batch request (nhiều dịch vụ) hay single request (1 dịch vụ)
+    const isBatch = Array.isArray(req.body) || (req.body && Array.isArray(req.body.evaluations));
+    if (isBatch) {
+      const evaluations = Array.isArray(req.body) ? req.body : req.body.evaluations;
+      const data = await qcService.submitBatchQcEvaluation(workOrderId, inspectorId, evaluations);
+      res.status(201).json({
+        success: true,
+        code: 201,
+        message: `Đã lưu kết quả kiểm định cho toàn bộ ${data.successCount} dịch vụ (${data.overallPassCount} đạt chuẩn${
+          data.totalFailCount > 0 ? `, ${data.totalFailCount} lỗi phát sinh sửa lại` : ''
+        }).`,
+        data,
         timestamp: Math.floor(Date.now() / 1000),
       });
       return;

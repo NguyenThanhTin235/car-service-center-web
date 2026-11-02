@@ -192,6 +192,193 @@ export class QcService {
   }
 
   /**
+   * Helper nội bộ: Đánh giá kiểm định chất lượng cho 1 dịch vụ trong transaction
+   */
+  private async evaluateSingleService(
+    tx: any,
+    workOrder: any,
+    inspectorId: number,
+    dto: SubmitQcDto,
+    defaultJobType: any
+  ) {
+    const woService = workOrder.services.find((s: any) => s.id === dto.woServiceId);
+    if (!woService) {
+      throw new Error(`Dịch vụ ID ${dto.woServiceId} không thuộc phiếu công việc này`);
+    }
+
+    if (!dto.items || dto.items.length === 0) {
+      throw new Error('Vui lòng đánh giá ít nhất một tiêu chí kiểm định');
+    }
+
+    // 2. Xác định kết quả tổng thể: FAIL nếu có ít nhất 1 tiêu chí FAIL
+    const hasFailure = dto.items.some((item) => item.result === QcResult.FAIL);
+    const overallResult = hasFailure ? QcResult.FAIL : QcResult.PASS;
+
+    // 3. Tạo bản ghi QcRecord
+    const qcRecord = await tx.qcRecord.create({
+      data: {
+        wo_service_id: dto.woServiceId,
+        template_id: dto.templateId && dto.templateId > 0 ? dto.templateId : null,
+        overall_result: overallResult,
+        notes: dto.notes || null,
+        inspector_id: inspectorId,
+      },
+    });
+
+    // 4. Lưu từng QcItem và tự động sinh Job Rework nếu Không đạt
+    const createdItems = [];
+    const createdReworkJobs = [];
+
+    for (const item of dto.items) {
+      const itemNote = cleanQcNote(item.notes) || null;
+
+      const qcItem = await tx.qcItem.create({
+        data: {
+          qc_record_id: qcRecord.id,
+          template_item_id: item.templateItemId && item.templateItemId > 0 ? item.templateItemId : null,
+          item_name: item.itemName,
+          result: item.result,
+          notes: itemNote,
+        },
+      });
+      createdItems.push(qcItem);
+
+      // NẾU HẠNG MỤC KHÔNG ĐẠT (FAIL) -> TỰ ĐỘNG SINH JOB REWORK HOẶC CẬP NHẬT JOB ĐANG MỞ (CHỐNG TRÙNG LẶP)
+      if (item.result === QcResult.FAIL) {
+        const reworkJobName = item.reworkJobName?.trim() || `[Sửa lại - KCS] ${item.itemName}`;
+        const reworkDescription =
+          cleanQcNote(item.reworkDescription) ||
+          cleanQcNote(item.notes) ||
+          `Khắc phục hạng mục chưa đạt kiểm định kỹ thuật: ${item.itemName}`;
+
+        // Kiểm tra xem đã có Job Rework nào đang mở cho hạng mục này chưa (Chống sinh trùng lặp khi lưu nhiều lần)
+        const existingOpenReworkJob = await tx.job.findFirst({
+          where: {
+            wo_service_id: dto.woServiceId,
+            is_rework: true,
+            status: { in: [JobStatus.REWORK, JobStatus.PLANNED, JobStatus.IN_PROGRESS] },
+            OR: [
+              { name: reworkJobName },
+              { name: `[Sửa lại - KCS] ${item.itemName}` },
+              { name: `[Sửa lại - QC] ${item.itemName}` },
+              { name: { contains: item.itemName } },
+            ],
+          },
+          include: { labours: true },
+        });
+
+        if (existingOpenReworkJob) {
+          // ĐÃ CÓ JOB REWORK ĐANG MỞ -> CẬP NHẬT MÔ TẢ & LIÊN KẾT MỚI NHẤT, KHÔNG TẠO MỚI
+          const updatedJob = await tx.job.update({
+            where: { id: existingOpenReworkJob.id },
+            data: {
+              description: reworkDescription,
+              rework_source_qc_item_id: qcItem.id,
+            },
+          });
+
+          // Cập nhật thợ nếu có phân công
+          if (item.assignedEmployeeId) {
+            if (existingOpenReworkJob.labours && existingOpenReworkJob.labours.length > 0) {
+              await tx.jobLabour.update({
+                where: { id: existingOpenReworkJob.labours[0].id },
+                data: { employee_id: item.assignedEmployeeId },
+              });
+            } else {
+              await tx.jobLabour.create({
+                data: {
+                  job_id: existingOpenReworkJob.id,
+                  job_type_id: defaultJobType?.id || 1,
+                  employee_id: item.assignedEmployeeId,
+                  description: `Thực hiện sửa lại: ${item.itemName}`,
+                  price: 0,
+                },
+              });
+            }
+          }
+
+          createdReworkJobs.push(updatedJob);
+        } else {
+          // CHƯA CÓ JOB REWORK ĐANG MỞ -> TẠO JOB REWORK MỚI
+          const reworkJob = await tx.job.create({
+            data: {
+              wo_service_id: dto.woServiceId,
+              name: reworkJobName,
+              description: reworkDescription,
+              job_type_id: defaultJobType?.id || 1,
+              status: JobStatus.REWORK,
+              is_rework: true,
+              parent_job_id: item.parentJobId || null,
+              rework_source_qc_item_id: qcItem.id,
+              created_by_id: inspectorId,
+            },
+          });
+
+          // Gán thợ sửa lại nếu có
+          if (item.assignedEmployeeId) {
+            await tx.jobLabour.create({
+              data: {
+                job_id: reworkJob.id,
+                job_type_id: defaultJobType?.id || 1,
+                employee_id: item.assignedEmployeeId,
+                description: `Thực hiện sửa lại: ${item.itemName}`,
+                price: 0, // Không tính thêm tiền khách hàng
+              },
+            });
+          }
+
+          createdReworkJobs.push(reworkJob);
+        }
+      } else if (item.result === QcResult.PASS) {
+        // NẾU HẠNG MỤC NÀY ĐÃ ĐẠT (PASS) -> TỰ ĐỘNG ĐÓNG/HOÀN THÀNH CÁC JOB REWORK CŨ CỦA NÓ NẾU CÓ
+        await tx.job.updateMany({
+          where: {
+            wo_service_id: dto.woServiceId,
+            is_rework: true,
+            status: { in: [JobStatus.REWORK, JobStatus.PLANNED, JobStatus.IN_PROGRESS] },
+            OR: [
+              { name: `[Sửa lại - KCS] ${item.itemName}` },
+              { name: `[Sửa lại - QC] ${item.itemName}` },
+              { name: { contains: item.itemName } },
+            ],
+          },
+          data: { status: JobStatus.PASSED },
+        });
+      }
+    }
+
+    // 5. NẾU TẤT CẢ ĐỀU ĐẠT (PASS) -> CẬP NHẬT CÔNG VIỆC SANG PASSED VÀ SERVICE COMPLETED
+    if (overallResult === QcResult.PASS) {
+      // Cập nhật các Job thuộc service này sang PASSED
+      await tx.job.updateMany({
+        where: { wo_service_id: dto.woServiceId },
+        data: { status: JobStatus.PASSED },
+      });
+
+      // Đánh dấu Service hoàn thành
+      await tx.woService.update({
+        where: { id: dto.woServiceId },
+        data: { status: ServiceStatus.COMPLETED },
+      });
+    } else {
+      // Nếu có Rework, service vẫn ở trạng thái IN_PROGRESS
+      await tx.woService.update({
+        where: { id: dto.woServiceId },
+        data: { status: ServiceStatus.IN_PROGRESS },
+      });
+    }
+
+    return {
+      woServiceId: dto.woServiceId,
+      qcRecordId: qcRecord.id,
+      overallResult,
+      totalEvaluated: dto.items.length,
+      failCount: createdReworkJobs.length,
+      createdReworkJobs,
+    };
+  }
+
+  /**
    * Lưu kết quả đánh giá kiểm định chất lượng (QC / KCS) và tự động xử lý Rework nếu có lỗi
    */
   async submitQcEvaluation(workOrderId: number, inspectorId: number, dto: SubmitQcDto) {
@@ -215,182 +402,61 @@ export class QcService {
         );
       }
 
-      const woService = workOrder.services.find((s) => s.id === dto.woServiceId);
-      if (!woService) {
-        throw new Error('Dịch vụ không thuộc phiếu công việc này');
-      }
+      const defaultJobType = await tx.jobType.findFirst({ select: { id: true } });
+      return await this.evaluateSingleService(tx, workOrder, inspectorId, dto, defaultJobType);
+    });
+  }
 
-      if (!dto.items || dto.items.length === 0) {
-        throw new Error('Vui lòng đánh giá ít nhất một tiêu chí kiểm định');
-      }
+  /**
+   * Lưu kết quả đánh giá kiểm định chất lượng (QC / KCS) cho toàn bộ các dịch vụ trong phiếu
+   */
+  async submitBatchQcEvaluation(workOrderId: number, inspectorId: number, dtos: SubmitQcDto[]) {
+    if (!dtos || dtos.length === 0) {
+      throw new Error('Danh sách đánh giá kiểm định không được rỗng');
+    }
 
-      // 2. Xác định kết quả tổng thể: FAIL nếu có ít nhất 1 tiêu chí FAIL
-      const hasFailure = dto.items.some((item) => item.result === QcResult.FAIL);
-      const overallResult = hasFailure ? QcResult.FAIL : QcResult.PASS;
-
-      // 3. Tạo bản ghi QcRecord
-      const qcRecord = await tx.qcRecord.create({
-        data: {
-          wo_service_id: dto.woServiceId,
-          template_id: dto.templateId && dto.templateId > 0 ? dto.templateId : null,
-          overall_result: overallResult,
-          notes: dto.notes || null,
-          inspector_id: inspectorId,
-        },
+    return await prisma.$transaction(async (tx) => {
+      const workOrder = await tx.workOrder.findUnique({
+        where: { id: workOrderId },
+        include: { services: true },
       });
 
-      // 4. Lưu từng QcItem và tự động sinh Job Rework nếu Không đạt
-      const createdItems = [];
-      const createdReworkJobs = [];
-
-      // Tìm default job_type_id để gắn cho rework job
-      const defaultJobType = await tx.jobType.findFirst({ select: { id: true } });
-
-      for (const item of dto.items) {
-        const itemNote = cleanQcNote(item.notes) || null;
-
-        const qcItem = await tx.qcItem.create({
-          data: {
-            qc_record_id: qcRecord.id,
-            template_item_id: item.templateItemId && item.templateItemId > 0 ? item.templateItemId : null,
-            item_name: item.itemName,
-            result: item.result,
-            notes: itemNote,
-          },
-        });
-        createdItems.push(qcItem);
-
-        // NẾU HẠNG MỤC KHÔNG ĐẠT (FAIL) -> TỰ ĐỘNG SINH JOB REWORK HOẶC CẬP NHẬT JOB ĐANG MỞ (CHỐNG TRÙNG LẶP)
-        if (item.result === QcResult.FAIL) {
-          const reworkJobName = item.reworkJobName?.trim() || `[Sửa lại - KCS] ${item.itemName}`;
-          const reworkDescription =
-            cleanQcNote(item.reworkDescription) ||
-            cleanQcNote(item.notes) ||
-            `Khắc phục hạng mục chưa đạt kiểm định kỹ thuật: ${item.itemName}`;
-
-          // Kiểm tra xem đã có Job Rework nào đang mở cho hạng mục này chưa (Chống sinh trùng lặp khi lưu nhiều lần)
-          const existingOpenReworkJob = await tx.job.findFirst({
-            where: {
-              wo_service_id: dto.woServiceId,
-              is_rework: true,
-              status: { in: [JobStatus.REWORK, JobStatus.PLANNED, JobStatus.IN_PROGRESS] },
-              OR: [
-                { name: reworkJobName },
-                { name: `[Sửa lại - KCS] ${item.itemName}` },
-                { name: `[Sửa lại - QC] ${item.itemName}` },
-                { name: { contains: item.itemName } },
-              ],
-            },
-            include: { labours: true },
-          });
-
-          if (existingOpenReworkJob) {
-            // ĐÃ CÓ JOB REWORK ĐANG MỞ -> CẬP NHẬT MÔ TẢ & LIÊN KẾT MỚI NHẤT, KHÔNG TẠO MỚI
-            const updatedJob = await tx.job.update({
-              where: { id: existingOpenReworkJob.id },
-              data: {
-                description: reworkDescription,
-                rework_source_qc_item_id: qcItem.id,
-              },
-            });
-
-            // Cập nhật thợ nếu có phân công
-            if (item.assignedEmployeeId) {
-              if (existingOpenReworkJob.labours && existingOpenReworkJob.labours.length > 0) {
-                await tx.jobLabour.update({
-                  where: { id: existingOpenReworkJob.labours[0].id },
-                  data: { employee_id: item.assignedEmployeeId },
-                });
-              } else {
-                await tx.jobLabour.create({
-                  data: {
-                    job_id: existingOpenReworkJob.id,
-                    job_type_id: defaultJobType?.id || 1,
-                    employee_id: item.assignedEmployeeId,
-                    description: `Thực hiện sửa lại: ${item.itemName}`,
-                    price: 0,
-                  },
-                });
-              }
-            }
-
-            createdReworkJobs.push(updatedJob);
-          } else {
-            // CHƯA CÓ JOB REWORK ĐANG MỞ -> TẠO JOB REWORK MỚI
-            const reworkJob = await tx.job.create({
-              data: {
-                wo_service_id: dto.woServiceId,
-                name: reworkJobName,
-                description: reworkDescription,
-                job_type_id: defaultJobType?.id || 1,
-                status: JobStatus.REWORK,
-                is_rework: true,
-                parent_job_id: item.parentJobId || null,
-                rework_source_qc_item_id: qcItem.id,
-                created_by_id: inspectorId,
-              },
-            });
-
-            // Gán thợ sửa lại nếu có
-            if (item.assignedEmployeeId) {
-              await tx.jobLabour.create({
-                data: {
-                  job_id: reworkJob.id,
-                  job_type_id: defaultJobType?.id || 1,
-                  employee_id: item.assignedEmployeeId,
-                  description: `Thực hiện sửa lại: ${item.itemName}`,
-                  price: 0, // Không tính thêm tiền khách hàng
-                },
-              });
-            }
-
-            createdReworkJobs.push(reworkJob);
-          }
-        } else if (item.result === QcResult.PASS) {
-          // NẾU HẠNG MỤC NÀY ĐÃ ĐẠT (PASS) -> TỰ ĐỘNG ĐÓNG/HOÀN THÀNH CÁC JOB REWORK CŨ CỦA NÓ NẾU CÓ
-          await tx.job.updateMany({
-            where: {
-              wo_service_id: dto.woServiceId,
-              is_rework: true,
-              status: { in: [JobStatus.REWORK, JobStatus.PLANNED, JobStatus.IN_PROGRESS] },
-              OR: [
-                { name: `[Sửa lại - KCS] ${item.itemName}` },
-                { name: `[Sửa lại - QC] ${item.itemName}` },
-                { name: { contains: item.itemName } },
-              ],
-            },
-            data: { status: JobStatus.PASSED },
-          });
-        }
+      if (!workOrder) {
+        throw new Error('Không tìm thấy phiếu công việc');
       }
 
-      // 5. NẾU TẤT CẢ ĐỀU ĐẠT (PASS) -> CẬP NHẬT CÔNG VIỆC SANG PASSED VÀ SERVICE COMPLETED
-      if (overallResult === QcResult.PASS) {
-        // Cập nhật các Job thuộc service này sang PASSED
-        await tx.job.updateMany({
-          where: { wo_service_id: dto.woServiceId },
-          data: { status: JobStatus.PASSED },
-        });
+      if (
+        workOrder.status !== WorkOrderStatus.IN_PROGRESS &&
+        workOrder.status !== WorkOrderStatus.APPROVED
+      ) {
+        throw new Error(
+          `Phiếu công việc đang ở trạng thái ${workOrder.status}, chỉ có thể kiểm định QC khi đang thi công (IN_PROGRESS).`
+        );
+      }
 
-        // Đánh dấu Service hoàn thành
-        await tx.woService.update({
-          where: { id: dto.woServiceId },
-          data: { status: ServiceStatus.COMPLETED },
-        });
-      } else {
-        // Nếu có Rework, service vẫn ở trạng thái IN_PROGRESS
-        await tx.woService.update({
-          where: { id: dto.woServiceId },
-          data: { status: ServiceStatus.IN_PROGRESS },
-        });
+      const defaultJobType = await tx.jobType.findFirst({ select: { id: true } });
+
+      let overallPassCount = 0;
+      let totalFailCount = 0;
+      const allCreatedReworkJobs: any[] = [];
+      const results: any[] = [];
+
+      for (const dto of dtos) {
+        const res = await this.evaluateSingleService(tx, workOrder, inspectorId, dto, defaultJobType);
+        if (res.overallResult === QcResult.PASS) {
+          overallPassCount++;
+        }
+        totalFailCount += res.failCount;
+        allCreatedReworkJobs.push(...res.createdReworkJobs);
+        results.push(res);
       }
 
       return {
-        qcRecordId: qcRecord.id,
-        overallResult,
-        totalEvaluated: dto.items.length,
-        failCount: createdReworkJobs.length,
-        createdReworkJobs,
+        successCount: results.length,
+        overallPassCount,
+        totalFailCount,
+        allCreatedReworkJobs,
+        results,
       };
     });
   }

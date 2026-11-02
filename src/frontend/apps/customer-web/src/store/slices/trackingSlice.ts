@@ -1,3 +1,34 @@
+export interface CustomerQuotationDto {
+  id: number;
+  quotationNumber: string;
+  quotationType: string;
+  version: number;
+  status: 'DRAFT' | 'SENT' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  subtotal: number;
+  discountAmount: number;
+  taxRate: number;
+  taxAmount: number;
+  grandTotal: number;
+  rejectReason?: string | null;
+  rejectDetails?: {
+    type: 'REVISE' | 'CANCEL';
+    reason: string;
+    createdAt?: string;
+  } | null;
+  sentAt?: string | null;
+  approvedAt?: string | null;
+  createdAt: string;
+  lines: Array<{
+    id: number;
+    lineType: 'PACKAGE' | 'LABOUR' | 'PART';
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    amount: number;
+    sortOrder: number;
+  }>;
+}
+
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/axios';
 
@@ -87,36 +118,14 @@ export interface WorkOrderTrackingDto {
       notes?: string;
     }>;
   } | null;
-  activeQuotation?: {
-    id: number;
-    quotationNumber: string;
-    quotationType: string;
-    version: number;
-    status: 'DRAFT' | 'SENT' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
-    subtotal: number;
-    discountAmount: number;
-    taxRate: number;
-    taxAmount: number;
-    grandTotal: number;
-    rejectReason?: string | null;
-    rejectDetails?: {
-      type: 'REVISE' | 'CANCEL';
-      reason: string;
-      createdAt?: string;
-    } | null;
-    sentAt?: string | null;
-    approvedAt?: string | null;
-    createdAt: string;
-    lines: Array<{
-      id: number;
-      lineType: 'LABOUR' | 'PART';
-      description: string;
-      quantity: number;
-      unitPrice: number;
-      amount: number;
-      sortOrder: number;
-    }>;
-  } | null;
+  activeQuotation?: CustomerQuotationDto | null;
+  quotations?: CustomerQuotationDto[];
+  cumulativeSummary?: {
+    totalApprovedGrandTotal: number;
+    totalApprovedSubtotal: number;
+    totalApprovedDiscount: number;
+    approvedCount: number;
+  };
   release?: {
     id: number;
     releaseNotes?: string | null;

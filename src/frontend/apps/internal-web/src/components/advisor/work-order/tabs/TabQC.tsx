@@ -7,6 +7,7 @@ import {
   QcServiceItem,
   getWOQcDetails,
   submitQcEvaluation,
+  submitBatchQcEvaluation,
   requestBilling,
 } from '@/lib/api/qc.api';
 import toast from 'react-hot-toast';
@@ -157,6 +158,29 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
     toast.success(`Đã chọn ĐẠT cho toàn bộ ${service.template.items.length} hạng mục của "${service.name}"`);
   };
 
+  // Đánh dấu tất cả hạng mục của TẤT CẢ các dịch vụ trong phiếu là ĐẠT
+  const handleMarkAllServicesPass = () => {
+    if (!qcData?.services || qcData.services.length === 0) return;
+    setEvaluationForms((prev) => {
+      const updatedForms = { ...prev };
+      qcData.services.forEach((service) => {
+        const updatedServiceForm: Record<number, any> = {};
+        service.template.items.forEach((item) => {
+          const currentItem = prev[service.id]?.[item.id] || {};
+          updatedServiceForm[item.id] = {
+            itemName: item.name,
+            result: 'PASS',
+            notes: currentItem.notes || '',
+            reworkDescription: '',
+          };
+        });
+        updatedForms[service.id] = updatedServiceForm;
+      });
+      return updatedForms;
+    });
+    toast.success(`Đã đánh dấu ĐẠT cho toàn bộ ${qcData.services.length} dịch vụ! Nhấn "Lưu toàn bộ" để hoàn tất.`);
+  };
+
   // Gửi đánh giá QC cho service
   const handleSubmitServiceQc = async (service: QcServiceItem) => {
     const serviceForm = evaluationForms[service.id];
@@ -211,6 +235,96 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
           toast(
             `Đã ghi nhận ${res.data?.failCount} hạng mục lỗi. Hệ thống đã tự động tạo Job sửa lại (Rework).`,
             { icon: '⚠️', duration: 4000 }
+          );
+        }
+        await fetchQcData();
+        refetchWO();
+      } else {
+        toast.error(res.message || 'Lỗi khi lưu kết quả kiểm định');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Lỗi khi lưu kết quả kiểm định');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Gửi đánh giá QC cho TOÀN BỘ các dịch vụ trong phiếu cùng một lúc
+  const handleSubmitAllQc = async () => {
+    if (!qcData?.services || qcData.services.length === 0) return;
+
+    // 1. Kiểm tra validation toàn bộ các dịch vụ
+    for (const service of qcData.services) {
+      const serviceForm = evaluationForms[service.id];
+      if (!serviceForm) {
+        setSelectedServiceId(service.id);
+        toast.error(`Dịch vụ "${service.name}" chưa có dữ liệu đánh giá`);
+        return;
+      }
+
+      // Kiểm tra có mục nào chưa chọn kết quả
+      const unsetItem = service.template.items.find((tItem) => {
+        const form = serviceForm[tItem.id];
+        return !form || form.result === null || form.result === undefined;
+      });
+
+      if (unsetItem) {
+        setSelectedServiceId(service.id);
+        toast.error(`Dịch vụ "${service.name}": Vui lòng đánh giá mục "${unsetItem.name}" trước khi lưu toàn bộ`);
+        return;
+      }
+
+      // Kiểm tra có mục Không đạt nào thiếu lý do sửa lại
+      const failWithoutReason = service.template.items.find((tItem) => {
+        const form = serviceForm[tItem.id];
+        return form?.result === 'FAIL' && !form.reworkDescription?.trim();
+      });
+
+      if (failWithoutReason) {
+        setSelectedServiceId(service.id);
+        toast.error(`Dịch vụ "${service.name}": Vui lòng nhập lý do sửa lại cho mục "${failWithoutReason.name}"`);
+        return;
+      }
+    }
+
+    // 2. Gom payload cho toàn bộ các dịch vụ
+    const evaluations = qcData.services.map((service) => {
+      const serviceForm = evaluationForms[service.id] || {};
+      const itemsPayload = service.template.items.map((tItem) => {
+        const formData = serviceForm[tItem.id] || {
+          itemName: tItem.name,
+          result: 'PASS',
+          notes: '',
+          reworkDescription: '',
+        };
+        return {
+          templateItemId: tItem.id > 0 ? tItem.id : undefined,
+          itemName: tItem.name,
+          result: formData.result as 'PASS' | 'FAIL',
+          notes: formData.notes?.trim() || undefined,
+          reworkDescription: formData.result === 'FAIL' ? formData.reworkDescription?.trim() : undefined,
+          reworkJobName: formData.result === 'FAIL' ? `[Sửa lại - KCS] ${tItem.name}` : undefined,
+        };
+      });
+
+      return {
+        woServiceId: service.id,
+        templateId: service.template.id,
+        items: itemsPayload,
+      };
+    });
+
+    try {
+      setActionLoading(true);
+      const res = await submitBatchQcEvaluation(workOrder.id, { evaluations });
+
+      if (res.success) {
+        if (!res.data?.totalFailCount || res.data.totalFailCount === 0) {
+          toast.success(`Nghiệm thu ĐẠT chuẩn cho toàn bộ ${evaluations.length} dịch vụ!`);
+        } else {
+          toast(
+            `Đã lưu kết quả KCS (${res.data.overallPassCount} đạt, ${res.data.totalFailCount} lỗi). Hệ thống đã tự động tạo Job sửa lại (Rework).`,
+            { icon: '⚠️', duration: 4500 }
           );
         }
         await fetchQcData();
@@ -510,17 +624,61 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                 </div>
               </div>
 
-              {/* Quick Action: Mark All Pass */}
+              {/* Quick Actions & Save at Top */}
               {!isReadOnly && (
-                <button
-                  type="button"
-                  onClick={() => handleMarkAllPass(activeService)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer"
-                  title="Tất cả các tiêu chí đều đạt chuẩn"
-                >
-                  <span className="material-symbols-outlined text-[16px]">done_all</span>
-                  <span>Đánh dấu tất cả ĐẠT</span>
-                </button>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  {/* Đánh dấu ĐẠT cho dịch vụ hiện tại */}
+                  <button
+                    type="button"
+                    onClick={() => handleMarkAllPass(activeService)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer"
+                    title="Tất cả các tiêu chí của dịch vụ này đều đạt"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">done_all</span>
+                    <span>Đạt mục này</span>
+                  </button>
+
+                  {/* Đánh dấu ĐẠT cho toàn bộ dịch vụ */}
+                  {qcData.services.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={handleMarkAllServicesPass}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer"
+                      title={`Đánh dấu ĐẠT cho toàn bộ ${qcData.services.length} dịch vụ trong phiếu`}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">checklist_rtl</span>
+                      <span>Đạt tất cả ({qcData.services.length})</span>
+                    </button>
+                  )}
+
+                  {/* Lưu dịch vụ này (tùy chọn) */}
+                  <button
+                    type="button"
+                    onClick={() => handleSubmitServiceQc(activeService)}
+                    disabled={actionLoading}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer disabled:opacity-50"
+                    title="Chỉ lưu kết quả kiểm định của dịch vụ hiện tại"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">save</span>
+                    <span>Lưu mục này</span>
+                  </button>
+
+                  {/* NÚT LƯU TOÀN BỘ KẾT QUẢ KCS - NỔI BẬT NHẤT Ở PHÍA TRÊN */}
+                  <button
+                    type="button"
+                    onClick={handleSubmitAllQc}
+                    disabled={actionLoading}
+                    className="inline-flex items-center gap-2 px-4.5 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+                    title="Lưu kết quả kiểm định cho toàn bộ các dịch vụ và công việc"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {actionLoading ? 'progress_activity' : 'fact_check'}
+                    </span>
+                    <span>
+                      {actionLoading ? 'Đang lưu...' : `Lưu toàn bộ (${qcData.services.length} dịch vụ)`}
+                    </span>
+                  </button>
+                </div>
               )}
             </div>
 
@@ -659,7 +817,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
 
             {/* Bottom Actions for Active Service */}
             {!isReadOnly && (
-              <div className="flex items-center justify-between pt-4 border-t border-outline-variant">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-outline-variant">
                 <div className="text-xs text-on-surface-variant">
                   {activeService.latestQc && (
                     <span>
@@ -669,15 +827,31 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                   )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleSubmitServiceQc(activeService)}
-                  disabled={actionLoading}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[18px]">save</span>
-                  {actionLoading ? 'Đang lưu đánh giá...' : 'Lưu kết quả kiểm định KCS'}
-                </button>
+                <div className="flex items-center gap-2.5 self-end sm:self-center">
+                  <button
+                    type="button"
+                    onClick={() => handleSubmitServiceQc(activeService)}
+                    disabled={actionLoading}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant rounded-xl text-xs sm:text-sm font-bold transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">save</span>
+                    <span>Lưu dịch vụ này</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSubmitAllQc}
+                    disabled={actionLoading}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {actionLoading ? 'progress_activity' : 'fact_check'}
+                    </span>
+                    <span>
+                      {actionLoading ? 'Đang lưu...' : `Lưu toàn bộ (${qcData.services.length} dịch vụ)`}
+                    </span>
+                  </button>
+                </div>
               </div>
             )}
           </div>

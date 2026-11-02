@@ -105,6 +105,14 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
   const services = workOrder?.services || [];
   const isWOClosed = isReadOnly || ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '');
   const isExecutionActive = workOrder?.status === 'IN_PROGRESS';
+  const isApprovedOrBeyond = [
+    'APPROVED',
+    'IN_PROGRESS',
+    'BILLING_REQUESTED',
+    'FINANCIAL_CLEARED',
+    'RELEASED',
+    'CLOSED',
+  ].includes(workOrder?.status || '');
 
   // Trích xuất toàn bộ findings từ kiểm tra xe
   const allFindings = workOrder?.inspections?.flatMap((i) => i.findings) || [];
@@ -269,6 +277,10 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
 
   const handleDeleteJob = async (job: WoJob) => {
     if (!workOrder || deletingJobId) return;
+    if (isApprovedOrBeyond) {
+      toast.error('Không thể xóa công việc khi báo giá đã được khách hàng phê duyệt.');
+      return;
+    }
     try {
       setDeletingJobId(job.id);
       const res = await deleteJob(workOrder.id, job.id);
@@ -1198,7 +1210,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
                                           >
                                             <span className="material-symbols-outlined text-[15px]">construction</span>
                                           </button>
-                                          {job.status === 'PLANNED' && (
+                                          {job.status === 'PLANNED' && !isApprovedOrBeyond && (
                                             <button
                                               type="button"
                                               onClick={() => setConfirmDeleteJobId(job.id)}
