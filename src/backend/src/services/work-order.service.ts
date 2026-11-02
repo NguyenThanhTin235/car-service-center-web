@@ -1862,22 +1862,24 @@ export class WorkOrderService {
         });
 
         // Xuất kho phụ tùng cho tất cả các công việc bắt đầu thi công
-        const allJobParts = await tx.jobPart.findMany({
-          where: {
-            job: {
-              wo_service_id: { in: serviceIds },
-            },
-          },
-        });
-        for (const p of allJobParts) {
-          if (p.status !== 'USED') {
-            await tx.jobPart.update({
-              where: { id: p.id },
-              data: {
-                status: 'ISSUED',
-                issued_quantity: p.planned_quantity,
+        if ((tx as any).jobPart) {
+          const allJobParts = await (tx as any).jobPart.findMany({
+            where: {
+              job: {
+                wo_service_id: { in: serviceIds },
               },
-            });
+            },
+          });
+          for (const p of allJobParts) {
+            if (p.status !== 'USED') {
+              await (tx as any).jobPart.update({
+                where: { id: p.id },
+                data: {
+                  status: 'ISSUED',
+                  issued_quantity: p.planned_quantity,
+                },
+              });
+            }
           }
         }
       }
