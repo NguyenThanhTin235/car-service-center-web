@@ -59,7 +59,7 @@ export default function CreateDispatchJobModal({
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Cho phép chỉnh sửa khi tạo mới HOẶC khi công việc ở trạng thái chưa phân công (PLANNED)
-  const isJobAssigned = Boolean(job && job.status && job.status !== 'PLANNED');
+  const isJobAssigned = Boolean(job && job.status && job.status !== 'PLANNED' && job.status !== 'REWORK');
   const isReadOnlyMode = Boolean(isViewOnly || isJobAssigned);
 
   // Lấy nhãn tiếng Việt của loại vết lỗi

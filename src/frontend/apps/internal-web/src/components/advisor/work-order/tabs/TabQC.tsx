@@ -1,14 +1,688 @@
 'use client';
-import React from 'react';
 
-export default function TabQC() {
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { WorkOrder } from '@/lib/api/work-order.api';
+import {
+  QcDetailsResponse,
+  QcServiceItem,
+  getWOQcDetails,
+  submitQcEvaluation,
+  requestBilling,
+} from '@/lib/api/qc.api';
+import toast from 'react-hot-toast';
+
+interface TabQCProps {
+  workOrder: WorkOrder;
+  refetchWO: () => void;
+  isReadOnly?: boolean;
+  setActiveTab?: (tabId: string) => void;
+}
+
+export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly = false, setActiveTab }: TabQCProps) {
+  const [qcData, setQcData] = useState<QcDetailsResponse | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
+
+  // Khi Work Order không còn trong trạng thái kiểm định (chỉ thực hiện khi IN_PROGRESS)
+  // hoặc đã chuyển sang các trạng thái hoàn tất/đóng/thanh toán: BILLING_REQUESTED, FINANCIAL_CLEARED, RELEASED, CLOSED, CANCELLED
+  // thì toàn bộ giao diện KCS chuyển sang chế độ CHỈ ĐỌC (Read-only)
+  const isQcActive = workOrder?.status === 'IN_PROGRESS';
+  const isReadOnly = propIsReadOnly || !isQcActive || qcData?.stats?.isBillingRequested;
+
+  // Lưu trạng thái đánh giá form tạm cho từng service: serviceId -> Record<itemId, { result: 'PASS' | 'FAIL' | null, notes: string, reworkDescription?: string }>
+  const [evaluationForms, setEvaluationForms] = useState<
+    Record<
+      number,
+      Record<
+        number,
+        {
+          itemName: string;
+          result: 'PASS' | 'FAIL' | null;
+          notes: string;
+          reworkDescription: string;
+        }
+      >
+    >
+  >({});
+
+  // Tải dữ liệu QC
+  const fetchQcData = useCallback(async () => {
+    if (!workOrder?.id) return;
+    try {
+      setLoading(true);
+      const res = await getWOQcDetails(workOrder.id);
+      if (res.success && res.data) {
+        setQcData(res.data);
+        if (res.data.services.length > 0) {
+          setSelectedServiceId((prev) => (prev ? prev : res.data.services[0].id));
+        }
+
+        // Khởi tạo form evaluation từ template/latestQc (nếu chưa QC thì để null - Chờ đánh giá)
+        const initialForms: Record<number, any> = {};
+        res.data.services.forEach((s) => {
+          initialForms[s.id] = {};
+          s.template.items.forEach((item) => {
+            const existingItem = s.latestQc?.items.find((i) => i.itemName === item.name);
+            const cleanStr = (val?: string | null) => (val ? val.split(/\s*\(Sửa lại:/i)[0].trim() : '');
+            const savedNote = cleanStr(existingItem?.notes);
+            const savedReworkDesc = cleanStr(existingItem?.reworkDescription);
+            initialForms[s.id][item.id] = {
+              itemName: item.name,
+              result: existingItem ? (existingItem.result as 'PASS' | 'FAIL') : null,
+              notes: savedNote,
+              reworkDescription: savedReworkDesc,
+            };
+          });
+        });
+        setEvaluationForms(initialForms);
+      }
+    } catch (err: any) {
+      console.error('Lỗi khi tải thông tin QC:', err);
+      toast.error('Không thể tải dữ liệu kiểm định chất lượng');
+    } finally {
+      setLoading(false);
+    }
+  }, [workOrder?.id]);
+
+  useEffect(() => {
+    fetchQcData();
+  }, [fetchQcData]);
+
+  // Cập nhật kết quả đánh giá cho một item (hỗ trợ toggle khi bấm lại)
+  const handleItemResultChange = (
+    serviceId: number,
+    itemId: number,
+    result: 'PASS' | 'FAIL'
+  ) => {
+    setEvaluationForms((prev) => {
+      const serviceForm = prev[serviceId] || {};
+      const currentItem = serviceForm[itemId] || { itemName: '', result: null, notes: '', reworkDescription: '' };
+      // Nếu bấm lại chính nút đang chọn -> toggle về null (bỏ chọn)
+      const nextResult = currentItem.result === result ? null : result;
+      return {
+        ...prev,
+        [serviceId]: {
+          ...serviceForm,
+          [itemId]: {
+            ...currentItem,
+            result: nextResult,
+          },
+        },
+      };
+    });
+  };
+
+  // Cập nhật ghi chú / mô tả sửa lại
+  const handleItemNoteChange = (
+    serviceId: number,
+    itemId: number,
+    field: 'notes' | 'reworkDescription',
+    val: string
+  ) => {
+    setEvaluationForms((prev) => {
+      const serviceForm = prev[serviceId] || {};
+      const currentItem = serviceForm[itemId] || { itemName: '', result: null, notes: '', reworkDescription: '' };
+      return {
+        ...prev,
+        [serviceId]: {
+          ...serviceForm,
+          [itemId]: {
+            ...currentItem,
+            [field]: val,
+          },
+        },
+      };
+    });
+  };
+
+  // Đánh dấu tất cả hạng mục của service này là ĐẠT
+  const handleMarkAllPass = (service: QcServiceItem) => {
+    setEvaluationForms((prev) => {
+      const updatedServiceForm: Record<number, any> = {};
+      service.template.items.forEach((item) => {
+        const currentItem = prev[service.id]?.[item.id] || {};
+        updatedServiceForm[item.id] = {
+          itemName: item.name,
+          result: 'PASS',
+          notes: currentItem.notes || '',
+          reworkDescription: '',
+        };
+      });
+      return {
+        ...prev,
+        [service.id]: updatedServiceForm,
+      };
+    });
+    toast.success(`Đã chọn ĐẠT cho toàn bộ ${service.template.items.length} hạng mục của "${service.name}"`);
+  };
+
+  // Gửi đánh giá QC cho service
+  const handleSubmitServiceQc = async (service: QcServiceItem) => {
+    const serviceForm = evaluationForms[service.id];
+    if (!serviceForm) return;
+
+    // Kiểm tra xem có mục nào chưa được đánh giá không
+    const unsetItem = service.template.items.find((tItem) => {
+      const form = serviceForm[tItem.id];
+      return !form || form.result === null || form.result === undefined;
+    });
+
+    if (unsetItem) {
+      toast.error(`Vui lòng đánh giá toàn bộ các tiêu chí (mục "${unsetItem.name}" chưa chọn kết quả)`);
+      return;
+    }
+
+    // Kiểm tra có mục Không đạt nào thiếu lý do sửa lại không
+    const failWithoutReason = service.template.items.find((tItem) => {
+      const form = serviceForm[tItem.id];
+      return form?.result === 'FAIL' && !form.reworkDescription?.trim();
+    });
+
+    if (failWithoutReason) {
+      toast.error(`Vui lòng nhập lý do sửa lại cho mục "${failWithoutReason.name}"`);
+      return;
+    }
+
+    const itemsPayload = service.template.items.map((tItem) => {
+      const formData = serviceForm[tItem.id] || { itemName: tItem.name, result: 'PASS', notes: '', reworkDescription: '' };
+      return {
+        templateItemId: tItem.id > 0 ? tItem.id : undefined,
+        itemName: tItem.name,
+        result: formData.result as 'PASS' | 'FAIL',
+        notes: formData.notes?.trim() || undefined,
+        reworkDescription: formData.result === 'FAIL' ? formData.reworkDescription?.trim() : undefined,
+        reworkJobName: formData.result === 'FAIL' ? `[Sửa lại - KCS] ${tItem.name}` : undefined,
+      };
+    });
+
+    try {
+      setActionLoading(true);
+      const res = await submitQcEvaluation(workOrder.id, {
+        woServiceId: service.id,
+        templateId: service.template.id,
+        items: itemsPayload,
+      });
+
+      if (res.success) {
+        if (res.data?.overallResult === 'PASS') {
+          toast.success(`Nghiệm thu ĐẠT chuẩn cho dịch vụ "${service.name}"`);
+        } else {
+          toast(
+            `Đã ghi nhận ${res.data?.failCount} hạng mục lỗi. Hệ thống đã tự động tạo Job sửa lại (Rework).`,
+            { icon: '⚠️', duration: 4000 }
+          );
+        }
+        await fetchQcData();
+        refetchWO();
+      } else {
+        toast.error(res.message || 'Lỗi khi lưu kết quả kiểm định');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Lỗi khi lưu kết quả kiểm định');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Kích hoạt Billing Gate: Yêu cầu lập hóa đơn
+  const handleRequestBilling = async () => {
+    try {
+      setActionLoading(true);
+      const res = await requestBilling(workOrder.id);
+      if (res.success) {
+        toast.success('Đã gửi yêu cầu thanh toán sang quầy Thu ngân thành công!');
+        await fetchQcData();
+        refetchWO();
+      } else {
+        toast.error(res.message || 'Lỗi khi yêu cầu thanh toán');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Lỗi khi yêu cầu thanh toán');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const activeService = useMemo(() => {
+    if (!qcData?.services) return null;
+    return qcData.services.find((s) => s.id === selectedServiceId) || qcData.services[0] || null;
+  }, [qcData, selectedServiceId]);
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <span className="material-symbols-outlined animate-spin text-[36px] text-primary">progress_activity</span>
+      </div>
+    );
+  }
+
+  if (!qcData || qcData.services.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-outline-variant rounded-2xl bg-surface-container-lowest">
+        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
+          <span className="material-symbols-outlined text-[32px]">fact_check</span>
+        </div>
+        <h3 className="text-title-lg font-bold text-on-surface">Chưa có dịch vụ nào để kiểm định QC</h3>
+        <p className="text-body-md text-on-surface-variant mt-2 max-w-md">
+          Phiếu công việc cần có ít nhất một dịch vụ được lên kế hoạch và hoàn thành trước khi kiểm định chất lượng xuất xưởng.
+        </p>
+      </div>
+    );
+  }
+
+  const { stats } = qcData;
+
   return (
-    <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-outline-variant rounded-xl bg-surface-container-lowest">
-      <span className="material-symbols-outlined text-[48px] text-outline mb-2">fact_check</span>
-      <h3 className="text-title-md font-bold text-on-surface">Quality Control</h3>
-      <p className="text-body-md text-on-surface-variant mt-2 max-w-md">
-        Perform final checks on completed jobs and ensure vehicle is ready.
-      </p>
+    <div className="space-y-6">
+      {/* 1. Header Bento Stats Overview */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Stat 1: Tiến độ kiểm định */}
+        <div className="bg-surface-container-lowest p-4.5 rounded-2xl border border-outline-variant shadow-2xs">
+          <div className="flex items-center justify-between text-on-surface-variant mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Tiến độ KCS</span>
+            <span className="material-symbols-outlined text-primary text-[20px]">verified</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-black text-on-surface font-mono">{stats.progressPercent}%</span>
+            <span className="text-xs text-on-surface-variant">({stats.passedServices}/{stats.totalServices} dịch vụ)</span>
+          </div>
+          <div className="w-full bg-surface-container-high h-2 rounded-full mt-3 overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 ${
+                stats.progressPercent === 100 ? 'bg-emerald-500' : 'bg-primary'
+              }`}
+              style={{ width: `${stats.progressPercent}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Stat 2: Công việc đã nghiệm thu */}
+        <div className="bg-surface-container-lowest p-4.5 rounded-2xl border border-outline-variant shadow-2xs">
+          <div className="flex items-center justify-between text-on-surface-variant mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Hạng mục đã Pass</span>
+            <span className="material-symbols-outlined text-emerald-600 text-[20px]">check_circle</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-black text-emerald-600 font-mono">{stats.passedJobs}</span>
+            <span className="text-xs text-on-surface-variant">/ {stats.totalJobs} jobs kỹ thuật</span>
+          </div>
+          <p className="text-[11px] text-on-surface-variant mt-2">
+            Đã đạt chuẩn an toàn & chạy thử
+          </p>
+        </div>
+
+        {/* Stat 3: Công việc Rework cần sửa lại */}
+        <div className={`p-4.5 rounded-2xl border shadow-2xs transition-all ${
+          stats.reworkJobs > 0 
+            ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-300 dark:border-rose-900' 
+            : 'bg-surface-container-lowest border-outline-variant'
+        }`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className={`text-xs font-bold uppercase tracking-wider ${
+              stats.reworkJobs > 0 ? 'text-rose-800 dark:text-rose-300' : 'text-on-surface-variant'
+            }`}>
+              Cần sửa lại (Rework)
+            </span>
+            <span className={`material-symbols-outlined text-[20px] ${
+              stats.reworkJobs > 0 ? 'text-rose-600' : 'text-on-surface-variant'
+            }`}>
+              build_circle
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className={`text-2xl font-black font-mono ${
+              stats.reworkJobs > 0 ? 'text-rose-600' : 'text-on-surface'
+            }`}>
+              {stats.reworkJobs}
+            </span>
+            <span className="text-xs text-on-surface-variant">hạng mục phát hiện lỗi</span>
+          </div>
+          <p className="text-[11px] text-on-surface-variant mt-2">
+            {stats.reworkJobs > 0 ? '⚠️ Cần thợ khắc phục trước khi giao xe' : 'Không có lỗi kỹ thuật nào'}
+          </p>
+        </div>
+
+        {/* Stat 4: Trạng thái chốt cổng xuất xưởng */}
+        <div className="bg-surface-container-lowest p-4.5 rounded-2xl border border-outline-variant shadow-2xs">
+          <div className="flex items-center justify-between text-on-surface-variant mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Cổng nghiệm thu</span>
+            <span className="material-symbols-outlined text-amber-600 text-[20px]">door_front</span>
+          </div>
+          <div>
+            {stats.isBillingRequested ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800 font-bold text-xs">
+                <span className="material-symbols-outlined text-[14px]">receipt_long</span>
+                Đã gửi Billing
+              </span>
+            ) : stats.canRequestBilling ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs animate-pulse">
+                <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                Sẵn sàng thanh toán
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container text-on-surface font-semibold text-xs">
+                <span className="material-symbols-outlined text-[14px]">hourglass_top</span>
+                Đang thi công & QC
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-on-surface-variant mt-2">
+            {stats.canRequestBilling ? 'Đạt chuẩn 100% để xuất hóa đơn' : 'Cần nghiệm thu đủ các dịch vụ'}
+          </p>
+        </div>
+      </div>
+
+      {/* 2. Billing Gate Notification Banner */}
+      {stats.canRequestBilling && !stats.isBillingRequested && !isReadOnly && (
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-2xl p-5 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[28px] text-white">verified</span>
+            </div>
+            <div>
+              <h4 className="font-bold text-base">Toàn bộ dịch vụ đã hoàn tất & Vượt qua kiểm định KCS!</h4>
+              <p className="text-xs text-emerald-100 mt-0.5">
+                Chất lượng kỹ thuật xe đã đạt 100%. Nhấn nút bên dưới để gửi lệnh sang quầy Thu ngân phát hành hóa đơn.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleRequestBilling}
+            disabled={actionLoading}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-emerald-800 hover:bg-emerald-50 font-bold rounded-xl text-sm transition-all shadow-md active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[20px]">receipt_long</span>
+            {actionLoading ? 'Đang gửi...' : 'Gửi yêu cầu lập hóa đơn'}
+          </button>
+        </div>
+      )}
+
+      {stats.isBillingRequested && (
+        <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900 text-purple-900 dark:text-purple-200 rounded-2xl p-4 flex items-center gap-3">
+          <span className="material-symbols-outlined text-purple-600 text-[24px]">task_alt</span>
+          <div className="text-xs sm:text-sm">
+            <span className="font-bold">Hồ sơ đã được nghiệm thu KCS hoàn tất.</span> Đang chờ Thu ngân xử lý thanh toán tại quầy. Chế độ chỉ đọc (Read-only).
+          </div>
+        </div>
+      )}
+
+      {isReadOnly && !stats.isBillingRequested && (
+        <div className="bg-surface-container-high/70 border border-outline-variant/80 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs sm:text-sm">
+          <div className="flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-primary text-[22px]">lock</span>
+            <div>
+              <span className="font-bold text-on-surface">Chế độ xem chỉ đọc (Read-only): </span>
+              <span className="text-on-surface-variant">
+                {['BILLING_REQUESTED', 'FINANCIAL_CLEARED', 'RELEASED', 'CLOSED'].includes(workOrder?.status || '')
+                  ? `Phiếu công việc đã hoàn thành giai đoạn kiểm định (${workOrder?.status}). Không thể chỉnh sửa kết quả KCS.`
+                  : workOrder?.status === 'CANCELLED'
+                  ? 'Phiếu công việc đã bị hủy.'
+                  : `Phiếu công việc đang ở trạng thái "${workOrder?.status || 'N/A'}", chỉ có thể đánh giá KCS khi đang thi công (IN_PROGRESS).`}
+              </span>
+            </div>
+          </div>
+          <span className="px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface font-mono font-bold text-xs uppercase tracking-wider shrink-0">
+            {workOrder?.status}
+          </span>
+        </div>
+      )}
+
+      {/* 3. Main Workspace: Service Selector Tabs & Inspection Checklist */}
+      <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant shadow-2xs overflow-hidden">
+        {/* Service Switcher Tabs */}
+        <div className="flex items-center gap-2 p-3 bg-surface-container-low border-b border-outline-variant overflow-x-auto no-scrollbar">
+          {qcData.services.map((service, idx) => {
+            const isSelected = selectedServiceId === service.id;
+            const isPassed = service.latestQc?.overallResult === 'PASS';
+            const hasRework = service.jobs.some(
+              (j) => j.status === 'REWORK' || (j.isRework && j.status !== 'PASSED' && j.status !== 'COMPLETED')
+            );
+
+            return (
+              <button
+                key={service.id}
+                type="button"
+                onClick={() => setSelectedServiceId(service.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                  isSelected
+                    ? 'bg-surface-container-lowest text-primary shadow-xs border border-outline-variant'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                }`}
+              >
+                <span className="w-5 h-5 rounded-full bg-surface-container-highest text-on-surface flex items-center justify-center text-[10px] font-bold">
+                  {idx + 1}
+                </span>
+                <span>{service.name}</span>
+
+                {isPassed ? (
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                    <span className="material-symbols-outlined text-[12px]">check</span>
+                    Đạt
+                  </span>
+                ) : hasRework ? (
+                  <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                    <span className="material-symbols-outlined text-[12px]">build</span>
+                    Rework
+                  </span>
+                ) : (
+                  <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">
+                    Chờ QC
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Active Service QC Checklist Workspace */}
+        {activeService && (
+          <div className="p-6 space-y-6">
+            {/* Header: Service Info & Jobs Summary */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-outline-variant">
+              <div>
+                <h3 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                  <span>{activeService.name}</span>
+                  <span className="text-xs font-normal text-on-surface-variant">
+                    ({activeService.template.name})
+                  </span>
+                </h3>
+                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                  <span className="text-xs text-on-surface-variant">Công việc thi công:</span>
+                  {activeService.jobs.map((job) => (
+                    <span
+                      key={job.id}
+                      className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
+                        job.status === 'PASSED'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : job.status === 'REWORK'
+                          ? 'bg-rose-50 text-rose-700 border-rose-200'
+                          : 'bg-surface-container text-on-surface border-outline-variant'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[12px]">
+                        {job.status === 'PASSED' ? 'done_all' : job.status === 'REWORK' ? 'handyman' : 'engineering'}
+                      </span>
+                      {job.name} ({job.technician})
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Action: Mark All Pass */}
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => handleMarkAllPass(activeService)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer"
+                  title="Tất cả các tiêu chí đều đạt chuẩn"
+                >
+                  <span className="material-symbols-outlined text-[16px]">done_all</span>
+                  <span>Đánh dấu tất cả ĐẠT</span>
+                </button>
+              )}
+            </div>
+
+            {/* Checklist Items Table */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-on-surface-variant px-2">
+                <span>Tiêu chuẩn kỹ thuật nghiệm thu ({activeService.template.items.length})</span>
+                <span>Kết quả đánh giá</span>
+              </div>
+
+              {activeService.template.items.map((item, index) => {
+                const serviceForm = evaluationForms[activeService.id] || {};
+                const itemState = serviceForm[item.id] || { itemName: item.name, result: null, notes: '', reworkDescription: '' };
+                const isPass = itemState.result === 'PASS';
+                const isFail = itemState.result === 'FAIL';
+                const isUnset = itemState.result === null || itemState.result === undefined;
+
+                return (
+                  <div
+                    key={item.id}
+                    className={`p-4 rounded-xl border transition-all ${
+                      isFail
+                        ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-300 dark:border-rose-900 shadow-xs'
+                        : isPass
+                        ? 'bg-emerald-50/30 dark:bg-emerald-950/15 border-emerald-300 dark:border-emerald-800/80 shadow-xs'
+                        : 'bg-surface-container-low/60 border-outline-variant hover:border-outline'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-3 flex-1">
+                        <span
+                          className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 transition-colors ${
+                            isPass
+                              ? 'bg-emerald-600 text-white'
+                              : isFail
+                              ? 'bg-rose-600 text-white'
+                              : 'bg-surface-container-highest text-on-surface'
+                          }`}
+                        >
+                          {index + 1}
+                        </span>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-sm text-on-surface">{item.name}</p>
+                            {isUnset && (
+                              <span className="text-[11px] text-amber-700 dark:text-amber-300 font-medium bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-900">
+                                Chờ đánh giá
+                              </span>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Ghi chú kỹ thuật (tùy chọn)..."
+                            value={itemState.notes || ''}
+                            onChange={(e) => handleItemNoteChange(activeService.id, item.id, 'notes', e.target.value)}
+                            disabled={isReadOnly}
+                            className={`mt-1.5 w-full sm:w-80 text-xs px-2.5 py-1.5 rounded-lg border border-outline-variant text-on-surface ${
+                              isReadOnly
+                                ? 'bg-surface-container-low/80 text-on-surface-variant cursor-not-allowed border-dashed'
+                                : 'bg-surface-container-lowest focus:outline-none focus:ring-1 focus:ring-primary'
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Segmented Buttons: ĐẠT vs KHÔNG ĐẠT */}
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => handleItemResultChange(activeService.id, item.id, 'PASS')}
+                          disabled={isReadOnly}
+                          title={isPass ? 'Nhấn lại để hủy chọn ĐẠT' : 'Đánh dấu ĐẠT'}
+                          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs ${
+                            isPass
+                              ? 'bg-emerald-600 text-white shadow-emerald-600/30 ring-2 ring-emerald-500/50'
+                              : 'bg-white dark:bg-surface-container text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
+                          } ${isReadOnly ? 'cursor-not-allowed opacity-85' : 'hover:bg-emerald-50 dark:hover:bg-emerald-950/30 active:scale-95 cursor-pointer'}`}
+                        >
+                          <span className="material-symbols-outlined text-[16px]">
+                            {isPass ? 'check_circle' : 'radio_button_unchecked'}
+                          </span>
+                          <span>{isPass ? 'ĐÃ ĐẠT' : 'ĐẠT'}</span>
+                        </button>
+
+                        {/* Khi ĐẠT rồi thì ẩn các button không đạt theo yêu cầu */}
+                        {!isPass && (
+                          <button
+                            type="button"
+                            onClick={() => handleItemResultChange(activeService.id, item.id, 'FAIL')}
+                            disabled={isReadOnly}
+                            title={isFail ? 'Nhấn lại để hủy chọn' : 'Đánh dấu KHÔNG ĐẠT'}
+                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs ${
+                              isFail
+                                ? 'bg-rose-600 text-white shadow-rose-600/30 ring-2 ring-rose-500/50'
+                                : 'bg-white dark:bg-surface-container text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800'
+                            } ${isReadOnly ? 'cursor-not-allowed opacity-85' : 'hover:bg-rose-50 dark:hover:bg-rose-950/30 active:scale-95 cursor-pointer'}`}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">
+                              {isFail ? 'cancel' : 'radio_button_unchecked'}
+                            </span>
+                            <span>KHÔNG ĐẠT</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Expandable Rework Form when FAIL */}
+                    {isFail && (
+                      <div className="mt-3.5 pt-3.5 border-t border-rose-200 dark:border-rose-900/60 space-y-2.5 text-xs animate-fade-in">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                          <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-400 font-bold shrink-0">
+                            <span className="material-symbols-outlined text-[16px]">warning</span>
+                            Yêu cầu sửa lại (Rework):
+                          </span>
+                          <input
+                            type="text"
+                            placeholder="Mô tả cụ thể nguyên nhân lỗi để thợ kỹ thuật sửa lại (bắt buộc)..."
+                            value={itemState.reworkDescription || ''}
+                            onChange={(e) =>
+                              handleItemNoteChange(activeService.id, item.id, 'reworkDescription', e.target.value)
+                            }
+                            disabled={isReadOnly}
+                            className={`w-full flex-1 px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 font-medium ${
+                              isReadOnly
+                                ? 'bg-rose-100/50 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 cursor-not-allowed border-dashed'
+                                : 'bg-white dark:bg-rose-950/40 text-on-surface focus:outline-none focus:ring-1 focus:ring-rose-500'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Bottom Actions for Active Service */}
+            {!isReadOnly && (
+              <div className="flex items-center justify-between pt-4 border-t border-outline-variant">
+                <div className="text-xs text-on-surface-variant">
+                  {activeService.latestQc && (
+                    <span>
+                      Lần kiểm định gần nhất: <b>{new Date(activeService.latestQc.createdAt).toLocaleString('vi-VN')}</b> bởi{' '}
+                      <b>{activeService.latestQc.inspectorName}</b>
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleSubmitServiceQc(activeService)}
+                  disabled={actionLoading}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[18px]">save</span>
+                  {actionLoading ? 'Đang lưu đánh giá...' : 'Lưu kết quả kiểm định KCS'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

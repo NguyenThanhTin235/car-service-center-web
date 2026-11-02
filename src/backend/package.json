@@ -11,7 +11,7 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "seed:massive": "tsx prisma/seed-massive.ts",
-    "postinstall": "prisma skills sync || exit 0"
+    "postinstall": "echo Ready"
   },
   "keywords": [],
   "author": "",

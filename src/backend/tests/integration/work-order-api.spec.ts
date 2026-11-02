@@ -30,6 +30,10 @@ vi.mock('../../src/utils/prisma', () => {
       job: {
         updateMany: vi.fn(),
       },
+      jobPart: {
+        findMany: vi.fn(),
+        update: vi.fn(),
+      },
       $transaction: vi.fn(),
     },
   };
@@ -263,6 +267,10 @@ describe('Integration API - Work Order Lifecycle (SPEC-WO / UC-15, UC-26, UC-29)
           },
           job: {
             updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+          },
+          jobPart: {
+            findMany: vi.fn().mockResolvedValue([]),
+            update: vi.fn().mockResolvedValue({}),
           },
         };
         return callback(tx);

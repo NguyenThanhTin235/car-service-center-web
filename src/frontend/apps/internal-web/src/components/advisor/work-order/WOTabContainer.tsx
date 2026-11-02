@@ -6,8 +6,6 @@ import TabParts from './tabs/TabParts';
 import TabQuotation from './tabs/TabQuotation';
 import TabQC from './tabs/TabQC';
 import TabRelease from './tabs/TabRelease';
-import TabClaimInfo from './tabs/TabClaimInfo';
-import TabServiceHistory from './tabs/TabServiceHistory';
 
 const TABS = [
   { id: 'checkin', number: 1, label: 'Tiếp nhận & Kiểm tra', component: TabCheckinInspection },
@@ -16,8 +14,6 @@ const TABS = [
   { id: 'quotation', number: 4, label: 'Báo giá', component: TabQuotation },
   { id: 'qc', number: 5, label: 'Kiểm tra chất lượng', component: TabQC },
   { id: 'release', number: 6, label: 'Giao xe', component: TabRelease },
-  { id: 'claim', number: 7, label: 'Thông tin bảo hiểm', component: TabClaimInfo },
-  { id: 'history', number: 8, label: 'Lịch sử sửa chữa', component: TabServiceHistory },
 ];
 
 import { WorkOrder } from '@/lib/api/work-order.api';
@@ -31,6 +27,7 @@ interface WOTabContainerProps {
 export default function WOTabContainer({ workOrder, refetchWO, isReadOnly = false }: WOTabContainerProps) {
   const [activeTab, setActiveTab] = useState('checkin');
 
+  const isEffectiveReadOnly = isReadOnly || ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '');
   const ActiveComponent = TABS.find((t) => t.id === activeTab)?.component || TabCheckinInspection;
 
   return (
@@ -63,7 +60,7 @@ export default function WOTabContainer({ workOrder, refetchWO, isReadOnly = fals
 
       {/* Tab Content Area */}
       <div className="py-6">
-        <ActiveComponent workOrder={workOrder} refetchWO={refetchWO} isReadOnly={isReadOnly} setActiveTab={setActiveTab} />
+        <ActiveComponent workOrder={workOrder} refetchWO={refetchWO} isReadOnly={isEffectiveReadOnly} setActiveTab={setActiveTab} />
       </div>
     </div>
   );
