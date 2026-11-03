@@ -3,23 +3,47 @@ import request from 'supertest';
 import app from '../../src/app';
 import { generateToken } from '../../src/utils/jwt.util';
 import prisma from '../../src/utils/prisma';
+import { createVnpayPaymentUrl } from '../../src/utils/vnpay.util';
 
 vi.mock('../../src/utils/prisma', () => {
+  const mockPrisma: any = {
+    user: {
+      findUnique: vi.fn(),
+    },
+    invoice: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      count: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    workOrder: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      count: vi.fn(),
+      update: vi.fn(),
+    },
+    payment: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    notification: {
+      create: vi.fn(),
+      createMany: vi.fn(),
+    },
+    auditLog: {
+      create: vi.fn(),
+    },
+  };
+  mockPrisma.$transaction = vi.fn((cb: any) => cb(mockPrisma));
   return {
     __esModule: true,
-    default: {
-      user: {
-        findUnique: vi.fn(),
-      },
-      invoice: {
-        findMany: vi.fn(),
-        findUnique: vi.fn(),
-        count: vi.fn(),
-      },
-      workOrder: {
-        findUnique: vi.fn(),
-      },
-    },
+    default: mockPrisma,
   };
 });
 
@@ -54,6 +78,11 @@ describe('Integration API - Invoice & Payment Portal (SPEC-INV / UC-16, UC-27, U
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    process.env.VNP_TMN_CODE = 'TEST_TMN';
+    process.env.VNP_HASH_SECRET = 'TEST_HASH_SECRET_123456';
+    process.env.VNP_PAY_URL = 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html';
+    process.env.VNP_RETURN_URL = 'http://localhost:3000/staff/billing/vnpay-return';
 
     (prisma.user.findUnique as any).mockImplementation(({ where }: any) => {
       if (where.id === 101) {
@@ -98,13 +127,11 @@ describe('Integration API - Invoice & Payment Portal (SPEC-INV / UC-16, UC-27, U
 
   describe('GET /api/invoices/my-invoices (UC-16: Khách hàng xem danh sách hóa đơn)', () => {
     it('INV-API-01: Khách hàng lấy danh sách hóa đơn và thống kê Bento thành công -> 200 OK', async () => {
-      // Mock stats
       (prisma.invoice.findMany as any).mockResolvedValueOnce([
         { status: 'PAID', total_amount: 5000000, amount_due: 0 },
         { status: 'ISSUED', total_amount: 2500000, amount_due: 2500000 },
       ]);
 
-      // Mock list query
       (prisma.invoice.count as any).mockResolvedValue(1);
       (prisma.invoice.findMany as any).mockResolvedValueOnce([
         {
@@ -143,14 +170,13 @@ describe('Integration API - Invoice & Payment Portal (SPEC-INV / UC-16, UC-27, U
       expect(res.body.data.summary.totalSpent).toBe(5000000);
       expect(res.body.data.summary.pendingAmount).toBe(2500000);
       expect(res.body.data.summary.pendingCount).toBe(1);
-      expect(res.body.data.summary.rewardPoints).toBe(500); // 5.000.000 / 10.000
+      expect(res.body.data.summary.rewardPoints).toBe(500);
       expect(res.body.data.invoices).toHaveLength(1);
       expect(res.body.data.invoices[0].invoiceNumber).toBe('INV-202611-001');
     });
 
     it('INV-API-02: Báo lỗi 401 Unauthorized khi không gửi Access Token', async () => {
       const res = await request(app).get('/api/invoices/my-invoices');
-
       expect(res.status).toBe(401);
     });
 
@@ -178,17 +204,17 @@ describe('Integration API - Invoice & Payment Portal (SPEC-INV / UC-16, UC-27, U
         issued_at: new Date('2026-11-01T10:00:00.000Z'),
         created_at: new Date('2026-11-01T10:00:00.000Z'),
         work_order: {
-          customer_id: 101, // Thuộc customer 101
+          customer_id: 101,
           customer: { id: 101, full_name: 'Trần Văn Khách 1', phone: '0901234567', email: 'customer1@example.com' },
           vehicle: { id: 1, license_plate: '51F-123.45', make: 'Toyota', model: 'Cross', year: 2022, color: 'Trắng' },
           advisor: { id: 50, full_name: 'Lê Cố Vấn', phone: '0911223344' },
         },
         lines: [
-          { id: 1, item_name: 'Thay dầu động cơ', quantity: 1, unit_price: 500000, total_price: 500000, line_type: 'LABOUR' },
-          { id: 2, item_name: 'Dầu nhớt Castrol 5W-30', quantity: 4, unit_price: 125000, total_price: 500000, line_type: 'PART' },
+          { id: 1, description: 'Thay dầu động cơ', quantity: 1, unit_price: 500000, amount: 500000, line_type: 'LABOUR', sort_order: 0 },
+          { id: 2, description: 'Dầu nhớt Castrol 5W-30', quantity: 4, unit_price: 125000, amount: 500000, line_type: 'PART', sort_order: 1 },
         ],
         payments: [
-          { id: 1, payment_method: 'VIETQR', amount: 900000, paid_at: new Date('2026-11-01T11:00:00.000Z') },
+          { id: 1, payment_method: 'QR_TRANSFER', amount: 900000, paid_at: new Date('2026-11-01T11:00:00.000Z') },
         ],
       });
 
@@ -199,7 +225,7 @@ describe('Integration API - Invoice & Payment Portal (SPEC-INV / UC-16, UC-27, U
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data.invoiceNumber).toBe('INV-202611-001');
-      expect(res.body.data.taxAmount).toBe(0); // Zero-Tax
+      expect(res.body.data.taxAmount).toBe(0);
       expect(res.body.data.totalAmount).toBe(900000);
     });
 
@@ -207,11 +233,10 @@ describe('Integration API - Invoice & Payment Portal (SPEC-INV / UC-16, UC-27, U
       (prisma.invoice.findUnique as any).mockResolvedValue({
         id: 201,
         work_order: {
-          customer_id: 101, // Hóa đơn của user 101
+          customer_id: 101,
         },
       });
 
-      // User 102 cố truy cập
       const res = await request(app)
         .get('/api/invoices/201')
         .set('Authorization', `Bearer ${customer102Token}`);
@@ -220,7 +245,7 @@ describe('Integration API - Invoice & Payment Portal (SPEC-INV / UC-16, UC-27, U
       expect(res.body.message).toContain('Bạn không có quyền truy cập hóa đơn này');
     });
 
-    it('INV-API-06: Nhân viên (SA hoặc Desk Staff) được phép xem hóa đơn của bất kỳ khách nào -> 200 OK', async () => {
+    it('INV-API-06: Nhân viên (DESK STAFF) được phép xem hóa đơn của bất kỳ khách nào -> 200 OK', async () => {
       (prisma.invoice.findUnique as any).mockResolvedValue({
         id: 201,
         work_order_id: 10,
@@ -270,6 +295,419 @@ describe('Integration API - Invoice & Payment Portal (SPEC-INV / UC-16, UC-27, U
 
       expect(res.status).toBe(404);
       expect(res.body.message).toContain('Không tìm thấy hóa đơn');
+    });
+  });
+
+  describe('GET /api/invoices/billing-queue (UC-27: Hàng chờ lập hóa đơn)', () => {
+    it('INV-API-09: Nhân viên quầy lấy danh sách hàng chờ và counters thành công -> 200 OK', async () => {
+      (prisma.workOrder.count as any).mockResolvedValue(2);
+      (prisma.invoice.count as any).mockResolvedValue(1);
+      (prisma.invoice.findMany as any).mockResolvedValueOnce([
+        { total_amount: 1500000 },
+      ]);
+
+      (prisma.workOrder.findMany as any).mockResolvedValueOnce([
+        {
+          id: 10,
+          wo_number: 'WO-202611-001',
+          status: 'BILLING_REQUESTED',
+          customer: { id: 101, full_name: 'Trần Văn Khách 1' },
+          vehicle: { id: 1, license_plate: '51F-123.45', make: 'Toyota', model: 'Cross' },
+          advisor: { id: 50, full_name: 'Lê Cố Vấn' },
+          services: [{ id: 1, name: 'Bảo dưỡng', pricing_type: 'FIXED' }],
+          quotations: [{ id: 1, quotation_number: 'QUO-01', grand_total: 1500000 }],
+          updated_at: new Date(),
+        },
+      ]);
+
+      const res = await request(app)
+        .get('/api/invoices/billing-queue?tab=PENDING')
+        .set('Authorization', `Bearer ${staffToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.summary.pendingCount).toBe(2);
+      expect(res.body.data.records).toHaveLength(1);
+      expect(res.body.data.records[0].woNumber).toBe('WO-202611-001');
+    });
+
+    it('INV-API-10: Chặn Khách hàng truy cập hàng chờ lập hóa đơn -> 403 Forbidden', async () => {
+      const res = await request(app)
+        .get('/api/invoices/billing-queue')
+        .set('Authorization', `Bearer ${customer101Token}`);
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe('GET /api/invoices/preview (UC-27: Xem trước hóa đơn dự kiến)', () => {
+    it('INV-API-11: Lấy thông tin preview thành công khi Work Order đủ điều kiện -> 200 OK', async () => {
+      (prisma.workOrder.findUnique as any).mockResolvedValue({
+        id: 10,
+        wo_number: 'WO-202611-001',
+        status: 'BILLING_REQUESTED',
+        customer: { id: 101, full_name: 'Trần Văn Khách 1' },
+        vehicle: { id: 1, license_plate: '51F-123.45', make: 'Toyota', model: 'Cross' },
+        advisor: { id: 50, full_name: 'Lê Cố Vấn' },
+        services: [
+          {
+            id: 1,
+            name: 'Bảo dưỡng định kỳ',
+            qc_records: [{ overall_result: 'PASS' }],
+            jobs: [{ id: 10, status: 'COMPLETED' }],
+          },
+        ],
+        quotations: [
+          {
+            id: 1,
+            quotation_number: 'QUO-01',
+            status: 'APPROVED',
+            discount_amount: 50000,
+            lines: [
+              {
+                id: 101,
+                line_type: 'LABOUR',
+                description: 'Công thay dầu',
+                quantity: 1,
+                snapshot_unit_price: 200000,
+              },
+            ],
+          },
+        ],
+        invoices: [],
+      });
+
+      const res = await request(app)
+        .get('/api/invoices/preview?workOrderId=10')
+        .set('Authorization', `Bearer ${staffToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.subtotal).toBe(200000);
+      expect(res.body.data.defaultDiscount).toBe(50000);
+      expect(res.body.data.totalAmount).toBe(150000);
+    });
+
+    it('INV-API-12: Báo lỗi 400 khi thiếu workOrderId hoặc workOrderId không hợp lệ', async () => {
+      const res = await request(app)
+        .get('/api/invoices/preview')
+        .set('Authorization', `Bearer ${staffToken}`);
+
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('POST /api/invoices (UC-27: Tạo hóa đơn nháp)', () => {
+    it('INV-API-13: Tạo hóa đơn nháp thành công -> 201 Created', async () => {
+      (prisma.workOrder.findUnique as any).mockResolvedValue({
+        id: 10,
+        wo_number: 'WO-202611-001',
+        status: 'BILLING_REQUESTED',
+        customer: { id: 101, full_name: 'Trần Văn Khách 1' },
+        vehicle: { id: 1, license_plate: '51F-123.45', make: 'Toyota', model: 'Cross' },
+        advisor: { id: 50, full_name: 'Lê Cố Vấn' },
+        services: [
+          {
+            id: 1,
+            name: 'Bảo dưỡng định kỳ',
+            qc_records: [{ overall_result: 'PASS' }],
+            jobs: [{ id: 10, status: 'COMPLETED' }],
+          },
+        ],
+        quotations: [
+          {
+            id: 1,
+            quotation_number: 'QUO-01',
+            status: 'APPROVED',
+            discount_amount: 0,
+            lines: [
+              {
+                id: 101,
+                line_type: 'LABOUR',
+                description: 'Công thay dầu',
+                quantity: 1,
+                snapshot_unit_price: 200000,
+              },
+            ],
+          },
+        ],
+        invoices: [],
+      });
+
+      (prisma.invoice.findFirst as any).mockResolvedValue(null);
+      (prisma.invoice.create as any).mockResolvedValue({
+        id: 301,
+        work_order_id: 10,
+        invoice_number: 'INV-202611-001',
+        status: 'DRAFT',
+        subtotal: 200000,
+        discount_amount: 0,
+        tax_amount: 0,
+        total_amount: 200000,
+        amount_due: 200000,
+        notes: 'Hóa đơn dịch vụ đợt 1',
+        created_at: new Date(),
+        lines: [],
+      });
+
+      const res = await request(app)
+        .post('/api/invoices')
+        .set('Authorization', `Bearer ${staffToken}`)
+        .send({
+          workOrderId: 10,
+          notes: 'Hóa đơn dịch vụ đợt 1',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.status).toBe('DRAFT');
+      expect(res.body.data.invoiceNumber).toBe('INV-202611-001');
+    });
+  });
+
+  describe('POST /api/invoices/:id/issue (UC-27: Phát hành hóa đơn)', () => {
+    it('INV-API-14: Phát hành hóa đơn nháp thành công -> 200 OK', async () => {
+      (prisma.invoice.findUnique as any).mockResolvedValue({
+        id: 301,
+        invoice_number: 'INV-202611-001',
+        status: 'DRAFT',
+        total_amount: 500000,
+        work_order: {
+          customer_id: 101,
+          customer: { full_name: 'Trần Văn Khách 1', email: 'customer1@example.com' },
+          vehicle: { license_plate: '51F-123.45', make: 'Toyota', model: 'Cross' },
+          advisor: { full_name: 'Lê Cố Vấn' },
+        },
+      });
+
+      (prisma.invoice.update as any).mockResolvedValue({
+        id: 301,
+        invoice_number: 'INV-202611-001',
+        status: 'ISSUED',
+        issued_at: new Date(),
+        total_amount: 500000,
+        amount_due: 500000,
+      });
+
+      const res = await request(app)
+        .post('/api/invoices/301/issue')
+        .set('Authorization', `Bearer ${staffToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.status).toBe('ISSUED');
+    });
+  });
+
+  describe('POST /api/invoices/:id/payments (UC-28: Ghi nhận thanh toán thủ công)', () => {
+    it('INV-API-15: Ghi nhận thanh toán tiền mặt thành công -> 201 Created', async () => {
+      (prisma.invoice.findUnique as any).mockResolvedValue({
+        id: 301,
+        invoice_number: 'INV-202611-001',
+        status: 'ISSUED',
+        total_amount: 1000000,
+        amount_due: 1000000,
+        work_order_id: 10,
+        work_order: {
+          id: 10,
+          status: 'BILLING_REQUESTED',
+          customer_id: 101,
+          advisor_id: 50,
+          customer: { full_name: 'Trần Văn Khách 1', email: 'customer1@example.com' },
+          vehicle: { license_plate: '51F-123.45', make: 'Toyota', model: 'Cross' },
+          advisor: { full_name: 'Lê Cố Vấn' },
+        },
+      });
+
+      (prisma.payment.create as any).mockResolvedValue({
+        id: 501,
+        amount: 1000000,
+        status: 'PENDING',
+      });
+
+      (prisma.payment.update as any).mockResolvedValue({
+        id: 501,
+        status: 'SUCCESS',
+        paid_at: new Date(),
+      });
+
+      (prisma.invoice.update as any).mockResolvedValue({
+        id: 301,
+        invoice_number: 'INV-202611-001',
+        status: 'PAID',
+        amount_due: 0,
+        work_order: {
+          status: 'BILLING_REQUESTED',
+          advisor_id: 50,
+          customer_id: 101,
+          vehicle: { license_plate: '51F-123.45', make: 'Toyota', model: 'Cross' },
+          customer: { full_name: 'Trần Văn Khách 1' },
+        },
+      });
+
+      (prisma.workOrder.update as any).mockResolvedValue({
+        id: 10,
+        status: 'FINANCIAL_CLEARED',
+      });
+
+      const res = await request(app)
+        .post('/api/invoices/301/payments')
+        .set('Authorization', `Bearer ${staffToken}`)
+        .send({
+          paymentMethod: 'CASH',
+          amount: 1000000,
+          tenderedAmount: 1200000,
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.changeAmount).toBe(200000);
+      expect(res.body.data.invoiceStatus).toBe('PAID');
+    });
+
+    it('INV-API-16: Báo lỗi 422 khi số tiền thanh toán không bằng amount_due', async () => {
+      (prisma.invoice.findUnique as any).mockResolvedValue({
+        id: 301,
+        status: 'ISSUED',
+        amount_due: 1000000,
+        work_order: {},
+      });
+
+      const res = await request(app)
+        .post('/api/invoices/301/payments')
+        .set('Authorization', `Bearer ${staffToken}`)
+        .send({
+          paymentMethod: 'CASH',
+          amount: 500000, // Thanh toán thiếu -> Báo lỗi MVP full payment
+        });
+
+      expect(res.status).toBe(422);
+      expect(res.body.message).toContain('Số tiền thanh toán phải bằng đúng số tiền còn phải trả');
+    });
+
+    it('INV-API-17: Chặn SA ghi nhận thanh toán -> 403 Forbidden', async () => {
+      const res = await request(app)
+        .post('/api/invoices/301/payments')
+        .set('Authorization', `Bearer ${saToken}`)
+        .send({
+          paymentMethod: 'CASH',
+          amount: 1000000,
+        });
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe('POST /api/invoices/:id/payments/vnpay (UC-28: Tạo VNPay QR URL)', () => {
+    it('INV-API-18: Tạo mã thanh toán VNPay QR thành công -> 201 Created', async () => {
+      (prisma.invoice.findUnique as any).mockResolvedValue({
+        id: 301,
+        invoice_number: 'INV-202611-001',
+        status: 'ISSUED',
+        amount_due: 1500000,
+        work_order: {
+          vehicle: { license_plate: '51F-123.45' },
+        },
+      });
+
+      (prisma.payment.updateMany as any).mockResolvedValue({ count: 0 });
+      (prisma.payment.create as any).mockResolvedValue({
+        id: 601,
+        amount: 1500000,
+        transaction_ref: 'PAY-INV202611001-1234',
+        payment_url: 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=150000000',
+        expires_at: new Date(Date.now() + 15 * 60 * 1000),
+      });
+
+      const res = await request(app)
+        .post('/api/invoices/301/payments/vnpay')
+        .set('Authorization', `Bearer ${staffToken}`);
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.paymentUrl).toContain('vnpayment.vn');
+      expect(res.body.data.amount).toBe(1500000);
+    });
+  });
+
+  describe('GET /api/payments/vnpay/ipn (UC-28: IPN Webhook)', () => {
+    it('INV-API-19: Xử lý IPN thành công với chữ ký hợp lệ -> RspCode 00', async () => {
+      const vnpParams = {
+        txnRef: 'PAY-INV001-999',
+        amount: 800000,
+        orderInfo: 'Thanh toan hoa don',
+      };
+      const { paymentUrl } = createVnpayPaymentUrl(vnpParams);
+      const urlObj = new URL(paymentUrl);
+      const queryParams: Record<string, string> = {};
+      urlObj.searchParams.forEach((v, k) => {
+        queryParams[k] = v;
+      });
+      queryParams['vnp_ResponseCode'] = '00';
+      queryParams['vnp_TransactionStatus'] = '00';
+
+      (prisma.payment.findUnique as any).mockResolvedValue({
+        id: 701,
+        amount: 800000,
+        status: 'PENDING',
+        invoice: {
+          id: 301,
+          invoice_number: 'INV-001',
+          work_order_id: 10,
+          work_order: {
+            status: 'BILLING_REQUESTED',
+            advisor_id: 50,
+            customer_id: 101,
+            vehicle: { license_plate: '51F-123.45' },
+            customer: { full_name: 'Khách A' },
+          },
+        },
+      });
+
+      (prisma.payment.update as any).mockResolvedValue({ id: 701, status: 'SUCCESS' });
+      (prisma.invoice.update as any).mockResolvedValue({
+        id: 301,
+        invoice_number: 'INV-001',
+        work_order: {
+          advisor_id: 50,
+          customer_id: 101,
+          vehicle: { license_plate: '51F-123.45' },
+        },
+      });
+      (prisma.workOrder.update as any).mockResolvedValue({ id: 10, status: 'FINANCIAL_CLEARED' });
+
+      // Cần tái tạo chữ ký cho queryParams chứa response code
+      const { paymentUrl: finalUrl } = createVnpayPaymentUrl({
+        txnRef: 'PAY-INV001-999',
+        amount: 800000,
+        orderInfo: 'Thanh toan hoa don',
+      });
+      const finalUrlObj = new URL(finalUrl);
+      const finalQuery: Record<string, string> = {};
+      finalUrlObj.searchParams.forEach((v, k) => {
+        finalQuery[k] = v;
+      });
+
+      const res = await request(app)
+        .get('/api/payments/vnpay/ipn')
+        .query(finalQuery);
+
+      expect(res.status).toBe(200);
+      expect(res.body.RspCode).toBe('00');
+    });
+
+    it('INV-API-20: Trả về RspCode 97 khi Checksum không hợp lệ', async () => {
+      const res = await request(app)
+        .get('/api/payments/vnpay/ipn')
+        .query({
+          vnp_TxnRef: 'PAY-FAKE',
+          vnp_Amount: '10000000',
+          vnp_SecureHash: 'INVALID_HASH',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.RspCode).toBe('97');
+      expect(res.body.Message).toContain('Invalid Checksum');
     });
   });
 });

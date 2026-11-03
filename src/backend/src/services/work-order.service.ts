@@ -1085,7 +1085,10 @@ export class WorkOrderService {
             },
           },
         },
-        invoice: {
+        invoices: {
+          where: { status: { in: ['ISSUED', 'PAID'] } },
+          orderBy: { created_at: 'desc' },
+          take: 1,
           select: {
             id: true,
             invoice_number: true,
@@ -1158,7 +1161,10 @@ export class WorkOrderService {
             },
           },
         },
-        invoice: {
+        invoices: {
+          where: { status: { in: ['ISSUED', 'PAID'] } },
+          orderBy: { created_at: 'desc' },
+          take: 1,
           select: {
             id: true,
             invoice_number: true,
@@ -1550,13 +1556,13 @@ export class WorkOrderService {
         releaseNotes: wo.release.release_notes,
         releasedAt: wo.release.released_at,
       } : null,
-      invoice: wo.invoice ? {
-        id: wo.invoice.id,
-        invoiceNumber: wo.invoice.invoice_number,
-        status: wo.invoice.status,
-        totalAmount: Number(wo.invoice.total_amount),
-        amountDue: Number(wo.invoice.amount_due),
-        issuedAt: wo.invoice.issued_at,
+      invoice: wo.invoices?.[0] ? {
+        id: wo.invoices[0].id,
+        invoiceNumber: wo.invoices[0].invoice_number,
+        status: wo.invoices[0].status,
+        totalAmount: Number(wo.invoices[0].total_amount),
+        amountDue: Number(wo.invoices[0].amount_due),
+        issuedAt: wo.invoices[0].issued_at,
       } : null,
     };
   }

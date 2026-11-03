@@ -4,6 +4,7 @@ import authReducer from './slices/authSlice';
 import appointmentReducer from './slices/appointmentSlice';
 import intakeReducer from './slices/intakeSlice';
 import inventoryReducer from './slices/inventorySlice';
+import billingReducer from './slices/billingSlice';
 
 export const store = configureStore({
   reducer: {
@@ -11,6 +12,7 @@ export const store = configureStore({
     appointments: appointmentReducer,
     intake: intakeReducer,
     inventory: inventoryReducer,
+    billing: billingReducer,
   },
 });
 
@@ -19,4 +21,3 @@ export type AppDispatch = typeof store.dispatch;
 
 export const useAppDispatch: () => AppDispatch = useDispatch;
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
-

@@ -302,6 +302,7 @@ model User {
   adjustments_requested  StockAdjustment[] @relation("RequestedAdjustment")
   adjustments_approved   StockAdjustment[] @relation("ApprovedAdjustment")
   invoices               Invoice[]
+  issued_invoices        Invoice[]         @relation("IssuedInvoice")
   payments               Payment[]
   released_vehicles      VehicleRelease[]  @relation("ReleasedBy")
   confirmed_releases     VehicleRelease[]  @relation("ConfirmedBy")
@@ -618,7 +619,7 @@ model WorkOrder {
   services    WoService[]
   inspections Inspection[]
   quotations  Quotation[]
-  invoice     Invoice?
+  invoices    Invoice[]
   release     VehicleRelease?
 
   @@map("work_orders")
@@ -1059,24 +1060,32 @@ model StockAdjustment {
 
 model Invoice {
   id              Int           @id @default(autoincrement())
-  work_order_id   Int           @unique
+  work_order_id   Int
   invoice_number  String        @unique @db.VarChar(30)
   status          InvoiceStatus @default(DRAFT)
   subtotal        Decimal       @db.Decimal(12, 2)
   discount_amount Decimal       @default(0) @db.Decimal(12, 2)
+  discount_reason String?       @db.VarChar(500)
   tax_amount      Decimal       @default(0) @db.Decimal(12, 2)
   total_amount    Decimal       @db.Decimal(12, 2)
   amount_due      Decimal       @db.Decimal(12, 2)
+  notes           String?       @db.Text
   issued_at       DateTime?
+  issued_by_id    Int?
+  paid_at         DateTime?
+  cancelled_at    DateTime?
+  cancel_reason   String?       @db.Text
   created_by_id   Int
   created_at      DateTime      @default(now())
   updated_at      DateTime      @default(now()) @updatedAt
 
   work_order WorkOrder     @relation(fields: [work_order_id], references: [id])
   created_by User          @relation(fields: [created_by_id], references: [id])
+  issued_by  User?         @relation("IssuedInvoice", fields: [issued_by_id], references: [id])
   lines      InvoiceLine[]
   payments   Payment[]
 
+  @@index([work_order_id])
   @@map("invoices")
 }
 
@@ -1106,10 +1115,14 @@ model Payment {
   invoice_id       Int
   payment_method   PaymentMethod
   amount           Decimal       @db.Decimal(12, 2)
+  tendered_amount  Decimal?      @db.Decimal(12, 2)
   transaction_ref  String?       @unique @db.VarChar(255)
   gateway_provider String?       @db.VarChar(50)
+  payment_url      String?       @db.Text
   payment_payload  Json?
   status           PaymentStatus @default(PENDING)
+  failure_reason   String?       @db.VarChar(500)
+  expires_at       DateTime?
   paid_at          DateTime?
   received_by_id   Int?
   created_at       DateTime      @default(now())
@@ -1117,6 +1130,7 @@ model Payment {
   invoice     Invoice @relation(fields: [invoice_id], references: [id])
   received_by User?   @relation(fields: [received_by_id], references: [id])
 
+  @@index([invoice_id])
   @@map("payments")
 }
 

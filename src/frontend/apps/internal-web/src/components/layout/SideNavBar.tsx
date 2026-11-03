@@ -26,7 +26,7 @@ export default function SideNavBar() {
     { name: 'Tổng quan', href: '/staff', icon: 'dashboard' },
     { name: 'Quản lý lịch hẹn', href: '/staff/appointments', icon: 'calendar_today', badge: 12 },
     { name: 'Tiếp nhận xe', href: '/staff/intake', icon: 'car_repair', badge: 4, urgent: true },
-    { name: 'Báo giá & Hóa đơn', href: '/staff/billing', icon: 'receipt_long' },
+    { name: 'Hóa đơn & Thanh toán', href: '/staff/billing', icon: 'receipt_long' },
     { name: 'Quản lý Khách hàng', href: '/staff/customers', icon: 'group' },
   ];
 

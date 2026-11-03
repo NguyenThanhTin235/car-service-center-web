@@ -20,11 +20,13 @@ import catalogRoutes from './routes/system-catalog.routes';
 import vehicleRoutes from './routes/vehicle.routes';
 import inventoryRoutes from './routes/inventory.routes';
 import invoiceRoutes from './routes/invoice.routes';
+import paymentRoutes from './routes/payment.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import reportRoutes from './routes/report.routes';
 import quotationRoutes from './routes/quotation.routes';
 
 const app = express();
+app.set('trust proxy', true);
 
 // Middlewares
 const allowedOrigins = [
@@ -78,6 +80,7 @@ app.use('/api/system-catalogs', catalogRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api', inventoryRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/payments', paymentRoutes);
 app.use('/api/quotations', quotationRoutes);
 
 app.use('/api/dashboard', dashboardRoutes);

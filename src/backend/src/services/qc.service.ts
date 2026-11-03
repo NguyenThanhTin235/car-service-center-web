@@ -533,16 +533,34 @@ export class QcService {
       });
 
       // Tạo thông báo cho quầy thu ngân (Desk staff / Cashier)
-      await tx.notification.create({
-        data: {
-          user_id: advisorId,
-          notification_type: 'BILLING_REQUEST',
-          title: `Yêu cầu thanh toán xe ${updatedWorkOrder.vehicle.license_plate}`,
-          message: `Phiếu công việc ${updatedWorkOrder.wo_number} đã hoàn tất kiểm định chất lượng KCS 100%. Sẵn sàng phát hành hóa đơn.`,
-          entity_type: 'WORK_ORDER',
-          entity_id: workOrderId,
-        },
-      });
+      const deskStaffUsers = tx.userRole ? await tx.userRole.findMany({
+        where: { role: { name: 'DESK STAFF' } },
+        select: { user_id: true },
+      }) : [];
+
+      if (deskStaffUsers && deskStaffUsers.length > 0 && tx.notification.createMany) {
+        await tx.notification.createMany({
+          data: deskStaffUsers.map((u: any) => ({
+            user_id: u.user_id,
+            notification_type: 'BILLING_REQUEST',
+            title: `Yêu cầu thanh toán xe ${updatedWorkOrder.vehicle.license_plate}`,
+            message: `Phiếu công việc ${updatedWorkOrder.wo_number} đã hoàn tất kiểm định chất lượng KCS 100%. Sẵn sàng phát hành hóa đơn.`,
+            entity_type: 'WORK_ORDER',
+            entity_id: workOrderId,
+          })),
+        });
+      } else if (tx.notification.create) {
+        await tx.notification.create({
+          data: {
+            user_id: advisorId,
+            notification_type: 'BILLING_REQUEST',
+            title: `Yêu cầu thanh toán xe ${updatedWorkOrder.vehicle.license_plate}`,
+            message: `Phiếu công việc ${updatedWorkOrder.wo_number} đã hoàn tất kiểm định chất lượng KCS 100%. Sẵn sàng phát hành hóa đơn.`,
+            entity_type: 'WORK_ORDER',
+            entity_id: workOrderId,
+          },
+        });
+      }
 
       return {
         workOrderId: updatedWorkOrder.id,
