@@ -299,27 +299,27 @@ export default function BillingQueuePage() {
         </div>
 
         {/* 4. Table view */}
-        <div className="overflow-x-auto rounded-xl border border-outline-variant">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto rounded-xl border border-outline-variant bg-surface-container-lowest">
+          <table className="w-full text-left text-sm min-w-[1020px]">
             <thead className="bg-surface-container-low text-on-surface-variant font-semibold text-xs uppercase tracking-wider border-b border-outline-variant">
               {tab === 'PENDING' ? (
                 <tr>
-                  <th className="py-3 px-4">Mã phiếu WO</th>
-                  <th className="py-3 px-4">Biển số &amp; Xe</th>
-                  <th className="py-3 px-4">Khách hàng</th>
-                  <th className="py-3 px-4">Cố vấn dịch vụ</th>
-                  <th className="py-3 px-4 text-right">Tạm tính (Báo giá duyệt)</th>
-                  <th className="py-3 px-4 text-center w-36">Thao tác</th>
+                  <th className="py-3.5 px-4 w-[16%] min-w-[150px]">Mã phiếu WO</th>
+                  <th className="py-3.5 px-4 w-[24%] min-w-[210px]">Biển số &amp; Xe</th>
+                  <th className="py-3.5 px-4 w-[18%] min-w-[160px]">Khách hàng</th>
+                  <th className="py-3.5 px-4 w-[16%] min-w-[150px]">Cố vấn dịch vụ</th>
+                  <th className="py-3.5 px-4 text-right w-[14%] min-w-[130px] whitespace-nowrap">Tạm tính (Báo giá duyệt)</th>
+                  <th className="py-3.5 px-4 text-center w-[12%] min-w-[130px] whitespace-nowrap">Thao tác</th>
                 </tr>
               ) : (
                 <tr>
-                  <th className="py-3 px-4">Mã hóa đơn</th>
-                  <th className="py-3 px-4">Mã WO &amp; Biển số</th>
-                  <th className="py-3 px-4">Khách hàng</th>
-                  <th className="py-3 px-4">Trạng thái</th>
-                  <th className="py-3 px-4 text-right">Tổng tiền</th>
-                  <th className="py-3 px-4 text-right">Còn phải trả</th>
-                  <th className="py-3 px-4 text-center w-40">Thao tác</th>
+                  <th className="py-3.5 px-4 w-[16%] min-w-[150px]">Mã hóa đơn</th>
+                  <th className="py-3.5 px-4 w-[18%] min-w-[170px]">Mã WO &amp; Biển số</th>
+                  <th className="py-3.5 px-4 w-[18%] min-w-[160px]">Khách hàng</th>
+                  <th className="py-3.5 px-4 w-[13%] min-w-[130px]">Trạng thái</th>
+                  <th className="py-3.5 px-4 text-right w-[11%] min-w-[110px] whitespace-nowrap">Tổng tiền</th>
+                  <th className="py-3.5 px-4 text-right w-[11%] min-w-[110px] whitespace-nowrap">Còn phải trả</th>
+                  <th className="py-3.5 px-4 text-center w-[13%] min-w-[180px] whitespace-nowrap">Thao tác</th>
                 </tr>
               )}
             </thead>
@@ -352,39 +352,39 @@ export default function BillingQueuePage() {
                   if (isWorkOrder) {
                     return (
                       <tr key={rowKey} className="hover:bg-surface-container-low/50 transition-colors">
-                        <td className="py-3 px-4">
+                        <td className="py-3.5 px-4">
                           <span className="font-mono font-bold text-primary">{rec.woNumber}</span>
-                          <div className="text-[11px] text-on-surface-variant">
+                          <div className="text-[11px] text-on-surface-variant whitespace-nowrap">
                             {formatDate(rec.updatedAt)}
                           </div>
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-on-surface">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-on-surface uppercase tracking-wide">
                             {rec.vehicle?.licensePlate || (rec.vehicle as any)?.license_plate || '-'}
                           </div>
                           <div className="text-xs text-on-surface-variant">
                             {rec.vehicle?.make} {rec.vehicle?.model} ({rec.vehicle?.year})
                           </div>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3.5 px-4">
                           <div className="font-medium text-on-surface">
                             {rec.customer?.fullName || (rec.customer as any)?.full_name || '-'}
                           </div>
-                          <div className="text-xs text-on-surface-variant">{rec.customer?.phone || '-'}</div>
+                          <div className="text-xs text-on-surface-variant font-mono">{rec.customer?.phone || '-'}</div>
                         </td>
-                        <td className="py-3 px-4 text-on-surface text-xs font-medium">
+                        <td className="py-3.5 px-4 text-on-surface text-xs font-medium">
                           {rec.advisor?.fullName || (rec.advisor as any)?.full_name || '-'}
                         </td>
-                        <td className="py-3 px-4 text-right font-bold text-on-surface">
+                        <td className="py-3.5 px-4 text-right font-bold text-on-surface whitespace-nowrap">
                           {formatMoney(rec.estimatedTotal)}
                         </td>
-                        <td className="py-3 px-4 text-center">
+                        <td className="py-3.5 px-4 text-center">
                           <button
                             onClick={() => {
                               setSelectedWoId(rec.workOrderId!);
                               setIsCreateModalOpen(true);
                             }}
-                            className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold hover:bg-primary-dark transition-colors shadow-xs flex items-center gap-1 mx-auto"
+                            className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold hover:bg-primary-dark transition-colors shadow-xs inline-flex items-center gap-1.5 whitespace-nowrap mx-auto"
                           >
                             <span className="material-symbols-outlined text-[16px]">receipt</span>
                             <span>Lập hóa đơn</span>
@@ -397,50 +397,50 @@ export default function BillingQueuePage() {
                   // Hóa đơn
                   return (
                     <tr key={rowKey} className="hover:bg-surface-container-low/50 transition-colors">
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-4">
                         <Link
                           href={`/staff/billing/${rec.id}`}
-                          className="font-mono font-bold text-primary hover:underline"
+                          className="font-mono font-bold text-primary hover:underline whitespace-nowrap"
                         >
                           {rec.invoiceNumber}
                         </Link>
-                        <div className="text-[11px] text-on-surface-variant">
+                        <div className="text-[11px] text-on-surface-variant whitespace-nowrap">
                           {formatDate(rec.issuedAt || rec.createdAt)}
                         </div>
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="font-bold text-on-surface">
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-on-surface uppercase tracking-wide">
                           {rec.vehicle?.licensePlate || (rec.vehicle as any)?.license_plate || '-'}
                         </div>
                         <div className="text-xs text-on-surface-variant font-mono">
                           {rec.woNumber}
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-4">
                         <div className="font-medium text-on-surface">
                           {rec.customer?.fullName || (rec.customer as any)?.full_name || '-'}
                         </div>
-                        <div className="text-xs text-on-surface-variant">{rec.customer?.phone || '-'}</div>
+                        <div className="text-xs text-on-surface-variant font-mono">{rec.customer?.phone || '-'}</div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-4 whitespace-nowrap">
                         <InvoiceStatusBadge status={rec.status as any} />
                       </td>
-                      <td className="py-3 px-4 text-right font-semibold text-on-surface">
+                      <td className="py-3.5 px-4 text-right font-semibold text-on-surface whitespace-nowrap">
                         {formatMoney(rec.totalAmount)}
                       </td>
-                      <td className="py-3 px-4 text-right font-bold">
+                      <td className="py-3.5 px-4 text-right font-bold whitespace-nowrap">
                         {rec.amountDue && rec.amountDue > 0 ? (
                           <span className="text-amber-700">{formatMoney(rec.amountDue)}</span>
                         ) : (
                           <span className="text-emerald-600">0 đ</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                           {rec.status === 'ISSUED' && (
                             <button
                               onClick={() => handleOpenPayment(rec.id!)}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors flex items-center gap-1 shadow-xs"
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors inline-flex items-center gap-1 shadow-xs whitespace-nowrap shrink-0"
                             >
                               <span className="material-symbols-outlined text-[15px]">payments</span>
                               <span>Thu tiền</span>
@@ -449,7 +449,7 @@ export default function BillingQueuePage() {
 
                           <Link
                             href={`/staff/billing/${rec.id}`}
-                            className="px-2.5 py-1 rounded-lg border border-outline-variant hover:bg-surface-container-high text-on-surface text-xs font-medium transition-colors flex items-center gap-1"
+                            className="px-3 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container-high text-on-surface text-xs font-medium transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0"
                           >
                             <span>Chi tiết</span>
                             <span className="material-symbols-outlined text-[15px]">chevron_right</span>
