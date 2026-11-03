@@ -75,14 +75,9 @@ export default function InvoiceLinesTable({ lines }: Props) {
                 <td className="py-3 px-4 text-center text-on-surface-variant">{idx + 1}</td>
                 <td className="py-3 px-4">
                   <div className="font-medium text-on-surface">{line.description}</div>
-                  {(line.serviceName || line.quotationNumber) && (
-                    <div className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-2">
-                      {line.serviceName && <span>Thuộc: {line.serviceName}</span>}
-                      {line.quotationNumber && (
-                        <span className="text-primary font-mono text-[11px] bg-primary/10 px-1.5 py-0.2 rounded">
-                          {line.quotationNumber}
-                        </span>
-                      )}
+                  {line.serviceName && (
+                    <div className="text-xs text-on-surface-variant mt-0.5">
+                      Thuộc: {line.serviceName}
                     </div>
                   )}
                 </td>
