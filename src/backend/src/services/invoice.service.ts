@@ -255,9 +255,30 @@ export class InvoiceService {
           workOrderId: wo.id,
           woNumber: wo.wo_number,
           status: wo.status,
-          customer: wo.customer,
-          vehicle: wo.vehicle,
-          advisor: wo.advisor,
+          customer: wo.customer
+            ? {
+                id: wo.customer.id,
+                fullName: wo.customer.full_name,
+                phone: wo.customer.phone,
+                email: wo.customer.email,
+              }
+            : null,
+          vehicle: wo.vehicle
+            ? {
+                id: wo.vehicle.id,
+                licensePlate: wo.vehicle.license_plate,
+                make: wo.vehicle.make,
+                model: wo.vehicle.model,
+                year: wo.vehicle.year,
+              }
+            : null,
+          advisor: wo.advisor
+            ? {
+                id: wo.advisor.id,
+                fullName: wo.advisor.full_name,
+                phone: wo.advisor.phone,
+              }
+            : null,
           services: wo.services,
           quotations: latestQuote ? [latestQuote] : [],
           estimatedTotal: totalEstimated,
@@ -345,9 +366,30 @@ export class InvoiceService {
       paidAt: inv.paid_at,
       cancelledAt: inv.cancelled_at,
       createdAt: inv.created_at,
-      customer: inv.work_order.customer,
-      vehicle: inv.work_order.vehicle,
-      advisor: inv.work_order.advisor,
+      customer: inv.work_order.customer
+        ? {
+            id: inv.work_order.customer.id,
+            fullName: inv.work_order.customer.full_name,
+            phone: inv.work_order.customer.phone,
+            email: inv.work_order.customer.email,
+          }
+        : null,
+      vehicle: inv.work_order.vehicle
+        ? {
+            id: inv.work_order.vehicle.id,
+            licensePlate: inv.work_order.vehicle.license_plate,
+            make: inv.work_order.vehicle.make,
+            model: inv.work_order.vehicle.model,
+            year: inv.work_order.vehicle.year,
+          }
+        : null,
+      advisor: inv.work_order.advisor
+        ? {
+            id: inv.work_order.advisor.id,
+            fullName: inv.work_order.advisor.full_name,
+            phone: inv.work_order.advisor.phone,
+          }
+        : null,
       createdBy: inv.created_by,
       issuedBy: inv.issued_by,
       lastPayment: inv.payments?.[0] || null,

@@ -359,17 +359,21 @@ export default function BillingQueuePage() {
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="font-bold text-on-surface">{rec.vehicle.licensePlate}</div>
+                          <div className="font-bold text-on-surface">
+                            {rec.vehicle?.licensePlate || (rec.vehicle as any)?.license_plate || '-'}
+                          </div>
                           <div className="text-xs text-on-surface-variant">
-                            {rec.vehicle.make} {rec.vehicle.model} ({rec.vehicle.year})
+                            {rec.vehicle?.make} {rec.vehicle?.model} ({rec.vehicle?.year})
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="font-medium text-on-surface">{rec.customer.fullName}</div>
-                          <div className="text-xs text-on-surface-variant">{rec.customer.phone || '-'}</div>
+                          <div className="font-medium text-on-surface">
+                            {rec.customer?.fullName || (rec.customer as any)?.full_name || '-'}
+                          </div>
+                          <div className="text-xs text-on-surface-variant">{rec.customer?.phone || '-'}</div>
                         </td>
-                        <td className="py-3 px-4 text-on-surface text-xs">
-                          {rec.advisor?.fullName || '-'}
+                        <td className="py-3 px-4 text-on-surface text-xs font-medium">
+                          {rec.advisor?.fullName || (rec.advisor as any)?.full_name || '-'}
                         </td>
                         <td className="py-3 px-4 text-right font-bold text-on-surface">
                           {formatMoney(rec.estimatedTotal)}
@@ -405,14 +409,18 @@ export default function BillingQueuePage() {
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <div className="font-bold text-on-surface">{rec.vehicle.licensePlate}</div>
+                        <div className="font-bold text-on-surface">
+                          {rec.vehicle?.licensePlate || (rec.vehicle as any)?.license_plate || '-'}
+                        </div>
                         <div className="text-xs text-on-surface-variant font-mono">
                           {rec.woNumber}
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <div className="font-medium text-on-surface">{rec.customer.fullName}</div>
-                        <div className="text-xs text-on-surface-variant">{rec.customer.phone || '-'}</div>
+                        <div className="font-medium text-on-surface">
+                          {rec.customer?.fullName || (rec.customer as any)?.full_name || '-'}
+                        </div>
+                        <div className="text-xs text-on-surface-variant">{rec.customer?.phone || '-'}</div>
                       </td>
                       <td className="py-3 px-4">
                         <InvoiceStatusBadge status={rec.status as any} />
