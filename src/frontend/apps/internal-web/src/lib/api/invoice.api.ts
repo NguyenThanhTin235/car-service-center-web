@@ -307,3 +307,4 @@ export async function downloadInvoicePdfBlob(id: number) {
   });
   return res.data;
 }
+

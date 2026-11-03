@@ -29,3 +29,4 @@ router.post('/:id/cancel', authorize('DESK STAFF', 'ADMIN'), cancelPendingPaymen
 router.post('/:id/simulate-success', authorize('DESK STAFF', 'ADMIN'), simulateQrSuccess);
 
 export default router;
+

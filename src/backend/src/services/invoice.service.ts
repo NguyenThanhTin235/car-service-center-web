@@ -252,6 +252,7 @@ export class InvoiceService {
         );
         return {
           type: 'WORK_ORDER',
+          id: wo.id,
           workOrderId: wo.id,
           woNumber: wo.wo_number,
           status: wo.status,

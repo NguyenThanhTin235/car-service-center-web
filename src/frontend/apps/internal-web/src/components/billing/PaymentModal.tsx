@@ -258,3 +258,4 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
     </div>
   );
 }
+

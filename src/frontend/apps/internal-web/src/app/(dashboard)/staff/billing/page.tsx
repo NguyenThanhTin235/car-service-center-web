@@ -343,10 +343,15 @@ export default function BillingQueuePage() {
                   </td>
                 </tr>
               ) : (
-                records.map((rec) => {
-                  if (tab === 'PENDING') {
+                records.map((rec, index) => {
+                  const isWorkOrder = rec.type === 'WORK_ORDER' || (!rec.invoiceNumber && Boolean(rec.workOrderId));
+                  const rowKey = isWorkOrder
+                    ? `wo-${rec.workOrderId ?? rec.id ?? index}`
+                    : `inv-${rec.id ?? rec.invoiceNumber ?? index}`;
+
+                  if (isWorkOrder) {
                     return (
-                      <tr key={rec.workOrderId} className="hover:bg-surface-container-low/50 transition-colors">
+                      <tr key={rowKey} className="hover:bg-surface-container-low/50 transition-colors">
                         <td className="py-3 px-4">
                           <span className="font-mono font-bold text-primary">{rec.woNumber}</span>
                           <div className="text-[11px] text-on-surface-variant">
@@ -387,7 +392,7 @@ export default function BillingQueuePage() {
 
                   // Hóa đơn
                   return (
-                    <tr key={rec.id} className="hover:bg-surface-container-low/50 transition-colors">
+                    <tr key={rowKey} className="hover:bg-surface-container-low/50 transition-colors">
                       <td className="py-3 px-4">
                         <Link
                           href={`/staff/billing/${rec.id}`}
@@ -512,3 +517,4 @@ export default function BillingQueuePage() {
     </div>
   );
 }
+

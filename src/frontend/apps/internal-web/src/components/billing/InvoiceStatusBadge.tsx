@@ -54,3 +54,4 @@ export default function InvoiceStatusBadge({ status, className = '' }: Props) {
       );
   }
 }
+

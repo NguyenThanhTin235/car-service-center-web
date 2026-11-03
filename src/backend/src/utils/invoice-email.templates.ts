@@ -152,3 +152,4 @@ export function buildPaymentSuccessEmail(data: InvoiceEmailData): { subject: str
 
   return { subject, html };
 }
+

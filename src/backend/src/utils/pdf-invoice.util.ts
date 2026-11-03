@@ -250,3 +250,4 @@ export function generateInvoicePdfBuffer(data: InvoicePdfData): Promise<Buffer> 
     doc.end();
   });
 }
+
