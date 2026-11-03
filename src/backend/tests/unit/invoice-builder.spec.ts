@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { buildInvoiceLinesFromQuotations } from '../../src/utils/invoice-builder.util';
 
 describe('Unit Test - Invoice Builder & Quotation Reconciliation (SPEC-INV / UC-27)', () => {
-  it('INV-BLD-01: Gộp đầy đủ các dòng từ báo giá PRIMARY và SUPPLEMENTARY đã APPROVED', () => {
+  it('INV-BLD-01: Lấy chính xác các dòng từ báo giá cuối cùng khách đã duyệt (tránh bị chồng báo giá / duplicate lines)', () => {
     const mockApprovedQuotes = [
       {
         id: 1,
@@ -10,6 +10,8 @@ describe('Unit Test - Invoice Builder & Quotation Reconciliation (SPEC-INV / UC-
         quotation_type: 'PRIMARY',
         status: 'APPROVED',
         discount_amount: 50000,
+        created_at: new Date('2026-11-01T08:00:00Z'),
+        approved_at: new Date('2026-11-01T09:00:00Z'),
         lines: [
           {
             id: 101,
@@ -37,11 +39,13 @@ describe('Unit Test - Invoice Builder & Quotation Reconciliation (SPEC-INV / UC-
         quotation_type: 'SUPPLEMENTARY',
         status: 'APPROVED',
         discount_amount: 30000,
+        created_at: new Date('2026-11-02T10:00:00Z'),
+        approved_at: new Date('2026-11-02T11:00:00Z'),
         lines: [
           {
             id: 103,
             line_type: 'PART',
-            description: 'Lọc gió điều hòa',
+            description: 'Lọc gió điều hòa (Bản điều chỉnh cuối cùng)',
             quantity: 1,
             snapshot_unit_price: 250000,
             wo_service_id: 11,
@@ -53,16 +57,15 @@ describe('Unit Test - Invoice Builder & Quotation Reconciliation (SPEC-INV / UC-
 
     const result = buildInvoiceLinesFromQuotations(mockApprovedQuotes);
 
-    expect(result.lines).toHaveLength(3);
-    // Subtotal: 150.000 + (4 * 120.000) + 250.000 = 880.000
-    expect(result.subtotal).toBe(880000);
-    // Default discount: 50.000 + 30.000 = 80.000
-    expect(result.defaultDiscount).toBe(80000);
-    // Total (Zero-Tax): 880.000 - 80.000 = 800.000
-    expect(result.totalAmount).toBe(800000);
-    expect(result.amountDue).toBe(800000);
+    // Chỉ lấy báo giá cuối cùng QUO-WO01-02
+    expect(result.lines).toHaveLength(1);
+    expect(result.lines[0].description).toBe('Lọc gió điều hòa (Bản điều chỉnh cuối cùng)');
+    expect(result.subtotal).toBe(250000);
+    expect(result.defaultDiscount).toBe(30000);
+    expect(result.totalAmount).toBe(220000);
+    expect(result.amountDue).toBe(220000);
     expect(result.taxAmount).toBe(0);
-    expect(result.sourceQuotationNumbers).toEqual(['QUO-WO01-01', 'QUO-WO01-02']);
+    expect(result.sourceQuotationNumbers).toEqual(['QUO-WO01-02']);
   });
 
   it('INV-BLD-02: Bỏ qua các báo giá không ở trạng thái APPROVED (ví dụ REJECTED, DRAFT)', () => {
@@ -200,4 +203,3 @@ describe('Unit Test - Invoice Builder & Quotation Reconciliation (SPEC-INV / UC-
     expect(line.sortOrder).toBe(0);
   });
 });
-

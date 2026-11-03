@@ -67,7 +67,7 @@ export class InvoiceService {
               orderBy: { sort_order: 'asc' },
             },
           },
-          orderBy: { created_at: 'asc' },
+          orderBy: [{ approved_at: 'desc' }, { created_at: 'desc' }, { id: 'desc' }],
         },
         invoices: {
           where: { status: { in: ['DRAFT', 'ISSUED', 'PAID'] } },
@@ -239,6 +239,7 @@ export class InvoiceService {
                 grand_total: true,
                 approved_at: true,
               },
+              orderBy: [{ approved_at: 'desc' }, { created_at: 'desc' }, { id: 'desc' }],
             },
           },
           orderBy: { updated_at: 'desc' },
@@ -246,10 +247,8 @@ export class InvoiceService {
       ]);
 
       const formattedPending = records.map((wo) => {
-        const totalEstimated = wo.quotations.reduce(
-          (sum, q) => sum + Number(q.grand_total || 0),
-          0
-        );
+        const latestQuote = wo.quotations[0];
+        const totalEstimated = latestQuote ? Number(latestQuote.grand_total || 0) : 0;
         return {
           type: 'WORK_ORDER',
           id: wo.id,
@@ -260,7 +259,7 @@ export class InvoiceService {
           vehicle: wo.vehicle,
           advisor: wo.advisor,
           services: wo.services,
-          quotations: wo.quotations,
+          quotations: latestQuote ? [latestQuote] : [],
           estimatedTotal: totalEstimated,
           updatedAt: wo.updated_at,
         };
