@@ -59,7 +59,7 @@ export function buildInvoiceIssuedEmail(data: InvoiceEmailData): { subject: stri
     </table>
 
     <p style="margin: 0 0 20px 0; font-size: 13px; color: #64748b; line-height: 1.5;">
-      Quý khách có thể thanh toán trực tiếp tại Quầy dịch vụ (Tiền mặt, thẻ ngân hàng hoặc Quét mã VNPay QR) hoặc thanh toán trực tuyến qua cổng Khách hàng.
+      Quý khách có thể thanh toán trực tiếp tại Quầy dịch vụ (Tiền mặt, quẹt thẻ POS hoặc Chuyển khoản) hoặc thanh toán trực tuyến qua cổng Khách hàng.
     </p>
 
     <!-- ACTION BUTTON -->
@@ -115,7 +115,7 @@ export function buildPaymentSuccessEmail(data: InvoiceEmailData): { subject: str
             </tr>
             <tr>
               <td style="padding: 6px 0; font-size: 13px; color: #166534;">Phương thức thanh toán:</td>
-              <td align="right" style="padding: 6px 0; font-size: 13px; font-weight: 600; color: #166534;">${data.paymentMethod || 'VNPay / Tiền mặt / Thẻ'}</td>
+              <td align="right" style="padding: 6px 0; font-size: 13px; font-weight: 600; color: #166534;">${data.paymentMethod || 'Chuyển khoản / Tiền mặt / Thẻ'}</td>
             </tr>
             <tr>
               <td style="padding: 6px 0; font-size: 13px; color: #166534;">Trạng thái tài chính:</td>

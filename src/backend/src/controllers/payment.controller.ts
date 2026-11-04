@@ -61,50 +61,6 @@ export const recordManualPayment = async (req: Request, res: Response): Promise<
 };
 
 /**
- * POST /api/invoices/:id/payments/vnpay
- * Tạo mã QR / URL thanh toán VNPay (UC-28)
- */
-export const createVnpayPayment = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const userId = (req as any).user.id;
-    const invoiceId = Number(req.params.id);
-
-    if (isNaN(invoiceId) || invoiceId <= 0) {
-      res.status(400).json({
-        success: false,
-        code: 400,
-        message: 'Mã hóa đơn không hợp lệ',
-        data: null,
-        timestamp: Math.floor(Date.now() / 1000),
-      });
-      return;
-    }
-
-    const clientIp =
-      (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
-
-    const data = await paymentService.createVnpayPayment(invoiceId, userId, clientIp);
-
-    res.status(201).json({
-      success: true,
-      code: 201,
-      message: data.message,
-      data,
-      timestamp: Math.floor(Date.now() / 1000),
-    });
-  } catch (error: any) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({
-      success: false,
-      code: statusCode,
-      message: error.message || 'Lỗi khi tạo liên kết thanh toán VNPay',
-      data: null,
-      timestamp: Math.floor(Date.now() / 1000),
-    });
-  }
-};
-
-/**
  * GET /api/payments/:id/status
  * Tra cứu trạng thái thanh toán (hỗ trợ polling UI)
  */
@@ -186,51 +142,8 @@ export const cancelPendingPayment = async (req: Request, res: Response): Promise
 };
 
 /**
- * GET /api/payments/vnpay/ipn
- * Cổng nhận webhook IPN từ VNPay (Server-to-Server, Không qua auth middleware)
- */
-export const handleVnpayIpn = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const result = await paymentService.handleVnpayIpn(req.query);
-    res.status(200).json(result);
-  } catch (error: any) {
-    res.status(200).json({
-      RspCode: '99',
-      Message: error.message || 'Unknown error',
-    });
-  }
-};
-
-/**
- * GET /api/payments/vnpay/return
- * Xử lý kết quả Return URL khi người dùng redirect về từ VNPay
- */
-export const verifyVnpayReturn = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const data = await paymentService.verifyVnpayReturn(req.query);
-
-    res.json({
-      success: data.isSuccess,
-      code: data.isSuccess ? 200 : 400,
-      message: data.message,
-      data,
-      timestamp: Math.floor(Date.now() / 1000),
-    });
-  } catch (error: any) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({
-      success: false,
-      code: statusCode,
-      message: error.message || 'Lỗi khi xác thực kết quả thanh toán VNPay',
-      data: null,
-      timestamp: Math.floor(Date.now() / 1000),
-    });
-  }
-};
-
-/**
  * POST /api/payments/:id/simulate-success
- * Giả lập thanh toán VNPay thành công (chỉ cho môi trường Test / Dev)
+ * Giả lập thanh toán thành công (chỉ cho môi trường Test / Dev)
  */
 export const simulateQrSuccess = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -263,6 +176,134 @@ export const simulateQrSuccess = async (req: Request, res: Response): Promise<vo
       success: false,
       code: statusCode,
       message: error.message || 'Lỗi khi giả lập thanh toán',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * POST /api/invoices/:id/payments/sepay
+ * Khởi tạo phiên thanh toán SePay (VietQR / Napas) cho hóa đơn
+ */
+export const createSepayPayment = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const userRoles = (req as any).user.roles?.map((r: any) => r.role?.name || r.name || r) || [];
+    const invoiceId = Number(req.params.id);
+
+    if (isNaN(invoiceId) || invoiceId <= 0) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Mã hóa đơn không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const { returnUrl, cancelUrl } = req.body || {};
+
+    const data = await paymentService.createSepayPayment(
+      invoiceId,
+      userId,
+      userRoles,
+      returnUrl,
+      cancelUrl
+    );
+
+    res.status(201).json({
+      success: true,
+      code: 201,
+      message: 'Khởi tạo phiên thanh toán SePay thành công',
+      data,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
+      success: false,
+      code: statusCode,
+      message: error.message || 'Lỗi khi tạo phiên thanh toán SePay',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * POST /api/payments/sepay/ipn
+ * Tiếp nhận thông báo tức thời (IPN / Webhook) từ SePay Payment Gateway hoặc SePay Bank Hub
+ */
+export const handleSepayIpn = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const secretKeyHeader = req.headers['x-secret-key'];
+    const authHeader = req.headers['authorization'];
+
+    console.log('[SePay Webhook Body]:', JSON.stringify(req.body, null, 2));
+    console.log('[SePay Webhook Headers]:', { secretKeyHeader, authHeader });
+
+    const result = await paymentService.handleSepayIpn(req.body, secretKeyHeader, authHeader);
+
+    console.log('[SePay Webhook Success Result]:', result);
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: result.message || 'IPN processed successfully',
+      data: result,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    console.error('[SePay Webhook Error Caught]:', error.message, error.stack);
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
+      success: false,
+      code: statusCode,
+      message: error.message || 'Lỗi khi xử lý SePay IPN',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * GET /api/invoices/:id/payments/status
+ * Tra cứu trạng thái thanh toán của hóa đơn
+ */
+export const getInvoicePaymentStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?.id;
+    const userRoles = (req as any).user?.roles?.map((r: any) => r.role?.name || r.name || r) || [];
+    const invoiceId = Number(req.params.id);
+
+    if (isNaN(invoiceId) || invoiceId <= 0) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Mã hóa đơn không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const data = await paymentService.getInvoicePaymentStatus(invoiceId, userId, userRoles);
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: 'Lấy trạng thái thanh toán hóa đơn thành công',
+      data,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
+      success: false,
+      code: statusCode,
+      message: error.message || 'Lỗi khi tra cứu trạng thái thanh toán',
       data: null,
       timestamp: Math.floor(Date.now() / 1000),
     });

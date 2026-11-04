@@ -13,7 +13,8 @@ import {
 } from '../controllers/invoice.controller';
 import {
   recordManualPayment,
-  createVnpayPayment,
+  createSepayPayment,
+  getInvoicePaymentStatus,
 } from '../controllers/payment.controller';
 
 const router = Router();
@@ -45,8 +46,11 @@ router.post('/:id/cancel', authorize('DESK STAFF', 'MANAGER', 'ADMIN'), cancelIn
 // UC-28: Ghi nhận thanh toán thủ công (Tiền mặt / Thẻ ngân hàng)
 router.post('/:id/payments', authorize('DESK STAFF', 'ADMIN'), recordManualPayment);
 
-// UC-28: Tạo mã QR thanh toán qua VNPay
-router.post('/:id/payments/vnpay', authorize('DESK STAFF', 'ADMIN', 'CUSTOMER'), createVnpayPayment);
+// UC-28: Khởi tạo phiên thanh toán SePay (Khách hàng hoặc Desk Staff/Admin)
+router.post('/:id/payments/sepay', authorize('CUSTOMER', 'DESK STAFF', 'ADMIN', 'MANAGER'), createSepayPayment);
+
+// Tra cứu trạng thái thanh toán của hóa đơn
+router.get('/:id/payments/status', authorize('CUSTOMER', 'DESK STAFF', 'ADMIN', 'MANAGER', 'SA'), getInvoicePaymentStatus);
 
 // UC-27 / UC-16 / FR-18: Tải file hóa đơn dịch vụ định dạng PDF
 router.get('/:id/pdf', authorize('CUSTOMER', 'SA', 'ADMIN', 'DESK STAFF', 'MANAGER'), downloadInvoicePdf);

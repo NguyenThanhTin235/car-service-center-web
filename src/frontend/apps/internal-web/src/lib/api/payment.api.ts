@@ -22,17 +22,6 @@ export interface ManualPaymentResponse {
   message: string;
 }
 
-export interface VnpayPaymentResponse {
-  paymentId: number;
-  invoiceId: number;
-  invoiceNumber: string;
-  txnRef: string;
-  paymentUrl: string;
-  amount: number;
-  expiresAt: string;
-  message: string;
-}
-
 export interface PaymentStatusResponse {
   id: number;
   status: 'PENDING' | 'SUCCESS' | 'FAILED';
@@ -66,18 +55,6 @@ export async function recordManualPayment(invoiceId: number, payload: ManualPaym
 }
 
 /**
- * Tạo mã QR / URL thanh toán VNPay
- */
-export async function createVnpayPayment(invoiceId: number) {
-  const res = await api.post<{
-    success: boolean;
-    data: VnpayPaymentResponse;
-    message: string;
-  }>(`/api/invoices/${invoiceId}/payments/vnpay`);
-  return res.data.data;
-}
-
-/**
  * Tra cứu trạng thái thanh toán (hỗ trợ polling UI)
  */
 export async function getPaymentStatus(paymentId: number) {
@@ -101,7 +78,7 @@ export async function cancelPendingPayment(paymentId: number, reason?: string) {
 }
 
 /**
- * Giả lập thanh toán VNPay QR thành công (chỉ cho dev / test)
+ * Giả lập thanh toán QR thành công (chỉ cho dev / test)
  */
 export async function simulateQrSuccess(paymentId: number) {
   const res = await api.post<{
@@ -112,26 +89,51 @@ export async function simulateQrSuccess(paymentId: number) {
   return res.data;
 }
 
+export interface SepayPaymentResponse {
+  paymentId: number;
+  invoiceId: number;
+  invoiceNumber: string;
+  amount: number;
+  checkoutUrl: string;
+  fields: Record<string, any>;
+  expiresAt?: string;
+  bankInfo?: {
+    bankCode: string;
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+    transferContent: string;
+    amount: number;
+    qrCodeUrl: string;
+  };
+}
+
 /**
- * Xác thực kết quả thanh toán Return URL từ VNPay
+ * Khởi tạo phiên thanh toán SePay (VietQR / Napas) cho hóa đơn
  */
-export async function verifyVnpayReturn(params: Record<string, string>) {
+export async function createSepayPayment(invoiceId: number) {
+  const res = await api.post<{
+    success: boolean;
+    data: SepayPaymentResponse;
+    message: string;
+  }>(`/api/invoices/${invoiceId}/payments/sepay`);
+  return res.data.data;
+}
+
+/**
+ * Tra cứu trạng thái thanh toán hóa đơn
+ */
+export async function getInvoicePaymentStatus(invoiceId: number) {
   const res = await api.get<{
     success: boolean;
-    code: number;
-    message: string;
     data: {
-      isSuccess: boolean;
-      paymentId: number;
       invoiceId: number;
       invoiceNumber: string;
-      amount: number;
-      transactionRef: string;
-      vnpayTransactionNo?: string | null;
-      responseCode: string;
-      message: string;
+      status: string;
+      amountDue: number;
+      isPaid: boolean;
     };
-  }>('/api/payments/vnpay/return', { params });
+  }>(`/api/invoices/${invoiceId}/payments/status`);
   return res.data.data;
 }
 

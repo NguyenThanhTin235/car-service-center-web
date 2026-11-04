@@ -1274,9 +1274,12 @@ export class WorkOrderService {
     if (['RELEASED', 'CLOSED'].includes(status)) {
       currentStep = 4;
       progressPercent = 100;
-    } else if (['FINANCIAL_CLEARED', 'BILLING_REQUESTED'].includes(status)) {
+    } else if (status === 'FINANCIAL_CLEARED') {
       currentStep = 4;
-      progressPercent = 95;
+      progressPercent = 100;
+    } else if (status === 'BILLING_REQUESTED') {
+      currentStep = 4;
+      progressPercent = 90;
     } else if (status === 'IN_PROGRESS') {
       if (totalServices > 0 && completedServices === totalServices) {
         if (isQcPassed) {
@@ -1335,14 +1338,30 @@ export class WorkOrderService {
       },
       {
         stepIndex: 4,
-        title: 'Hoàn tất & Sẵn sàng bàn giao',
-        status: ['RELEASED', 'CLOSED'].includes(status) ? 'COMPLETED' : (currentStep === 4 ? 'IN_PROGRESS' : 'PENDING'),
-        time: ['RELEASED', 'CLOSED'].includes(status) ? 'Đã bàn giao' : (currentStep === 4 ? 'Sẵn sàng' : 'Dự kiến bàn giao'),
-        description: ['RELEASED', 'CLOSED'].includes(status) 
+        title: ['RELEASED', 'CLOSED'].includes(status)
+          ? 'Đã bàn giao xe hoàn tất'
+          : status === 'FINANCIAL_CLEARED'
+          ? 'Sẵn sàng bàn giao xe'
+          : status === 'BILLING_REQUESTED'
+          ? 'Chờ thanh toán nhận xe'
+          : 'Hoàn tất & Bàn giao xe',
+        status: ['RELEASED', 'CLOSED', 'FINANCIAL_CLEARED'].includes(status)
+          ? 'COMPLETED'
+          : currentStep === 4
+          ? 'IN_PROGRESS'
+          : 'PENDING',
+        time: ['RELEASED', 'CLOSED'].includes(status)
+          ? 'Đã bàn giao'
+          : status === 'FINANCIAL_CLEARED'
+          ? 'Đã thanh toán'
+          : '',
+        description: ['RELEASED', 'CLOSED'].includes(status)
           ? 'Phương tiện đã hoàn thiện toàn bộ dịch vụ và được bàn giao cho quý khách.'
-          : (currentStep === 4 
-            ? 'Phương tiện đã hoàn thiện toàn bộ dịch vụ và đạt chuẩn kiểm định an toàn, sẵn sàng bàn giao cho quý khách.'
-            : 'Bàn giao xe và nghiệm thu hoàn tất tại sảnh tiếp nhận.'),
+          : status === 'FINANCIAL_CLEARED'
+          ? 'Quý khách đã thanh toán thành công 100%. Cố vấn dịch vụ đang chuẩn bị xe tại sảnh tiếp nhận để bàn giao cho Quý khách.'
+          : status === 'BILLING_REQUESTED'
+          ? 'Phương tiện đã đạt chuẩn kiểm định an toàn KCS 100%. Quý khách vui lòng thanh toán hóa đơn để hoàn tất thủ tục nhận xe.'
+          : 'Bàn giao xe và nghiệm thu hoàn tất tại sảnh tiếp nhận.',
       },
     ];
 

@@ -15,6 +15,8 @@ import InvoiceStatusBadge from '@/components/billing/InvoiceStatusBadge';
 import InvoiceLinesTable from '@/components/billing/InvoiceLinesTable';
 import DiscountEditorModal from '@/components/billing/DiscountEditorModal';
 import PaymentModal from '@/components/billing/PaymentModal';
+import CancelInvoiceModal from '@/components/billing/CancelInvoiceModal';
+import ConfirmModal from '@/components/shared/ConfirmModal';
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -27,7 +29,10 @@ export default function InvoiceDetailPage() {
 
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState<boolean>(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
+  const [isIssueConfirmOpen, setIsIssueConfirmOpen] = useState<boolean>(false);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
+  const [paymentPage, setPaymentPage] = useState<number>(1);
 
   useEffect(() => {
     if (invoiceId) {
@@ -48,10 +53,8 @@ export default function InvoiceDetailPage() {
     }
   };
 
-  const handleIssue = async () => {
-    if (!confirm('Bạn có chắc chắn muốn phát hành hóa đơn chính thức cho khách hàng? Sau khi phát hành, chi phí sẽ được khóa cứng.')) {
-      return;
-    }
+  const handleConfirmIssue = async () => {
+    setIsIssueConfirmOpen(false);
     try {
       setActionLoading(true);
       await issueInvoice(invoiceId);
@@ -64,21 +67,15 @@ export default function InvoiceDetailPage() {
     }
   };
 
-  const handleCancel = async () => {
-    const reason = prompt('Vui lòng nhập lý do hủy hóa đơn này:');
-    if (reason === null) return;
-    if (reason.trim().length < 3) {
-      toast.error('Lý do hủy phải có ít nhất 3 ký tự!');
-      return;
-    }
-
+  const handleConfirmCancel = async (reason: string) => {
     try {
       setActionLoading(true);
-      await cancelInvoice(invoiceId, reason.trim());
+      await cancelInvoice(invoiceId, reason);
       toast.success('Đã hủy hóa đơn thành công.');
       await loadInvoice();
     } catch (err: any) {
       toast.error(err.response?.data?.message || err.message || 'Lỗi khi hủy hóa đơn');
+      throw err;
     } finally {
       setActionLoading(false);
     }
@@ -184,7 +181,7 @@ export default function InvoiceDetailPage() {
 
               <button
                 type="button"
-                onClick={handleIssue}
+                onClick={() => setIsIssueConfirmOpen(true)}
                 disabled={actionLoading}
                 className="px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold hover:bg-primary-dark transition-colors shadow-xs flex items-center gap-1.5"
               >
@@ -194,7 +191,7 @@ export default function InvoiceDetailPage() {
 
               <button
                 type="button"
-                onClick={handleCancel}
+                onClick={() => setIsCancelModalOpen(true)}
                 disabled={actionLoading}
                 className="px-3 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium transition-colors flex items-center gap-1"
               >
@@ -228,7 +225,7 @@ export default function InvoiceDetailPage() {
 
               <button
                 type="button"
-                onClick={handleCancel}
+                onClick={() => setIsCancelModalOpen(true)}
                 disabled={actionLoading}
                 className="px-3 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium transition-colors flex items-center gap-1"
               >
@@ -392,15 +389,15 @@ export default function InvoiceDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant">
-                {invoice.payments.map((p) => (
+                {invoice.payments.slice((paymentPage - 1) * 5, paymentPage * 5).map((p) => (
                   <tr key={p.id}>
                     <td className="py-2.5 px-3 font-mono">{formatDate(p.paidAt || p.createdAt)}</td>
                     <td className="py-2.5 px-3 font-medium">
                       {p.paymentMethod === 'CASH'
                         ? 'Tiền mặt'
                         : p.paymentMethod === 'CARD'
-                        ? 'Thẻ (POS)'
-                        : 'VNPay QR'}
+                          ? 'Thẻ (POS)'
+                          : 'Trực tuyến'}
                     </td>
                     <td className="py-2.5 px-3 font-mono">{p.transactionRef || '-'}</td>
                     <td className="py-2.5 px-3 text-right font-bold text-on-surface">
@@ -433,6 +430,51 @@ export default function InvoiceDetailPage() {
             </table>
           </div>
         )}
+
+        {invoice.payments.length > 5 && (
+          <div className="flex flex-wrap items-center justify-between pt-2.5 text-xs text-on-surface-variant gap-2">
+            <span>
+              Hiển thị <strong>{(paymentPage - 1) * 5 + 1}</strong> -{' '}
+              <strong>{Math.min(paymentPage * 5, invoice.payments.length)}</strong> /{' '}
+              <strong>{invoice.payments.length}</strong> giao dịch (Trang {paymentPage}/{Math.ceil(invoice.payments.length / 5)})
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={paymentPage <= 1}
+                onClick={() => setPaymentPage((p) => Math.max(1, p - 1))}
+                className="px-2 py-1 rounded-lg border border-outline-variant hover:bg-surface-container-high disabled:opacity-40 transition-colors inline-flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[14px]">chevron_left</span>
+                <span>Trước</span>
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.ceil(invoice.payments.length / 5) }, (_, i) => i + 1).map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setPaymentPage(num)}
+                    className={`w-6 h-6 rounded-lg text-xs font-semibold transition-colors ${paymentPage === num
+                      ? 'bg-primary text-white shadow-xs'
+                      : 'border border-outline-variant hover:bg-surface-container-high text-on-surface'
+                      }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                disabled={paymentPage >= Math.ceil(invoice.payments.length / 5)}
+                onClick={() => setPaymentPage((p) => Math.min(Math.ceil(invoice.payments.length / 5), p + 1))}
+                className="px-2 py-1 rounded-lg border border-outline-variant hover:bg-surface-container-high disabled:opacity-40 transition-colors inline-flex items-center gap-1"
+              >
+                <span>Sau</span>
+                <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modals */}
@@ -451,6 +493,23 @@ export default function InvoiceDetailPage() {
         onClose={() => setIsPaymentModalOpen(false)}
         invoice={invoice}
         onSuccess={loadInvoice}
+      />
+
+      <CancelInvoiceModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onConfirm={handleConfirmCancel}
+        invoiceNumber={invoice.invoiceNumber}
+      />
+
+      <ConfirmModal
+        isOpen={isIssueConfirmOpen}
+        title="Phát hành hóa đơn chính thức"
+        message={`Bạn có chắc chắn muốn phát hành hóa đơn chính thức ${invoice.invoiceNumber} cho khách hàng ${invoice.customer.fullName}? Sau khi phát hành, chi phí sẽ được khóa cứng và gửi email cho khách hàng.`}
+        confirmText="Phát hành ngay"
+        cancelText="Quay lại"
+        onConfirm={handleConfirmIssue}
+        onCancel={() => setIsIssueConfirmOpen(false)}
       />
     </div>
   );

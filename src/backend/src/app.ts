@@ -1,4 +1,4 @@
-﻿import express, { Request, Response } from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -50,7 +50,7 @@ app.use(cors({
   }, 
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-portal', 'Cookie', 'Accept', 'X-Requested-With', 'Cache-Control', 'Pragma'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-portal', 'Cookie', 'Accept', 'X-Requested-With', 'Cache-Control', 'Pragma', 'x-secret-key', 'X-Secret-Key'],
   exposedHeaders: ['Set-Cookie']
 }));
 app.use(helmet());

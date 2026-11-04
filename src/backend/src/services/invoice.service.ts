@@ -153,7 +153,7 @@ export class InvoiceService {
       limit?: number;
     } = {}
   ) {
-    const { tab = 'PENDING', search, page = 1, limit = 20 } = filters;
+    const { tab = 'PENDING', search, page = 1, limit = 5 } = filters;
     const skip = (page - 1) * limit;
 
     // Tính toán counters cho các tab

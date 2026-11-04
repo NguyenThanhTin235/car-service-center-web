@@ -3,7 +3,6 @@ import request from 'supertest';
 import app from '../../src/app';
 import { generateToken } from '../../src/utils/jwt.util';
 import prisma from '../../src/utils/prisma';
-import { createVnpayPaymentUrl } from '../../src/utils/vnpay.util';
 
 vi.mock('../../src/utils/prisma', () => {
   const mockPrisma: any = {
@@ -78,11 +77,6 @@ describe('Integration API - Invoice & Payment Portal (SPEC-INV / UC-16, UC-27, U
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    process.env.VNP_TMN_CODE = 'TEST_TMN';
-    process.env.VNP_HASH_SECRET = 'TEST_HASH_SECRET_123456';
-    process.env.VNP_PAY_URL = 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html';
-    process.env.VNP_RETURN_URL = 'http://localhost:3000/staff/billing/vnpay-return';
 
     (prisma.user.findUnique as any).mockImplementation(({ where }: any) => {
       if (where.id === 101) {
@@ -598,116 +592,168 @@ describe('Integration API - Invoice & Payment Portal (SPEC-INV / UC-16, UC-27, U
     });
   });
 
-  describe('POST /api/invoices/:id/payments/vnpay (UC-28: Tạo VNPay QR URL)', () => {
-    it('INV-API-18: Tạo mã thanh toán VNPay QR thành công -> 201 Created', async () => {
+  describe('POST /api/invoices/:id/payments/sepay (SPEC-SEPAY: Tạo phiên thanh toán SePay)', () => {
+    it('INV-API-18: Khởi tạo phiên thanh toán SePay thành công -> 201 Created', async () => {
       (prisma.invoice.findUnique as any).mockResolvedValue({
         id: 301,
         invoice_number: 'INV-202611-001',
         status: 'ISSUED',
-        amount_due: 1500000,
+        amount_due: 1425000,
         work_order: {
+          customer_id: 101,
           vehicle: { license_plate: '51F-123.45' },
         },
       });
 
       (prisma.payment.updateMany as any).mockResolvedValue({ count: 0 });
       (prisma.payment.create as any).mockResolvedValue({
-        id: 601,
-        amount: 1500000,
-        transaction_ref: 'PAY-INV202611001-1234',
-        payment_url: 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=150000000',
+        id: 801,
+        amount: 1425000,
+        transaction_ref: 'INV-202611-001-9999',
+        payment_url: 'https://pay-sandbox.sepay.vn/v1/checkout/init',
         expires_at: new Date(Date.now() + 15 * 60 * 1000),
       });
 
       const res = await request(app)
-        .post('/api/invoices/301/payments/vnpay')
-        .set('Authorization', `Bearer ${staffToken}`);
+        .post('/api/invoices/301/payments/sepay')
+        .set('Authorization', `Bearer ${customer101Token}`);
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.paymentUrl).toContain('vnpayment.vn');
-      expect(res.body.data.amount).toBe(1500000);
+      expect(res.body.data.checkoutUrl).toContain('sepay.vn');
+      expect(res.body.data.fields.merchant).toBeDefined();
+      expect(res.body.data.fields.signature).toBeDefined();
+      expect(res.body.data.amount).toBe(1425000);
+    });
+
+    it('INV-API-19: Chặn khách hàng khác tạo thanh toán cho hóa đơn không thuộc về mình -> 403 Forbidden', async () => {
+      (prisma.invoice.findUnique as any).mockResolvedValue({
+        id: 301,
+        invoice_number: 'INV-202611-001',
+        status: 'ISSUED',
+        amount_due: 1425000,
+        work_order: {
+          customer_id: 101, // Thuộc customer 101
+        },
+      });
+
+      const res = await request(app)
+        .post('/api/invoices/301/payments/sepay')
+        .set('Authorization', `Bearer ${customer102Token}`); // Customer 102 gọi
+
+      expect(res.status).toBe(403);
     });
   });
 
-  describe('GET /api/payments/vnpay/ipn (UC-28: IPN Webhook)', () => {
-    it('INV-API-19: Xử lý IPN thành công với chữ ký hợp lệ -> RspCode 00', async () => {
-      const vnpParams = {
-        txnRef: 'PAY-INV001-999',
-        amount: 800000,
-        orderInfo: 'Thanh toan hoa don',
-      };
-      const { paymentUrl } = createVnpayPaymentUrl(vnpParams);
-      const urlObj = new URL(paymentUrl);
-      const queryParams: Record<string, string> = {};
-      urlObj.searchParams.forEach((v, k) => {
-        queryParams[k] = v;
-      });
-      queryParams['vnp_ResponseCode'] = '00';
-      queryParams['vnp_TransactionStatus'] = '00';
+  describe('POST /api/payments/sepay/ipn (SPEC-SEPAY: Webhook IPN)', () => {
+    it('INV-API-20: Xử lý IPN thành công khi X-Secret-Key hợp lệ -> 200 OK & FINANCIAL_CLEARED', async () => {
+      process.env.SEPAY_SECRET_KEY = 'test_secret_key_12345';
 
       (prisma.payment.findUnique as any).mockResolvedValue({
-        id: 701,
-        amount: 800000,
+        id: 801,
+        amount: 1425000,
         status: 'PENDING',
+        transaction_ref: 'INV-202611-001-9999',
         invoice: {
           id: 301,
-          invoice_number: 'INV-001',
+          invoice_number: 'INV-202611-001',
           work_order_id: 10,
           work_order: {
             status: 'BILLING_REQUESTED',
             advisor_id: 50,
             customer_id: 101,
             vehicle: { license_plate: '51F-123.45' },
-            customer: { full_name: 'Khách A' },
+            customer: { full_name: 'Trần Văn Khách 1', email: 'customer1@example.com' },
+            advisor: { id: 50, full_name: 'Advisor Test' },
           },
         },
       });
 
-      (prisma.payment.update as any).mockResolvedValue({ id: 701, status: 'SUCCESS' });
+      (prisma.payment.update as any).mockResolvedValue({ id: 801, status: 'SUCCESS' });
       (prisma.invoice.update as any).mockResolvedValue({
         id: 301,
-        invoice_number: 'INV-001',
+        invoice_number: 'INV-202611-001',
+        work_order_id: 10,
         work_order: {
+          status: 'BILLING_REQUESTED',
           advisor_id: 50,
           customer_id: 101,
           vehicle: { license_plate: '51F-123.45' },
+          customer: { full_name: 'Trần Văn Khách 1', email: 'customer1@example.com' },
+          advisor: { id: 50, full_name: 'Advisor Test' },
         },
       });
       (prisma.workOrder.update as any).mockResolvedValue({ id: 10, status: 'FINANCIAL_CLEARED' });
-
-      // Cần tái tạo chữ ký cho queryParams chứa response code
-      const { paymentUrl: finalUrl } = createVnpayPaymentUrl({
-        txnRef: 'PAY-INV001-999',
-        amount: 800000,
-        orderInfo: 'Thanh toan hoa don',
-      });
-      const finalUrlObj = new URL(finalUrl);
-      const finalQuery: Record<string, string> = {};
-      finalUrlObj.searchParams.forEach((v, k) => {
-        finalQuery[k] = v;
-      });
+      (prisma.auditLog.create as any).mockResolvedValue({ id: 1 });
+      (prisma.notification.create as any).mockResolvedValue({ id: 1 });
 
       const res = await request(app)
-        .get('/api/payments/vnpay/ipn')
-        .query(finalQuery);
-
-      expect(res.status).toBe(200);
-      expect(res.body.RspCode).toBe('00');
-    });
-
-    it('INV-API-20: Trả về RspCode 97 khi Checksum không hợp lệ', async () => {
-      const res = await request(app)
-        .get('/api/payments/vnpay/ipn')
-        .query({
-          vnp_TxnRef: 'PAY-FAKE',
-          vnp_Amount: '10000000',
-          vnp_SecureHash: 'INVALID_HASH',
+        .post('/api/payments/sepay/ipn')
+        .set('X-Secret-Key', 'test_secret_key_12345')
+        .send({
+          timestamp: Math.floor(Date.now() / 1000),
+          notification_type: 'ORDER_PAID',
+          order: {
+            order_invoice_number: 'INV-202611-001-9999',
+            order_amount: 1425000,
+            order_status: 'CAPTURED',
+          },
+          transaction: {
+            transaction_id: 'TXN-SEPAY-123456',
+            payment_method: 'BANK_TRANSFER',
+          },
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.RspCode).toBe('97');
-      expect(res.body.Message).toContain('Invalid Checksum');
+      expect(res.body.success).toBe(true);
+    });
+
+    it('INV-API-21: Từ chối xử lý khi X-Secret-Key không khớp -> 401 Unauthorized', async () => {
+      const res = await request(app)
+        .post('/api/payments/sepay/ipn')
+        .set('X-Secret-Key', 'WRONG_SECRET_KEY')
+        .send({
+          notification_type: 'ORDER_PAID',
+          order: { order_invoice_number: 'INV-001' },
+        });
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
+  describe('GET /api/invoices/:id/payments/status (Kiểm tra trạng thái hóa đơn)', () => {
+    it('INV-API-22: Lấy trạng thái hóa đơn thành công -> 200 OK', async () => {
+      (prisma.invoice.findUnique as any).mockResolvedValue({
+        id: 301,
+        invoice_number: 'INV-202611-001',
+        status: 'PAID',
+        amount_due: 0,
+        total_amount: 1425000,
+        work_order: {
+          customer_id: 101,
+          status: 'FINANCIAL_CLEARED',
+        },
+        payments: [
+          {
+            id: 801,
+            status: 'SUCCESS',
+            amount: 1425000,
+            payment_method: 'QR_TRANSFER',
+            transaction_ref: 'TXN-1234',
+            paid_at: new Date(),
+          },
+        ],
+      });
+
+      const res = await request(app)
+        .get('/api/invoices/301/payments/status')
+        .set('Authorization', `Bearer ${customer101Token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.isPaid).toBe(true);
+      expect(res.body.data.status).toBe('PAID');
     });
   });
 });

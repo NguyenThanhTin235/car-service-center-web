@@ -23,7 +23,7 @@ export default function BillingQueuePage() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    dispatch(fetchBillingQueue({ tab, search, page }));
+    dispatch(fetchBillingQueue({ tab, search, page, limit: 5 }));
   }, [dispatch, tab, search, page]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -466,27 +466,44 @@ export default function BillingQueuePage() {
 
         {/* 5. Pagination */}
         {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between pt-2 text-xs text-on-surface-variant">
+          <div className="flex flex-wrap items-center justify-between pt-3 text-xs text-on-surface-variant gap-2">
             <span>
-              Hiển thị <strong>{records.length}</strong> / <strong>{pagination.total}</strong> bản ghi
+              Hiển thị <strong>{(pagination.currentPage - 1) * 5 + 1}</strong> -{' '}
+              <strong>{Math.min(pagination.currentPage * 5, pagination.total)}</strong> trên tổng số{' '}
+              <strong>{pagination.total}</strong> bản ghi (Trang {pagination.currentPage}/{pagination.totalPages})
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 disabled={pagination.currentPage <= 1}
                 onClick={() => dispatch(setPage(pagination.currentPage - 1))}
-                className="px-2.5 py-1 rounded-lg border border-outline-variant hover:bg-surface-container-high disabled:opacity-40"
+                className="px-2.5 py-1 rounded-lg border border-outline-variant hover:bg-surface-container-high disabled:opacity-40 transition-colors inline-flex items-center gap-1 text-xs"
               >
-                Trước
+                <span className="material-symbols-outlined text-[15px]">chevron_left</span>
+                <span>Trước</span>
               </button>
-              <span className="px-2 font-medium">
-                Trang {pagination.currentPage} / {pagination.totalPages}
-              </span>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => dispatch(setPage(num))}
+                    className={`w-7 h-7 rounded-lg text-xs font-semibold transition-colors ${
+                      pagination.currentPage === num
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'border border-outline-variant hover:bg-surface-container-high text-on-surface'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
               <button
                 disabled={pagination.currentPage >= pagination.totalPages}
                 onClick={() => dispatch(setPage(pagination.currentPage + 1))}
-                className="px-2.5 py-1 rounded-lg border border-outline-variant hover:bg-surface-container-high disabled:opacity-40"
+                className="px-2.5 py-1 rounded-lg border border-outline-variant hover:bg-surface-container-high disabled:opacity-40 transition-colors inline-flex items-center gap-1 text-xs"
               >
-                Sau
+                <span>Sau</span>
+                <span className="material-symbols-outlined text-[15px]">chevron_right</span>
               </button>
             </div>
           </div>

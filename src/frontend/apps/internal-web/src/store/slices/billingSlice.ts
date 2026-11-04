@@ -43,7 +43,7 @@ const initialState: BillingState = {
     count: 0,
     totalPages: 0,
     currentPage: 1,
-    perPage: 20,
+    perPage: 5,
   },
   loading: false,
   error: null,
@@ -63,7 +63,7 @@ export const fetchBillingQueue = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const data = await getBillingQueue(params);
+      const data = await getBillingQueue({ limit: 5, ...params });
       return data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || err.message);

@@ -74,5 +74,5 @@ export const billingQueueQuerySchema = Joi.object({
   tab: Joi.string().valid('PENDING', 'DRAFT', 'ISSUED', 'PAID', 'ALL').default('PENDING'),
   search: Joi.string().allow('', null).trim(),
   page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20),
+  limit: Joi.number().integer().min(1).max(100).default(5),
 });

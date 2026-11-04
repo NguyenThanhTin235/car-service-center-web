@@ -8,6 +8,7 @@ import Toast from '@/components/shared/Toast';
 import CustomerQuotationModal from './CustomerQuotationModal';
 import CustomerCheckInModal from './CustomerCheckInModal';
 import CustomerQCModal from './CustomerQCModal';
+import CustomerPaymentModal from '@/components/invoices/CustomerPaymentModal';
 
 export default function TrackingView({ isEmbedded = false }: { isEmbedded?: boolean }) {
   const dispatch = useAppDispatch();
@@ -18,6 +19,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
   const [isQuotationModalOpen, setIsQuotationModalOpen] = useState<boolean>(false);
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState<boolean>(false);
   const [isQCModalOpen, setIsQCModalOpen] = useState<boolean>(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
 
   // Tải danh sách ban đầu
   const loadData = useCallback(async (isManual = false) => {
@@ -404,6 +406,104 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
             </section>
           )}
 
+          {/* ================= BILLING & DELIVERY STATUS BANNER (Thanh toán & Bàn giao xe) ================= */}
+          {activeOrder.status === 'FINANCIAL_CLEARED' ? (
+            <section className="animate-fade-in">
+              <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-emerald-400 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-start space-x-3.5 z-10">
+                  <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0 border border-white/30 text-white">
+                    <span className="material-symbols-outlined text-[28px]">
+                      verified
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-extrabold uppercase tracking-wide bg-white text-emerald-800 shadow-2xs">
+                        Đã thanh toán 100%
+                      </span>
+                      {activeOrder.invoice && (
+                        <span className="text-xs font-mono font-bold text-emerald-100">
+                          #{activeOrder.invoice.invoiceNumber}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-lg font-bold leading-tight">
+                      Quý khách đã thanh toán thành công • Xe đã sẵn sàng bàn giao!
+                    </h3>
+                    <p className="text-xs sm:text-sm text-emerald-100 leading-relaxed">
+                      Hệ thống đã xác nhận quyết toán tài chính. Cố vấn dịch vụ <strong>{activeOrder.advisor.fullName}</strong> đang chuẩn bị xe tại sảnh tiếp nhận để bàn giao cho Quý khách.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 shrink-0 z-10">
+                  <Link
+                    href="/customer/invoices"
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-emerald-900 hover:bg-emerald-50 font-bold text-xs transition-colors shadow-sm"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">receipt_long</span>
+                    Xem hóa đơn & Biên lai
+                  </Link>
+                </div>
+              </div>
+            </section>
+          ) : activeOrder.status === 'BILLING_REQUESTED' ? (
+            <section className="animate-fade-in">
+              <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-blue-400 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-start space-x-3.5 z-10">
+                  <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0 border border-white/30 text-white">
+                    <span className="material-symbols-outlined text-[28px] animate-pulse">
+                      payments
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-extrabold uppercase tracking-wide bg-amber-400 text-amber-950 shadow-2xs">
+                        Chờ thanh toán
+                      </span>
+                      {activeOrder.invoice && (
+                        <span className="text-xs font-mono font-bold text-blue-100">
+                          #{activeOrder.invoice.invoiceNumber}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-lg font-bold leading-tight">
+                      Xe đã kiểm định đạt chuẩn 100% • Sẵn sàng thanh toán nhận xe
+                    </h3>
+                    <p className="text-xs sm:text-sm text-blue-100 leading-relaxed">
+                      {activeOrder.invoice ? (
+                        <>Tổng chi phí thanh toán: <strong className="text-white font-mono text-base">{activeOrder.invoice.totalAmount.toLocaleString()} đ</strong>. Quý khách có thể thanh toán trực tuyến ngay để hoàn tất thủ tục.</>
+                      ) : (
+                        'Đã hoàn tất kiểm định chất lượng KCS 100%. Quý khách có thể thanh toán trực tuyến ngay để nhận xe.'
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 shrink-0 z-10">
+                  {activeOrder.invoice ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsPaymentModalOpen(true)}
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-blue-900 hover:bg-blue-50 font-bold text-xs transition-colors shadow-sm cursor-pointer active:scale-95"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">credit_card</span>
+                      Thanh toán online ngay ({activeOrder.invoice.totalAmount.toLocaleString()} đ)
+                    </button>
+                  ) : (
+                    <Link
+                      href="/customer/invoices"
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-blue-900 hover:bg-blue-50 font-bold text-xs transition-colors shadow-sm"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">credit_card</span>
+                      Xem trang hóa đơn
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </section>
+          ) : null}
+
           {/* ================= MIDDLE SECTION: Stepper Timeline & Live Cam ================= */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
             
@@ -668,13 +768,17 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
 
               {/* View Invoice CTA Quick Link */}
               {activeOrder.invoice && (
-                <div className="bg-surface-container-lowest rounded-2xl border border-surface-container-highest p-4 shadow-2xs">
+                <div className={`rounded-2xl border p-4 shadow-2xs transition-all ${
+                  activeOrder.invoice.status === 'PAID'
+                    ? 'bg-emerald-50/60 border-emerald-200'
+                    : 'bg-surface-container-lowest border-surface-container-highest'
+                }`}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-on-surface-variant">Hóa đơn dịch vụ:</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                    <span className="text-xs text-on-surface-variant font-medium">Hóa đơn dịch vụ:</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
                       activeOrder.invoice.status === 'PAID'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-red-100 text-error'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                        : 'bg-red-100 text-error border-red-300'
                     }`}>
                       {activeOrder.invoice.status === 'PAID' ? 'Đã thanh toán' : 'Chưa thanh toán'}
                     </span>
@@ -684,17 +788,28 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                       <p className="font-mono text-xs font-semibold text-on-surface">
                         #{activeOrder.invoice.invoiceNumber}
                       </p>
-                      <p className="text-base font-bold text-on-surface mt-0.5">
+                      <p className="text-base font-bold font-mono text-on-surface mt-0.5">
                         {activeOrder.invoice.totalAmount.toLocaleString()} đ
                       </p>
                     </div>
-                    <Link
-                      href="/customer/invoices"
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary text-on-primary rounded-lg text-xs font-semibold hover:bg-primary/90 transition-all shadow-2xs"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">receipt_long</span>
-                      Xem hóa đơn
-                    </Link>
+                    {activeOrder.invoice.status !== 'PAID' ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsPaymentModalOpen(true)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary/90 transition-all shadow-2xs cursor-pointer active:scale-95"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">credit_card</span>
+                        Thanh toán
+                      </button>
+                    ) : (
+                      <Link
+                        href="/customer/invoices"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-700 text-white rounded-lg text-xs font-semibold hover:bg-emerald-800 transition-all shadow-2xs"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">receipt_long</span>
+                        Xem biên lai
+                      </Link>
+                    )}
                   </div>
                 </div>
               )}
@@ -924,6 +1039,28 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
               vehiclePlate={activeOrder.vehicle.licensePlate}
               vehicleModel={`${activeOrder.vehicle.make} ${activeOrder.vehicle.model}`}
               woNumber={activeOrder.woNumber}
+            />
+          )}
+
+          {/* Customer Payment Modal */}
+          {isPaymentModalOpen && activeOrder.invoice && (
+            <CustomerPaymentModal
+              isOpen={isPaymentModalOpen}
+              onClose={() => setIsPaymentModalOpen(false)}
+              invoice={{
+                id: activeOrder.invoice.id,
+                invoiceNumber: activeOrder.invoice.invoiceNumber,
+                amountDue: activeOrder.invoice.amountDue || activeOrder.invoice.totalAmount,
+                licensePlate: activeOrder.vehicle.licensePlate,
+                vehicleName: `${activeOrder.vehicle.make} ${activeOrder.vehicle.model}`,
+              }}
+              onSuccess={() => {
+                setToastMsg('Thanh toán thành công! Trạng thái xe đã chuyển sang Sẵn sàng bàn giao.');
+                loadData(true);
+                setTimeout(() => {
+                  setIsPaymentModalOpen(false);
+                }, 1200);
+              }}
             />
           )}
         </>

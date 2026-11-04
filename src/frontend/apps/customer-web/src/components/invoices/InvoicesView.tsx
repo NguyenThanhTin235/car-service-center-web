@@ -10,6 +10,7 @@ import {
   InvoiceListItemDto,
 } from '@/store/slices/invoiceSlice';
 import Toast from '@/components/shared/Toast';
+import CustomerPaymentModal from './CustomerPaymentModal';
 
 export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: boolean }) {
   const dispatch = useAppDispatch();
@@ -19,8 +20,41 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
 
   const [activeTab, setActiveTab] = useState<'ALL' | 'PAID' | 'ISSUED'>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [page, setPage] = useState<number>(1);
+  const pageSize = 5;
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [toastMsg, setToastMsg] = useState<string>('');
+  const [paymentModalOpen, setPaymentModalOpen] = useState<boolean>(false);
+  const [paymentTarget, setPaymentTarget] = useState<{
+    id: number;
+    invoiceNumber: string;
+    amountDue: number;
+    licensePlate?: string;
+    vehicleName?: string;
+  } | null>(null);
+
+  const handleOpenPayModal = (inv: InvoiceListItemDto | any) => {
+    setPaymentTarget({
+      id: inv.id,
+      invoiceNumber: inv.invoiceNumber,
+      amountDue: inv.amountDue,
+      licensePlate: inv.vehicle?.licensePlate,
+      vehicleName: `${inv.vehicle?.make || ''} ${inv.vehicle?.model || ''}`,
+    });
+    setPaymentModalOpen(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    setToastMsg('Thanh toán hóa đơn trực tuyến thành công!');
+    dispatch(fetchMyInvoices({ status: activeTab, search: searchTerm }));
+    if (selectedInvoice) {
+      dispatch(fetchInvoiceDetail(selectedInvoice.id));
+    }
+    setTimeout(() => {
+      setPaymentModalOpen(false);
+      setPaymentTarget(null);
+    }, 1200);
+  };
 
   useEffect(() => {
     dispatch(fetchMyInvoices({ status: activeTab, search: searchTerm }));
@@ -40,6 +74,10 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
     window.print();
   };
 
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, searchTerm]);
+
   // Lọc phía client thêm để phản hồi mượt mà
   const filteredInvoices = useMemo(() => {
     return invoices.filter((inv) => {
@@ -55,6 +93,12 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
       return true;
     });
   }, [invoices, activeTab, searchTerm]);
+
+  const totalPages = Math.ceil(filteredInvoices.length / pageSize) || 1;
+  const paginatedInvoices = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredInvoices.slice(start, start + pageSize);
+  }, [filteredInvoices, page, pageSize]);
 
   return (
     <div className="w-full max-w-[1440px] mx-auto space-y-6">
@@ -253,15 +297,15 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
 
         {/* Data Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[860px]">
             <thead>
               <tr className="bg-surface-container-low/60 border-b border-surface-container-highest text-on-surface-variant text-[11px] font-semibold uppercase tracking-wider">
-                <th className="py-3 px-4" scope="col">Mã Hóa Đơn</th>
-                <th className="py-3 px-4" scope="col">Ngày Lập</th>
-                <th className="py-3 px-4" scope="col">Phương Tiện & Dịch Vụ</th>
-                <th className="py-3 px-4 text-right" scope="col">Tổng Tiền</th>
-                <th className="py-3 px-4 text-center" scope="col">Trạng Thái</th>
-                <th className="py-3 px-4 text-right" scope="col">Thao Tác</th>
+                <th className="py-3 px-4 w-[18%] min-w-[160px] whitespace-nowrap" scope="col">Mã Hóa Đơn</th>
+                <th className="py-3 px-4 w-[12%] min-w-[100px] whitespace-nowrap" scope="col">Ngày Lập</th>
+                <th className="py-3 px-4 min-w-[260px]" scope="col">Phương Tiện & Dịch Vụ</th>
+                <th className="py-3 px-4 text-right w-[15%] min-w-[130px] whitespace-nowrap" scope="col">Tổng Tiền</th>
+                <th className="py-3 px-4 text-center w-[14%] min-w-[130px] whitespace-nowrap" scope="col">Trạng Thái</th>
+                <th className="py-3 px-4 text-center w-[12%] min-w-[120px] whitespace-nowrap" scope="col">Thao Tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-container-highest text-xs">
@@ -285,7 +329,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
                   </td>
                 </tr>
               ) : (
-                filteredInvoices.map((inv: InvoiceListItemDto) => {
+                paginatedInvoices.map((inv: InvoiceListItemDto) => {
                   const isPaid = inv.status === 'PAID';
                   const dateStr = inv.issuedAt
                     ? new Date(inv.issuedAt).toLocaleDateString('vi-VN')
@@ -299,83 +343,94 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
                       }`}
                     >
                       {/* Mã HĐ */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <div className="flex items-center space-x-1.5">
-                          <span className="font-bold text-on-surface font-mono">
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 whitespace-nowrap">
+                          <span className="font-bold text-primary font-mono text-xs whitespace-nowrap">
                             #{inv.invoiceNumber}
                           </span>
                           {!isPaid && (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-red-100 text-error">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-error whitespace-nowrap border border-red-200">
                               Chờ
                             </span>
                           )}
                         </div>
-                        <span className="text-[11px] text-outline block mt-0.5">
+                        <span className="text-[11px] text-outline block mt-0.5 whitespace-nowrap">
                           VAT điện tử
                         </span>
                       </td>
 
                       {/* Ngày lập */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <span className="text-on-surface font-medium block">{dateStr}</span>
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                        <span className="text-on-surface font-medium whitespace-nowrap">{dateStr}</span>
                       </td>
 
                       {/* Phương tiện & Gói dịch vụ */}
                       <td className="py-3.5 px-4 align-middle">
                         <div className="flex flex-col">
-                          <div className="flex items-center space-x-2">
-                            <span className="px-1.5 py-0.5 bg-white border border-gray-300 font-mono text-[11px] font-bold rounded text-gray-800 shadow-2xs">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 bg-white border border-gray-300 font-mono text-[11px] font-bold rounded text-gray-800 shadow-2xs whitespace-nowrap">
                               {inv.vehicle.licensePlate}
                             </span>
-                            <span className="font-semibold text-on-surface">
+                            <span className="font-semibold text-on-surface whitespace-nowrap">
                               {inv.vehicle.make} {inv.vehicle.model}
                             </span>
                           </div>
-                          <span className="text-xs text-on-surface-variant mt-0.5 line-clamp-1">
+                          <span className="text-xs text-on-surface-variant mt-1 line-clamp-1" title={inv.primaryServiceDescription}>
                             {inv.primaryServiceDescription}
                           </span>
                         </div>
                       </td>
 
                       {/* Tổng tiền */}
-                      <td className="py-3.5 px-4 align-middle text-right">
+                      <td className="py-3.5 px-4 align-middle text-right whitespace-nowrap">
                         <span
-                          className={`font-bold text-sm sm:text-base ${
+                          className={`font-bold font-mono text-sm sm:text-base whitespace-nowrap ${
                             !isPaid ? 'text-error' : 'text-on-surface'
                           }`}
                         >
                           {inv.totalAmount.toLocaleString()} đ
                         </span>
-                        <span className="block text-[10px] text-outline">Đã gồm VAT 8%</span>
+                        <span className="block text-[10px] text-outline whitespace-nowrap mt-0.5">Quy chế VAT 0%</span>
                       </td>
 
                       {/* Trạng thái */}
-                      <td className="py-3.5 px-4 align-middle text-center">
+                      <td className="py-3.5 px-4 align-middle text-center whitespace-nowrap">
                         {isPaid ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1"></span>
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1.5"></span>
                             Đã thanh toán
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-error border border-red-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-error mr-1 animate-pulse"></span>
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-100 text-error border border-red-200 whitespace-nowrap">
+                            <span className="w-1.5 h-1.5 rounded-full bg-error mr-1.5 animate-pulse"></span>
                             Chưa thanh toán
                           </span>
                         )}
                       </td>
 
                       {/* Thao tác */}
-                      <td className="py-3.5 px-4 align-middle text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end space-x-1.5">
+                      <td className="py-3.5 px-4 align-middle text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {!isPaid && (
+                            <button
+                              onClick={() => handleOpenPayModal(inv)}
+                              className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 bg-primary text-white hover:bg-primary/90 text-xs font-semibold rounded-lg shadow-2xs transition-all whitespace-nowrap cursor-pointer active:scale-95"
+                              type="button"
+                              title="Thanh toán trực tuyến từ xa"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">credit_card</span>
+                              Thanh toán
+                            </button>
+                          )}
                           <button
                             onClick={() => openInvoiceDetail(inv.id)}
-                            className="inline-flex items-center px-2.5 py-1.5 bg-surface-container-lowest hover:bg-surface-container-low border border-surface-container-highest text-on-surface text-xs font-semibold rounded-lg shadow-2xs transition-colors"
+                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 bg-surface-container-lowest hover:bg-surface-container-low border border-surface-container-highest text-on-surface text-xs font-semibold rounded-lg shadow-2xs transition-colors whitespace-nowrap cursor-pointer"
                             type="button"
                           >
-                            <span className="material-symbols-outlined text-[16px] mr-1 text-primary">
+                            <span className="material-symbols-outlined text-[16px] text-primary">
                               visibility
                             </span>
-                            Xem chi tiết
+                            Chi tiết
                           </button>
                         </div>
                       </td>
@@ -387,15 +442,42 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
           </table>
         </div>
 
-        {/* Footer */}
-        <div className="p-3.5 border-t border-surface-container-highest bg-surface-container-lowest flex items-center justify-between text-xs text-on-surface-variant">
+        {/* Footer & Pagination */}
+        <div className="p-3.5 border-t border-surface-container-highest bg-surface-container-lowest flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-on-surface-variant">
           <p>
-            Hiển thị <strong className="text-on-surface">{filteredInvoices.length}</strong> hóa đơn
+            Hiển thị{' '}
+            <strong className="text-on-surface">
+              {filteredInvoices.length === 0 ? 0 : (page - 1) * pageSize + 1} -{' '}
+              {Math.min(page * pageSize, filteredInvoices.length)}
+            </strong>{' '}
+            trên <strong className="text-on-surface">{filteredInvoices.length}</strong> hóa đơn
           </p>
-          <div className="flex items-center gap-1">
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                className="px-2.5 py-1 text-xs font-medium rounded-lg border border-surface-container-highest bg-surface-container-lowest text-on-surface hover:bg-surface-container-low disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                Trước
+              </button>
+              <span className="text-xs font-semibold px-2">
+                Trang {page} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                className="px-2.5 py-1 text-xs font-medium rounded-lg border border-surface-container-highest bg-surface-container-lowest text-on-surface hover:bg-surface-container-low disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                Sau
+              </button>
+            </div>
+          )}
+          <div className="hidden md:flex items-center gap-1">
             <span className="text-[11px] text-outline">Hóa đơn điện tử khởi tạo từ hệ thống Car Service Center</span>
-          </div>
-        </div>
+          </div>        </div>
 
       </section>
 
@@ -561,13 +643,13 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
 
                   {/* Line Items Table */}
                   <div className="overflow-x-auto border border-surface-container-highest rounded-xl">
-                    <table className="w-full text-left border-collapse text-xs">
+                    <table className="w-full text-left border-collapse text-xs min-w-[500px]">
                       <thead>
                         <tr className="bg-surface-container-low border-b border-surface-container-highest font-semibold text-on-surface-variant uppercase text-[10px]">
                           <th className="py-2.5 px-3">Hạng mục chi tiết</th>
-                          <th className="py-2.5 px-3 text-center">SL</th>
-                          <th className="py-2.5 px-3 text-right">Đơn giá (đ)</th>
-                          <th className="py-2.5 px-3 text-right">Thành tiền (đ)</th>
+                          <th className="py-2.5 px-3 text-center w-[12%] whitespace-nowrap">SL</th>
+                          <th className="py-2.5 px-3 text-right w-[22%] whitespace-nowrap">Đơn giá (đ)</th>
+                          <th className="py-2.5 px-3 text-right w-[24%] whitespace-nowrap">Thành tiền (đ)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-surface-container-highest">
@@ -617,8 +699,8 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="text-on-surface-variant">Thuế GTGT (VAT 8%):</span>
-                      <span className="font-mono font-medium">{selectedInvoice.taxAmount.toLocaleString()} đ</span>
+                      <span className="text-on-surface-variant">Thuế GTGT (VAT 0%):</span>
+                      <span className="font-mono font-medium">0 đ</span>
                     </div>
                     <div className="pt-2 border-t border-surface-container-highest flex justify-between items-center text-sm">
                       <span className="font-bold text-on-surface">Tổng tiền thanh toán:</span>
@@ -660,11 +742,29 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-surface-container-highest flex items-center justify-end gap-2.5 bg-surface-container-lowest sticky bottom-0">
+            <div className="p-4 border-t border-surface-container-highest flex items-center justify-between gap-2.5 bg-surface-container-lowest sticky bottom-0">
+              {selectedInvoice && selectedInvoice.status !== 'PAID' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalOpen(false);
+                    handleOpenPayModal(selectedInvoice);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white font-bold text-xs rounded-xl shadow-md hover:bg-primary/90 transition-all cursor-pointer active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-[18px]">payments</span>
+                  Thanh toán online ngay ({selectedInvoice.amountDue.toLocaleString()} đ)
+                </button>
+              ) : (
+                <span className="text-xs text-emerald-700 font-semibold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px]">verified</span>
+                  Hóa đơn đã quyết toán 100%
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold rounded-lg transition-colors"
+                className="px-4 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold rounded-lg transition-colors cursor-pointer"
               >
                 Đóng
               </button>
@@ -672,6 +772,18 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
 
           </div>
         </div>
+      )}
+      {/* Modal Thanh toán trực tuyến từ xa */}
+      {paymentModalOpen && paymentTarget && (
+        <CustomerPaymentModal
+          isOpen={paymentModalOpen}
+          onClose={() => {
+            setPaymentModalOpen(false);
+            setPaymentTarget(null);
+          }}
+          invoice={paymentTarget}
+          onSuccess={handlePaymentSuccess}
+        />
       )}
     </div>
   );
