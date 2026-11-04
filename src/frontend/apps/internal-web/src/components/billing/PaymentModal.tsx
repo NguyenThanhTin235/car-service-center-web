@@ -33,43 +33,43 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
 
   const formatMoney = (val: number) => (Number(val) || 0).toLocaleString('vi-VN') + ' đ';
   const changeAmount = Math.max(0, (tenderedAmount || 0) - invoice.amountDue);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  // Helper submit hidden POST form to SePay checkout
-  const submitSepayForm = (checkoutUrl: string, fields: Record<string, any>) => {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = checkoutUrl;
-    form.target = '_blank';
-
-    Object.entries(fields).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = String(value);
-        form.appendChild(input);
-      }
-    });
-
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
+  const copyToClipboard = (text: string, fieldName: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    toast.success('Đã sao chép vào bộ nhớ tạm!');
+    setTimeout(() => setCopiedField(null), 2000);
   };
 
-  // Khởi tạo phiên SePay
+  // Khởi tạo phiên SePay (Hiển thị mã VietQR trực tiếp tại modal, không điều hướng ra trang ngoài)
   const handleCreateSepay = async () => {
     try {
       setSepayLoading(true);
       const res = await createSepayPayment(invoice.id);
       setSepayData(res);
-      submitSepayForm(res.checkoutUrl, res.fields);
-      toast.success('Đã mở trang thanh toán SePay trong tab mới!');
     } catch (err: any) {
       toast.error(err.response?.data?.message || err.message || 'Lỗi khi tạo phiên SePay');
     } finally {
       setSepayLoading(false);
     }
   };
+
+  // Tự động tải mã SePay VietQR khi chuyển sang tab SEPAY nếu chưa có
+  useEffect(() => {
+    if (isOpen && tab === 'SEPAY' && !sepayData && !sepayLoading) {
+      handleCreateSepay();
+    }
+  }, [isOpen, tab]);
+
+  // Reset SePay state khi đóng modal
+  useEffect(() => {
+    if (!isOpen) {
+      setSepayData(null);
+      setSepayPaid(false);
+      setCopiedField(null);
+    }
+  }, [isOpen]);
 
   // Giả lập thanh toán SePay thành công (chỉ cho dev/test)
   const handleSimulateSepay = async () => {
@@ -156,7 +156,7 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-scrim/40 backdrop-blur-xs animate-fade-in">
-      <div className={`bg-surface-container-lowest rounded-2xl ${tab === 'SEPAY' && sepayData ? 'max-w-2xl' : 'max-w-lg'} w-full shadow-2xl border border-outline-variant overflow-hidden animate-scale-up transition-all duration-200`}>
+      <div className={`bg-surface-container-lowest rounded-2xl ${tab === 'SEPAY' ? 'max-w-3xl' : 'max-w-lg'} w-full shadow-2xl border border-outline-variant overflow-hidden animate-scale-up transition-all duration-200`}>
         {/* Header */}
         <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
           <div className="flex items-center gap-2">
@@ -236,51 +236,92 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
           {tab === 'SEPAY' ? (
             /* TAB 3: SEPAY VIETQR */
             <div className="space-y-4">
-              {sepayPaid ? (
-                <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-xl text-center space-y-2">
-                  <span className="material-symbols-outlined text-[32px] text-emerald-600 block">check_circle</span>
-                  <p className="text-sm font-bold text-emerald-900">Thanh toán SePay thành công!</p>
-                  <p className="text-xs text-emerald-700">Hóa đơn đã được quyết toán tự động.</p>
+              {sepayLoading ? (
+                <div className="py-16 flex flex-col items-center justify-center gap-2.5 text-center">
+                  <div className="w-9 h-9 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <p className="text-xs text-on-surface-variant font-medium">Đang tạo mã SePay VietQR...</p>
+                </div>
+              ) : sepayPaid ? (
+                <div className="p-8 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-2 animate-in zoom-in-95">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-xs">
+                    <span className="material-symbols-outlined text-[28px]">check_circle</span>
+                  </div>
+                  <h4 className="text-base font-bold text-emerald-900">Thanh toán SePay thành công!</h4>
+                  <p className="text-xs text-emerald-700 leading-relaxed">
+                    Hóa đơn đã được quyết toán và phiếu sửa chữa đã nghiệm thu tài chính.
+                  </p>
                 </div>
               ) : sepayData ? (
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
                   {/* Cột trái: Mã VietQR SePay */}
-                  <div className="md:col-span-5 bg-white p-3.5 rounded-2xl border border-outline-variant shadow-xs text-center flex flex-col justify-center items-center">
-                    {sepayData.bankInfo?.qrCodeUrl ? (
-                      <img
-                        src={sepayData.bankInfo.qrCodeUrl}
-                        alt="VietQR SePay"
-                        className="w-52 max-w-full h-auto mx-auto object-contain rounded-lg"
-                      />
-                    ) : (
-                      <div className="w-52 h-52 bg-slate-100 flex items-center justify-center rounded-lg text-slate-400 mx-auto">
-                        <span className="material-symbols-outlined text-[48px]">qr_code_2</span>
-                      </div>
-                    )}
-                    <p className="text-[10px] text-slate-500 mt-2 font-medium">
+                  <div className="md:col-span-5 bg-slate-50/80 p-4 rounded-2xl border border-outline-variant shadow-2xs text-center flex flex-col justify-center items-center">
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-xs">
+                      {sepayData.bankInfo?.qrCodeUrl ? (
+                        <img
+                          src={sepayData.bankInfo.qrCodeUrl}
+                          alt="VietQR SePay"
+                          className="w-56 max-w-full h-auto mx-auto object-contain rounded-lg"
+                        />
+                      ) : (
+                        <div className="w-56 h-56 bg-slate-100 flex items-center justify-center rounded-lg text-slate-400 mx-auto">
+                          <span className="material-symbols-outlined text-[48px]">qr_code_2</span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-2 font-medium">
                       Khách hàng quét mã qua App ngân hàng
                     </p>
                   </div>
 
                   {/* Cột phải: Thông tin chuyển khoản & Thao tác */}
-                  <div className="md:col-span-7 flex flex-col justify-between space-y-2.5">
+                  <div className="md:col-span-7 flex flex-col justify-between space-y-3">
                     {sepayData.bankInfo && (
-                      <div className="p-3 bg-surface-container-low rounded-xl border border-outline-variant text-left space-y-1.5 text-xs">
+                      <div className="p-3 bg-surface-container-low rounded-xl border border-outline-variant text-left space-y-2 text-xs">
                         <div className="flex items-center justify-between py-1 border-b border-outline-variant">
                           <span className="text-on-surface-variant">Ngân hàng:</span>
                           <span className="font-bold text-on-surface">{sepayData.bankInfo.bankName}</span>
                         </div>
+
                         <div className="flex items-center justify-between py-1 border-b border-outline-variant">
                           <span className="text-on-surface-variant">Số tài khoản:</span>
-                          <span className="font-mono font-bold text-primary">{sepayData.bankInfo.accountNumber}</span>
+                          <div className="flex items-center gap-1.5 font-mono font-bold text-primary">
+                            <span>{sepayData.bankInfo.accountNumber}</span>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(sepayData.bankInfo!.accountNumber, 'acc')}
+                              className="p-1 hover:bg-surface-container rounded text-on-surface-variant cursor-pointer transition-colors"
+                              title="Sao chép số tài khoản"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">
+                                {copiedField === 'acc' ? 'check' : 'content_copy'}
+                              </span>
+                            </button>
+                          </div>
                         </div>
+
                         <div className="flex items-center justify-between py-1 border-b border-outline-variant">
-                          <span className="text-on-surface-variant">Chủ TK:</span>
+                          <span className="text-on-surface-variant">Chủ tài khoản:</span>
                           <span className="font-bold text-on-surface uppercase">{sepayData.bankInfo.accountName}</span>
                         </div>
-                        <div className="flex items-center justify-between py-1.5 bg-amber-50 p-2 rounded-lg border border-amber-200">
-                          <span className="text-amber-900 font-bold">Nội dung CK:</span>
-                          <span className="font-mono font-extrabold text-amber-900 text-sm">{sepayData.bankInfo.transferContent}</span>
+
+                        <div className="flex items-center justify-between py-1.5 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                          <div>
+                            <span className="text-amber-900 font-bold block">Nội dung CK:</span>
+                            <span className="text-[10px] text-amber-700">Bắt buộc giữ nguyên nội dung</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-extrabold text-amber-900 text-sm">{sepayData.bankInfo.transferContent}</span>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(sepayData.bankInfo!.transferContent, 'memo')}
+                              className="p-1 hover:bg-amber-100 rounded text-amber-900 cursor-pointer transition-colors"
+                              title="Sao chép nội dung chuyển khoản"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">
+                                {copiedField === 'memo' ? 'check' : 'content_copy'}
+                              </span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -288,7 +329,7 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
                     {/* Trạng thái tự động */}
                     <div className="flex items-center justify-center gap-2 text-xs text-primary font-medium py-1 animate-pulse">
                       <span className="material-symbols-outlined text-[16px] animate-spin">sync</span>
-                      <span>Đang chờ khách thanh toán... Tự động đối soát</span>
+                      <span>Hệ thống đang tự động nhận diện thanh toán...</span>
                     </div>
 
                     {/* Nút Test giả lập */}
@@ -296,17 +337,17 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
                       type="button"
                       onClick={handleSimulateSepay}
                       disabled={simulating}
-                      className="w-full py-2 bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 text-[11px] font-semibold rounded-lg transition cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                      className="w-full py-2 bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 text-[11px] font-semibold rounded-lg transition cursor-pointer flex items-center justify-center gap-1 shadow-2xs active:scale-98"
                     >
                       <span className="material-symbols-outlined text-[14px]">science</span>
-                      <span>{simulating ? 'Đang xử lý...' : 'Giả lập thanh toán SePay thành công (Test Demo)'}</span>
+                      <span>{simulating ? 'Đang xử lý...' : 'Giả lập thanh toán thành công (Test Sandbox)'}</span>
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-center">
                   <p className="text-xs text-slate-600">
-                    Bấm nút bên dưới để khởi tạo phiên thanh toán SePay và mở trang quét mã VietQR cho khách hàng tại quầy.
+                    Bấm nút bên dưới để tạo mã VietQR SePay thanh toán cho khách hàng tại quầy.
                   </p>
                   <button
                     type="button"

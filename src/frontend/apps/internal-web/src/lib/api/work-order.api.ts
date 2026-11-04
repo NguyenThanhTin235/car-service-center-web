@@ -122,6 +122,15 @@ export interface WorkOrder {
   };
   created_at: string;
   updated_at: string;
+  release?: {
+    id: number;
+    release_notes: string | null;
+    released_at: string;
+    released_by?: {
+      id: number;
+      full_name: string;
+    };
+  } | null;
   invoice?: {
     id: number;
     status: string;
@@ -715,8 +724,7 @@ export interface CancelAndReleasePayload {
 
 /**
  * Bàn giao xuất trả xe khi khách từ chối dịch vụ hoặc hủy lệnh
- */
-export async function cancelAndReleaseWorkOrder(
+ */export async function cancelAndReleaseWorkOrder(
   workOrderId: number,
   payload: CancelAndReleasePayload
 ): Promise<ApiResponse<any>> {
@@ -724,9 +732,34 @@ export async function cancelAndReleaseWorkOrder(
   return response.data;
 }
 
+export interface CompleteHandoverPayload {
+  returnMileage?: number;
+  returnFuel?: string;
+  oldPartsAction?: 'RETURNED_TO_CUSTOMER' | 'DISPOSED_BY_GARAGE';
+  carWashCompleted?: boolean;
+  belongingsReturned?: boolean;
+  notes?: string;
+  customerSignature?: string;
+  warrantyTerms?: string;
+}
 
+/**
+ * Bàn giao xe chuẩn sau khi hoàn tất sửa chữa và thanh toán
+ */
+export async function completeVehicleHandover(
+  workOrderId: number,
+  payload: CompleteHandoverPayload
+): Promise<ApiResponse<any>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/handover`, payload);
+  return response.data;
+}
 
-
-
-
-
+/**
+ * Tải file PDF Biên bản bàn giao xe
+ */
+export async function downloadHandoverPdfBlob(workOrderId: number): Promise<Blob> {
+  const response = await api.get(`/api/work-orders/${workOrderId}/handover-pdf`, {
+    responseType: 'blob',
+  });
+  return response.data;
+}

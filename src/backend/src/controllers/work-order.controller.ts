@@ -1030,3 +1030,98 @@ export const cancelAndReleaseWorkOrder = async (req: Request, res: Response): Pr
 };
 
 
+
+
+/**
+ * POST /api/work-orders/:id/handover
+ * Bàn giao xe chuẩn sau khi hoàn tất sửa chữa và thanh toán
+ */
+export const completeHandover = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const userId = (req as any).user.id;
+    const {
+      returnMileage,
+      returnFuel,
+      oldPartsAction,
+      carWashCompleted,
+      belongingsReturned,
+      notes,
+      customerSignature,
+      warrantyTerms,
+    } = req.body;
+
+    if (isNaN(workOrderId) || workOrderId <= 0) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Mã phiếu công việc không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const data = await workOrderService.completeHandover(workOrderId, userId, {
+      returnMileage: returnMileage !== undefined && returnMileage !== '' ? Number(returnMileage) : undefined,
+      returnFuel,
+      oldPartsAction,
+      carWashCompleted,
+      belongingsReturned,
+      notes,
+      customerSignature,
+      warrantyTerms,
+    });
+
+    res.json({
+      success: true,
+      code: 200,
+      message: data.message,
+      data,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 400).json({
+      success: false,
+      code: error.statusCode || 400,
+      message: error.message || 'Lỗi khi hoàn tất bàn giao xe',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};
+
+/**
+ * GET /api/work-orders/:id/handover-pdf
+ * Tải file PDF Biên bản bàn giao & nghiệm thu xe
+ */
+export const getHandoverPdf = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    if (isNaN(workOrderId) || workOrderId <= 0) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Mã phiếu công việc không hợp lệ',
+        data: null,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      return;
+    }
+
+    const { buffer, filename } = await workOrderService.getHandoverPdf(workOrderId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
+  } catch (error: any) {
+    res.status(error.statusCode || 400).json({
+      success: false,
+      code: error.statusCode || 400,
+      message: error.message || 'Lỗi khi tạo file PDF biên bản bàn giao xe',
+      data: null,
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+};

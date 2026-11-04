@@ -518,11 +518,24 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
 
       {/* 2. DYNAMIC WORK ORDER EXECUTION BANNER */}
       {workOrder?.status === 'IN_PROGRESS' && (() => {
+        // Nếu toàn bộ công việc đã kiểm định chất lượng (PASSED) -> Xóa / Ẩn tag này
+        const isAllQcPassed =
+          grandTotalJobs > 0 &&
+          services.every((s) => {
+            const jobs = s.jobs || [];
+            return jobs.length > 0 && jobs.every((j) => j.status === 'PASSED');
+          });
+
+        if (isAllQcPassed) {
+          return null;
+        }
+
         const allServicesCompleted = services.length > 0 && services.every((s) => s.status === 'COMPLETED');
         const allJobsCompleted = grandTotalJobs > 0 && grandCompletedJobs === grandTotalJobs;
+        const hasJobsWaitingQc = services.some((s) => (s.jobs || []).some((j) => j.status === 'COMPLETED'));
         const hasReworkJobs = services.some((s) => (s.jobs || []).some((j) => j.status === 'REWORK'));
 
-        if (allServicesCompleted || allJobsCompleted) {
+        if ((allServicesCompleted || allJobsCompleted) && hasJobsWaitingQc && !hasReworkJobs) {
           return (
             <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fade-in">
               <div className="flex items-center gap-3">
@@ -581,6 +594,10 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
               </div>
             </div>
           );
+        }
+
+        if (allServicesCompleted || allJobsCompleted) {
+          return null;
         }
 
         return (

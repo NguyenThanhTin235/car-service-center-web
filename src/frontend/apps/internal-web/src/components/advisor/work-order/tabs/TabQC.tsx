@@ -815,43 +815,13 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
               })}
             </div>
 
-            {/* Bottom Actions for Active Service */}
-            {!isReadOnly && (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-outline-variant">
-                <div className="text-xs text-on-surface-variant">
-                  {activeService.latestQc && (
-                    <span>
-                      Lần kiểm định gần nhất: <b>{new Date(activeService.latestQc.createdAt).toLocaleString('vi-VN')}</b> bởi{' '}
-                      <b>{activeService.latestQc.inspectorName}</b>
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2.5 self-end sm:self-center">
-                  <button
-                    type="button"
-                    onClick={() => handleSubmitServiceQc(activeService)}
-                    disabled={actionLoading}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant rounded-xl text-xs sm:text-sm font-bold transition-all disabled:opacity-50 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">save</span>
-                    <span>Lưu dịch vụ này</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleSubmitAllQc}
-                    disabled={actionLoading}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">
-                      {actionLoading ? 'progress_activity' : 'fact_check'}
-                    </span>
-                    <span>
-                      {actionLoading ? 'Đang lưu...' : `Lưu toàn bộ (${qcData.services.length} dịch vụ)`}
-                    </span>
-                  </button>
-                </div>
+            {/* Latest QC info if available */}
+            {activeService.latestQc && (
+              <div className="pt-3 border-t border-outline-variant text-xs text-on-surface-variant">
+                <span>
+                  Lần kiểm định gần nhất: <b>{new Date(activeService.latestQc.createdAt).toLocaleString('vi-VN')}</b> bởi{' '}
+                  <b>{activeService.latestQc.inspectorName}</b>
+                </span>
               </div>
             )}
           </div>

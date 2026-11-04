@@ -9,6 +9,8 @@ import CustomerQuotationModal from './CustomerQuotationModal';
 import CustomerCheckInModal from './CustomerCheckInModal';
 import CustomerQCModal from './CustomerQCModal';
 import CustomerPaymentModal from '@/components/invoices/CustomerPaymentModal';
+import { downloadInvoicePdfBlob } from '@/lib/api/invoice.api';
+import { downloadHandoverPdfBlob } from '@/lib/api/work-order.api';
 
 export default function TrackingView({ isEmbedded = false }: { isEmbedded?: boolean }) {
   const dispatch = useAppDispatch();
@@ -20,8 +22,52 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState<boolean>(false);
   const [isQCModalOpen, setIsQCModalOpen] = useState<boolean>(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
+  const [downloadingPdfId, setDownloadingPdfId] = useState<number | null>(null);
+  const [downloadingHandoverPdf, setDownloadingHandoverPdf] = useState<boolean>(false);
+  const [csatRating, setCsatRating] = useState<number>(5);
+  const [csatFeedback, setCsatFeedback] = useState<string>('');
+  const [csatSubmitted, setCsatSubmitted] = useState<boolean>(false);
 
-  // Tải danh sách ban đầu
+  const handleDownloadPdf = async (invId: number, invNumber?: string) => {
+    try {
+      setDownloadingPdfId(invId);
+      const blob = await downloadInvoicePdfBlob(invId);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Hoa_Don_${invNumber || invId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setToastMsg(`Đã tải hóa đơn PDF ${invNumber ? '#' + invNumber : ''} thành công!`);
+    } catch (err: any) {
+      setToastMsg('Không thể xuất file PDF: ' + (err.response?.data?.message || err.message || 'Lỗi hệ thống'));
+    } finally {
+      setDownloadingPdfId(null);
+    }
+  };
+
+  const handleDownloadHandoverPdf = async () => {
+    if (!activeOrder) return;
+    try {
+      setDownloadingHandoverPdf(true);
+      const blob = await downloadHandoverPdfBlob(activeOrder.id);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Bien_Ban_Ban_Giao_${activeOrder.woNumber}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setToastMsg(`Đã tải xuống Biên bản bàn giao xe #${activeOrder.woNumber} thành công!`);
+    } catch (err: any) {
+      setToastMsg('Không thể xuất file PDF biên bản bàn giao: ' + (err.response?.data?.message || err.message || 'Lỗi hệ thống'));
+    } finally {
+      setDownloadingHandoverPdf(false);
+    }
+  };
   const loadData = useCallback(async (isManual = false) => {
     try {
       await dispatch(fetchMyTrackingOrders()).unwrap();
@@ -407,7 +453,129 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
           )}
 
           {/* ================= BILLING & DELIVERY STATUS BANNER (Thanh toán & Bàn giao xe) ================= */}
-          {activeOrder.status === 'FINANCIAL_CLEARED' ? (
+          {['RELEASED', 'CLOSED'].includes(activeOrder.status) ? (
+            <section className="animate-fade-in space-y-4">
+              <div className="bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-emerald-500 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-start space-x-3.5 z-10">
+                  <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0 border border-white/30 text-white">
+                    <span className="material-symbols-outlined text-[28px]">
+                      verified
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-extrabold uppercase tracking-wide bg-white text-emerald-900 shadow-2xs">
+                        Đã bàn giao xe
+                      </span>
+                      <span className="text-xs font-mono font-bold text-emerald-200">
+                        #{activeOrder.woNumber}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-bold leading-tight">
+                      Phương tiện đã hoàn tất nghiệm thu & xuất xưởng thành công!
+                    </h3>
+                    <p className="text-xs sm:text-sm text-emerald-100 leading-relaxed">
+                      Cố vấn dịch vụ <strong>{activeOrder.advisor.fullName}</strong> đã bàn giao phương tiện {activeOrder.vehicle.licensePlate} cho Quý khách. Chân thành cảm ơn Quý khách đã tin tưởng sử dụng dịch vụ tại Car Service Center!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0 z-10">
+                  <button
+                    type="button"
+                    onClick={handleDownloadHandoverPdf}
+                    disabled={downloadingHandoverPdf}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-emerald-900 hover:bg-emerald-50 font-bold text-xs transition-colors shadow-sm cursor-pointer active:scale-95 disabled:opacity-50"
+                  >
+                    {downloadingHandoverPdf ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-emerald-900 border-t-transparent rounded-full animate-spin"></span>
+                        <span>Đang tải...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-[16px]">download</span>
+                        <span>Tải Biên bản bàn giao (PDF)</span>
+                      </>
+                    )}
+                  </button>
+
+                  <Link
+                    href="/customer/invoices"
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-800/80 hover:bg-emerald-800 text-white border border-emerald-400/40 font-bold text-xs transition-colors shadow-sm"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">receipt_long</span>
+                    Xem hóa đơn & biên lai
+                  </Link>
+                </div>
+              </div>
+
+              {/* Khảo sát hài lòng CSAT 5 sao */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-surface-container-lowest border border-surface-container-highest shadow-xs">
+                {csatSubmitted ? (
+                  <div className="flex items-center gap-3 text-emerald-700 dark:text-emerald-300 py-1">
+                    <span className="material-symbols-outlined text-[24px]">favorite</span>
+                    <div>
+                      <h4 className="font-bold text-sm">Cảm ơn Quý khách đã gửi đánh giá!</h4>
+                      <p className="text-xs text-on-surface-variant">Phản hồi của Quý khách giúp trung tâm không ngừng nâng cao chất lượng dịch vụ.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <h4 className="font-bold text-sm text-on-surface flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-amber-500 text-[18px]">hotel_class</span>
+                          Đánh giá chất lượng dịch vụ lần này
+                        </h4>
+                        <p className="text-xs text-on-surface-variant">Hãy cho chúng tôi biết mức độ hài lòng của Quý khách với dịch vụ bảo dưỡng & sửa chữa vừa qua.</p>
+                      </div>
+
+                      {/* Star Rating Buttons */}
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setCsatRating(star)}
+                            className="p-1 text-amber-500 hover:scale-125 transition-transform cursor-pointer"
+                            title={`${star} sao`}
+                          >
+                            <span className="material-symbols-outlined text-[24px]">
+                              {star <= csatRating ? 'star' : 'star_outline'}
+                            </span>
+                          </button>
+                        ))}
+                        <span className="text-xs font-bold text-amber-700 dark:text-amber-300 ml-1">
+                          {csatRating === 5 ? 'Tuyệt vời (5/5)' : csatRating === 4 ? 'Hài lòng (4/5)' : `${csatRating}/5 sao`}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                      <input
+                        type="text"
+                        value={csatFeedback}
+                        onChange={(e) => setCsatFeedback(e.target.value)}
+                        placeholder="Nhập thêm nhận xét của Quý khách về Cố vấn, Kỹ thuật viên hoặc quy trình tiếp đón..."
+                        className="flex-1 px-3.5 py-2 bg-surface-container-low rounded-xl border border-surface-container-highest text-xs text-on-surface focus:border-primary focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCsatSubmitted(true);
+                          setToastMsg('Cảm ơn Quý khách đã gửi đánh giá trải nghiệm dịch vụ!');
+                        }}
+                        className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                      >
+                        Gửi đánh giá
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          ) : activeOrder.status === 'FINANCIAL_CLEARED' ? (
             <section className="animate-fade-in">
               <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-emerald-400 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-start space-x-3.5 z-10">
@@ -459,7 +627,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-extrabold uppercase tracking-wide bg-amber-400 text-amber-950 shadow-2xs">
-                        Chờ thanh toán
+                        {activeOrder.invoice ? 'Chờ thanh toán' : 'Đang lập hóa đơn'}
                       </span>
                       {activeOrder.invoice && (
                         <span className="text-xs font-mono font-bold text-blue-100">
@@ -468,13 +636,15 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                       )}
                     </div>
                     <h3 className="text-lg font-bold leading-tight">
-                      Xe đã kiểm định đạt chuẩn 100% • Sẵn sàng thanh toán nhận xe
+                      {activeOrder.invoice
+                        ? 'Xe đã kiểm định đạt chuẩn 100% • Sẵn sàng thanh toán nhận xe'
+                        : 'Xe đã kiểm định đạt chuẩn 100% • Quầy thu ngân đang xuất hóa đơn'}
                     </h3>
                     <p className="text-xs sm:text-sm text-blue-100 leading-relaxed">
                       {activeOrder.invoice ? (
                         <>Tổng chi phí thanh toán: <strong className="text-white font-mono text-base">{activeOrder.invoice.totalAmount.toLocaleString()} đ</strong>. Quý khách có thể thanh toán trực tuyến ngay để hoàn tất thủ tục.</>
                       ) : (
-                        'Đã hoàn tất kiểm định chất lượng KCS 100%. Quý khách có thể thanh toán trực tuyến ngay để nhận xe.'
+                        'Đã hoàn tất kiểm định chất lượng KCS 100%. Quầy thu ngân đang chuẩn bị xuất hóa đơn thanh toán cho Quý khách.'
                       )}
                     </p>
                   </div>
@@ -491,13 +661,10 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                       Thanh toán online ngay ({activeOrder.invoice.totalAmount.toLocaleString()} đ)
                     </button>
                   ) : (
-                    <Link
-                      href="/customer/invoices"
-                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-blue-900 hover:bg-blue-50 font-bold text-xs transition-colors shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">credit_card</span>
-                      Xem trang hóa đơn
-                    </Link>
+                    <div className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/20 text-white font-bold text-xs border border-white/30 backdrop-blur">
+                      <span className="material-symbols-outlined text-[16px] animate-spin">autorenew</span>
+                      Đang chuẩn bị hóa đơn...
+                    </div>
                   )}
                 </div>
               </div>
@@ -793,22 +960,53 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                       </p>
                     </div>
                     {activeOrder.invoice.status !== 'PAID' ? (
-                      <button
-                        type="button"
-                        onClick={() => setIsPaymentModalOpen(true)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary/90 transition-all shadow-2xs cursor-pointer active:scale-95"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">credit_card</span>
-                        Thanh toán
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setIsPaymentModalOpen(true)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary/90 transition-all shadow-2xs cursor-pointer active:scale-95"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">credit_card</span>
+                          Thanh toán
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadPdf(activeOrder.invoice!.id, activeOrder.invoice?.invoiceNumber)}
+                          disabled={downloadingPdfId === activeOrder.invoice?.id}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg text-xs font-medium transition-all cursor-pointer"
+                          title="Tải hóa đơn PDF"
+                        >
+                          {downloadingPdfId === activeOrder.invoice?.id ? (
+                            <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <span className="material-symbols-outlined text-[16px] text-primary">download</span>
+                          )}
+                          PDF
+                        </button>
+                      </div>
                     ) : (
-                      <Link
-                        href="/customer/invoices"
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-700 text-white rounded-lg text-xs font-semibold hover:bg-emerald-800 transition-all shadow-2xs"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">receipt_long</span>
-                        Xem biên lai
-                      </Link>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadPdf(activeOrder.invoice!.id, activeOrder.invoice?.invoiceNumber)}
+                          disabled={downloadingPdfId === activeOrder.invoice?.id}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary-dark transition-all shadow-2xs cursor-pointer"
+                          title="Tải biên lai PDF"
+                        >
+                          {downloadingPdfId === activeOrder.invoice?.id ? (
+                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <span className="material-symbols-outlined text-[16px]">download</span>
+                          )}
+                          Tải PDF
+                        </button>
+                        <Link
+                          href="/customer/invoices"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg text-xs font-medium transition-all"
+                        >
+                          Xem chi tiết
+                        </Link>
+                      </div>
                     )}
                   </div>
                 </div>

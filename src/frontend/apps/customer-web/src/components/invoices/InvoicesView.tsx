@@ -10,6 +10,7 @@ import {
   InvoiceListItemDto,
 } from '@/store/slices/invoiceSlice';
 import Toast from '@/components/shared/Toast';
+import { downloadInvoicePdfBlob } from '@/lib/api/invoice.api';
 import CustomerPaymentModal from './CustomerPaymentModal';
 
 export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: boolean }) {
@@ -24,6 +25,8 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
   const pageSize = 5;
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [toastMsg, setToastMsg] = useState<string>('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
+  const [downloadingPdfId, setDownloadingPdfId] = useState<number | null>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState<boolean>(false);
   const [paymentTarget, setPaymentTarget] = useState<{
     id: number;
@@ -70,6 +73,28 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
     await dispatch(fetchInvoiceDetail(invId));
   };
 
+  const handleDownloadPdf = async (invId: number, invNumber?: string) => {
+    try {
+      setDownloadingPdfId(invId);
+      const blob = await downloadInvoicePdfBlob(invId);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Hoa_Don_${invNumber || invId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setToastMsg(`Đã tải hóa đơn PDF ${invNumber ? '#' + invNumber : ''} thành công!`);
+      setToastType('success');
+    } catch (err: any) {
+      setToastMsg('Không thể xuất file PDF: ' + (err.response?.data?.message || err.message || 'Lỗi hệ thống'));
+      setToastType('error');
+    } finally {
+      setDownloadingPdfId(null);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -104,7 +129,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
     <div className="w-full max-w-[1440px] mx-auto space-y-6">
       {/* Toast */}
       {toastMsg && (
-        <Toast message={toastMsg} type="success" onClose={() => setToastMsg('')} />
+        <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg('')} />
       )}
 
       {/* Breadcrumb & Header */}
@@ -432,6 +457,22 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
                             </span>
                             Chi tiết
                           </button>
+                          <button
+                            onClick={() => handleDownloadPdf(inv.id, inv.invoiceNumber)}
+                            disabled={downloadingPdfId === inv.id}
+                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 bg-surface-container-lowest hover:bg-surface-container-low border border-surface-container-highest text-on-surface text-xs font-semibold rounded-lg shadow-2xs transition-colors whitespace-nowrap cursor-pointer"
+                            type="button"
+                            title={isPaid ? "Tải biên lai PDF" : "Tải hóa đơn PDF"}
+                          >
+                            {downloadingPdfId === inv.id ? (
+                              <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <span className="material-symbols-outlined text-[16px] text-primary">
+                                download
+                              </span>
+                            )}
+                            PDF
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -571,14 +612,22 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handlePrint}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold rounded-lg transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[16px]">print</span>
-                  In / Tải PDF
-                </button>
+                {selectedInvoice && (
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadPdf(selectedInvoice.id, selectedInvoice.invoiceNumber)}
+                    disabled={downloadingPdfId === selectedInvoice.id}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold rounded-lg border border-surface-container-highest transition-colors cursor-pointer"
+                    title="Tải file hóa đơn PDF chuẩn từ hệ thống"
+                  >
+                    {downloadingPdfId === selectedInvoice.id ? (
+                      <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <span className="material-symbols-outlined text-[16px] text-primary">download</span>
+                    )}
+                    <span>{downloadingPdfId === selectedInvoice.id ? 'Đang tạo PDF...' : 'Tải hóa đơn PDF'}</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
@@ -742,25 +791,57 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-surface-container-highest flex items-center justify-between gap-2.5 bg-surface-container-lowest sticky bottom-0">
-              {selectedInvoice && selectedInvoice.status !== 'PAID' ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setModalOpen(false);
-                    handleOpenPayModal(selectedInvoice);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white font-bold text-xs rounded-xl shadow-md hover:bg-primary/90 transition-all cursor-pointer active:scale-95"
-                >
-                  <span className="material-symbols-outlined text-[18px]">payments</span>
-                  Thanh toán online ngay ({selectedInvoice.amountDue.toLocaleString()} đ)
-                </button>
-              ) : (
-                <span className="text-xs text-emerald-700 font-semibold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px]">verified</span>
-                  Hóa đơn đã quyết toán 100%
-                </span>
-              )}
+            <div className="p-4 border-t border-surface-container-highest flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest sticky bottom-0">
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedInvoice && selectedInvoice.status === 'PAID' ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadPdf(selectedInvoice.id, selectedInvoice.invoiceNumber)}
+                      disabled={downloadingPdfId === selectedInvoice.id}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary text-xs font-semibold rounded-xl shadow-xs hover:bg-primary-dark transition-colors cursor-pointer active:scale-95"
+                    >
+                      {downloadingPdfId === selectedInvoice.id ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <span className="material-symbols-outlined text-[18px]">download</span>
+                      )}
+                      <span>Tải biên lai / In PDF</span>
+                    </button>
+                    <span className="text-xs text-emerald-700 font-semibold hidden sm:inline-flex items-center gap-1 ml-1">
+                      <span className="material-symbols-outlined text-[16px]">verified</span>
+                      Hóa đơn đã quyết toán 100%
+                    </span>
+                  </>
+                ) : selectedInvoice ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModalOpen(false);
+                        handleOpenPayModal(selectedInvoice);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white font-bold text-xs rounded-xl shadow-xs hover:bg-primary/90 transition-all cursor-pointer active:scale-95"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">payments</span>
+                      Thanh toán online ngay ({selectedInvoice.amountDue.toLocaleString()} đ)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadPdf(selectedInvoice.id, selectedInvoice.invoiceNumber)}
+                      disabled={downloadingPdfId === selectedInvoice.id}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-surface-container-highest hover:bg-surface-container text-on-surface text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                    >
+                      {downloadingPdfId === selectedInvoice.id ? (
+                        <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <span className="material-symbols-outlined text-[18px]">download</span>
+                      )}
+                      <span>In / Xuất PDF</span>
+                    </button>
+                  </>
+                ) : null}
+              </div>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}

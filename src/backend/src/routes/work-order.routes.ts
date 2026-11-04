@@ -25,6 +25,8 @@ import {
   updateServiceStatus,
   updateJobStatus,
   cancelAndReleaseWorkOrder,
+  completeHandover,
+  getHandoverPdf,
 } from '../controllers/work-order.controller';
 import { CheckInController } from '../controllers/check-in.controller';
 import { InspectionController } from '../controllers/inspection.controller';
@@ -95,6 +97,12 @@ router.post('/:id/start-work', authorize('SA', 'ADMIN'), startWorkOrder);
 
 // XUẤT TRẢ XE KHI KHÁCH HÀNG TỪ CHỐI DỊCH VỤ HOẶC HỦY LỆNH
 router.post('/:id/cancel-release', authorize('SA', 'ADMIN'), cancelAndReleaseWorkOrder);
+
+// BÀN GIAO XE CHUẨN KHI ĐÃ HOÀN TẤT THANH TOÁN (UC-42)
+router.post('/:id/handover', authorize('SA', 'ADMIN', 'DESK STAFF'), completeHandover);
+
+// TẢI FILE PDF BIÊN BẢN BÀN GIAO XE
+router.get('/:id/handover-pdf', authorize('SA', 'ADMIN', 'DESK STAFF', 'CUSTOMER'), getHandoverPdf);
 
 // LÊN KẾ HOẠCH CÔNG VIỆC TÍCH HỢP AI LLM (UC-34)
 router.use('/', aiJobRoutes);

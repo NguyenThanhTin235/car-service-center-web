@@ -17,6 +17,17 @@ const workOrderInclude = {
   },
   appointment: { select: { id: true, scheduled_date: true, scheduled_time: true } },
   check_in: true,
+  release: {
+    include: {
+      released_by: { select: { id: true, full_name: true } },
+      confirmed_by: { select: { id: true, full_name: true } },
+    },
+  },
+  invoices: {
+    include: {
+      payments: true,
+    },
+  },
   services: {
     include: {
       service: {

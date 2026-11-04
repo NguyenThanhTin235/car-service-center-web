@@ -22,6 +22,17 @@ export default function BillingQueuePage() {
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetail | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
 
+  // Tìm kiếm tự động khi nhập (Debounce 300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchInput.trim() !== search) {
+        dispatch(setSearch(searchInput.trim()));
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchInput, dispatch, search]);
+
   useEffect(() => {
     dispatch(fetchBillingQueue({ tab, search, page, limit: 5 }));
   }, [dispatch, tab, search, page]);
@@ -277,21 +288,36 @@ export default function BillingQueuePage() {
 
           {/* Search Box */}
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 max-w-md w-full">
-            <div className="relative flex-1">
-              <span className="material-symbols-outlined absolute left-3 top-2.5 text-[20px] text-on-surface-variant">
-                search
-              </span>
+            <div className="relative flex-1 flex items-center">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+                  search
+                </span>
+              </div>
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Tìm biển số, mã phiếu WO, tên khách hàng..."
-                className="w-full pl-10 pr-3.5 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-xs"
+                className="w-full pl-9 pr-8 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-xs leading-normal h-9"
               />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput('');
+                    dispatch(setSearch(''));
+                  }}
+                  className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-on-surface-variant hover:text-on-surface cursor-pointer"
+                  title="Xóa tìm kiếm"
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              )}
             </div>
             <button
               type="submit"
-              className="px-4 py-2 bg-primary text-on-primary rounded-xl text-xs font-semibold hover:bg-primary-dark transition-colors shrink-0"
+              className="px-4 py-2 bg-primary text-on-primary rounded-xl text-xs font-semibold hover:bg-primary-dark transition-colors shrink-0 h-9 flex items-center justify-center cursor-pointer shadow-2xs"
             >
               Tìm kiếm
             </button>
