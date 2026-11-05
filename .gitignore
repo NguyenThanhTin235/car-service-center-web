@@ -9,3 +9,5 @@ docs/plan/
 docs/diagrams/
 src/frontend/apps/customer-web/test-results
 src/frontend/apps/customer-web/playwright-report
+*.exe
+cloudflared.exe

@@ -6,6 +6,7 @@ import profileReducer from './slices/profileSlice';
 import vehicleReducer from './slices/vehicleSlice';
 import trackingReducer from './slices/trackingSlice';
 import invoiceReducer from './slices/invoiceSlice';
+import historyReducer from './slices/historySlice';
 
 export const store = configureStore({
   reducer: {
@@ -15,6 +16,7 @@ export const store = configureStore({
     vehicles: vehicleReducer,
     tracking: trackingReducer,
     invoices: invoiceReducer,
+    history: historyReducer,
   },
 });
 

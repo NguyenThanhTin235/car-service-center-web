@@ -41,6 +41,7 @@
     "nodemailer": "^10.0.10",
     "pdfkit": "^0.20.2",
     "redis": "^6.2.1",
+    "sepay-pg-node": "github:sepayvn/sepay-pg-node",
     "socket.io": "^4.8.3",
     "winston": "^3.19.0"
   },

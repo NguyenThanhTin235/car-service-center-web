@@ -23,6 +23,7 @@ import Toast from '@/components/shared/Toast';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import TrackingView from '@/components/tracking/TrackingView';
 import InvoicesView from '@/components/invoices/InvoicesView';
+import HistoryView from '@/components/history/HistoryView';
 
 export type TabKey = 'profile' | 'vehicles' | 'appointments' | 'tracking' | 'invoices' | 'history';
 
@@ -604,7 +605,7 @@ export default function ProfilePage() {
     { key: 'appointments', label: 'Đặt lịch', icon: 'calendar_today' },
     { key: 'tracking', label: 'Tiến độ sửa chữa', icon: 'car_repair' },
     { key: 'invoices', label: 'Hóa đơn dịch vụ', icon: 'receipt_long' },
-    { key: 'history', label: 'Lịch sử dịch vụ', icon: 'history' },
+    { key: 'history', label: 'Lịch sử sửa chữa', icon: 'history' },
   ];
 
   // Selected vehicle for step 3 summary
@@ -1103,164 +1104,7 @@ export default function ProfilePage() {
           {/* TAB 4: LỊCH SỬ DỊCH VỤ */}
           {activeTab === 'history' && (
             <div className="space-y-6">
-              {/* Header Box */}
-              <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-900">Lịch sử dịch vụ & Bảo dưỡng</h2>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Tra cứu toàn bộ hồ sơ kỹ thuật, các lần vào xưởng và linh kiện đã thay thế
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl">
-                      <span className="block text-[11px] text-blue-600 font-medium">Tổng số lần vào xưởng</span>
-                      <span className="text-lg font-bold text-blue-900">{mockHistoryData.length} lần</span>
-                    </div>
-                    <div className="px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl">
-                      <span className="block text-[11px] text-emerald-600 font-medium">Lần gần nhất</span>
-                      <span className="text-lg font-bold text-emerald-900">{mockHistoryData[0].completedDate}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Filter & Search Bar */}
-                <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                  <div className="relative flex-1">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">
-                      search
-                    </span>
-                    <input
-                      type="text"
-                      value={historySearch}
-                      onChange={(e) => setHistorySearch(e.target.value)}
-                      placeholder="Tìm kiếm theo mã phiếu, hạng mục, biển số..."
-                      className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div className="sm:w-56 shrink-0">
-                    <select
-                      value={selectedVehicleFilter}
-                      onChange={(e) => setSelectedVehicleFilter(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                    >
-                      <option value="ALL">Tất cả phương tiện</option>
-                      {vehicles.map((v) => (
-                        <option key={v.id} value={v.licensePlate}>
-                          {v.licensePlate} ({v.make} {v.model})
-                        </option>
-                      ))}
-                      {vehicles.length === 0 && (
-                        <>
-                          <option value="51G-678.24">51G-678.24 (Hyundai Santa Fe)</option>
-                          <option value="92C-300.35">92C-300.35 (Ford Everest)</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Service History Timeline List */}
-              <div className="space-y-4">
-                {filteredHistory.length === 0 ? (
-                  <div className="bg-white rounded-2xl p-12 text-center border border-slate-100 shadow-sm">
-                    <span className="material-symbols-outlined text-4xl text-slate-300">history_toggle_off</span>
-                    <p className="text-sm text-slate-500 mt-2">Không tìm thấy lịch sử dịch vụ phù hợp.</p>
-                  </div>
-                ) : (
-                  filteredHistory.map((item) => (
-                    <div
-                      key={item.id}
-                      className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:border-slate-200 transition-all flex flex-col gap-4"
-                    >
-                      {/* Top Row: Header & Badges */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                            <span className="material-symbols-outlined text-xl">build_circle</span>
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-sm text-slate-900">{item.orderCode}</span>
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                Đã hoàn tất
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-400 mt-0.5">Ngày hoàn thành: {item.completedDate}</p>
-                          </div>
-                        </div>
-
-                        {/* Vehicle & Odo */}
-                        <div className="text-left sm:text-right">
-                          <span className="inline-block px-2.5 py-1 bg-slate-100 rounded-lg text-xs font-bold text-slate-800">
-                            {item.licensePlate}
-                          </span>
-                          <p className="text-[11px] text-slate-500 mt-0.5">
-                            {item.vehicleModel} • ODO: <strong className="text-slate-700">{item.odometer}</strong>
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Middle: Service Package & Performed Items */}
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-blue-600 text-[18px]">verified</span>
-                          {item.servicePackage}
-                        </h4>
-                        <div className="bg-slate-50/70 rounded-xl p-3.5 border border-slate-100">
-                          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                            Chi tiết hạng mục & Phụ tùng:
-                          </p>
-                          <ul className="space-y-1.5">
-                            {item.items.map((subItem, idx) => (
-                              <li key={idx} className="flex items-start gap-2 text-xs text-slate-700">
-                                <span className="material-symbols-outlined text-emerald-500 text-[14px] mt-0.5 shrink-0">
-                                  check_circle
-                                </span>
-                                <span>{subItem}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-
-                      {/* Bottom Row: Cost, Advisor & Actions */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
-                        <div className="flex items-center gap-4 text-xs text-slate-500">
-                          <span>
-                            Cố vấn: <strong className="text-slate-700">{item.serviceAdvisor}</strong>
-                          </span>
-                          <span>•</span>
-                          <span>
-                            Tổng thanh toán: <strong className="text-blue-700 text-sm">{item.totalCost}</strong>
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setViewProgressItem(item)}
-                            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">timeline</span>
-                            Xem tiến độ
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setViewInvoiceItem(item)}
-                            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-semibold transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">receipt_long</span>
-                            Xem hóa đơn
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+              <HistoryView isEmbedded={true} />
             </div>
           )}
 

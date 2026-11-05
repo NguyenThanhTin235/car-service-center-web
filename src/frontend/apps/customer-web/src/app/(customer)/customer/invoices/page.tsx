@@ -7,7 +7,8 @@ export default function CustomerInvoicesPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/customer/profile?tab=invoices');
+    const search = typeof window !== 'undefined' ? window.location.search : '';
+    router.replace(`/customer/profile?tab=invoices${search ? '&' + search.slice(1) : ''}`);
   }, [router]);
 
   return (

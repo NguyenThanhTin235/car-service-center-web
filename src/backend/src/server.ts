@@ -19,7 +19,7 @@ const start = async () => {
   startAppointmentReminderJob();
 
   app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`Server is running on http://localhost:`);
   });
 };
 
@@ -27,4 +27,3 @@ start().catch((err) => {
   console.error('Failed to start server:', err);
   process.exit(1);
 });
-
