@@ -389,22 +389,22 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
 
   return (
     <div className="space-y-6">
-      {/* 1. Header Bento Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* 1. KPI STATS - Flattened Unified Strip */}
+      <div className="bg-[#f8fafc] border border-slate-200/90 rounded-2xl p-4 grid grid-cols-2 lg:grid-cols-4 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/80">
         {/* Stat 1: Tiến độ kiểm định */}
-        <div className="bg-surface-container-lowest p-4.5 rounded-2xl border border-outline-variant shadow-2xs">
-          <div className="flex items-center justify-between text-on-surface-variant mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Tiến độ KCS</span>
-            <span className="material-symbols-outlined text-primary text-[20px]">verified</span>
+        <div className="sm:px-3 first:pl-0">
+          <div className="flex items-center justify-between text-slate-600 mb-1.5">
+            <span className="text-xs font-bold">Tiến độ KCS</span>
+            <span className="material-symbols-outlined text-[#0050cd] text-[18px]">verified</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-on-surface font-mono">{stats.progressPercent}%</span>
-            <span className="text-xs text-on-surface-variant">({stats.passedServices}/{stats.totalServices} dịch vụ)</span>
+            <span className="text-xl sm:text-2xl font-black text-zinc-900 font-mono">{stats.progressPercent}%</span>
+            <span className="text-xs text-slate-500 font-medium">({stats.passedServices}/{stats.totalServices} dịch vụ)</span>
           </div>
-          <div className="w-full bg-surface-container-high h-2 rounded-full mt-3 overflow-hidden">
+          <div className="w-full bg-slate-200 h-2 rounded-full mt-2.5 overflow-hidden">
             <div
               className={`h-full transition-all duration-500 ${
-                stats.progressPercent === 100 ? 'bg-emerald-500' : 'bg-primary'
+                stats.progressPercent === 100 ? 'bg-emerald-500' : 'bg-[#0050cd]'
               }`}
               style={{ width: `${stats.progressPercent}%` }}
             />
@@ -412,56 +412,52 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
         </div>
 
         {/* Stat 2: Công việc đã nghiệm thu */}
-        <div className="bg-surface-container-lowest p-4.5 rounded-2xl border border-outline-variant shadow-2xs">
-          <div className="flex items-center justify-between text-on-surface-variant mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Hạng mục đã Pass</span>
-            <span className="material-symbols-outlined text-emerald-600 text-[20px]">check_circle</span>
+        <div className="pt-3 sm:pt-0 sm:px-3">
+          <div className="flex items-center justify-between text-slate-600 mb-1.5">
+            <span className="text-xs font-bold">Hạng mục đã Pass</span>
+            <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-emerald-600 font-mono">{stats.passedJobs}</span>
-            <span className="text-xs text-on-surface-variant">/ {stats.totalJobs} jobs kỹ thuật</span>
+            <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono">{stats.passedJobs}</span>
+            <span className="text-xs text-slate-500 font-medium">/ {stats.totalJobs} jobs kỹ thuật</span>
           </div>
-          <p className="text-[11px] text-on-surface-variant mt-2">
+          <p className="text-xs text-slate-500 mt-2 font-medium">
             Đã đạt chuẩn an toàn & chạy thử
           </p>
         </div>
 
         {/* Stat 3: Công việc Rework cần sửa lại */}
-        <div className={`p-4.5 rounded-2xl border shadow-2xs transition-all ${
-          stats.reworkJobs > 0 
-            ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-300 dark:border-rose-900' 
-            : 'bg-surface-container-lowest border-outline-variant'
-        }`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className={`text-xs font-bold uppercase tracking-wider ${
-              stats.reworkJobs > 0 ? 'text-rose-800 dark:text-rose-300' : 'text-on-surface-variant'
+        <div className="pt-3 sm:pt-0 sm:px-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className={`text-xs font-bold ${
+              stats.reworkJobs > 0 ? 'text-rose-700' : 'text-slate-600'
             }`}>
               Cần sửa lại (Rework)
             </span>
-            <span className={`material-symbols-outlined text-[20px] ${
-              stats.reworkJobs > 0 ? 'text-rose-600' : 'text-on-surface-variant'
+            <span className={`material-symbols-outlined text-[18px] ${
+              stats.reworkJobs > 0 ? 'text-rose-600' : 'text-slate-500'
             }`}>
               build_circle
             </span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className={`text-2xl font-black font-mono ${
-              stats.reworkJobs > 0 ? 'text-rose-600' : 'text-on-surface'
+            <span className={`text-xl sm:text-2xl font-black font-mono ${
+              stats.reworkJobs > 0 ? 'text-rose-600' : 'text-zinc-900'
             }`}>
               {stats.reworkJobs}
             </span>
-            <span className="text-xs text-on-surface-variant">hạng mục phát hiện lỗi</span>
+            <span className="text-xs text-slate-500 font-medium">hạng mục phát hiện lỗi</span>
           </div>
-          <p className="text-[11px] text-on-surface-variant mt-2">
+          <p className="text-xs text-slate-500 mt-2 font-medium">
             {stats.reworkJobs > 0 ? '⚠️ Cần thợ khắc phục trước khi giao xe' : 'Không có lỗi kỹ thuật nào'}
           </p>
         </div>
 
         {/* Stat 4: Trạng thái chốt cổng xuất xưởng */}
-        <div className="bg-surface-container-lowest p-4.5 rounded-2xl border border-outline-variant shadow-2xs">
-          <div className="flex items-center justify-between text-on-surface-variant mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Cổng nghiệm thu</span>
-            <span className="material-symbols-outlined text-amber-600 text-[20px]">door_front</span>
+        <div className="pt-3 sm:pt-0 sm:pl-3">
+          <div className="flex items-center justify-between text-slate-600 mb-1.5">
+            <span className="text-xs font-bold">Cổng nghiệm thu</span>
+            <span className="material-symbols-outlined text-amber-600 text-[18px]">door_front</span>
           </div>
           <div>
             {stats.isBillingRequested ? (
@@ -470,18 +466,18 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                 Đã gửi Billing
               </span>
             ) : stats.canRequestBilling ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs animate-pulse">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs">
                 <span className="material-symbols-outlined text-[14px]">check_circle</span>
                 Sẵn sàng thanh toán
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container text-on-surface font-semibold text-xs">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs">
                 <span className="material-symbols-outlined text-[14px]">hourglass_top</span>
                 Đang thi công & QC
               </span>
             )}
           </div>
-          <p className="text-[11px] text-on-surface-variant mt-2">
+          <p className="text-xs text-slate-500 mt-2 font-medium">
             {stats.canRequestBilling ? 'Đạt chuẩn 100% để xuất hóa đơn' : 'Cần nghiệm thu đủ các dịch vụ'}
           </p>
         </div>
@@ -523,12 +519,12 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
       )}
 
       {isReadOnly && !stats.isBillingRequested && (
-        <div className="bg-surface-container-high/70 border border-outline-variant/80 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs sm:text-sm">
+        <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs sm:text-sm">
           <div className="flex items-center gap-2.5">
-            <span className="material-symbols-outlined text-primary text-[22px]">lock</span>
+            <span className="material-symbols-outlined text-[#0050cd] text-[22px]">lock</span>
             <div>
-              <span className="font-bold text-on-surface">Chế độ xem chỉ đọc (Read-only): </span>
-              <span className="text-on-surface-variant">
+              <span className="font-bold text-zinc-900">Chế độ xem chỉ đọc (Read-only): </span>
+              <span className="text-slate-600">
                 {['BILLING_REQUESTED', 'FINANCIAL_CLEARED', 'RELEASED', 'CLOSED'].includes(workOrder?.status || '')
                   ? `Phiếu công việc đã hoàn thành giai đoạn kiểm định (${workOrder?.status}). Không thể chỉnh sửa kết quả KCS.`
                   : workOrder?.status === 'CANCELLED'
@@ -537,16 +533,16 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
               </span>
             </div>
           </div>
-          <span className="px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface font-mono font-bold text-xs uppercase tracking-wider shrink-0">
+          <span className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 font-mono font-bold text-xs uppercase tracking-wider shrink-0 shadow-2xs">
             {workOrder?.status}
           </span>
         </div>
       )}
 
       {/* 3. Main Workspace: Service Selector Tabs & Inspection Checklist */}
-      <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden">
         {/* Service Switcher Tabs */}
-        <div className="flex items-center gap-2 p-3 bg-surface-container-low border-b border-outline-variant overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2 p-2.5 bg-slate-50/80 border-b border-slate-200/80 overflow-x-auto no-scrollbar">
           {qcData.services.map((service, idx) => {
             const isSelected = selectedServiceId === service.id;
             const isPassed = service.latestQc?.overallResult === 'PASS';
@@ -559,29 +555,33 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                 key={service.id}
                 type="button"
                 onClick={() => setSelectedServiceId(service.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
                   isSelected
-                    ? 'bg-surface-container-lowest text-primary shadow-xs border border-outline-variant'
-                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                    ? 'bg-white text-[#0050cd] shadow-2xs border border-slate-200/90 font-bold'
+                    : 'text-slate-600 hover:text-zinc-900 hover:bg-white/60'
                 }`}
               >
-                <span className="w-5 h-5 rounded-full bg-surface-container-highest text-on-surface flex items-center justify-center text-[10px] font-bold">
+                <span
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                    isSelected ? 'bg-[#0050cd] text-white' : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
                   {idx + 1}
                 </span>
                 <span>{service.name}</span>
 
                 {isPassed ? (
-                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                    <span className="material-symbols-outlined text-[12px]">check</span>
+                  <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[13px]">check</span>
                     Đạt
                   </span>
                 ) : hasRework ? (
-                  <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                    <span className="material-symbols-outlined text-[12px]">build</span>
+                  <span className="text-xs bg-rose-50 text-rose-700 border border-rose-200/80 font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[13px]">build</span>
                     Rework
                   </span>
                 ) : (
-                  <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">
+                  <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200/80 font-bold px-2 py-0.5 rounded-md">
                     Chờ QC
                   </span>
                 )}
@@ -594,28 +594,28 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
         {activeService && (
           <div className="p-6 space-y-6">
             {/* Header: Service Info & Jobs Summary */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-outline-variant">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
               <div>
-                <h3 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                <h3 className="text-base sm:text-lg font-extrabold text-zinc-900 flex items-center gap-2">
                   <span>{activeService.name}</span>
-                  <span className="text-xs font-normal text-on-surface-variant">
+                  <span className="text-xs font-normal text-slate-500">
                     ({activeService.template.name})
                   </span>
                 </h3>
-                <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                  <span className="text-xs text-on-surface-variant">Công việc thi công:</span>
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <span className="text-xs text-slate-500 font-medium">Công việc thi công:</span>
                   {activeService.jobs.map((job) => (
                     <span
                       key={job.id}
-                      className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
+                      className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border ${
                         job.status === 'PASSED'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
                           : job.status === 'REWORK'
-                          ? 'bg-rose-50 text-rose-700 border-rose-200'
-                          : 'bg-surface-container text-on-surface border-outline-variant'
+                          ? 'bg-rose-50 text-rose-700 border-rose-200/80'
+                          : 'bg-slate-50 text-slate-700 border-slate-200'
                       }`}
                     >
-                      <span className="material-symbols-outlined text-[12px]">
+                      <span className="material-symbols-outlined text-[14px]">
                         {job.status === 'PASSED' ? 'done_all' : job.status === 'REWORK' ? 'handyman' : 'engineering'}
                       </span>
                       {job.name} ({job.technician})
@@ -631,7 +631,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                   <button
                     type="button"
                     onClick={() => handleMarkAllPass(activeService)}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer"
                     title="Tất cả các tiêu chí của dịch vụ này đều đạt"
                   >
                     <span className="material-symbols-outlined text-[16px]">done_all</span>
@@ -643,7 +643,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                     <button
                       type="button"
                       onClick={handleMarkAllServicesPass}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer"
                       title={`Đánh dấu ĐẠT cho toàn bộ ${qcData.services.length} dịch vụ trong phiếu`}
                     >
                       <span className="material-symbols-outlined text-[16px]">checklist_rtl</span>
@@ -656,19 +656,19 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                     type="button"
                     onClick={() => handleSubmitServiceQc(activeService)}
                     disabled={actionLoading}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer disabled:opacity-50"
                     title="Chỉ lưu kết quả kiểm định của dịch vụ hiện tại"
                   >
                     <span className="material-symbols-outlined text-[16px]">save</span>
                     <span>Lưu mục này</span>
                   </button>
 
-                  {/* NÚT LƯU TOÀN BỘ KẾT QUẢ KCS - NỔI BẬT NHẤT Ở PHÍA TRÊN */}
+                  {/* NÚT LƯU TOÀN BỘ KẾT QUẢ KCS */}
                   <button
                     type="button"
                     onClick={handleSubmitAllQc}
                     disabled={actionLoading}
-                    className="inline-flex items-center gap-2 px-4.5 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#0050cd] hover:bg-[#0866ff] text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
                     title="Lưu kết quả kiểm định cho toàn bộ các dịch vụ và công việc"
                   >
                     <span className="material-symbols-outlined text-[18px]">
@@ -684,7 +684,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
 
             {/* Checklist Items Table */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-on-surface-variant px-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-2">
                 <span>Tiêu chuẩn kỹ thuật nghiệm thu ({activeService.template.items.length})</span>
                 <span>Kết quả đánh giá</span>
               </div>
@@ -699,12 +699,12 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                 return (
                   <div
                     key={item.id}
-                    className={`p-4 rounded-xl border transition-all ${
+                    className={`p-3.5 rounded-xl border transition-all ${
                       isFail
-                        ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-300 dark:border-rose-900 shadow-xs'
+                        ? 'bg-rose-50/40 border-rose-200/90'
                         : isPass
-                        ? 'bg-emerald-50/30 dark:bg-emerald-950/15 border-emerald-300 dark:border-emerald-800/80 shadow-xs'
-                        : 'bg-surface-container-low/60 border-outline-variant hover:border-outline'
+                        ? 'bg-emerald-50/30 border-emerald-200/80'
+                        : 'bg-white hover:bg-slate-50/60 border-slate-200/80'
                     }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -715,16 +715,16 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                               ? 'bg-emerald-600 text-white'
                               : isFail
                               ? 'bg-rose-600 text-white'
-                              : 'bg-surface-container-highest text-on-surface'
+                              : 'bg-slate-100 text-slate-700'
                           }`}
                         >
                           {index + 1}
                         </span>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <p className="font-semibold text-sm text-on-surface">{item.name}</p>
+                            <p className="font-bold text-sm text-zinc-900">{item.name}</p>
                             {isUnset && (
-                              <span className="text-[11px] text-amber-700 dark:text-amber-300 font-medium bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-900">
+                              <span className="text-xs text-amber-800 font-medium bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/80">
                                 Chờ đánh giá
                               </span>
                             )}
@@ -735,10 +735,10 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                             value={itemState.notes || ''}
                             onChange={(e) => handleItemNoteChange(activeService.id, item.id, 'notes', e.target.value)}
                             disabled={isReadOnly}
-                            className={`mt-1.5 w-full sm:w-80 text-xs px-2.5 py-1.5 rounded-lg border border-outline-variant text-on-surface ${
+                            className={`mt-1.5 w-full sm:w-80 text-xs px-3 py-1.5 rounded-lg border text-zinc-900 placeholder:text-slate-400 ${
                               isReadOnly
-                                ? 'bg-surface-container-low/80 text-on-surface-variant cursor-not-allowed border-dashed'
-                                : 'bg-surface-container-lowest focus:outline-none focus:ring-1 focus:ring-primary'
+                                ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-dashed border-slate-200'
+                                : 'bg-white border-slate-200/90 focus:outline-none focus:ring-1 focus:ring-[#0050cd] focus:border-[#0050cd]'
                             }`}
                           />
                         </div>
@@ -751,11 +751,11 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                           onClick={() => handleItemResultChange(activeService.id, item.id, 'PASS')}
                           disabled={isReadOnly}
                           title={isPass ? 'Nhấn lại để hủy chọn ĐẠT' : 'Đánh dấu ĐẠT'}
-                          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs ${
+                          className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
                             isPass
-                              ? 'bg-emerald-600 text-white shadow-emerald-600/30 ring-2 ring-emerald-500/50'
-                              : 'bg-white dark:bg-surface-container text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
-                          } ${isReadOnly ? 'cursor-not-allowed opacity-85' : 'hover:bg-emerald-50 dark:hover:bg-emerald-950/30 active:scale-95 cursor-pointer'}`}
+                              ? 'bg-emerald-600 text-white shadow-2xs'
+                              : 'bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-50'
+                          } ${isReadOnly ? 'cursor-not-allowed opacity-90' : 'active:scale-95 cursor-pointer'}`}
                         >
                           <span className="material-symbols-outlined text-[16px]">
                             {isPass ? 'check_circle' : 'radio_button_unchecked'}
@@ -770,11 +770,11 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                             onClick={() => handleItemResultChange(activeService.id, item.id, 'FAIL')}
                             disabled={isReadOnly}
                             title={isFail ? 'Nhấn lại để hủy chọn' : 'Đánh dấu KHÔNG ĐẠT'}
-                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs ${
+                            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
                               isFail
-                                ? 'bg-rose-600 text-white shadow-rose-600/30 ring-2 ring-rose-500/50'
-                                : 'bg-white dark:bg-surface-container text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800'
-                            } ${isReadOnly ? 'cursor-not-allowed opacity-85' : 'hover:bg-rose-50 dark:hover:bg-rose-950/30 active:scale-95 cursor-pointer'}`}
+                                ? 'bg-rose-600 text-white shadow-2xs'
+                                : 'bg-white text-rose-700 border border-rose-300 hover:bg-rose-50'
+                            } ${isReadOnly ? 'cursor-not-allowed opacity-90' : 'active:scale-95 cursor-pointer'}`}
                           >
                             <span className="material-symbols-outlined text-[16px]">
                               {isFail ? 'cancel' : 'radio_button_unchecked'}
@@ -787,9 +787,9 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
 
                     {/* Expandable Rework Form when FAIL */}
                     {isFail && (
-                      <div className="mt-3.5 pt-3.5 border-t border-rose-200 dark:border-rose-900/60 space-y-2.5 text-xs animate-fade-in">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                          <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-400 font-bold shrink-0">
+                      <div className="mt-3 pt-3 border-t border-rose-200/80 space-y-2 text-xs">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5">
+                          <span className="inline-flex items-center gap-1 text-rose-700 font-bold shrink-0">
                             <span className="material-symbols-outlined text-[16px]">warning</span>
                             Yêu cầu sửa lại (Rework):
                           </span>
@@ -801,10 +801,10 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                               handleItemNoteChange(activeService.id, item.id, 'reworkDescription', e.target.value)
                             }
                             disabled={isReadOnly}
-                            className={`w-full flex-1 px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 font-medium ${
+                            className={`w-full flex-1 px-3 py-1.5 rounded-lg border text-zinc-900 font-medium ${
                               isReadOnly
-                                ? 'bg-rose-100/50 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 cursor-not-allowed border-dashed'
-                                : 'bg-white dark:bg-rose-950/40 text-on-surface focus:outline-none focus:ring-1 focus:ring-rose-500'
+                                ? 'bg-rose-50 text-rose-900 cursor-not-allowed border-dashed border-rose-200'
+                                : 'bg-white border-rose-300 focus:outline-none focus:ring-1 focus:ring-rose-500'
                             }`}
                           />
                         </div>
@@ -817,10 +817,10 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
 
             {/* Latest QC info if available */}
             {activeService.latestQc && (
-              <div className="pt-3 border-t border-outline-variant text-xs text-on-surface-variant">
+              <div className="pt-3 border-t border-slate-200/80 text-xs text-slate-500">
                 <span>
-                  Lần kiểm định gần nhất: <b>{new Date(activeService.latestQc.createdAt).toLocaleString('vi-VN')}</b> bởi{' '}
-                  <b>{activeService.latestQc.inspectorName}</b>
+                  Lần kiểm định gần nhất: <b className="text-zinc-800">{new Date(activeService.latestQc.createdAt).toLocaleString('vi-VN')}</b> bởi{' '}
+                  <b className="text-zinc-800">{activeService.latestQc.inspectorName}</b>
                 </span>
               </div>
             )}

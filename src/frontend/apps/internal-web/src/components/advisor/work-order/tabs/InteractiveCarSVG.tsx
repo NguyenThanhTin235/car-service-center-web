@@ -24,6 +24,7 @@ interface InteractiveCarSVGProps {
   onRemoveFinding?: (id: string | number) => void;
   highlightedFindingId?: string | number | null;
   onSelectFinding?: (id: string | number) => void;
+  isReadOnly?: boolean;
 }
 
 export const getMarkerTypeName = (type: MarkerType): string => {
@@ -44,11 +45,12 @@ export default function InteractiveCarSVG({
   onRemoveFinding,
   highlightedFindingId,
   onSelectFinding,
+  isReadOnly = false,
 }: InteractiveCarSVGProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
   const handleClick = (e: MouseEvent<SVGSVGElement>) => {
-    if (!selectedTool) return;
+    if (isReadOnly || !selectedTool) return;
 
     const target = e.target as SVGElement;
     const partId = target.getAttribute('id') || target.getAttribute('data-part-id');
@@ -89,8 +91,8 @@ export default function InteractiveCarSVG({
       case 'DAMAGE': return 'bg-[#B22222]'; // Dark red
       case 'RUST': return 'bg-[#B8860B]'; // Dark goldenrod
       case 'MISSING': return 'bg-[#1E40AF]'; // Royal blue
-      case 'DENT': return 'bg-[#4682B4]'; // Steel blue
-      case 'SCRATCH': return 'bg-[#708090]'; // Slate gray
+      case 'DENT': return 'bg-[#0284c7]'; // Steel blue
+      case 'SCRATCH': return 'bg-[#475569]'; // Slate gray
       default: return 'bg-gray-500';
     }
   };
@@ -104,7 +106,7 @@ export default function InteractiveCarSVG({
       case 'MISSING':
         return { color: 'text-[#1E40AF]', bgColor: 'bg-[#1E40AF]', lightBg: 'bg-[#EFF6FF]', border: 'border-[#1E40AF]/20' };
       case 'DENT':
-        return { color: 'text-[#4682B4]', bgColor: 'bg-[#4682B4]', lightBg: 'bg-[#E5F0F9]', border: 'border-[#4682B4]/20' };
+        return { color: 'text-[#0369a1]', bgColor: 'bg-[#0284c7]', lightBg: 'bg-[#E0F2FE]', border: 'border-[#0284c7]/20' };
       case 'SCRATCH':
         return { color: 'text-[#708090]', bgColor: 'bg-[#708090]', lightBg: 'bg-[#F1F5F9]', border: 'border-[#708090]/20' };
       default:
@@ -113,11 +115,11 @@ export default function InteractiveCarSVG({
   };
 
   return (
-    <div className="relative w-full border border-gray-300 bg-white rounded-md overflow-hidden" style={{ aspectRatio: '1.25/1' }}>
+    <div className="relative w-full border border-slate-200/90 bg-white rounded-2xl " style={{ aspectRatio: '1.25/1' }}>
       <svg
         ref={svgRef}
         viewBox="0 0 1000 800"
-        className={`w-full h-full ${selectedTool ? 'cursor-crosshair' : 'cursor-default'}`}
+        className={`w-full h-full ${!isReadOnly && selectedTool ? 'cursor-crosshair' : 'cursor-default'}`}
         onClick={handleClick}
         xmlns="http://www.w3.org/2000/svg"
       >
@@ -125,11 +127,11 @@ export default function InteractiveCarSVG({
           <style>
             {`
               .car-part { fill: #f8fafc; stroke: #2C3E50; stroke-width: 1.5; stroke-linejoin: round; transition: fill 0.2s, stroke 0.2s; }
-              .car-part:hover { fill: #e2e8f0; cursor: pointer; }
-              .car-part-handle { fill: #f8fafc; stroke: #2C3E50; stroke-width: 1.5; cursor: pointer; transition: fill 0.2s, stroke 0.2s; }
-              .car-part-handle:hover { fill: #bae6fd; stroke: #0284c7; stroke-width: 2; cursor: pointer; }
-              .car-part-light { fill: #ffffff; stroke: #2C3E50; stroke-width: 1.5; cursor: pointer; transition: fill 0.2s, stroke 0.2s; }
-              .car-part-light:hover { fill: #fef08a; stroke: #ca8a04; stroke-width: 2; cursor: pointer; }
+              .car-part:hover { ${isReadOnly ? '' : 'fill: #e2e8f0; cursor: pointer;'} }
+              .car-part-handle { fill: #f8fafc; stroke: #2C3E50; stroke-width: 1.5; ${isReadOnly ? 'cursor: default;' : 'cursor: pointer;'} transition: fill 0.2s, stroke 0.2s; }
+              .car-part-handle:hover { ${isReadOnly ? '' : 'fill: #bae6fd; stroke: #0284c7; stroke-width: 2; cursor: pointer;'} }
+              .car-part-light { fill: #ffffff; stroke: #2C3E50; stroke-width: 1.5; ${isReadOnly ? 'cursor: default;' : 'cursor: pointer;'} transition: fill 0.2s, stroke 0.2s; }
+              .car-part-light:hover { ${isReadOnly ? '' : 'fill: #fef08a; stroke: #ca8a04; stroke-width: 2; cursor: pointer;'} }
               .view-title { font-family: sans-serif; font-size: 13px; font-weight: bold; fill: #7F8C8D; letter-spacing: 0.5px; }
               .sub-label { font-family: sans-serif; font-size: 11px; font-weight: bold; fill: #95A5A6; letter-spacing: 1px; }
               .grid-border { fill: none; stroke: #BDC3C7; stroke-width: 1; }

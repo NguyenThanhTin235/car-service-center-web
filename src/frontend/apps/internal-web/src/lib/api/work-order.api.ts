@@ -771,3 +771,37 @@ export async function closeWorkOrder(workOrderId: number, notes?: string): Promi
   const response = await api.post(`/api/work-orders/${workOrderId}/close`, { notes });
   return response.data;
 }
+
+/**
+ * Cập nhật thông tin phương tiện (Biển số, hãng, model, năm, màu, phân khúc)
+ */
+export async function updateVehicleInfo(
+  vehicleId: number,
+  data: {
+    licensePlate?: string;
+    make?: string;
+    model?: string;
+    year?: number;
+    color?: string;
+    vehicleSize?: string;
+  }
+): Promise<ApiResponse<any>> {
+  const response = await api.put(`/api/vehicles/${vehicleId}`, data);
+  return response.data;
+}
+
+/**
+ * Cập nhật thông tin khách hàng (Họ tên, SĐT, email, địa chỉ)
+ */
+export async function updateCustomerInfo(
+  customerId: number,
+  data: {
+    fullName?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+  }
+): Promise<ApiResponse<any>> {
+  const response = await api.put(`/api/customers/${customerId}`, data);
+  return response.data;
+}
