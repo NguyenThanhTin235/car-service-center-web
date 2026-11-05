@@ -265,3 +265,93 @@ describe('Work Order State Machine & Release Guard (SPEC-WO-TRANSITION / UC-29, 
 
 });
 
+
+
+/**
+ * Closure Gate validator cho việc đóng hồ sơ Work Order
+ */
+export function validateWorkOrderClosure(params: {
+  workOrderStatus: string;
+  hasReleaseRecord: boolean;
+  activeJobsCount: number;
+  reservedPartsCount: number;
+  unpaidInvoicesCount: number;
+}): { canClose: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (params.workOrderStatus !== 'RELEASED') {
+    errors.push(`Chỉ có thể đóng hồ sơ khi xe đã bàn giao (RELEASED). Trạng thái hiện tại: ${params.workOrderStatus}.`);
+  }
+
+  if (!params.hasReleaseRecord) {
+    errors.push('Phiếu công việc chưa có biên bản bàn giao xe.');
+  }
+
+  if (params.activeJobsCount > 0) {
+    errors.push(`Còn ${params.activeJobsCount} công việc đang thực hiện.`);
+  }
+
+  if (params.reservedPartsCount > 0) {
+    errors.push(`Còn ${params.reservedPartsCount} phụ tùng đang giữ chỗ.`);
+  }
+
+  if (params.unpaidInvoicesCount > 0) {
+    errors.push('Hóa đơn chưa được thanh toán đầy đủ.');
+  }
+
+  return {
+    canClose: errors.length === 0,
+    errors,
+  };
+}
+
+describe('Work Order Closure Gate (SPEC-WO-CLOSURE)', () => {
+  it('CLOSE-01: Cho phép đóng hồ sơ khi đã RELEASED, có biên bản bàn giao và hóa đơn đã thanh toán đầy đủ', () => {
+    const res = validateWorkOrderClosure({
+      workOrderStatus: 'RELEASED',
+      hasReleaseRecord: true,
+      activeJobsCount: 0,
+      reservedPartsCount: 0,
+      unpaidInvoicesCount: 0,
+    });
+    expect(res.canClose).toBe(true);
+    expect(res.errors).toHaveLength(0);
+  });
+
+  it('CLOSE-02: Chặn đóng hồ sơ khi WO chưa ở trạng thái RELEASED', () => {
+    const res = validateWorkOrderClosure({
+      workOrderStatus: 'IN_PROGRESS',
+      hasReleaseRecord: true,
+      activeJobsCount: 0,
+      reservedPartsCount: 0,
+      unpaidInvoicesCount: 0,
+    });
+    expect(res.canClose).toBe(false);
+    expect(res.errors[0]).toContain('Chỉ có thể đóng hồ sơ khi xe đã bàn giao (RELEASED)');
+  });
+
+  it('CLOSE-03: Chặn đóng hồ sơ khi chưa có biên bản bàn giao', () => {
+    const res = validateWorkOrderClosure({
+      workOrderStatus: 'RELEASED',
+      hasReleaseRecord: false,
+      activeJobsCount: 0,
+      reservedPartsCount: 0,
+      unpaidInvoicesCount: 0,
+    });
+    expect(res.canClose).toBe(false);
+    expect(res.errors).toContain('Phiếu công việc chưa có biên bản bàn giao xe.');
+  });
+
+  it('CLOSE-04: Chặn đóng hồ sơ khi hóa đơn chưa thanh toán hoặc còn phụ tùng giữ chỗ', () => {
+    const res = validateWorkOrderClosure({
+      workOrderStatus: 'RELEASED',
+      hasReleaseRecord: true,
+      activeJobsCount: 0,
+      reservedPartsCount: 2,
+      unpaidInvoicesCount: 1,
+    });
+    expect(res.canClose).toBe(false);
+    expect(res.errors).toContain('Còn 2 phụ tùng đang giữ chỗ.');
+    expect(res.errors).toContain('Hóa đơn chưa được thanh toán đầy đủ.');
+  });
+});

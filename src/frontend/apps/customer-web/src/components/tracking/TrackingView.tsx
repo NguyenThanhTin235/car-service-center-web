@@ -12,6 +12,30 @@ import CustomerPaymentModal from '@/components/invoices/CustomerPaymentModal';
 import { downloadInvoicePdfBlob } from '@/lib/api/invoice.api';
 import { downloadHandoverPdfBlob } from '@/lib/api/work-order.api';
 
+const parseComplaintText = (raw?: string | null): string => {
+  if (!raw || !raw.trim()) return '';
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === 'object' && parsed !== null) {
+      const parts: string[] = [];
+      if (Array.isArray(parsed.tags) && parsed.tags.length > 0) {
+        const validTags = parsed.tags.filter((t: any) => typeof t === 'string' && t.trim().length > 0);
+        if (validTags.length > 0) parts.push(validTags.join(', '));
+      }
+      if (typeof parsed.notes === 'string' && parsed.notes.trim()) {
+        parts.push(parsed.notes.trim());
+      }
+      if (parts.length > 0) return parts.join(' - ');
+      return '';
+    }
+  } catch {
+    // Không phải JSON, xử lý chuỗi thường
+  }
+  const clean = String(raw).trim();
+  if (clean === '{"tags":[],"notes":""}' || clean === '{}') return '';
+  return clean;
+};
+
 export default function TrackingView({ isEmbedded = false }: { isEmbedded?: boolean }) {
   const dispatch = useAppDispatch();
   const { orders, selectedOrder, loading } = useAppSelector((state) => state.tracking);
@@ -1027,59 +1051,75 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                     <span className="material-symbols-outlined text-primary text-[22px]">engineering</span>
                     <h3 className="text-base font-bold text-on-surface">Kỹ thuật viên phụ trách</h3>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-semibold">
-                    Đội ngũ kỹ thuật
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-primary border border-blue-200/80 text-[11px] font-semibold">
+                    {activeOrder.mechanic ? 'KTV Chuyên trách' : 'Tổ dịch vụ kỹ thuật'}
                   </span>
                 </div>
 
                 {/* Mechanic Profile */}
                 <div className="flex items-start space-x-3.5 mb-4">
-                  <div className="w-14 h-14 rounded-2xl bg-surface-container-high flex items-center justify-center text-primary font-bold text-lg ring-2 ring-primary/20 shrink-0">
-                    <span className="material-symbols-outlined text-[32px]">person_apron</span>
+                  <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-primary font-bold text-lg shrink-0">
+                    <span className="material-symbols-outlined text-[30px]">engineering</span>
                   </div>
-                  <div>
-                    <h4 className="text-base font-bold text-on-surface">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-base font-bold text-on-surface truncate">
                       {activeOrder.mechanic?.fullName || 'Tổ kỹ thuật Car Service Center'}
                     </h4>
                     <p className="text-xs text-primary font-semibold mt-0.5">
-                      {activeOrder.mechanic?.position || 'Kỹ thuật viên chính'}
+                      {activeOrder.mechanic?.position || 'Chuyên viên sửa chữa ô tô'}
                     </p>
-                    <div className="flex items-center gap-2 text-xs text-on-surface-variant mt-1 font-medium">
-                      <span className="flex items-center gap-1 text-amber-600">
-                        <span className="material-symbols-outlined text-[14px]">star</span>
-                        Đánh giá 4.9/5.0
-                      </span>
-                      <span>•</span>
-                      <span>Quy chuẩn 5 sao</span>
-                    </div>
+                    
+                    {/* Skills or Work Summary */}
+                    {activeOrder.mechanic?.skills && activeOrder.mechanic.skills.length > 0 ? (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        {activeOrder.mechanic.skills.map((skill, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant text-[11px] font-medium border border-surface-container-highest"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-xs text-on-surface-variant mt-1.5 font-medium">
+                        <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                          <span className="material-symbols-outlined text-[15px]">verified</span>
+                          Chứng chỉ tiêu chuẩn xưởng
+                        </span>
+                        <span>•</span>
+                        <span>{activeOrder.services.length} hạng mục phụ trách</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Mechanic Skills / Commitments */}
-                <div className="space-y-1.5 bg-surface-container-low p-3.5 rounded-xl border border-surface-container-highest text-xs text-on-surface">
-                  <div className="flex items-center">
-                    <span className="material-symbols-outlined text-[16px] text-emerald-600 mr-2 shrink-0">check_circle</span>
-                    <span>Tuân thủ quy trình kiểm định an toàn nghiêm ngặt</span>
+                {/* Technical Commitments */}
+                <div className="space-y-2 bg-surface-container-low/80 p-3.5 rounded-xl border border-surface-container-highest text-xs text-on-surface">
+                  <div className="flex items-start">
+                    <span className="material-symbols-outlined text-[16px] text-emerald-600 mr-2 shrink-0 mt-0.5">check_circle</span>
+                    <span>Tuân thủ quy trình kiểm định an toàn và nghiệm thu KCS chuẩn xưởng</span>
                   </div>
-                  <div className="flex items-center">
-                    <span className="material-symbols-outlined text-[16px] text-emerald-600 mr-2 shrink-0">check_circle</span>
-                    <span>Sử dụng trang thiết bị đo đạc điện tử hiện đại</span>
+                  <div className="flex items-start">
+                    <span className="material-symbols-outlined text-[16px] text-emerald-600 mr-2 shrink-0 mt-0.5">check_circle</span>
+                    <span>Chẩn đoán và đo đạc kỹ thuật bằng thiết bị chuyên dụng chuẩn OBD-II</span>
                   </div>
-                  <div className="flex items-center">
-                    <span className="material-symbols-outlined text-[16px] text-emerald-600 mr-2 shrink-0">check_circle</span>
-                    <span>Bàn giao phụ tùng cũ thay ra cho khách hàng kiểm tra</span>
+                  <div className="flex items-start">
+                    <span className="material-symbols-outlined text-[16px] text-emerald-600 mr-2 shrink-0 mt-0.5">check_circle</span>
+                    <span>Bàn giao phụ tùng cũ thay ra kèm phiếu xuất kho để khách hàng kiểm tra</span>
                   </div>
                 </div>
               </div>
 
               {/* Call Hotline button */}
-              <div className="pt-4">
+              <div className="pt-4 mt-2">
                 <a
-                  className="w-full inline-flex items-center justify-center py-2 px-3 rounded-lg bg-surface-container-lowest hover:bg-surface-container-low text-on-surface border border-surface-container-highest text-xs font-semibold transition-colors shadow-2xs"
-                  href="tel:19006868"
+                  className="w-full inline-flex items-center justify-center py-2.5 px-3 rounded-xl bg-surface-container-lowest hover:bg-surface-container-low text-on-surface border border-surface-container-highest text-xs font-semibold transition-all shadow-2xs hover:border-primary/40 group"
+                  href="tel:19008888"
                 >
-                  <span className="material-symbols-outlined text-[18px] mr-1.5 text-primary">support_agent</span>
-                  Liên hệ hotline hỗ trợ xưởng: 1900 6868
+                  <span className="material-symbols-outlined text-[18px] mr-1.5 text-primary group-hover:scale-110 transition-transform">headset_mic</span>
+                  <span>Tổng đài hỗ trợ kỹ thuật xưởng:</span>
+                  <strong className="ml-1 text-primary">1900 8888</strong>
                 </a>
               </div>
             </div>
@@ -1089,84 +1129,136 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
               <div>
                 <div className="flex items-center justify-between pb-3 border-b border-surface-container-highest mb-4">
                   <div className="flex items-center space-x-2">
-                    <span className="material-symbols-outlined text-primary text-[22px]">chat</span>
-                    <h3 className="text-base font-bold text-on-surface">Ghi chú từ Cố vấn dịch vụ</h3>
+                    <span className="material-symbols-outlined text-primary text-[22px]">assignment_ind</span>
+                    <h3 className="text-base font-bold text-on-surface">Ghi chú & Tiếp nhận từ Cố vấn</h3>
                   </div>
-                  <span className="text-xs font-mono text-on-surface-variant">
+                  <span className="text-xs font-mono font-semibold text-on-surface-variant bg-surface-container px-2 py-0.5 rounded border border-surface-container-highest">
                     Phiếu #{activeOrder.woNumber}
                   </span>
                 </div>
 
                 {/* Speech Bubble / Advisor Notes */}
-                <div className="bg-blue-50/50 border border-blue-200 rounded-2xl p-4 sm:p-5 mb-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">
+                <div className="bg-blue-50/40 border border-blue-200/80 rounded-2xl p-4 sm:p-5 mb-4 space-y-3">
+                  <div className="flex items-center justify-between pb-2.5 border-b border-blue-100">
+                    <div className="flex items-center space-x-2.5">
+                      <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs shadow-2xs">
                         {activeOrder.advisor.fullName.charAt(0)}
                       </div>
-                      <span className="text-xs sm:text-sm font-bold text-on-surface">
-                        Cố vấn: {activeOrder.advisor.fullName}
-                      </span>
+                      <div>
+                        <span className="text-xs sm:text-sm font-bold text-on-surface block">
+                          Cố vấn: {activeOrder.advisor.fullName}
+                        </span>
+                        <span className="text-[11px] text-on-surface-variant">
+                          Phụ trách tiếp nhận & điều phối kỹ thuật
+                        </span>
+                      </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded bg-white text-primary border border-blue-200 text-[11px] font-semibold">
+                    <span className="px-2 py-0.5 rounded bg-white text-primary border border-blue-200 text-[11px] font-semibold shadow-2xs">
                       Ghi nhận kỹ thuật
                     </span>
                   </div>
 
-                  {/* Public Findings List */}
-                  {activeOrder.findings.length > 0 ? (
-                    <div className="space-y-2 mb-3">
-                      <p className="text-xs font-semibold text-on-surface">
-                        Các lưu ý và phát hiện kỹ thuật trong quá trình kiểm tra xe:
-                      </p>
-                      {activeOrder.findings.map((f) => (
-                        <div
-                          key={f.id}
-                          className="p-3 bg-white rounded-xl border border-blue-100 text-xs text-on-surface space-y-1 shadow-2xs"
-                        >
-                          <div className="flex items-start gap-2">
-                            <span
-                              className={`material-symbols-outlined text-[18px] shrink-0 ${
-                                f.severity === 'HIGH' || f.severity === 'CRITICAL'
-                                  ? 'text-error'
-                                  : 'text-amber-600'
-                              }`}
-                            >
-                              warning
+                  {/* Customer Initial Complaint (nếu có) */}
+                  {(() => {
+                    const complaintText = parseComplaintText(activeOrder.checkIn?.complaint);
+                    if (!complaintText) return null;
+                    return (
+                      <div className="p-3 bg-white rounded-xl border border-blue-100/80 text-xs text-on-surface shadow-2xs">
+                        <div className="flex items-start gap-2">
+                          <span className="material-symbols-outlined text-[17px] text-primary shrink-0 mt-0.5">
+                            description
+                          </span>
+                          <div className="flex-1">
+                            <span className="font-semibold text-on-surface block mb-0.5">
+                              Yêu cầu của khách hàng lúc tiếp nhận:
                             </span>
-                            <div>
-                              <p className="font-semibold text-on-surface">
-                                {f.partName ? `${f.partName}: ` : ''}{f.description}
-                              </p>
-                              {f.recommendation && (
-                                <p className="text-on-surface-variant mt-0.5">
-                                  Khuyến nghị: {f.recommendation}
-                                </p>
-                              )}
-                            </div>
+                            <p className="text-on-surface-variant leading-relaxed">
+                              {complaintText}
+                            </p>
                           </div>
                         </div>
-                      ))}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Public Findings List */}
+                  {activeOrder.findings.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-on-surface flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[16px] text-amber-600">checklist</span>
+                        Các lưu ý và phát hiện kỹ thuật trong quá trình kiểm tra xe:
+                      </p>
+                      {activeOrder.findings.map((f) => {
+                        const partTitle = f.partName?.trim();
+                        const descText = f.description?.trim();
+                        const displayTitle = partTitle || descText || 'Hạng mục kiểm tra xe';
+                        const detailText = (partTitle && descText && descText !== partTitle) ? descText : null;
+                        const isUrgent = f.severity === 'HIGH' || f.severity === 'CRITICAL';
+
+                        return (
+                          <div
+                            key={f.id}
+                            className="p-3 bg-white rounded-xl border border-blue-100 text-xs text-on-surface space-y-1 shadow-2xs"
+                          >
+                            <div className="flex items-start gap-2">
+                              <span
+                                className={`material-symbols-outlined text-[18px] shrink-0 mt-0.5 ${
+                                  isUrgent ? 'text-error' : 'text-amber-600'
+                                }`}
+                              >
+                                {isUrgent ? 'error' : 'warning'}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="font-semibold text-on-surface">
+                                    {displayTitle}
+                                  </p>
+                                  <span
+                                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 ${
+                                      isUrgent
+                                        ? 'bg-red-50 text-red-700 border border-red-200'
+                                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                    }`}
+                                  >
+                                    {isUrgent ? 'Cần xử lý' : 'Lưu ý theo dõi'}
+                                  </span>
+                                </div>
+                                {detailText && (
+                                  <p className="text-on-surface-variant text-[11px] mt-0.5">
+                                    {detailText}
+                                  </p>
+                                )}
+                                {f.recommendation && (
+                                  <p className="text-primary text-[11px] font-medium mt-1 flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[13px]">lightbulb</span>
+                                    <span>Khuyến nghị: {f.recommendation}</span>
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
-                    <div className="p-3 bg-white rounded-xl border border-blue-100 text-xs text-on-surface shadow-2xs mb-3 flex items-center gap-2">
+                    <div className="p-3 bg-white rounded-xl border border-blue-100 text-xs text-on-surface shadow-2xs flex items-center gap-2">
                       <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
-                      <span>Hiện trạng kiểm tra ban đầu tốt, không ghi nhận hư hỏng bất thường ngoài danh mục đã đăng ký.</span>
+                      <span>Hiện trạng kiểm tra ban đầu ổn định, không ghi nhận hư hỏng bất thường ngoài danh mục đã đăng ký.</span>
                     </div>
                   )}
 
-                  <p className="text-xs text-on-surface-variant">
-                    Mọi phát sinh kỹ thuật đều được cố vấn thông báo và xin ý kiến phê duyệt của quý khách trước khi tiến hành.
+                  <p className="text-xs text-on-surface-variant leading-relaxed">
+                    Mọi phát sinh kỹ thuật đều được cố vấn thông báo chi tiết và chỉ triển khai khi có sự đồng ý của quý khách trước khi tiến hành.
                   </p>
 
                   {/* Digital Signature */}
-                  <div className="mt-3 pt-2.5 border-t border-blue-200/80 flex items-center justify-between text-xs">
+                  <div className="pt-2.5 border-t border-blue-200/80 flex items-center justify-between text-xs">
                     <div className="flex items-center space-x-1.5 text-on-surface-variant">
                       <span className="material-symbols-outlined text-[16px] text-primary">draw</span>
                       <span>Xác nhận: <strong className="text-on-surface">{activeOrder.advisor.fullName}</strong></span>
                     </div>
-                    <span className="inline-flex items-center text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      <span className="material-symbols-outlined text-[12px] mr-0.5">verified</span> Hợp lệ
+                    <span className="inline-flex items-center text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold">
+                      <span className="material-symbols-outlined text-[12px] mr-0.5">verified</span> Đã xác nhận tiếp nhận
                     </span>
                   </div>
                 </div>
@@ -1174,25 +1266,43 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
 
               {/* Action buttons */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setToastMsg('Cảm ơn bạn! Đã ghi nhận bạn đã xem thông tin tiến độ.')}
-                    className="inline-flex items-center px-3 py-1.5 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg text-xs font-semibold transition-colors"
-                    type="button"
-                  >
-                    <span className="material-symbols-outlined text-[16px] mr-1">thumb_up</span>
-                    Đã nhận thông tin
-                  </button>
+                <div>
+                  {activeOrder.checkIn ? (
+                    <button
+                      onClick={() => setIsCheckInModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-2xs active:scale-95"
+                      type="button"
+                    >
+                      <span className="material-symbols-outlined text-[16px] text-primary">assignment</span>
+                      Xem biên bản tiếp nhận & ngoại thất
+                    </button>
+                  ) : (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container text-on-surface-variant rounded-lg text-xs font-medium">
+                      <span className="material-symbols-outlined text-[16px] text-emerald-600">verified</span>
+                      Hồ sơ kỹ thuật đã đồng bộ
+                    </div>
+                  )}
                 </div>
-                {activeOrder.advisor.phone && (
-                  <a
-                    className="inline-flex items-center text-primary text-xs font-semibold hover:underline"
-                    href={`tel:${activeOrder.advisor.phone}`}
-                  >
-                    <span className="material-symbols-outlined text-[16px] mr-1">phone_in_talk</span>
-                    Gọi Cố vấn: {activeOrder.advisor.phone}
-                  </a>
-                )}
+
+                <div>
+                  {activeOrder.advisor.phone ? (
+                    <a
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-primary text-white hover:bg-primary-dark rounded-lg text-xs font-semibold transition-all shadow-2xs active:scale-95 cursor-pointer"
+                      href={`tel:${activeOrder.advisor.phone}`}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">phone_in_talk</span>
+                      Gọi Cố vấn: {activeOrder.advisor.phone}
+                    </a>
+                  ) : (
+                    <a
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-primary text-white hover:bg-primary-dark rounded-lg text-xs font-semibold transition-all shadow-2xs active:scale-95 cursor-pointer"
+                      href="tel:19008888"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">phone_in_talk</span>
+                      Hotline: 1900 8888
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
 

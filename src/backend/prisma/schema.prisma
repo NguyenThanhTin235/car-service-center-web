@@ -72,6 +72,11 @@ enum WorkOrderSourceType {
   TOW_IN
 }
 
+enum WoCloseType {
+  MANUAL
+  AUTO
+}
+
 enum WorkOrderStatus {
   DRAFT
   IN_PLANNING
@@ -288,6 +293,7 @@ model User {
   created_intake_records IntakeRecord[]    @relation("CreatedIntakes")
   work_orders            WorkOrder[]       @relation("CustomerWO")
   advisor_work_orders    WorkOrder[]       @relation("AdvisorWO")
+  closed_work_orders     WorkOrder[]       @relation("ClosedWO")
   created_work_orders    WorkOrder[]       @relation("CreatedWO")
   check_ins              CheckIn[]         @relation("CreatedCheckIn")
   confirmed_check_ins    CheckIn[]         @relation("ConfirmedCheckIn")
@@ -604,11 +610,16 @@ model WorkOrder {
   appointment_id   Int?                @unique
   intake_record_id Int?                @unique
   status           WorkOrderStatus     @default(DRAFT)
+  closed_at        DateTime?
+  closed_by_id     Int?
+  close_type       WoCloseType?
+  close_notes      String?             @db.Text
   created_by_id    Int
   created_at       DateTime            @default(now())
   updated_at       DateTime            @default(now()) @updatedAt
 
   customer      User          @relation("CustomerWO", fields: [customer_id], references: [id])
+  closed_by     User?         @relation("ClosedWO", fields: [closed_by_id], references: [id])
   vehicle       Vehicle       @relation(fields: [vehicle_id], references: [id])
   advisor       User          @relation("AdvisorWO", fields: [advisor_id], references: [id])
   created_by    User          @relation("CreatedWO", fields: [created_by_id], references: [id])

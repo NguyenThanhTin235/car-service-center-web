@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { WorkOrder, downloadHandoverPdfBlob } from '@/lib/api/work-order.api';
 import VehicleReturnModal from '../modals/VehicleReturnModal';
 import StandardVehicleHandoverModal from '../modals/StandardVehicleHandoverModal';
+import CloseWorkOrderModal from '../modals/CloseWorkOrderModal';
 import toast from 'react-hot-toast';
 
 interface TabReleaseProps {
@@ -37,6 +38,7 @@ const FUEL_LABELS: Record<string, string> = {
 export default function TabRelease({ workOrder, refetchWO, isReadOnly = false }: TabReleaseProps) {
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
+  const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const isReleased = workOrder.status === 'RELEASED' || workOrder.status === 'CLOSED';
@@ -103,26 +105,77 @@ export default function TabRelease({ workOrder, refetchWO, isReadOnly = false }:
                 </div>
               </div>
 
-              {/* Action Button: Tải PDF */}
-              <button
-                type="button"
-                onClick={handleDownloadPdf}
-                disabled={downloadingPdf}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer whitespace-nowrap self-start sm:self-auto"
-              >
-                {downloadingPdf ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    <span>Đang tạo PDF...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-[18px]">download</span>
-                    <span>Tải Biên Bản Bàn Giao (PDF)</span>
-                  </>
+              {/* Action Buttons: Tải PDF & Đóng hồ sơ */}
+              <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={downloadingPdf}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer whitespace-nowrap"
+                >
+                  {downloadingPdf ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      <span>Đang tạo PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[18px]">download</span>
+                      <span>Tải Biên Bản Bàn Giao (PDF)</span>
+                    </>
+                  )}
+                </button>
+
+                {workOrder.status === 'RELEASED' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCloseModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">lock</span>
+                    <span>Đóng hồ sơ</span>
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
+
+            {/* Thanh thông báo trạng thái đóng hồ sơ / Lưu trữ gọn gàng */}
+            {workOrder.status === 'RELEASED' && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-amber-50/90 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-900/60 rounded-xl text-xs sm:text-sm">
+                <div className="flex items-center gap-2.5 text-amber-950 dark:text-amber-200">
+                  <span className="material-symbols-outlined text-amber-600 text-[20px] shrink-0">inventory_2</span>
+                  <span>
+                    Hồ sơ đang ở trạng thái <b>Xuất xưởng</b>. Bạn có thể <b>Đóng hồ sơ</b> để lưu trữ và chuyển vào Lịch sử sửa chữa của khách hàng.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCloseModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow-2xs transition-all active:scale-95 cursor-pointer whitespace-nowrap self-start sm:self-auto"
+                >
+                  <span className="material-symbols-outlined text-[16px]">lock</span>
+                  <span>Đóng hồ sơ ngay</span>
+                </button>
+              </div>
+            )}
+
+            {workOrder.status === 'CLOSED' && (workOrder as any).closed_at && (
+              <div className="flex items-center gap-2.5 px-4 py-3 bg-emerald-100/70 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/80 rounded-xl text-xs sm:text-sm text-emerald-950 dark:text-emerald-100">
+                <span className="material-symbols-outlined text-emerald-700 dark:text-emerald-400 text-[20px] shrink-0">verified_user</span>
+                <div className="space-y-0.5">
+                  <p className="font-bold">
+                    Hồ sơ đã được đóng và lưu trữ vĩnh viễn lúc {new Date((workOrder as any).closed_at).toLocaleString('vi-VN')}
+                    {(workOrder as any).close_type === 'AUTO' ? ' (Tự động sau bàn giao)' : ''}
+                    {(workOrder as any).closed_by?.full_name ? ` bởi ${(workOrder as any).closed_by.full_name}` : ''}
+                  </p>
+                  {(workOrder as any).close_notes && (
+                    <p className="text-xs text-emerald-800 dark:text-emerald-300/90 font-normal">
+                      Ghi chú: &ldquo;{(workOrder as any).close_notes}&rdquo;
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {releaseInfo && (
               <div className="space-y-4">
@@ -400,6 +453,14 @@ export default function TabRelease({ workOrder, refetchWO, isReadOnly = false }:
       <VehicleReturnModal
         isOpen={isReturnModalOpen}
         onClose={() => setIsReturnModalOpen(false)}
+        workOrder={workOrder}
+        refetchWO={refetchWO}
+      />
+
+      {/* Modal xác nhận đóng hồ sơ (Close Work Order Modal) */}
+      <CloseWorkOrderModal
+        isOpen={isCloseModalOpen}
+        onClose={() => setIsCloseModalOpen(false)}
         workOrder={workOrder}
         refetchWO={refetchWO}
       />

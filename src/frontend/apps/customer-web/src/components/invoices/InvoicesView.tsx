@@ -522,69 +522,91 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
 
       </section>
 
-      {/* ================= PAYMENT METHODS & VAT NOTIFICATION ================= */}
+      {/* ================= PAYMENT METHODS & WORK ORDER CLEARANCE INFO ================= */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Payment Gateways Support */}
-        <div className="lg:col-span-2 bg-surface-container-lowest border border-surface-container-highest rounded-2xl p-5 sm:p-6 shadow-2xs">
-          <div className="flex items-center justify-between mb-3">
+        {/* Payment Methods & Financial Clearance */}
+        <div className="lg:col-span-2 bg-white dark:bg-surface-container-lowest border border-slate-200 dark:border-surface-container-highest rounded-2xl p-5 sm:p-6 shadow-2xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 text-primary flex items-center justify-center border border-blue-100 shrink-0">
-                <span className="material-symbols-outlined text-[18px]">lock</span>
+              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
+                <span className="material-symbols-outlined text-[20px]">payments</span>
               </div>
               <div>
-                <h4 className="text-sm font-bold text-on-surface">Phương thức thanh toán bảo mật đa kênh</h4>
-                <p className="text-xs text-on-surface-variant">Giao dịch được mã hóa an toàn đạt chuẩn PCI DSS quốc tế.</p>
+                <h4 className="text-sm font-bold text-on-surface">Phương thức thanh toán & Quyết toán tài chính</h4>
+                <p className="text-xs text-on-surface-variant">Thanh toán linh hoạt, tự động đối soát mở cổng xuất xưởng (Financial Clearance).</p>
               </div>
             </div>
-            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[10px] font-semibold">
-              Tự động đối soát
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-[11px] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Đối soát tự động 24/7
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3">
-            <div className="border border-surface-container-highest rounded-xl p-2.5 flex flex-col items-center justify-center text-center bg-surface-container-low/40">
-              <span className="material-symbols-outlined text-[22px] text-primary mb-1">qr_code_scanner</span>
-              <span className="font-semibold text-xs text-on-surface">VietQR 24/7</span>
-              <span className="text-[10px] text-on-surface-variant">Xác nhận ngay</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+            {/* 1. VietQR */}
+            <div className="border border-slate-200 dark:border-surface-container-highest rounded-2xl p-3.5 flex items-start gap-3 bg-slate-50/60 dark:bg-surface-container-low/40 hover:border-blue-300 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[20px]">qr_code_scanner</span>
+              </div>
+              <div className="min-w-0">
+                <span className="font-bold text-xs text-on-surface block">Chuyển khoản VietQR</span>
+                <span className="text-[11px] text-on-surface-variant leading-tight block mt-0.5">
+                  Quét mã QR SePay 24/7, xác nhận tức thì không cần chụp bill
+                </span>
+              </div>
             </div>
-            <div className="border border-surface-container-highest rounded-xl p-2.5 flex flex-col items-center justify-center text-center bg-surface-container-low/40">
-              <span className="material-symbols-outlined text-[22px] text-indigo-600 mb-1">credit_card</span>
-              <span className="font-semibold text-xs text-on-surface">Thẻ Quốc Tế</span>
-              <span className="text-[10px] text-on-surface-variant">Visa / Mastercard</span>
+
+            {/* 2. Quẹt thẻ POS */}
+            <div className="border border-slate-200 dark:border-surface-container-highest rounded-2xl p-3.5 flex items-start gap-3 bg-slate-50/60 dark:bg-surface-container-low/40 hover:border-indigo-300 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[20px]">credit_card</span>
+              </div>
+              <div className="min-w-0">
+                <span className="font-bold text-xs text-on-surface block">Thẻ ngân hàng (POS)</span>
+                <span className="text-[11px] text-on-surface-variant leading-tight block mt-0.5">
+                  Quẹt thẻ ATM, Visa, Mastercard, JCB trực tiếp tại xưởng
+                </span>
+              </div>
             </div>
-            <div className="border border-surface-container-highest rounded-xl p-2.5 flex flex-col items-center justify-center text-center bg-surface-container-low/40">
-              <span className="material-symbols-outlined text-[22px] text-pink-600 mb-1">account_balance_wallet</span>
-              <span className="font-semibold text-xs text-on-surface">Ví Điện Tử</span>
-              <span className="text-[10px] text-on-surface-variant">MoMo / ZaloPay</span>
-            </div>
-            <div className="border border-surface-container-highest rounded-xl p-2.5 flex flex-col items-center justify-center text-center bg-surface-container-low/40">
-              <span className="material-symbols-outlined text-[22px] text-amber-600 mb-1">percent</span>
-              <span className="font-semibold text-xs text-on-surface">Trả góp 0%</span>
-              <span className="text-[10px] text-on-surface-variant">Kỳ hạn 3-12 tháng</span>
+
+            {/* 3. Tiền mặt tại quầy */}
+            <div className="border border-slate-200 dark:border-surface-container-highest rounded-2xl p-3.5 flex items-start gap-3 bg-slate-50/60 dark:bg-surface-container-low/40 hover:border-emerald-300 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[20px]">point_of_sale</span>
+              </div>
+              <div className="min-w-0">
+                <span className="font-bold text-xs text-on-surface block">Tiền mặt tại thu ngân</span>
+                <span className="text-[11px] text-on-surface-variant leading-tight block mt-0.5">
+                  Thanh toán trực tiếp cho Thu ngân khi nhận xe xuất xưởng
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* VAT Invoice Support */}
-        <div className="bg-surface-container-lowest border border-surface-container-highest rounded-2xl p-5 sm:p-6 shadow-2xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center space-x-2 mb-2 text-primary">
-              <span className="material-symbols-outlined text-[20px]">domain_verification</span>
-              <h4 className="text-sm font-bold text-on-surface">Xuất hóa đơn VAT điện tử</h4>
+        {/* VAT Invoice & Garage Info */}
+        <div className="bg-white dark:bg-surface-container-lowest border border-slate-200 dark:border-surface-container-highest rounded-2xl p-5 sm:p-6 shadow-2xs flex flex-col justify-between">
+          <div className="space-y-2.5">
+            <div className="flex items-center space-x-2 text-primary">
+              <span className="material-symbols-outlined text-[22px]">domain_verification</span>
+              <h4 className="text-sm font-bold text-on-surface">Xuất hóa đơn điện tử & VAT</h4>
             </div>
             <p className="text-xs text-on-surface-variant leading-relaxed">
-              Hóa đơn GTGT điện tử chuẩn Tổng cục Thuế được gửi tự động về email đăng ký sau khi lệnh thanh toán hoàn tất.
+              Hóa đơn dịch vụ và chứng từ xuất xưởng được khởi tạo tự động, lưu trữ trên hệ thống và gửi về email khách hàng.
             </p>
-            <div className="mt-2.5 p-2.5 bg-surface-container-low rounded-xl border border-surface-container-highest text-xs">
-              <p className="text-[10px] text-outline">Đơn vị phát hành:</p>
-              <p className="font-bold text-on-surface mt-0.5 truncate">TRUNG TÂM CAR SERVICE CENTER VN</p>
-              <p className="text-on-surface-variant text-[11px]">MST: 0108923451</p>
+            <div className="p-3 bg-slate-50 dark:bg-surface-container-low rounded-xl border border-slate-200/80 dark:border-surface-container-highest text-xs space-y-1">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Đơn vị phát hành:</p>
+              <p className="font-extrabold text-slate-900 text-xs truncate">TRUNG TÂM CAR SERVICE CENTER</p>
+              <p className="text-slate-500 text-[11px]">Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh</p>
             </div>
           </div>
-          <div className="mt-3 pt-3 border-t border-surface-container-highest flex items-center justify-between text-xs">
-            <span className="font-semibold text-primary">Hỗ trợ đối soát VAT 24/7</span>
-            <span className="text-[11px] text-outline">1900 6868</span>
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-surface-container-highest flex items-center justify-between text-xs">
+            <span className="font-semibold text-primary flex items-center gap-1">
+              <span className="material-symbols-outlined text-[16px]">support_agent</span>
+              Hotline hỗ trợ đối soát
+            </span>
+            <span className="text-xs font-bold text-slate-800 font-mono">1900 8888</span>
           </div>
         </div>
 

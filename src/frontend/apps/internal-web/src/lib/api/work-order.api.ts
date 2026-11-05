@@ -763,3 +763,11 @@ export async function downloadHandoverPdfBlob(workOrderId: number): Promise<Blob
   });
   return response.data;
 }
+
+/**
+ * Đóng hồ sơ phiếu công việc (RELEASED → CLOSED)
+ */
+export async function closeWorkOrder(workOrderId: number, notes?: string): Promise<ApiResponse<WorkOrder>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/close`, { notes });
+  return response.data;
+}

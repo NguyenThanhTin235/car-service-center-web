@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { WorkOrderService } from '../services/work-order.service';
-import { createWorkOrderSchema } from '../dtos/work-order.dto';
+import { createWorkOrderSchema, closeWorkOrderSchema } from '../dtos/work-order.dto';
 import { addWoServiceSchema } from '../dtos/wo-service.dto';
 import { addJobPartSchema, updateJobPartSchema } from '../dtos/job-part.dto';
 
@@ -1123,5 +1123,84 @@ export const getHandoverPdf = async (req: Request, res: Response): Promise<void>
       data: null,
       timestamp: Math.floor(Date.now() / 1000),
     });
+  }
+};
+
+// ==========================================
+// ĐÓNG HỒ SƠ & LỊCH SỬ SỬA CHỮA
+// ==========================================
+
+const sendError = (res: Response, error: any, fallback: string, defaultCode = 400) => {
+  const statusCode = error?.statusCode || defaultCode;
+  res.status(statusCode).json({
+    success: false,
+    code: statusCode,
+    message: error?.message || fallback,
+    data: null,
+    timestamp: Math.floor(Date.now() / 1000),
+  });
+};
+
+const sendOk = (res: Response, message: string, data: any) => {
+  res.json({ success: true, code: 200, message, data, timestamp: Math.floor(Date.now() / 1000) });
+};
+
+/**
+ * POST /api/work-orders/:id/close
+ * Đóng hồ sơ phiếu công việc thủ công (RELEASED → CLOSED)
+ */
+export const closeWorkOrder = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    if (isNaN(workOrderId) || workOrderId <= 0) {
+      sendError(res, { message: 'Mã phiếu công việc không hợp lệ' }, '');
+      return;
+    }
+    const { error: validationError, value } = closeWorkOrderSchema.validate(req.body ?? {});
+    if (validationError) {
+      sendError(res, { message: validationError.details[0]?.message }, 'Dữ liệu không hợp lệ');
+      return;
+    }
+    const data = await workOrderService.closeWorkOrder(workOrderId, (req as any).user.id, value.notes ?? undefined);
+    sendOk(res, 'Đã đóng hồ sơ phiếu công việc', data);
+  } catch (error: any) {
+    sendError(res, error, 'Lỗi khi đóng hồ sơ phiếu công việc');
+  }
+};
+
+/**
+ * GET /api/work-orders/my-history
+ * Lịch sử sửa chữa của khách hàng
+ */
+export const getMyRepairHistory = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { vehicleId, from, to, page, limit } = req.query;
+    const data = await workOrderService.getMyRepairHistory((req as any).user.id, {
+      vehicleId: vehicleId ? Number(vehicleId) : undefined,
+      from: from ? new Date(String(from)) : undefined,
+      to: to ? new Date(`${String(to)}T23:59:59`) : undefined,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+    sendOk(res, 'Lấy lịch sử sửa chữa thành công', data);
+  } catch (error: any) {
+    sendError(res, error, 'Lỗi khi lấy lịch sử sửa chữa', 500);
+  }
+};
+
+/**
+ * GET /api/work-orders/my-history/:id
+ */
+export const getMyRepairHistoryDetail = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workOrderId = Number(req.params.id);
+    if (isNaN(workOrderId) || workOrderId <= 0) {
+      sendError(res, { message: 'Mã phiếu công việc không hợp lệ' }, '');
+      return;
+    }
+    const data = await workOrderService.getMyRepairHistoryDetail(workOrderId, (req as any).user.id);
+    sendOk(res, 'Lấy chi tiết lịch sử sửa chữa thành công', data);
+  } catch (error: any) {
+    sendError(res, { ...error, message: error?.message, statusCode: error?.statusCode || 404 }, 'Không tìm thấy hồ sơ');
   }
 };

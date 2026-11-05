@@ -27,6 +27,9 @@ import {
   cancelAndReleaseWorkOrder,
   completeHandover,
   getHandoverPdf,
+  closeWorkOrder,
+  getMyRepairHistory,
+  getMyRepairHistoryDetail,
 } from '../controllers/work-order.controller';
 import { CheckInController } from '../controllers/check-in.controller';
 import { InspectionController } from '../controllers/inspection.controller';
@@ -41,6 +44,10 @@ router.use(authenticate);
 // UC-15: THEO DÕI TIẾN ĐỘ SỬA CHỮA DÀNH CHO KHÁCH HÀNG
 router.get('/my-tracking', authorize('CUSTOMER'), getMyTrackingOrders);
 router.get('/my-tracking/:id', authorize('CUSTOMER'), getMyTrackingOrderDetail);
+
+// LỊCH SỬ SỬA CHỮA DÀNH CHO KHÁCH HÀNG
+router.get('/my-history', authorize('CUSTOMER'), getMyRepairHistory);
+router.get('/my-history/:id', authorize('CUSTOMER'), getMyRepairHistoryDetail);
 
 // Lấy danh sách hàng đợi tiếp nhận (cho Advisor tạo WO)
 router.get('/intake-queue', authorize('SA', 'ADMIN'), getIntakeQueueForAdvisor);
@@ -100,6 +107,9 @@ router.post('/:id/cancel-release', authorize('SA', 'ADMIN'), cancelAndReleaseWor
 
 // BÀN GIAO XE CHUẨN KHI ĐÃ HOÀN TẤT THANH TOÁN (UC-42)
 router.post('/:id/handover', authorize('SA', 'ADMIN', 'DESK STAFF'), completeHandover);
+
+// ĐÓNG HỒ SƠ PHIẾU CÔNG VIỆC (RELEASED → CLOSED)
+router.post('/:id/close', authorize('SA', 'ADMIN'), closeWorkOrder);
 
 // TẢI FILE PDF BIÊN BẢN BÀN GIAO XE
 router.get('/:id/handover-pdf', authorize('SA', 'ADMIN', 'DESK STAFF', 'CUSTOMER'), getHandoverPdf);

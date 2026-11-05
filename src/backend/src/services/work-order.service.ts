@@ -1,4 +1,9 @@
-import { IntakeType, WorkOrderSourceType, FuelLevel } from '@prisma/client';
+import { IntakeType, WorkOrderSourceType, FuelLevel, WoCloseType } from '@prisma/client';
+import {
+  isValidWorkOrderTransition,
+  WO_AUTO_CLOSE_ON_HANDOVER,
+  CUSTOMER_HISTORY_STATUSES,
+} from '../constants/work-order-status.constant';
 import prisma from '../utils/prisma';
 import { WorkOrderRepository } from '../repositories/work-order.repository';
 import { IntakeRepository } from '../repositories/intake.repository';
@@ -1040,7 +1045,7 @@ export class WorkOrderService {
       where: {
         customer_id: userId,
         status: {
-          notIn: ['CANCELLED'],
+          notIn: CUSTOMER_HISTORY_STATUSES,
         },
       },
       include: {
@@ -2560,6 +2565,7 @@ export class WorkOrderService {
       return {
         success: true,
         message: 'Đã hoàn tất xuất trả xe thành công',
+        autoClosedWorkOrder: await this.tryAutoClose(tx, workOrderId, userId, null),
         workOrder: updatedWo,
         release: releaseRecord,
       };
@@ -2716,13 +2722,228 @@ export class WorkOrderService {
           .catch((err: any) => console.warn('[ReleaseVehicle Email Error]', err?.message));
       }
 
+      // Tự động đóng hồ sơ sau khi bàn giao thành công (nếu bật cấu hình)
+      const finalWo = await this.tryAutoClose(tx, workOrderId, userId, updatedWo);
+
       return {
         success: true,
         message: 'Đã hoàn tất bàn giao phương tiện thành công',
-        workOrder: updatedWo,
+        workOrder: finalWo,
         release: releaseRecord,
       };
     });
+  }
+
+  // ==========================================
+  // ĐÓNG HỒ SƠ PHIẾU CÔNG VIỆC (CLOSURE GATE)
+  // ==========================================
+
+  /**
+   * Kiểm tra điều kiện & đóng hồ sơ trong transaction.
+   * Business Rules:
+   * 1. WO phải ở trạng thái RELEASED và có VehicleRelease
+   * 2. Không còn Job IN_PROGRESS / REWORK
+   * 3. Không còn phụ tùng đang giữ chỗ (RESERVED)
+   * 4. Nếu có hóa đơn hợp lệ (không CANCELLED): tất cả phải PAID (nhánh cancel-release không có hóa đơn → bỏ qua)
+   */
+  async closeWorkOrderInTx(
+    tx: any,
+    workOrderId: number,
+    userId: number,
+    closeType: WoCloseType,
+    notes?: string
+  ) {
+    const wo = await tx.workOrder.findUnique({
+      where: { id: workOrderId },
+      include: {
+        release: true,
+        vehicle: true,
+        invoices: { select: { status: true } },
+        services: { include: { jobs: { include: { parts: { select: { status: true } } } } } },
+      },
+    });
+
+    if (!wo) throw new Error('Không tìm thấy phiếu công việc.');
+    if (!isValidWorkOrderTransition(wo.status, 'CLOSED')) {
+      throw new Error(`Chỉ có thể đóng hồ sơ khi xe đã bàn giao (RELEASED). Trạng thái hiện tại: ${wo.status}.`);
+    }
+    if (!wo.release) throw new Error('Phiếu công việc chưa có biên bản bàn giao xe.');
+
+    const jobs = wo.services.flatMap((s: any) => s.jobs);
+    const runningJobs = jobs.filter((j: any) => ['IN_PROGRESS', 'REWORK'].includes(j.status));
+    if (runningJobs.length > 0) {
+      throw new Error(`Còn ${runningJobs.length} công việc đang thực hiện. Không thể đóng hồ sơ.`);
+    }
+    const reservedParts = jobs.flatMap((j: any) => j.parts).filter((p: any) => p.status === 'RESERVED');
+    if (reservedParts.length > 0) {
+      throw new Error(`Còn ${reservedParts.length} phụ tùng đang giữ chỗ. Vui lòng giải phóng trước khi đóng hồ sơ.`);
+    }
+
+    const validInvoices = wo.invoices.filter((i: any) => i.status !== 'CANCELLED');
+    if (validInvoices.some((i: any) => i.status !== 'PAID')) {
+      throw new Error('Hóa đơn chưa được thanh toán đầy đủ. Không thể đóng hồ sơ.');
+    }
+
+    const closed = await tx.workOrder.update({
+      where: { id: workOrderId },
+      data: {
+        status: 'CLOSED',
+        closed_at: new Date(),
+        closed_by_id: userId,
+        close_type: closeType,
+        close_notes: notes?.trim() || null,
+      },
+      include: {
+        customer: true,
+        vehicle: true,
+        advisor: true,
+        closed_by: { select: { id: true, full_name: true } },
+        release: { include: { released_by: { select: { id: true, full_name: true } } } },
+      },
+    });
+
+    await tx.notification.create({
+      data: {
+        user_id: wo.customer_id,
+        notification_type: 'GENERAL',
+        title: `Hồ sơ ${wo.wo_number} đã được đóng`,
+        message: `Hồ sơ sửa chữa xe ${wo.vehicle.license_plate} đã hoàn tất và được lưu vào Lịch sử sửa chữa.`,
+        entity_type: 'WORK_ORDER',
+        entity_id: workOrderId,
+      },
+    });
+
+    return closed;
+  }
+
+  /**
+   * Đóng hồ sơ thủ công (SA / ADMIN)
+   */
+  async closeWorkOrder(workOrderId: number, userId: number, notes?: string) {
+    return prisma.$transaction((tx) =>
+      this.closeWorkOrderInTx(tx, workOrderId, userId, 'MANUAL', notes)
+    );
+  }
+
+  /**
+   * Thử tự động đóng hồ sơ sau bàn giao. Gate thất bại → giữ RELEASED, không rollback bàn giao.
+   */
+  private async tryAutoClose(tx: any, workOrderId: number, userId: number, fallback: any) {
+    if (!WO_AUTO_CLOSE_ON_HANDOVER) return fallback;
+    try {
+      // Gate chỉ ném lỗi nghiệp vụ trước khi ghi DB → transaction bàn giao không bị ảnh hưởng
+      return await this.closeWorkOrderInTx(tx, workOrderId, userId, 'AUTO', 'Tự động đóng sau bàn giao xe');
+    } catch (err: any) {
+      console.warn(`[AutoClose WO ${workOrderId}] Bỏ qua: ${err?.message}`);
+      return fallback;
+    }
+  }
+
+  // ==========================================
+  // LỊCH SỬ SỬA CHỮA DÀNH CHO KHÁCH HÀNG
+  // ==========================================
+
+  async getMyRepairHistory(
+    userId: number,
+    filters: { vehicleId?: number; from?: Date; to?: Date; page?: number; limit?: number }
+  ) {
+    const page = Math.max(1, filters.page || 1);
+    const limit = Math.min(50, Math.max(1, filters.limit || 10));
+    const dateFilter =
+      filters.from || filters.to
+        ? { updated_at: { ...(filters.from && { gte: filters.from }), ...(filters.to && { lte: filters.to }) } }
+        : {};
+
+    const where: any = {
+      customer_id: userId,
+      status: { in: CUSTOMER_HISTORY_STATUSES },
+      ...(filters.vehicleId && { vehicle_id: filters.vehicleId }),
+      ...dateFilter,
+    };
+
+    const [items, total] = await Promise.all([
+      prisma.workOrder.findMany({
+        where,
+        orderBy: [{ closed_at: 'desc' }, { updated_at: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          vehicle: { select: { id: true, license_plate: true, make: true, model: true, year: true, color: true } },
+          advisor: { select: { id: true, full_name: true } },
+          check_in: { select: { mileage: true, complaint: true } },
+          release: { select: { released_at: true, release_notes: true } },
+          services: { select: { id: true, name: true, status: true }, orderBy: { sort_order: 'asc' } },
+          invoices: {
+            where: { status: { not: 'CANCELLED' } },
+            orderBy: { created_at: 'desc' },
+            take: 1,
+            select: { id: true, invoice_number: true, status: true, total_amount: true },
+          },
+        },
+      }),
+      prisma.workOrder.count({ where }),
+    ]);
+
+    return {
+      items: items.map((wo) => {
+        let releaseInfo: any = {};
+        try {
+          releaseInfo = wo.release?.release_notes ? JSON.parse(wo.release.release_notes) : {};
+        } catch {
+          releaseInfo = {};
+        }
+
+        let cleanComplaint: string | null = null;
+        if (wo.check_in?.complaint) {
+          try {
+            const parsed = JSON.parse(wo.check_in.complaint);
+            if (typeof parsed === 'object' && parsed !== null) {
+              const parts: string[] = [];
+              if (Array.isArray(parsed.tags) && parsed.tags.length > 0) {
+                const validTags = parsed.tags.filter((t: any) => typeof t === 'string' && t.trim().length > 0);
+                if (validTags.length > 0) parts.push(validTags.join(', '));
+              }
+              if (typeof parsed.notes === 'string' && parsed.notes.trim()) {
+                parts.push(parsed.notes.trim());
+              }
+              cleanComplaint = parts.join(' - ') || null;
+            } else {
+              cleanComplaint = String(parsed).trim() || null;
+            }
+          } catch {
+            cleanComplaint = wo.check_in.complaint;
+          }
+        }
+
+        return {
+          id: wo.id,
+          woNumber: wo.wo_number,
+          status: wo.status,
+          createdAt: wo.created_at,
+          closedAt: wo.closed_at,
+          releasedAt: wo.release?.released_at ?? null,
+          vehicle: wo.vehicle,
+          advisor: wo.advisor,
+          complaint: cleanComplaint,
+          mileageIn: wo.check_in?.mileage ?? null,
+          mileageOut: releaseInfo.returnMileage ?? null,
+          warrantyTerms: releaseInfo.warrantyTerms ?? null,
+          services: wo.services,
+          invoice: wo.invoices[0] ?? null,
+          hasHandoverPdf: !!wo.release && wo.status !== 'CANCELLED',
+        };
+      }),
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async getMyRepairHistoryDetail(id: number, userId: number) {
+    const wo = await prisma.workOrder.findFirst({
+      where: { id, customer_id: userId, status: { in: CUSTOMER_HISTORY_STATUSES } },
+      select: { id: true },
+    });
+    if (!wo) throw new Error('Không tìm thấy hồ sơ sửa chữa.');
+    return this.getMyTrackingOrderDetail(id, userId);
   }
 
   /**

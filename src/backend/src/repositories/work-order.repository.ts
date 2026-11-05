@@ -6,6 +6,7 @@ const workOrderInclude = {
   vehicle: { select: { id: true, license_plate: true, make: true, model: true, year: true, color: true, vehicle_size: true } },
   advisor: { select: { id: true, full_name: true, phone: true } },
   created_by: { select: { id: true, full_name: true } },
+  closed_by: { select: { id: true, full_name: true } },
   intake_record: {
     select: {
       id: true,
