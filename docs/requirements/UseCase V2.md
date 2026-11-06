@@ -10,13 +10,13 @@
 | Nhóm | UC ID | Số lượng |
 |------|-------|----------|
 | **Khách vãng lai (Guest)** | UC-01 → UC-03 | 3 use case |
-| **Khách hàng (Customer)** | UC-04 → UC-16 | 13 use case |
+| **Khách hàng (Customer)** | UC-04 → UC-16, UC-79 | 14 use case |
 | **Nhân viên quầy dịch vụ (Front Desk Staff)** | UC-17 → UC-28 | 12 use case |
 | **Cố vấn dịch vụ (Service Advisor)** | UC-29 → UC-42 | 14 use case |
 | **Quản lý dịch vụ & Kho (Service Manager)** | UC-43 → UC-53 | 11 use case |
 | **Quản trị viên (Administrator)** | UC-54 → UC-77 | 24 use case |
 | **Hệ thống tự động (Background Jobs)** | UC-78 | 1 use case |
-| **Tổng cộng** | **UC-01 → UC-78** | **78 use case** |
+| **Tổng cộng** | **UC-01 → UC-79** | **79 use case** |
 
 ---
 
@@ -478,13 +478,13 @@
 | **Mã Use case**    | UC-27 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xử lý hóa đơn (Process Invoice) |
-| **Mô tả**          | Sau khi nhận yêu cầu thanh toán từ Cố vấn dịch vụ, nhân viên quầy tạo hóa đơn tổng hợp từ các hạng mục đã được duyệt và phát hành hóa đơn chính thức cho khách hàng. |
-| **Đối tượng**      | Nhân viên quầy dịch vụ (Front Desk Staff) |
-| **Tiền điều kiện** | Cố vấn dịch vụ đã gửi yêu cầu thanh toán với đầy đủ điều kiện: tất cả công việc hoàn thành, kiểm định chất lượng đạt và báo giá đã được khách hàng duyệt. |
-| **Hậu điều kiện**  | Thành công: Hóa đơn được phát hành, sẵn sàng để khách hàng thanh toán.<br>Thất bại: Hệ thống thông báo lỗi, hóa đơn chưa được tạo. |
-| **Luồng cơ bản**   | 1. Nhân viên quầy nhận thông báo có yêu cầu thanh toán mới và mở phiếu tương ứng.<br>2. Hệ thống hiển thị danh sách hạng mục từ báo giá đã được duyệt (dịch vụ, nhân công, phụ tùng, phí).<br>3. Nhân viên kiểm tra lại các dòng chi phí và tạo **Hóa đơn nháp**.<br>4. Nhân viên nhấn **Phát hành hóa đơn**.<br>5. Hệ thống tạo hóa đơn chính thức và gửi thông báo cho khách hàng. |
-| **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Tại bước 1, nếu yêu cầu thanh toán chưa đủ điều kiện (công việc chưa xong hoặc kiểm định chưa đạt), hệ thống thông báo lý do và không cho phép tạo hóa đơn. |
+| **Mô tả**          | Sau khi phiếu dịch vụ hoàn thành kiểm tra chất lượng và có yêu cầu thanh toán, nhân viên quầy dịch vụ xem trước các khoản chi phí, đối soát số lượng phụ tùng thực tế, tạo hóa đơn nháp, điều chỉnh chiết khấu (nếu có chính sách ưu đãi) và phát hành hóa đơn chính thức gửi đến khách hàng qua email và ứng dụng. |
+| **Đối tượng**      | Nhân viên quầy dịch vụ (Front Desk Staff / Thu ngân) |
+| **Tiền điều kiện** | Nhân viên quầy đã đăng nhập vào hệ thống. Phiếu dịch vụ tương ứng đã hoàn thành toàn bộ công việc, đạt kiểm định chất lượng và đang ở trạng thái **Chờ thanh toán**. |
+| **Hậu điều kiện**  | Thành công: Hóa đơn được tạo ở trạng thái **Bản nháp** và sau đó chuyển sang trạng thái **Đã phát hành**. Thông báo và hóa đơn điện tử được gửi tự động đến khách hàng.<br>Thất bại: Hệ thống thông báo lỗi, hóa đơn chưa được tạo hoặc chưa được phát hành. |
+| **Luồng cơ bản**   | 1. Nhân viên quầy truy cập danh sách phiếu dịch vụ cần thanh toán.<br>2. Hệ thống hiển thị danh sách các phiếu dịch vụ đang chờ lập hóa đơn cùng các chỉ số tổng quan trong ngày.<br>3. Tại phiếu dịch vụ cần xử lý, nhân viên nhấn **Xem trước hóa đơn**.<br>4. Hệ thống hiển thị bảng chi tiết các khoản chi phí, tự động tổng hợp từ báo giá ban đầu và các báo giá bổ sung đã được khách hàng duyệt, đối soát số lượng phụ tùng thực tế sử dụng (số lượng xuất kho trừ số lượng trả lại kho) và áp dụng mức thuế theo quy định.<br>5. Nhân viên kiểm tra thông tin chi phí và nhấn **Tạo hóa đơn nháp**.<br>6. Hệ thống tạo hóa đơn ở trạng thái **Bản nháp** và ghi nhận vào lịch sử hệ thống.<br>7. Tại màn hình chi tiết hóa đơn nháp, nếu có chính sách ưu đãi, nhân viên nhấn **Điều chỉnh chiết khấu**, nhập số tiền hoặc tỷ lệ giảm giá kèm lý do bắt buộc. Hệ thống cập nhật lại số tiền cần thanh toán.<br>8. Nhân viên nhấn **Phát hành hóa đơn**.<br>9. Hệ thống chuyển trạng thái hóa đơn sang **Đã phát hành**, khóa cố định các khoản chi phí và mức giảm giá, tự động gửi hóa đơn điện tử qua email cho khách hàng và gửi thông báo lên ứng dụng của khách hàng. |
+| **Luồng thay thế** | **[Hủy hóa đơn để lập lại]** Tại bước 7 hoặc khi hóa đơn đã phát hành nhưng khách hàng chưa thanh toán, nếu phát hiện có sai sót:<br>1a. Nhân viên quầy nhấn **Hủy hóa đơn** và nhập lý do hủy bắt buộc.<br>2a. Hệ thống chuyển trạng thái hóa đơn sang **Đã hủy**, ghi nhận lịch sử và đưa phiếu dịch vụ trở lại danh sách chờ lập hóa đơn để tạo lại hóa đơn mới thay thế. |
+| **Luồng ngoại lệ** | Tại bước 4 hoặc 5, nếu phiếu dịch vụ chưa hoàn tất công việc thi công hoặc chưa đạt kiểm định chất lượng, hệ thống từ chối tạo hóa đơn và thông báo: *"Phiếu dịch vụ chưa sẵn sàng để lập hóa đơn do chưa đạt kiểm định chất lượng hoặc còn công việc chưa hoàn thành."*<br><br>Tại bước 7, nếu nhân viên nhập số tiền chiết khấu vượt quá tổng tiền dịch vụ hoặc để trống lý do giải trình, hệ thống hiển thị cảnh báo lỗi và không cho phép lưu thay đổi.<br><br>Tại bước 8, nếu phiếu dịch vụ đã có hóa đơn khác đang hoạt động hoặc đã thanh toán, hệ thống cảnh báo xung đột dữ liệu và ngăn chặn phát hành trùng lặp. |
 
 ---
 
@@ -495,13 +495,13 @@
 | **Mã Use case**    | UC-28 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xử lý thanh toán (Process Payment) |
-| **Mô tả**          | Nhân viên quầy ghi nhận khoản thanh toán của khách hàng. Hệ thống hỗ trợ hai hình thức: ghi nhận thủ công (tiền mặt, thẻ) hoặc tạo mã QR để khách quét qua ứng dụng thanh toán điện tử. Sau khi thanh toán thành công, hệ thống tự động ghi nhận điều kiện tài chính đã đạt và thông báo cho Cố vấn dịch vụ để tiến hành bàn giao xe. |
-| **Đối tượng**      | Nhân viên quầy dịch vụ (Front Desk Staff) |
-| **Tiền điều kiện** | Hóa đơn đã được phát hành và đang ở trạng thái **Chưa thanh toán**. |
-| **Hậu điều kiện**  | Thành công: Hóa đơn chuyển sang trạng thái **Đã thanh toán**; hệ thống tự động thông báo cho Cố vấn dịch vụ rằng xe sẵn sàng để bàn giao.<br>Thất bại: Hệ thống thông báo lỗi, trạng thái thanh toán không thay đổi. |
-| **Luồng cơ bản**   | 1. Nhân viên mở hóa đơn của khách hàng và chọn **Ghi nhận thanh toán**.<br>2. Nhân viên chọn hình thức thanh toán thủ công (tiền mặt hoặc thẻ ngân hàng).<br>3. Nhân viên nhập số tiền thanh toán.<br>4. Nhân viên nhấn **Xác nhận thanh toán**.<br>5. Hệ thống ghi nhận khoản thanh toán và cập nhật trạng thái hóa đơn thành **Đã thanh toán**.<br>6. Hệ thống tự động ghi nhận điều kiện tài chính đã đạt và gửi thông báo cho Cố vấn dịch vụ rằng xe sẵn sàng để bàn giao. |
-| **Luồng thay thế** | **[Thanh toán qua mã QR]** Tại bước 2, thay vì chọn hình thức thủ công:<br>2a. Nhân viên chọn **Tạo mã QR thanh toán**.<br>3a. Hệ thống tạo mã QR liên kết với hóa đơn và hiển thị trên màn hình quầy.<br>4a. Khách hàng dùng ứng dụng điện thoại quét mã QR.<br>5a. Khách hàng xác nhận thanh toán trên ứng dụng.<br>6a. Hệ thống nhận xác nhận từ cổng thanh toán và tự động cập nhật hóa đơn sang **Đã thanh toán**.<br>7a. Hệ thống tự động ghi nhận điều kiện tài chính đã đạt và gửi thông báo cho Cố vấn dịch vụ rằng xe sẵn sàng để bàn giao. |
-| **Luồng ngoại lệ** | Tại bước 6a của luồng QR, nếu giao dịch thất bại hoặc hết thời gian chờ, hệ thống thông báo và cho phép thử lại hoặc chuyển sang thanh toán thủ công. |
+| **Mô tả**          | Nhân viên quầy dịch vụ thu tiền cho hóa đơn đã phát hành bằng hình thức Tiền mặt, Thẻ ngân hàng (qua máy quẹt thẻ POS) hoặc Mã QR thanh toán trực tuyến. Sau khi thanh toán thành công 100%, hệ thống tự động ghi nhận hoàn tất nghĩa vụ tài chính, chuyển phiếu dịch vụ sang trạng thái đủ điều kiện xuất xưởng, thông báo cho Cố vấn dịch vụ sẵn sàng bàn giao xe và gửi biên lai xác nhận thanh toán cho khách hàng. |
+| **Đối tượng**      | Nhân viên quầy dịch vụ (Front Desk Staff / Thu ngân) |
+| **Tiền điều kiện** | Hóa đơn tương ứng đang ở trạng thái **Đã phát hành** với số tiền còn phải trả lớn hơn 0 đồng. |
+| **Hậu điều kiện**  | Thành công: Giao dịch thanh toán được ghi nhận thành công, hóa đơn chuyển sang trạng thái **Đã thanh toán**, phiếu dịch vụ chuyển sang trạng thái **Đã hoàn tất thanh toán (Đủ điều kiện xuất xưởng)**. Hệ thống gửi email biên lai và thông báo đến khách hàng, đồng thời thông báo cho Cố vấn dịch vụ xe đã sẵn sàng bàn giao.<br>Thất bại: Giao dịch thất bại hoặc bị hủy, hóa đơn giữ nguyên trạng thái **Đã phát hành** để thực hiện lại. |
+| **Luồng cơ bản**   | 1. Nhân viên quầy mở hóa đơn cần thu tiền và nhấn **Thanh toán**.<br>2. Hệ thống hiển thị hộp thoại thanh toán với 3 phương thức lựa chọn: **Tiền mặt**, **Thẻ ngân hàng**, và **Quét mã QR trực tuyến**.<br>3. **Trường hợp A – Tiền mặt:**<br>- Nhân viên chọn phương thức Tiền mặt.<br>- Hệ thống tự động điền số tiền cần thanh toán theo hóa đơn.<br>- Nhân viên nhập số tiền khách hàng đưa. Hệ thống tự động tính và hiển thị số tiền thừa cần trả lại khách.<br>- Nhân viên nhấn **Xác nhận đã thu tiền**.<br>4. **Trường hợp B – Quẹt thẻ ngân hàng (POS):**<br>- Nhân viên chọn phương thức Thẻ ngân hàng.<br>- Nhân viên tiến hành quẹt thẻ của khách trên máy POS ngân hàng.<br>- Nhân viên nhập mã giao dịch tham chiếu từ hóa đơn in ra của máy POS.<br>- Nhân viên nhấn **Xác nhận thanh toán thẻ**.<br>5. **Trường hợp C – Cổng thanh toán qua mã QR trực tuyến:**<br>- Nhân viên chọn phương thức Mã QR và nhấn **Tạo mã QR**.<br>- Hệ thống tạo mã QR thanh toán động có hiệu lực trong 15 phút và hiển thị đồng hồ đếm ngược.<br>- Khách hàng sử dụng ứng dụng ngân hàng trên điện thoại quét mã QR để chuyển khoản.<br>- Hệ thống tự động nhận kết quả xác nhận từ cổng thanh toán trực tuyến ngay khi giao dịch hoàn tất.<br>6. Khi thanh toán hoàn tất (xác nhận thủ công đối với tiền mặt/thẻ hoặc nhận xác nhận tự động từ cổng thanh toán):<br>- Hệ thống ghi nhận giao dịch thành công, lưu thời điểm thanh toán và mã giao dịch đối soát.<br>- Chuyển trạng thái hóa đơn sang **Đã thanh toán**.<br>- Chuyển trạng thái phiếu dịch vụ sang **Đã hoàn tất thanh toán (Đủ điều kiện xuất xưởng)**.<br>- Tự động gửi thông báo đến Cố vấn dịch vụ: *"Phương tiện đã thanh toán xong, sẵn sàng lập biên bản bàn giao xe cho khách hàng"*; đồng thời gửi thông báo và biên lai thu tiền điện tử đến khách hàng.<br>- Cập nhật giao diện tức thời và hiển thị thông báo thành công. |
+| **Luồng thay thế** | **[Hủy giao dịch mã QR để đổi hình thức khác]** Tại bước 5 (Trường hợp C), nếu khách hàng đổi ý muốn chuyển sang trả bằng tiền mặt/thẻ hoặc mã QR hết thời gian hiệu lực 15 phút:<br>5a. Nhân viên nhấn **Hủy mã QR này**.<br>5b. Hệ thống hủy giao dịch chờ và cho phép chọn lại hình thức thanh toán khác. |
+| **Luồng ngoại lệ** | Tại bước 3, nếu nhân viên nhập số tiền khách đưa nhỏ hơn tổng số tiền cần thanh toán của hóa đơn, hệ thống hiển thị thông báo chưa đủ tiền và khóa nút xác nhận.<br><br>Tại bước 4, nếu mã giao dịch từ máy POS bị để trống hoặc không hợp lệ, hệ thống yêu cầu nhập đúng mã giao dịch trước khi hoàn tất.<br><br>Tại bước 5, nếu kết quả xác thực từ cổng thanh toán trực tuyến báo không thành công hoặc sai lệch thông tin xác thực, hệ thống từ chối cập nhật trạng thái thanh toán và hiển thị thông báo lỗi để nhân viên kiểm tra lại. |
 
 ---
 
@@ -651,13 +651,13 @@
 | **Mã Use case**    | UC-37 |
 | ------------------ | ------ |
 | **Tên Use case**   | Tạo báo giá (Create Quotation) |
-| **Mô tả**          | Cố vấn dịch vụ tạo báo giá từ các hạng mục dịch vụ, nhân công và phụ tùng đã được chọn trong phiếu công việc. Báo giá này sẽ được gửi cho khách hàng duyệt. |
+| **Mô tả**          | Cố vấn dịch vụ tổng hợp toàn bộ các dịch vụ, công việc kỹ thuật và phụ tùng đã lập kế hoạch trong phiếu dịch vụ thành bản báo giá hoàn chỉnh để gửi khách hàng. Hệ thống tự động tính toán chi phí theo kiểu tính giá tương ứng của từng dịch vụ và cho phép áp dụng chiết khấu ưu đãi. |
 | **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Phiếu công việc có ít nhất một hạng mục dịch vụ/phụ tùng đã được khai báo. |
-| **Hậu điều kiện**  | Thành công: Báo giá được tạo ở trạng thái **Chờ phản hồi**.<br>Thất bại: Hệ thống thông báo lỗi. |
-| **Luồng cơ bản**   | 1. Cố vấn vào phiếu công việc và chọn **Tạo báo giá**.<br>2. Hệ thống tự động tổng hợp chi phí: nhân công theo đơn giá và số giờ, phụ tùng / vật tư và phí phụ trợ.<br>3. Cố vấn kiểm tra các dòng chi phí và điều chỉnh chiết khấu (nếu có).<br>4. Cố vấn nhấn **Lưu báo giá**.<br>5. Hệ thống tạo báo giá mới ở trạng thái **Chờ phản hồi** và khóa tạm các hạng mục trong báo giá. |
-| **Luồng thay thế** | **[Tạo báo giá bổ sung]** Nếu trong quá trình sửa chữa phát sinh thêm hạng mục, cố vấn có thể tạo **Báo giá bổ sung** (Supplementary Quotation). Báo giá bổ sung sẽ cần khách hàng phê duyệt tương tự báo giá gốc. |
-| **Luồng ngoại lệ** | Tại bước 4, nếu không có hạng mục nào có chi phí, hệ thống thông báo báo giá trống và không cho tạo. |
+| **Tiền điều kiện** | Cố vấn dịch vụ đã đăng nhập hệ thống; Phiếu dịch vụ đang ở trạng thái **Đang lập kế hoạch** (hoặc **Bản nháp**) và có ít nhất một hạng mục có chi phí lớn hơn 0 đồng. |
+| **Hậu điều kiện**  | Thành công: Bản báo giá mới được tạo ở trạng thái **Bản nháp** kèm đầy đủ danh sách các khoản chi phí chi tiết.<br>Thất bại: Hệ thống hiển thị thông báo lỗi cụ thể, không tạo bản báo giá. |
+| **Luồng cơ bản**   | 1. Cố vấn dịch vụ mở phiếu dịch vụ cần xử lý và chọn mục **Báo giá**.<br>2. Hệ thống kiểm tra kế hoạch công việc và vật tư trong phiếu dịch vụ.<br>3. Cố vấn dịch vụ nhấn **Tạo báo giá tự động**.<br>4. Hệ thống tự động tính toán chi phí theo đúng kiểu tính giá của từng hạng mục:<br>- Dịch vụ trọn gói cố định: Áp dụng đơn giá cố định của gói, không cộng lẻ từng công việc bên trong.<br>- Dịch vụ tính theo kích cỡ xe: Tự động xác định phân khúc kích thước xe (xe nhỏ, xe vừa, xe lớn, xe đa dụng, xe bán tải) và áp dụng đúng đơn giá quy định cho phân khúc đó.<br>- Dịch vụ tính theo nhân công và phụ tùng: Tính tiền nhân công theo giờ định mức và tiền phụ tùng theo số lượng nhân với đơn giá niêm yết.<br>5. Hệ thống tính tổng tiền dịch vụ, áp dụng thuế giá trị gia tăng 0% theo quy định của trung tâm.<br>6. Hệ thống thực hiện kiểm tra chống trùng lặp: So sánh chi tiết từng dòng chi phí và tổng tiền với các bản báo giá đã lập trước đó của phiếu:<br>- Nếu dữ liệu hoàn toàn trùng khớp: Hệ thống không tạo mới mà hiển thị lại bản báo giá cũ kèm thông báo: *"Kế hoạch dịch vụ và phụ tùng không có thay đổi so với báo giá đã lập. Hệ thống tự động mở lại bản báo giá này."* (Kết thúc use case).<br>- Nếu có thay đổi: Hệ thống chuyển sang bước 7.<br>7. Hệ thống tự động cấp mã báo giá theo quy chuẩn và hiển thị bảng chi tiết.<br>8. Cố vấn dịch vụ có thể nhập thêm số tiền hoặc tỷ lệ chiết khấu giảm giá (nếu có chính sách ưu đãi).<br>9. Cố vấn dịch vụ nhấn **Lưu báo giá**.<br>10. Hệ thống lưu bản báo giá ở trạng thái **Bản nháp** và hiển thị đầy đủ chi tiết lên màn hình để cố vấn kiểm tra trước khi gửi khách hàng. |
+| **Luồng thay thế** | **[Tạo báo giá bổ sung]** Khi phương tiện đang trong quá trình sửa chữa mà phát hiện hư hỏng phát sinh:<br>3a. Cố vấn dịch vụ thêm các hạng mục công việc hoặc phụ tùng phát sinh vào phiếu dịch vụ và chọn **Tạo báo giá bổ sung**.<br>4a. Hệ thống ghi nhận đây là báo giá bổ sung, tự động liên kết với báo giá ban đầu và chỉ tính toán các chi phí mới phát sinh để trình khách hàng phê duyệt. |
+| **Luồng ngoại lệ** | Tại bước 2, nếu phiếu dịch vụ chưa có bất kỳ hạng mục nào có chi phí, hệ thống thông báo: *"Phiếu dịch vụ chưa có hạng mục dịch vụ hoặc phụ tùng nào có chi phí. Vui lòng lập kế hoạch trước khi tạo báo giá."*<br><br>Tại bước 2, nếu phiếu dịch vụ đã đóng, đã hủy hoặc xe đã bàn giao xong, hệ thống thông báo lỗi: *"Phiếu dịch vụ đã hoàn tất hoặc đã kết thúc, không thể tạo báo giá mới."* |
 
 ---
 
@@ -666,28 +666,28 @@
 | **Mã Use case**    | UC-38 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem báo giá (View Quotation) |
-| **Mô tả**          | Cố vấn dịch vụ hoặc khách hàng xem chi tiết báo giá đã tạo, bao gồm các hạng mục, chi phí và trạng thái duyệt. |
-| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor), Khách hàng (Customer) |
-| **Tiền điều kiện** | Báo giá đã được tạo và tồn tại trong hệ thống. |
-| **Hậu điều kiện**  | Thành công: Chi tiết báo giá được hiển thị chính xác. |
-| **Luồng cơ bản**   | 1. Người dùng chọn mục **Báo giá** trong phiếu công việc.<br>2. Hệ thống hiển thị danh sách các phiên bản báo giá.<br>3. Người dùng chọn phiên bản báo giá cần xem.<br>4. Hệ thống hiển thị chi tiết hạng mục, tổng tiền và trạng thái (Chờ phản hồi, Đã duyệt, Đã từ chối). |
+| **Mô tả**          | Cố vấn dịch vụ, nhân viên liên quan hoặc khách hàng xem chi tiết bảng chiết tính chi phí của báo giá (công thợ, phụ tùng, giảm giá), theo dõi lịch sử các phiên bản báo giá và in/xuất tệp báo giá khi cần. |
+| **Đối tượng**      | Cố vấn dịch vụ, Khách hàng, Nhân viên quầy dịch vụ |
+| **Tiền điều kiện** | Người dùng đã đăng nhập hệ thống và có quyền xem thông tin (khách hàng chỉ được xem báo giá của xe mình sở hữu). |
+| **Hậu điều kiện**  | Hệ thống hiển thị đầy đủ, rõ ràng các khoản chi phí và trạng thái của báo giá. |
+| **Luồng cơ bản**   | 1. Người dùng mở phiếu dịch vụ và chọn mục **Báo giá** (hoặc khách hàng chọn xem báo giá từ màn hình theo dõi tiến độ xe trên ứng dụng khách hàng).<br>2. Hệ thống tải toàn bộ danh sách báo giá của phiếu và tự động hiển thị bản báo giá mới nhất được gửi cho khách hàng.<br>3. Hệ thống hiển thị giao diện báo giá trực quan gồm các khu vực:<br>- Thông tin tổng quan: Mã số báo giá, ngày lập, ngày gửi, người lập, và trạng thái hiện tại (Bản nháp, Chờ khách duyệt, Đã duyệt, Đã từ chối, Đã hủy).<br>- Chi tiết dịch vụ và công việc: Tên công việc, định mức giờ công, đơn giá và thành tiền.<br>- Chi tiết phụ tùng và vật tư: Tên phụ tùng, xuất xứ/hãng sản xuất, số lượng, đơn vị tính, đơn giá niêm yết và thành tiền.<br>- Tổng kết tài chính: Tổng tiền dịch vụ ban đầu, số tiền chiết khấu (nếu có), thuế suất (0%) và tổng tiền thanh toán cuối cùng.<br>4. Người dùng có thể nhấn **Lịch sử báo giá** để xem lại các phiên bản báo giá trước đó kèm ghi chú lý do khách hàng từ chối ở các lần trước (nếu có).<br>5. Người dùng nhấn **Xuất tệp / In** để xuất bản báo giá chuẩn hóa phục vụ lưu trữ hoặc in ra giấy gửi khách hàng. |
 | **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Không có. |
+| **Luồng ngoại lệ** | Tại bước 1, nếu khách hàng cố tình xem báo giá của phương tiện khác không thuộc quyền sở hữu của mình, hệ thống từ chối truy cập và thông báo: *"Bạn không có quyền xem thông tin báo giá này."*<br><br>Tại bước 1, nếu phiếu dịch vụ chưa từng tạo bản báo giá nào, hệ thống hiển thị thông báo: *"Chưa có bản báo giá nào được tạo cho phiếu dịch vụ này."* |
 
 ---
 
-## UC-39 – Cập nhật báo giá (Update Quotation)
+## UC-39 – Cập nhật và duyệt báo giá (Approve & Update Quotation)
 
 | **Mã Use case**    | UC-39 |
 | ------------------ | ------ |
-| **Tên Use case**   | Cập nhật báo giá (Update Quotation) |
-| **Mô tả**          | Cố vấn dịch vụ cập nhật lại các chi phí, chiết khấu hoặc ghi nhận kết quả duyệt của khách hàng (Đồng ý/Từ chối) cho một báo giá đang ở trạng thái Chờ phản hồi. |
-| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Báo giá đang ở trạng thái **Chờ phản hồi**. |
-| **Hậu điều kiện**  | Thành công: Báo giá được cập nhật, hoặc chuyển trạng thái thành **Đã duyệt** / **Đã từ chối**.<br>Thất bại: Giữ nguyên trạng thái. |
-| **Luồng cơ bản**   | 1. Cố vấn mở báo giá đang chờ phản hồi.<br>2. Cố vấn trao đổi với khách hàng (ngoài hệ thống).<br>3. Nếu khách hàng đồng ý, cố vấn nhấn **Duyệt báo giá**.<br>4. Hệ thống khóa báo giá, lưu snapshot đơn giá và chuyển trạng thái sang **Đã duyệt**. |
-| **Luồng thay thế** | **[Khách hàng từ chối]** Tại bước 3, nếu khách hàng không đồng ý:<br>3a. Cố vấn nhấn **Từ chối báo giá** và ghi lý do.<br>4a. Hệ thống chuyển trạng thái sang **Đã từ chối**, mở khóa các hạng mục để cố vấn sửa và tạo báo giá mới.<br><br>**[Chỉnh sửa chiết khấu]** Tại bước 3, cố vấn chọn **Chỉnh sửa**:<br>3b. Cố vấn thay đổi chiết khấu hoặc thông tin phụ.<br>4b. Cố vấn nhấn **Lưu**.<br>5b. Hệ thống cập nhật thông tin báo giá. |
-| **Luồng ngoại lệ** | Nếu báo giá đã Đã duyệt, hệ thống ẩn nút Chỉnh sửa/Duyệt/Từ chối, ngăn chặn việc cập nhật. |
+| **Tên Use case**   | Cập nhật và duyệt báo giá (Approve & Update Quotation) |
+| **Mô tả**          | Cố vấn dịch vụ gửi báo giá cho khách hàng qua ứng dụng và email. Khách hàng xem xét và thực hiện phê duyệt (hoặc cố vấn ghi nhận phê duyệt theo ủy quyền của khách). Trường hợp khách hàng không đồng ý, hệ thống xử lý phân nhánh theo yêu cầu (điều chỉnh lại báo giá hoặc hủy dịch vụ để lấy lại xe). Khi duyệt, hệ thống tự động khóa đơn giá và giữ chỗ phụ tùng trong kho. |
+| **Đối tượng**      | Khách hàng (Customer), Cố vấn dịch vụ (Service Advisor) |
+| **Tiền điều kiện** | Báo giá đang ở trạng thái **Bản nháp** hoặc **Chờ khách duyệt**. |
+| **Hậu điều kiện**  | - Nếu phê duyệt: Báo giá chuyển sang trạng thái **Đã duyệt**; phiếu dịch vụ chuyển sang trạng thái **Đã duyệt**; phụ tùng trong kho chuyển sang trạng thái **Đã giữ chỗ**; biên bản tiếp nhận xe được xác nhận chính thức.<br>- Nếu từ chối (yêu cầu điều chỉnh): Báo giá chuyển sang trạng thái **Đã từ chối**; phiếu dịch vụ quay về trạng thái **Đang lập kế hoạch** để cố vấn chỉnh sửa.<br>- Nếu từ chối (hủy dịch vụ lấy lại xe): Báo giá chuyển sang trạng thái **Đã từ chối**; hệ thống chuyển sang thủ tục xuất trả xe cho khách hàng.<br>- Thất bại: Hệ thống thông báo lỗi, trạng thái dữ liệu giữ nguyên. |
+| **Luồng cơ bản**   | 1. Cố vấn dịch vụ kiểm tra bản báo giá nháp và nhấn **Gửi cho khách hàng**.<br>2. Hệ thống chuyển trạng thái báo giá sang **Chờ khách duyệt**, chuyển phiếu dịch vụ sang trạng thái **Chờ duyệt báo giá**, đồng thời tự động gửi email và thông báo lên ứng dụng của khách hàng kèm bảng tóm tắt chi phí và liên kết truy cập nhanh.<br>3. Khách hàng đăng nhập vào ứng dụng hoặc nhấp vào liên kết trong email để xem chi tiết báo giá.<br>4. Khách hàng (hoặc cố vấn dịch vụ ghi nhận sau khi trao đổi xác nhận trực tiếp với khách) nhấn **Phê duyệt báo giá**.<br>5. Hệ thống hiển thị hộp thoại xác nhận cam kết chi phí. Người dùng nhấn **Xác nhận duyệt**.<br>6. Hệ thống thực hiện chuỗi xử lý tự động:<br>- Chuyển trạng thái báo giá sang **Đã duyệt** và khóa cố định toàn bộ đơn giá tại thời điểm phê duyệt.<br>- Tự động chuyển trạng thái các phụ tùng trong báo giá sang **Đã giữ chỗ trong kho** để đảm bảo linh kiện sẵn sàng và không bị phân bổ cho xe khác.<br>- Chuyển trạng thái phiếu dịch vụ sang **Đã duyệt**, sẵn sàng cho việc phân công kỹ thuật viên bắt đầu sửa chữa.<br>- Chuyển trạng thái biên bản kiểm tra ban đầu sang **Đã xác nhận**.<br>7. Hệ thống hiển thị thông báo phê duyệt thành công và cập nhật trạng thái hiển thị trên màn hình. |
+| **Luồng thay thế** | **[Khách hàng từ chối báo giá]** Tại bước 4, khách hàng nhấn nút **Từ chối báo giá**:<br>4a. Hệ thống hiển thị biểu mẫu yêu cầu chọn phân loại lý do từ chối:<br>- *Trường hợp 1 - Yêu cầu điều chỉnh lại chi phí:* Khách hàng nêu lý do (vượt ngân sách, bỏ bớt hạng mục chưa cần thiết, đổi loại phụ tùng,...). Hệ thống chuyển trạng thái báo giá sang **Đã từ chối**, đưa phiếu dịch vụ quay về trạng thái **Đang lập kế hoạch** để cố vấn dịch vụ điều chỉnh lại kế hoạch và lập báo giá mới.<br>- *Trường hợp 2 - Hủy dịch vụ và nhận lại xe:* Khách hàng không đồng ý làm dịch vụ và yêu cầu nhận lại xe ngay. Hệ thống chuyển trạng thái báo giá sang **Đã từ chối**, ghi nhận lý do và kích hoạt thủ tục chuẩn bị xuất trả xe sớm cho khách hàng. |
+| **Luồng ngoại lệ** | Tại bước 4, nếu báo giá đã ở trạng thái **Đã duyệt**, hệ thống khóa nút duyệt và thông báo báo giá đã được phê duyệt trước đó.<br><br>Nếu phương tiện đã bắt đầu bước thi công sửa chữa, hệ thống ngăn chặn việc từ chối báo giá để bảo vệ chi phí và vật tư của xưởng. |
 
 ---
 
@@ -696,19 +696,13 @@
 | **Mã Use case**    | UC-40 |
 | ------------------ | ------ |
 | **Tên Use case**   | Hủy báo giá (Cancel Quotation) |
-| **Mô tả**          | Cố vấn dịch vụ hủy bỏ một báo giá đang chờ nếu phát hiện sai sót trước khi gửi khách hàng duyệt. Báo giá sau khi bị hủy sẽ không còn hiệu lực. |
+| **Mô tả**          | Cố vấn dịch vụ áp dụng chính sách giảm giá, chiết khấu trực tiếp trên báo giá trước khi khách hàng duyệt, hoặc hủy bỏ một bản báo giá bị lập sai sót để giải phóng dữ liệu và lập lại kế hoạch. |
 | **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Báo giá đang ở trạng thái **Chờ phản hồi**. |
-| **Hậu điều kiện**  | Thành công: Báo giá chuyển trạng thái thành **Đã hủy**.<br>Thất bại: Hệ thống báo lỗi. |
-| **Luồng cơ bản**   | 1. Cố vấn mở báo giá đang chờ phản hồi.<br>2. Cố vấn chọn **Hủy báo giá**.<br>3. Hệ thống hiển thị cảnh báo xác nhận.<br>4. Cố vấn nhấn **Xác nhận**.<br>5. Hệ thống cập nhật trạng thái báo giá thành **Đã hủy** và giải phóng các hạng mục bị khóa tạm. |
+| **Tiền điều kiện** | Báo giá đang ở trạng thái **Bản nháp** hoặc **Chờ khách duyệt**. Tuyệt đối không áp dụng cho báo giá đã ở trạng thái **Đã duyệt**. |
+| **Hậu điều kiện**  | - Nếu điều chỉnh chiết khấu: Mức chiết khấu và tổng tiền thanh toán của báo giá được cập nhật chính xác.<br>- Nếu hủy: Báo giá chuyển sang trạng thái **Đã hủy**, phiếu dịch vụ quay về trạng thái **Đang lập kế hoạch**.<br>- Thất bại: Hệ thống thông báo lỗi, dữ liệu được giữ nguyên. |
+| **Luồng cơ bản**   | 1. **Áp dụng chiết khấu / Điều chỉnh giảm giá:**<br>- Cố vấn dịch vụ mở bản báo giá đang xử lý và chọn **Áp dụng chiết khấu**.<br>- Cố vấn chọn hình thức giảm giá: theo số tiền trực tiếp hoặc theo tỷ lệ phần trăm (%).<br>- Cố vấn nhập mức giảm giá và ghi rõ lý do ưu đãi (chương trình khuyến mãi, khách hàng thân thiết,...).<br>- Hệ thống tự động tính lại số tiền giảm và tổng tiền thanh toán cuối cùng của báo giá.<br>- Cố vấn nhấn **Lưu thay đổi**. Hệ thống lưu lại thông tin và cập nhật giao diện.<br>2. **Hủy bản báo giá sai sót:**<br>- Khi phát hiện bản báo giá bị sai sót, cố vấn mở báo giá và chọn **Hủy báo giá**.<br>- Hệ thống hiển thị hộp thoại cảnh báo: *"Bạn có chắc chắn muốn hủy bản báo giá này? Thao tác này không thể hoàn tác."*<br>- Cố vấn nhấn **Xác nhận hủy**.<br>- Hệ thống cập nhật trạng thái báo giá thành **Đã hủy**, đồng thời đưa phiếu dịch vụ quay lại trạng thái **Đang lập kế hoạch** để cố vấn tiếp tục hiệu chỉnh danh mục dịch vụ. |
 | **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Tại bước 2, nếu báo giá đã ở trạng thái Đã duyệt, hệ thống không cho phép hủy và thông báo lỗi. |
-
----
-
-
----
-
+| **Luồng ngoại lệ** | Tại bước 1 hoặc 2, nếu báo giá đã ở trạng thái **Đã duyệt**, hệ thống ẩn hoàn toàn chức năng chỉnh sửa và hủy; nếu phát sinh yêu cầu can thiệp trái phép, hệ thống từ chối và thông báo: *"Báo giá đã được phê duyệt, không thể chỉnh sửa hoặc hủy bỏ."*<br><br>Tại bước 1, nếu số tiền giảm giá lớn hơn tổng tiền dịch vụ ban đầu, hệ thống cảnh báo mức chiết khấu không hợp lệ và không cho phép lưu. |
 
 ---
 
@@ -717,13 +711,13 @@
 | **Mã Use case**    | UC-41 |
 | ------------------ | ------ |
 | **Tên Use case**   | Kiểm định chất lượng (Quality Inspection) |
-| **Mô tả**          | Sau khi các job hoàn thành, cố vấn dịch vụ thực hiện kiểm định chất lượng theo danh sách hạng mục. Nếu đạt, dịch vụ được đánh dấu hoàn thành. Nếu không đạt, cố vấn tạo job sửa lại và thực hiện lại trước khi kiểm định lần nữa. |
-| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Toàn bộ job trong dịch vụ đã ở trạng thái **Hoàn thành**. |
-| **Hậu điều kiện**  | Thành công – Đạt: Dịch vụ được đánh dấu hoàn thành, sẵn sàng cho bước tiếp theo.<br>Thành công – Không đạt: Job sửa lại được tạo để xử lý vấn đề phát sinh. |
-| **Luồng cơ bản**   | 1. Cố vấn vào mục **Kiểm định chất lượng** của dịch vụ.<br>2. Cố vấn đi qua từng hạng mục kiểm định theo danh sách mẫu và đánh dấu **Đạt** hoặc **Không đạt**.<br>3. Cố vấn nhấn **Xác nhận kết quả kiểm định**.<br>4. Hệ thống ghi nhận toàn bộ hạng mục đều Đạt và đánh dấu dịch vụ hoàn thành. |
-| **Luồng thay thế** | **[Kiểm định không đạt]** Tại bước 3, khi có ít nhất một hạng mục Không đạt:<br>3a. Cố vấn nhấn **Xác nhận kết quả kiểm định** với ghi nhận hạng mục không đạt.<br>4a. Cố vấn mô tả chi tiết vấn đề cần sửa lại.<br>5a. Cố vấn nhấn **Tạo job sửa lại**.<br>6a. Hệ thống tạo job Rework và liên kết với hạng mục không đạt.<br>7a. Cố vấn thực hiện lại từ UC-25 cho job Rework.<br>8a. Sau khi Rework hoàn thành, cố vấn quay lại bước 1 để kiểm định lại. |
-| **Luồng ngoại lệ** | Tại bước 3, hệ thống không cho phép xác nhận nếu còn hạng mục chưa được đánh giá. |
+| **Mô tả**          | Cố vấn dịch vụ hoặc nhân viên kiểm tra chất lượng thực hiện thẩm định tình trạng kỹ thuật của xe sau khi thợ thi công xong theo danh mục tiêu chuẩn. Nếu tất cả hạng mục đạt yêu cầu, hệ thống cho phép chuyển phiếu dịch vụ sang bước thanh toán và phát hành chứng nhận kiểm định chất lượng cho khách hàng. Nếu phát hiện có hạng mục chưa đạt, hệ thống tự động tạo công việc sửa lại để kỹ thuật viên khắc phục trước khi kiểm tra lại. |
+| **Đối tượng**      | Cố vấn dịch vụ, Nhân viên kiểm tra chất lượng |
+| **Tiền điều kiện** | Phiếu dịch vụ đang ở trạng thái **Đang sửa chữa**; toàn bộ các công việc thi công ban đầu của kỹ thuật viên đã hoàn thành (không còn công việc nào đang làm dở). |
+| **Hậu điều kiện**  | Thành công – Đạt 100%: Biên bản kiểm định ghi nhận kết quả **Đạt**, mở khóa để chuyển phiếu dịch vụ sang trạng thái **Chờ thanh toán**, khách hàng có thể xem chứng nhận kiểm định chất lượng trên ứng dụng.<br>Thành công – Có mục Không đạt: Biên bản ghi nhận kết quả **Không đạt**, hệ thống tự động tạo công việc sửa lại tương ứng, giữ phiếu dịch vụ ở trạng thái **Đang sửa chữa** và khóa bước chuyển sang thanh toán.<br>Thất bại: Hệ thống thông báo lỗi, kết quả kiểm định không được lưu. |
+| **Luồng cơ bản**   | 1. Cố vấn dịch vụ hoặc nhân viên kiểm tra chất lượng mở phiếu dịch vụ và chọn mục **Kiểm tra chất lượng**.<br>2. Hệ thống kiểm tra tiến độ thi công của phương tiện: xác nhận 100% công việc sửa chữa ban đầu đã hoàn thành và hiển thị danh sách các tiêu chí kiểm định kỹ thuật chuẩn hóa (An toàn phanh và lái; Động cơ và vận hành; Hệ thống điện và đèn; Khung gầm và lốp xe; Chạy thử thực tế trên đường; Vệ sinh xe trước khi giao).<br>3. Người kiểm tra tiến hành kiểm tra thực tế xe và chọn kết quả **Đạt** cho từng tiêu chí (hoặc nhấn **Đánh dấu tất cả đạt** nếu xe đã qua chạy thử hoàn hảo), kèm ghi chú nghiệm thu thực tế.<br>4. Người kiểm tra nhấn **Xác nhận kết quả kiểm định**.<br>5. Hệ thống ghi nhận biên bản kiểm định với kết quả **Đạt** 100% và mở khóa tính năng chuyển sang thanh toán.<br>6. Cố vấn dịch vụ nhấn **Yêu cầu tính tiền**.<br>7. Hệ thống chuyển trạng thái phiếu dịch vụ sang **Chờ thanh toán**, gửi thông báo cho bộ phận thu ngân chuẩn bị lập hóa đơn, đồng thời cấp giấy chứng nhận kiểm định chất lượng điện tử để khách hàng có thể tra cứu và xem trực tiếp trên ứng dụng. |
+| **Luồng thay thế** | **[Phát hiện lỗi kỹ thuật – Kiểm định không đạt và sửa lại]** Tại bước 3, nếu phát hiện có hạng mục kỹ thuật chưa đạt yêu cầu:<br>3a. Người kiểm tra chọn kết quả **Không đạt** tại tiêu chí tương ứng và chọn mức độ nghiêm trọng (Nghiêm trọng, Nặng, hoặc Nhẹ).<br>3b. Người kiểm tra nhập mô tả chi tiết lỗi, hướng dẫn kỹ thuật cần khắc phục và chọn kỹ thuật viên chịu trách nhiệm sửa lại.<br>3c. Người kiểm tra nhấn **Xác nhận kiểm định và yêu cầu sửa lại**.<br>3d. Hệ thống lưu kết quả kiểm định là **Không đạt**, tự động tạo công việc sửa lại tương ứng (tránh tạo trùng lặp nếu công việc sửa lại cho lỗi này đã được tạo trước đó), giữ phiếu dịch vụ ở trạng thái **Đang sửa chữa** và khóa chặt nút yêu cầu tính tiền.<br>3e. Kỹ thuật viên nhận thông báo, tiến hành khắc phục lỗi theo đúng hướng dẫn và xác nhận hoàn thành công việc sửa lại.<br>3f. Người kiểm tra mở lại mục Kiểm tra chất lượng để thẩm định lại các tiêu chí lỗi. Nếu đạt chuẩn, tiếp tục thực hiện từ bước 4 của luồng cơ bản. |
+| **Luồng ngoại lệ** | Tại bước 2, nếu còn công việc thi công chưa hoàn thành, hệ thống hiển thị cảnh báo và khóa chức năng xác nhận kiểm định chất lượng.<br><br>Tại bước 3, nếu người kiểm tra bỏ sót chưa đánh giá một trong các tiêu chí bắt buộc, hệ thống yêu cầu đánh giá đầy đủ trước khi lưu kết quả.<br><br>Tại bước 6, nếu xe chưa hoàn tất kiểm định chất lượng hoặc còn công việc sửa lại chưa hoàn thành, hệ thống từ chối yêu cầu tính tiền và thông báo lý do phương tiện chưa đủ điều kiện xuất xưởng. |
 
 ---
 
@@ -1088,9 +1082,9 @@
 | **Đối tượng**      | Quản trị viên |
 | **Tiền điều kiện** | Quản trị viên đã đăng nhập vào hệ thống và được cấp quyền thực hiện chức năng này. |
 | **Hậu điều kiện**  | Thành công: Dữ liệu dịch vụ mới được lưu vào hệ thống và hiển thị trong danh sách.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu không được thêm. |
-| **Luồng cơ bản**   | 1. Quản trị viên truy cập màn hình quản lý dịch vụ và chọn **Thêm mới**.<br>2. Hệ thống hiển thị biểu mẫu nhập thông tin dịch vụ.<br>3. Quản trị viên nhập đầy đủ các thông tin bắt buộc và các thông tin tùy chọn khác.<br>4. Quản trị viên nhấn **Lưu** hoặc **Xác nhận**.<br>5. Hệ thống kiểm tra tính hợp lệ của dữ liệu và đảm bảo không có sự trùng lặp (nếu có yêu cầu).<br>6. Hệ thống lưu dữ liệu dịch vụ mới, hiển thị thông báo thành công và cập nhật lại danh sách. |
+| **Luồng cơ bản**   | 1. Quản trị viên truy cập màn hình quản lý dịch vụ và chọn **Thêm mới**.<br>2. Hệ thống hiển thị biểu mẫu nhập thông tin dịch vụ.<br>3. Quản trị viên nhập tên, mô tả dịch vụ, chọn danh mục và chọn **kiểu tính giá** (Giá cố định / Theo kích thước xe / Theo nhân công và phụ tùng thực tế).<br>4. Hệ thống hiển thị trường nhập giá tương ứng với kiểu tính giá đã chọn. Quản trị viên nhập mức giá.<br>5. Quản trị viên nhấn **Lưu** hoặc **Xác nhận**.<br>6. Hệ thống kiểm tra tính hợp lệ của dữ liệu và đảm bảo không có sự trùng lặp (nếu có yêu cầu).<br>7. Hệ thống lưu dữ liệu dịch vụ mới, hiển thị thông báo thành công và cập nhật lại danh sách. |
 | **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình nhập liệu, quản trị viên chọn **Hủy**:<br>Hệ thống đóng biểu mẫu và quay lại màn hình trước đó mà không lưu thay đổi dữ liệu. |
-| **Luồng ngoại lệ** | Tại bước 5, nếu dữ liệu không hợp lệ, thiếu thông tin bắt buộc, hoặc vi phạm ràng buộc dữ liệu (ví dụ: trùng mã), hệ thống hiển thị thông báo lỗi chi tiết tại các trường tương ứng. Use case quay lại bước 3. |
+| **Luồng ngoại lệ** | Tại bước 6, nếu dữ liệu không hợp lệ, thiếu thông tin bắt buộc (tên, kiểu tính giá, mức giá), hoặc vi phạm ràng buộc dữ liệu (ví dụ: trùng tên), hệ thống hiển thị thông báo lỗi chi tiết tại các trường tương ứng. Use case quay lại bước 3. |
 
 ---
 
@@ -1122,9 +1116,9 @@
 | **Đối tượng**      | Quản trị viên |
 | **Tiền điều kiện** | Quản trị viên đã đăng nhập, có quyền cập nhật và bản ghi dịch vụ cần chỉnh sửa đang tồn tại trong hệ thống. |
 | **Hậu điều kiện**  | Thành công: Thông tin mới của dịch vụ được lưu và cập nhật trong hệ thống.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu được giữ nguyên trạng thái cũ. |
-| **Luồng cơ bản**   | 1. Quản trị viên truy cập màn hình quản lý và mở chi tiết bản ghi dịch vụ cần chỉnh sửa.<br>2. Quản trị viên chọn **Cập nhật** hoặc **Chỉnh sửa**.<br>3. Hệ thống hiển thị biểu mẫu với các thông tin hiện tại của bản ghi.<br>4. Quản trị viên thay đổi các trường thông tin cần thiết.<br>5. Quản trị viên nhấn **Lưu** hoặc **Xác nhận**.<br>6. Hệ thống kiểm tra tính hợp lệ của dữ liệu mới.<br>7. Hệ thống lưu thay đổi, hiển thị thông báo cập nhật thành công và hiển thị lại thông tin đã được làm mới. |
+| **Luồng cơ bản**   | 1. Quản trị viên truy cập màn hình quản lý và mở chi tiết bản ghi dịch vụ cần chỉnh sửa.<br>2. Quản trị viên chọn **Cập nhật** hoặc **Chỉnh sửa**.<br>3. Hệ thống hiển thị biểu mẫu với các thông tin hiện tại của bản ghi.<br>4. Quản trị viên thay đổi các trường thông tin cần thiết, bao gồm tên, mô tả, danh mục, kiểu tính giá và mức giá tương ứng.<br>5. Quản trị viên nhấn **Lưu** hoặc **Xác nhận**.<br>6. Hệ thống kiểm tra tính hợp lệ của dữ liệu mới.<br>7. Hệ thống lưu thay đổi, hiển thị thông báo cập nhật thành công và hiển thị lại thông tin đã được làm mới. |
 | **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình nhập liệu, quản trị viên chọn **Hủy**:<br>Hệ thống đóng biểu mẫu và quay lại màn hình trước đó mà không lưu thay đổi dữ liệu. |
-| **Luồng ngoại lệ** | Tại bước 6, nếu dữ liệu không hợp lệ hoặc vi phạm ràng buộc hệ thống (ví dụ: trùng mã), hệ thống hiển thị thông báo lỗi tương ứng và yêu cầu chỉnh sửa lại. Use case quay lại bước 4.<br><br>Tại bước 7, nếu bản ghi đã bị người dùng khác thay đổi (conflict) hoặc xóa trước đó, hệ thống thông báo lỗi đồng bộ dữ liệu. |
+| **Luồng ngoại lệ** | Tại bước 6, nếu dữ liệu không hợp lệ hoặc vi phạm ràng buộc hệ thống (ví dụ: trùng tên), hệ thống hiển thị thông báo lỗi tương ứng và yêu cầu chỉnh sửa lại. Use case quay lại bước 4.<br><br>Tại bước 7, nếu bản ghi đã bị người dùng khác thay đổi hoặc xóa trước đó, hệ thống thông báo lỗi và yêu cầu tải lại dữ liệu. |
 
 ---
 
@@ -1197,13 +1191,13 @@
 | **Mã Use case**    | UC-69 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xóa danh mục dịch vụ (Delete Service Category) |
-| **Mô tả**          | Quản trị viên xóa hoặc vô hiệu hóa danh mục dịch vụ khi không còn sử dụng. |
+| **Mô tả**          | Quản trị viên xóa danh mục dịch vụ khi không còn nhu cầu sử dụng. Nếu danh mục chưa có dịch vụ nào phụ thuộc, hệ thống sẽ xóa hẳn. Nếu đã có dịch vụ phụ thuộc, hệ thống sẽ vô hiệu hóa danh mục thay vì xóa để bảo toàn dữ liệu liên quan. |
 | **Đối tượng**      | Quản trị viên (Administrator) |
-| **Tiền điều kiện** | Danh mục dịch vụ tồn tại. |
-| **Hậu điều kiện**  | Thành công: Danh mục bị vô hiệu hóa hoặc xóa.<br>Thất bại: Hệ thống báo lỗi nếu có ràng buộc dữ liệu. |
-| **Luồng cơ bản**   | 1. Quản trị viên chọn danh mục cần xóa.<br>2. Quản trị viên chọn hành động **Xóa**.<br>3. Hệ thống yêu cầu xác nhận.<br>4. Quản trị viên nhấn **Xác nhận**.<br>5. Hệ thống kiểm tra ràng buộc (nếu danh mục đã có dịch vụ phụ thuộc thì không cho phép xóa cứng).<br>6. Hệ thống thực hiện xóa mềm (chuyển is_active = false) và cập nhật danh sách. |
-| **Luồng thay thế** | **[Hủy thao tác]** Tại bước 3, chọn **Hủy**: Hủy bỏ thao tác xóa. |
-| **Luồng ngoại lệ** | Tại bước 5, nếu có ràng buộc dữ liệu, hệ thống từ chối và yêu cầu gỡ bỏ dịch vụ thuộc danh mục trước. |
+| **Tiền điều kiện** | Quản trị viên đã đăng nhập và danh mục dịch vụ cần xử lý đang tồn tại trong hệ thống. |
+| **Hậu điều kiện**  | Thành công: Danh mục được xóa hẳn hoặc chuyển sang trạng thái **Ngừng hoạt động** tùy theo điều kiện.<br>Thất bại: Hệ thống thông báo lỗi, danh mục được giữ nguyên. |
+| **Luồng cơ bản**   | 1. Quản trị viên chọn danh mục cần xóa.<br>2. Quản trị viên chọn hành động **Xóa**.<br>3. Hệ thống hiển thị hộp thoại cảnh báo và yêu cầu xác nhận thao tác.<br>4. Quản trị viên nhấn **Xác nhận**.<br>5. Hệ thống kiểm tra xem danh mục đã có dịch vụ nào phụ thuộc chưa.<br>6. **Nếu chưa có dịch vụ phụ thuộc:** Hệ thống xóa hẳn danh mục khỏi hệ thống, hiển thị thông báo thành công và cập nhật lại danh sách.<br>6a. **Nếu đã có dịch vụ phụ thuộc:** Hệ thống chuyển danh mục sang trạng thái **Ngừng hoạt động**, hiển thị thông báo giải thích và cập nhật lại danh sách. |
+| **Luồng thay thế** | **[Hủy thao tác]** Tại bước 3, quản trị viên chọn **Hủy**:<br>3a. Hệ thống đóng hộp thoại cảnh báo và hủy bỏ thao tác xóa, giữ nguyên dữ liệu. |
+| **Luồng ngoại lệ** | Tại bước 6a, nếu danh mục đã ở trạng thái **Ngừng hoạt động** trước đó và vẫn còn dịch vụ phụ thuộc, hệ thống hiển thị thông báo lỗi giải thích rằng danh mục không thể xóa do còn dịch vụ đang sử dụng. |
 
 ---
 
@@ -1356,3 +1350,18 @@
 | **Luồng cơ bản**   | 1. Đến chu kỳ định kỳ (ví dụ mỗi giờ 1 lần), hệ thống tự động kích hoạt Job nhắc hẹn.<br>2. Hệ thống tìm kiếm các lịch hẹn thỏa mãn điều kiện thời gian (còn 23.5h - 24.5h nữa là đến giờ hẹn).<br>3. Hệ thống tạo nội dung email nhắc nhở (thời gian, ngày tháng, biển số xe).<br>4. Hệ thống gọi dịch vụ gửi email để gửi thư cho khách hàng.<br>5. Hệ thống ghi nhận log kết quả gửi (Thành công/Thất bại). |
 | **Luồng thay thế** | Không có. |
 | **Luồng ngoại lệ** | Tại bước 4, nếu dịch vụ SMTP/Email lỗi mạng hoặc từ chối kết nối, hệ thống sẽ ghi log lỗi và tiếp tục xử lý các lịch hẹn tiếp theo (bỏ qua lịch bị lỗi). |
+
+---
+
+## UC-79 – Xem lịch sử sửa chữa (View Repair History)
+
+| **Mã Use case**    | UC-79 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xem lịch sử sửa chữa (View Repair History) |
+| **Mô tả**          | Khách hàng tra cứu sổ bảo dưỡng điện tử và lịch sử sửa chữa của các phương tiện thuộc sở hữu của mình đã hoàn tất chu trình dịch vụ hoặc đã hủy. Khách hàng có thể lọc theo phương tiện, khoảng thời gian, trạng thái hồ sơ, xem chi tiết kết quả sửa chữa, kiểm định chất lượng, chính sách bảo hành và tải xuống Biên bản bàn giao xe hoặc Hóa đơn điện tử dưới dạng PDF. |
+| **Đối tượng**      | Khách hàng (Customer) |
+| **Tiền điều kiện** | Khách hàng đã đăng nhập vào hệ thống. |
+| **Hậu điều kiện**  | Thành công: Danh sách lịch sử sửa chữa và chi tiết sổ bảo dưỡng điện tử được hiển thị chính xác theo yêu cầu; khách hàng tải được chứng từ PDF (nếu có).<br>Thất bại: Hệ thống thông báo lỗi nếu không thể tải dữ liệu hoặc hồ sơ không tồn tại. |
+| **Luồng cơ bản**   | 1. Khách hàng truy cập mục **Lịch sử sửa chữa** (Sổ bảo dưỡng & Lịch sử sửa chữa).<br>2. Hệ thống tải và hiển thị thống kê tổng quan (tổng lượt hoàn tất, tổng chi phí đã quyết toán, lần xuất xưởng gần nhất) cùng danh sách các hồ sơ sửa chữa ở trạng thái **Hoàn tất & Lưu trữ**, **Đã giao xe** hoặc **Đã hủy dịch vụ**.<br>3. Khách hàng có thể tìm kiếm nhanh theo mã phiếu, biển số, tên dịch vụ hoặc lọc theo phương tiện, trạng thái và khoảng thời gian (Từ ngày – Đến ngày).<br>4. Hệ thống cập nhật lại danh sách hồ sơ theo tiêu chí tìm kiếm và bộ lọc đã chọn.<br>5. Khách hàng nhấn **Xem sổ bảo dưỡng** trên một hồ sơ cụ thể.<br>6. Hệ thống hiển thị cửa sổ chi tiết **Sổ bảo dưỡng điện tử** gồm 4 mục: **Tổng quan & Tiếp nhận** (tình trạng ban đầu, số km lúc vào, yêu cầu của khách), **Hạng mục & Phụ tùng** (danh sách dịch vụ đã thực hiện), **Kiểm định QC & Tiến trình** (kết quả nghiệm thu chất lượng và mốc thời gian), và **Bàn giao & Bảo hành** (số km xuất xưởng, thời gian bàn giao, chính sách bảo hành). |
+| **Luồng thay thế** | **[Tải chứng từ PDF]** Tại danh sách lịch sử (bước 2) hoặc trong cửa sổ chi tiết sổ bảo dưỡng (bước 6):<br>6a. Khách hàng nhấn **Biên bản bàn giao (PDF)** hoặc **Hóa đơn VAT**.<br>6b. Hệ thống trích xuất và tải xuống tệp PDF tương ứng về thiết bị của khách hàng.<br><br>**[Xóa bộ lọc]** Tại bước 3, khách hàng nhấn **Xóa bộ lọc**:<br>3a. Hệ thống đặt lại toàn bộ điều kiện lọc và hiển thị lại danh sách lịch sử sửa chữa mặc định. |
+| **Luồng ngoại lệ** | Tại bước 2 hoặc 4, nếu khách hàng chưa có lịch sử sửa chữa hoặc không có hồ sơ nào khớp với điều kiện lọc, hệ thống hiển thị thông báo "Không tìm thấy hồ sơ nào".<br><br>Tại bước 6, nếu hồ sơ không tồn tại hoặc không thuộc quyền sở hữu của khách hàng, hệ thống từ chối truy cập và hiển thị thông báo lỗi. |
