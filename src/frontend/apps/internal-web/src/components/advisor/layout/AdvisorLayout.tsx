@@ -5,9 +5,9 @@ import AdvisorTopNav from './AdvisorTopNav';
 
 export default function AdvisorLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-surface text-on-surface font-body-md text-body-md min-h-screen flex flex-col antialiased">
+    <div className="bg-[#f2f4f8] text-zinc-900 font-body-md text-body-md min-h-screen flex flex-col antialiased overflow-x-clip">
       <AdvisorTopNav />
-      <main className="mt-[56px] flex-1 bg-surface flex flex-col">
+      <main className="md:ml-[76px] flex-1 bg-[#f2f4f8] flex flex-col pb-20 md:pb-6">
         {children}
       </main>
     </div>

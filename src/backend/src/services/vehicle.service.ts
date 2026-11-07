@@ -12,6 +12,7 @@ export interface CreateVehicleDto {
 }
 
 export interface UpdateVehicleDto {
+  licensePlate?: string;
   make?: string;
   model?: string;
   year?: number;
@@ -87,19 +88,20 @@ export class VehicleService {
   /**
    * UC-09: Cập nhật thông tin xe (chỉ chủ xe mới được sửa)
    */
-  async updateVehicle(vehicleId: number, customerId: number, data: UpdateVehicleDto) {
-    // Kiểm tra xe tồn tại và thuộc về customer
+  async updateVehicle(vehicleId: number, customerId: number, data: UpdateVehicleDto, isStaff = false) {
+    // Kiểm tra xe tồn tại và thuộc về customer (nếu không phải nhân viên)
     const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
     if (!vehicle) {
       throw new Error('Không tìm thấy xe.');
     }
-    if (vehicle.customer_id !== customerId) {
+    if (!isStaff && vehicle.customer_id !== customerId) {
       throw new Error('Bạn không có quyền chỉnh sửa xe này.');
     }
 
     const updated = await prisma.vehicle.update({
       where: { id: vehicleId },
       data: {
+        license_plate: data.licensePlate !== undefined ? data.licensePlate : undefined,
         make: data.make !== undefined ? data.make : undefined,
         model: data.model !== undefined ? data.model : undefined,
         year: data.year !== undefined ? data.year : undefined,

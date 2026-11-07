@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useState } from 'react';
 import TabCheckinInspection from './tabs/TabCheckinInspection';
 import TabJob from './tabs/TabJob';
@@ -6,6 +7,7 @@ import TabParts from './tabs/TabParts';
 import TabQuotation from './tabs/TabQuotation';
 import TabQC from './tabs/TabQC';
 import TabRelease from './tabs/TabRelease';
+import { WorkOrder } from '@/lib/api/work-order.api';
 
 const TABS = [
   { id: 'checkin', number: 1, label: 'Tiếp nhận & Kiểm tra', component: TabCheckinInspection },
@@ -16,51 +18,62 @@ const TABS = [
   { id: 'release', number: 6, label: 'Giao xe', component: TabRelease },
 ];
 
-import { WorkOrder } from '@/lib/api/work-order.api';
-
 interface WOTabContainerProps {
   workOrder: WorkOrder;
   refetchWO: () => void;
   isReadOnly?: boolean;
 }
 
-export default function WOTabContainer({ workOrder, refetchWO, isReadOnly = false }: WOTabContainerProps) {
+export default function WOTabContainer({
+  workOrder,
+  refetchWO,
+  isReadOnly = false,
+}: WOTabContainerProps) {
   const [activeTab, setActiveTab] = useState('checkin');
 
-  const isEffectiveReadOnly = isReadOnly || ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '');
-  const ActiveComponent = TABS.find((t) => t.id === activeTab)?.component || TabCheckinInspection;
+  const isEffectiveReadOnly =
+    isReadOnly || ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '');
+  const ActiveComponent =
+    TABS.find((t) => t.id === activeTab)?.component || TabCheckinInspection;
 
   return (
-    <div className="flex flex-col w-full h-full">
-      {/* Tab Navigation */}
-      <div className="flex items-center gap-1 border-b border-outline-variant/60 overflow-x-auto no-scrollbar pt-2 shrink-0">
+    <div className="flex flex-col w-full">
+      {/* Segmented Pill Tab Navigation (Touch-First 44px Targets) */}
+      <div className="bg-[#f2f4f8] p-1.5 rounded-2xl flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
+              type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 border-b-2 font-semibold transition-colors whitespace-nowrap
-                ${isActive 
-                  ? 'border-primary text-primary' 
-                  : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-t-lg'
-                }
-              `}
+              className={`flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl font-bold text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer ${
+                isActive
+                  ? 'bg-[#0050cd] text-white shadow-sm'
+                  : 'text-slate-600 hover:text-zinc-900 hover:bg-white/60'
+              }`}
             >
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                isActive ? 'bg-primary text-white' : 'bg-surface-container-highest text-on-surface-variant'
-              }`}>
+              <span
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-mono font-extrabold ${
+                  isActive ? 'bg-white text-[#0050cd]' : 'bg-white text-slate-600'
+                }`}
+              >
                 {tab.number}
               </span>
-              {tab.label}
+              <span>{tab.label}</span>
             </button>
           );
         })}
       </div>
 
       {/* Tab Content Area */}
-      <div className="py-6">
-        <ActiveComponent workOrder={workOrder} refetchWO={refetchWO} isReadOnly={isEffectiveReadOnly} setActiveTab={setActiveTab} />
+      <div className="pt-5">
+        <ActiveComponent
+          workOrder={workOrder}
+          refetchWO={refetchWO}
+          isReadOnly={isEffectiveReadOnly}
+          setActiveTab={setActiveTab}
+        />
       </div>
     </div>
   );

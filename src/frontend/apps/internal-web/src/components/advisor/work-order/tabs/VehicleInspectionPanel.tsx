@@ -66,7 +66,7 @@ async function compressImage(file: File, maxWidth = 1600, quality = 0.82): Promi
 
 export default function VehicleInspectionPanel({
   workOrder,
-  isReadOnly = false,
+  isReadOnly: propIsReadOnly = false,
   refetchWO,
 }: VehicleInspectionPanelProps) {
   const [selectedTool, setSelectedTool] = useState<MarkerType | null>(null);
@@ -74,6 +74,22 @@ export default function VehicleInspectionPanel({
   const [findings, setFindings] = useState<InspectionFinding[]>([]);
   const [loading, setLoading] = useState(false);
   const [highlightedFindingId, setHighlightedFindingId] = useState<number | null>(null);
+
+  // Quy định rõ điều kiện kiểm định xe (chỉ có thể đánh dấu vết lỗi lúc Tiếp nhận / Lập kế hoạch)
+  // Khi báo giá đã được duyệt (APPROVED), xe đang thi công (IN_PROGRESS), hoặc đã sang thanh toán/chờ giao xe/đóng:
+  // Toàn bộ sơ đồ xe và danh sách kiểm định chuyển sang chế độ CHỈ ĐỌC (Read-only)
+  const isInspectionLocked = [
+    'APPROVED',
+    'IN_PROGRESS',
+    'BILLING_REQUESTED',
+    'FINANCIAL_CLEARED',
+    'READY_FOR_DELIVERY',
+    'RELEASED',
+    'CLOSED',
+    'CANCELLED',
+  ].includes(workOrder?.status || '');
+
+  const isReadOnly = propIsReadOnly || isInspectionLocked;
 
   // Uploading state
   const [uploadingFindingId, setUploadingFindingId] = useState<number | null>(null);
@@ -427,10 +443,10 @@ export default function VehicleInspectionPanel({
 
       <div className="flex flex-wrap items-center justify-between text-[11px] text-on-surface mb-1 gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-on-surface-variant font-medium">Người kiểm tra:</span>
+          <span className="text-slate-600 font-medium">Người kiểm tra:</span>
           {inspectors.length === 1 ? (
             <div className="flex items-center gap-1.5">
-              <span className="w-5 h-5 bg-[#20B2AA] text-white rounded flex items-center justify-center font-bold text-[10px]">
+              <span className="w-5 h-5 bg-[#0c2340] text-white rounded-full flex items-center justify-center font-bold text-xs shadow-2xs">
                 {inspectors[0].name[0].toUpperCase()}
               </span>
               <span className="font-semibold">{inspectors[0].name}</span>
@@ -441,7 +457,7 @@ export default function VehicleInspectionPanel({
                 {inspectors.slice(0, 3).map((insp, idx) => (
                   <span
                     key={insp.id}
-                    className="w-5 h-5 bg-[#20B2AA] text-white rounded-full flex items-center justify-center font-bold text-[9px] ring-2 ring-white shadow-xs"
+                    className="w-5 h-5 bg-[#0c2340] text-white rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-white shadow-xs"
                     title={insp.name}
                   >
                     {insp.name[0].toUpperCase()}
@@ -458,51 +474,52 @@ export default function VehicleInspectionPanel({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-on-surface-variant font-medium">Cập nhật lần cuối:</span>
+          <span className="text-slate-600 font-medium">Cập nhật lần cuối:</span>
           <span className="font-medium text-on-surface">
             {lastModifiedTime}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-on-surface-variant font-medium">Số điểm đánh dấu:</span>
+          <span className="text-slate-600 font-medium">Số điểm đánh dấu:</span>
           <span className="font-bold text-primary">
             {findings.length} điểm
           </span>
         </div>
       </div>
 
-      <div className="bg-[#F8F9FA] rounded-md p-2.5 flex items-center gap-3 text-[11px] text-on-surface-variant mb-1 border border-outline-variant/40">
-        <div className="w-5 h-5 bg-[#2563EB] text-white flex items-center justify-center rounded-sm shrink-0">
-          <span className="material-symbols-outlined text-[14px]">touch_app</span>
-        </div>
-        <p>
-          Chọn một loại dấu vết hư hỏng trên thanh công cụ, sau đó nhấp vào vị trí bộ phận tương ứng trên sơ đồ xe để ghi nhận. Mỗi điểm đánh dấu có thể ghi chú chi tiết và đính kèm ảnh chụp thực tế.
-        </p>
-      </div>
+
 
       {/* Toolbar */}
       <div className="flex items-center justify-between pb-2 flex-wrap gap-2">
         <div className="flex items-center gap-2 flex-wrap">
-          {tools.map((tool) => {
-            const isSelected = selectedTool === tool.type;
-            return (
-              <button
-                key={tool.type}
-                onClick={() => !isReadOnly && setSelectedTool(isSelected ? null : tool.type)}
-                disabled={isReadOnly}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded border text-[11px] font-bold transition-all shadow-sm ${
-                  isSelected
-                    ? 'border-[#2563EB] text-[#000080] bg-white ring-2 ring-[#2563EB]/30'
-                    : 'border-outline-variant text-on-surface-variant bg-white hover:bg-surface-container-low'
-                } ${isReadOnly ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
-              >
-                <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] text-white ${tool.bgColor}`}>
-                  {tool.icon}
-                </span>
-                {tool.label}
-              </button>
-            );
-          })}
+          {isReadOnly ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold">
+              <span className="material-symbols-outlined text-[16px] text-slate-500">lock</span>
+              <span>
+                Đã khóa sơ đồ kiểm tra ({workOrder?.status === 'FINANCIAL_CLEARED' ? 'Chờ giao xe' : workOrder?.status === 'APPROVED' ? 'Đã duyệt báo giá' : workOrder?.status === 'IN_PROGRESS' ? 'Đang sửa chữa' : workOrder?.status === 'BILLING_REQUESTED' ? 'Chờ thanh toán' : 'Chỉ xem'})
+              </span>
+            </div>
+          ) : (
+            tools.map((tool) => {
+              const isSelected = selectedTool === tool.type;
+              return (
+                <button
+                  key={tool.type}
+                  onClick={() => setSelectedTool(isSelected ? null : tool.type)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded border text-[11px] font-bold transition-all shadow-sm cursor-pointer ${
+                    isSelected
+                      ? 'border-[#2563EB] text-[#000080] bg-white ring-2 ring-[#2563EB]/30'
+                      : 'border-outline-variant text-on-surface-variant bg-white hover:bg-surface-container-low'
+                  }`}
+                >
+                  <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] text-white ${tool.bgColor}`}>
+                    {tool.icon}
+                  </span>
+                  {tool.label}
+                </button>
+              );
+            })
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -536,19 +553,35 @@ export default function VehicleInspectionPanel({
         <div className="w-full lg:w-1/2 flex flex-col">
           <InteractiveCarSVG
             findings={svgFindings}
-            selectedTool={selectedTool}
+            selectedTool={isReadOnly ? null : selectedTool}
             onAddFinding={handleAddFinding}
             highlightedFindingId={highlightedFindingId}
             onSelectFinding={(id) => setHighlightedFindingId(Number(id))}
+            isReadOnly={isReadOnly}
           />
 
-          <div className="mt-2.5 flex flex-wrap gap-3 text-[10px] text-on-surface-variant font-medium">
-            <span className="font-bold">Chú thích:</span>
-            <span className="text-[#B22222]"><strong className="text-black">X</strong> Hư hỏng</span>
-            <span className="text-[#B8860B]"><strong className="text-black">R</strong> Rỉ sét</span>
-            <span className="text-[#1E40AF]"><strong className="text-black">M</strong> Thiếu</span>
-            <span className="text-[#4682B4]"><strong className="text-black">D</strong> Móp méo</span>
-            <span className="text-[#708090]"><strong className="text-black">S</strong> Trầy xước</span>
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-700 font-semibold">
+            <span className="font-bold text-zinc-900">Chú thích:</span>
+            <span className="inline-flex items-center gap-1.5 text-[#B22222] font-bold">
+              <span className="w-4 h-4 rounded-full bg-[#B22222] text-white flex items-center justify-center text-[10px]">X</span>
+              Hư hỏng
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[#B8860B] font-bold">
+              <span className="w-4 h-4 rounded-full bg-[#B8860B] text-white flex items-center justify-center text-[10px]">R</span>
+              Rỉ sét
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[#1E40AF] font-bold">
+              <span className="w-4 h-4 rounded-full bg-[#1E40AF] text-white flex items-center justify-center text-[10px]">M</span>
+              Thiếu
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[#0284c7] font-bold">
+              <span className="w-4 h-4 rounded-full bg-[#0284c7] text-white flex items-center justify-center text-[10px]">D</span>
+              Móp méo
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[#475569] font-bold">
+              <span className="w-4 h-4 rounded-full bg-[#475569] text-white flex items-center justify-center text-[10px]">S</span>
+              Trầy xước
+            </span>
           </div>
         </div>
 
@@ -561,14 +594,14 @@ export default function VehicleInspectionPanel({
             </span>
           </div>
 
-          <div className="grid grid-cols-[30px_85px_110px_1fr_200px_46px_28px] gap-2 pb-2 border-b border-outline-variant/60 text-[10px] text-on-surface-variant font-bold uppercase tracking-wider items-center">
-            <div className="text-center">#</div>
-            <div>Loại dấu vết</div>
-            <div>Vị trí bộ phận</div>
-            <div>Ghi chú chi tiết</div>
-            <div className="text-center">Công việc</div>
-            <div className="text-center">Ảnh</div>
-            <div></div>
+                    <div className={`grid ${isReadOnly ? 'grid-cols-[28px_85px_130px_1fr_150px_40px]' : 'grid-cols-[28px_80px_115px_1fr_140px_36px_28px]'} gap-2 pb-2.5 border-b border-slate-200 text-xs text-slate-500 font-bold items-center`}>
+            <div className="text-center font-mono">#</div>
+            <div className="whitespace-nowrap">Loại dấu vết</div>
+            <div className="whitespace-nowrap">Vị trí bộ phận</div>
+            <div className="whitespace-nowrap">Ghi chú</div>
+            <div className="text-center whitespace-nowrap">Công việc</div>
+            <div className="text-center whitespace-nowrap">Ảnh</div>
+            {!isReadOnly && <div></div>}
           </div>
 
           <div className="flex-1 overflow-y-auto max-h-[460px] pr-1 styled-scrollbar flex flex-col">
@@ -626,11 +659,11 @@ export default function VehicleInspectionPanel({
                     key={finding.id}
                     onMouseEnter={() => setHighlightedFindingId(finding.id)}
                     onMouseLeave={() => setHighlightedFindingId(null)}
-                    className={`grid grid-cols-[30px_85px_110px_1fr_200px_46px_28px] gap-2 items-center py-2.5 border-b border-outline-variant/30 group transition-colors rounded ${
-                      isHighlighted ? 'bg-primary/5' : 'hover:bg-surface-container-lowest'
+                    className={`grid ${isReadOnly ? 'grid-cols-[28px_85px_130px_1fr_150px_40px]' : 'grid-cols-[28px_80px_115px_1fr_140px_36px_28px]'} gap-2 items-center py-2.5 border-b border-slate-100 group transition-colors rounded ${
+                      isHighlighted ? 'bg-primary/5' : 'hover:bg-slate-50/60'
                     }`}
                   >
-                    <div className="text-[#4682B4] font-bold text-[11px] text-center">
+                    <div className="text-slate-500 font-mono font-bold text-xs text-center">
                       {index + 1}
                     </div>
 
@@ -639,12 +672,12 @@ export default function VehicleInspectionPanel({
                         <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-bold ${toolDef?.bgColor}`}>
                           {toolDef?.icon}
                         </span>
-                        <span className={`text-[10px] font-bold ${toolDef?.color}`}>{toolDef?.label}</span>
+                        <span className={`text-xs font-bold ${toolDef?.color}`}>{toolDef?.label}</span>
                       </div>
                     </div>
 
                     <div className="flex flex-col">
-                      <span className="text-[11px] font-medium text-on-surface leading-snug">
+                      <span className="text-xs font-bold text-zinc-900 leading-snug">
                         {finding.part_name}
                       </span>
                     </div>
@@ -656,10 +689,10 @@ export default function VehicleInspectionPanel({
                           placeholder="Thêm ghi chú..."
                           value={finding.description || ''}
                           onChange={(e) => updateFindingNote(finding.id, e.target.value)}
-                          className="w-full px-2 py-1 text-[11px] border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none placeholder:text-outline bg-white"
+                          className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none placeholder:text-outline bg-white"
                         />
                       ) : (
-                        <p className="text-[11px] text-on-surface-variant italic">
+                        <p className="text-xs text-slate-600 italic">
                           {finding.description || '—'}
                         </p>
                       )}
@@ -677,16 +710,16 @@ export default function VehicleInspectionPanel({
                                 setSelectedFindingForJobModal(finding);
                                 setIsJobModalOpen(true);
                               }}
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-medium max-w-full text-left transition-colors cursor-pointer active:scale-98"
+                              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 text-xs font-semibold max-w-full text-left transition-colors cursor-pointer active:scale-98"
                               title={`Nhấn để xem thông tin chi tiết công việc: ${job.name}`}
                             >
-                              <span className="material-symbols-outlined text-[11px] text-emerald-600 shrink-0">
+                              <span className="material-symbols-outlined text-[12px] text-emerald-600 shrink-0">
                                 build_circle
                               </span>
                               <span className="truncate flex-1 font-semibold">{job.name}</span>
                               {job.status && (
-                                <span className="text-[8px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold shrink-0">
-                                  {job.status === 'PLANNED' ? 'Mới' : job.status === 'IN_PROGRESS' ? 'Đang làm' : job.status}
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold shrink-0">
+                                  {job.status === 'PLANNED' ? 'Mới' : job.status === 'IN_PROGRESS' ? 'Đang làm' : job.status === 'PASSED' ? 'Đạt KCS' : job.status}
                                 </span>
                               )}
                               {!isReadOnly && !isApprovedOrBeyond && (job.status === 'PLANNED' || !job.status) && (
@@ -696,7 +729,7 @@ export default function VehicleInspectionPanel({
                                     e.stopPropagation();
                                     promptDeleteJob(job.id, job.name);
                                   }}
-                                  className="p-0.5 rounded hover:bg-error/20 text-error/60 hover:text-error transition-colors shrink-0"
+                                  className="p-0.5 rounded hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors shrink-0"
                                   title={`Xóa công việc "${job.name}"`}
                                 >
                                   <span className="material-symbols-outlined text-[12px]">close</span>
@@ -712,10 +745,10 @@ export default function VehicleInspectionPanel({
                                 setSelectedJobForModal(null);
                                 setIsJobModalOpen(true);
                               }}
-                              className="inline-flex items-center justify-center gap-1 px-1.5 py-0.5 mt-0.5 rounded border border-dashed border-emerald-400 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 hover:border-emerald-600 text-[9px] font-bold transition-all cursor-pointer active:scale-95 w-full"
+                              className="inline-flex items-center justify-center gap-1 px-2 py-1 mt-1 rounded-md border border-dashed border-emerald-400 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 hover:border-emerald-600 text-xs font-bold transition-all cursor-pointer active:scale-95 whitespace-nowrap w-full"
                               title="Thêm công việc khác trực tiếp cho dấu vết này"
                             >
-                              <span className="material-symbols-outlined text-[11px] text-emerald-600">add_circle</span>
+                              <span className="material-symbols-outlined text-[12px] text-emerald-600">add_circle</span>
                               + Thêm job
                             </button>
                           )}
@@ -728,14 +761,14 @@ export default function VehicleInspectionPanel({
                             setSelectedJobForModal(null);
                             setIsJobModalOpen(true);
                           }}
-                          className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 hover:border-emerald-500 text-[10px] font-bold transition-all shadow-xs active:scale-95 cursor-pointer w-full"
+                          className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 hover:border-emerald-500 text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer whitespace-nowrap w-full"
                           title="Tạo và liên kết công việc trực tiếp cho dấu vết này"
                         >
                           <span className="material-symbols-outlined text-[13px] text-emerald-600">add_circle</span>
                           + Thêm job
                         </button>
                       ) : (
-                        <span className="text-[10px] text-on-surface-variant italic">
+                        <span className="text-xs text-slate-500 italic font-medium">
                           Chưa gắn
                         </span>
                       )}
@@ -769,8 +802,9 @@ export default function VehicleInspectionPanel({
                     </div>
 
                     {/* Remove / Lock button */}
-                    <div className="flex items-center justify-center">
-                      {!isReadOnly && (
+                    {!isReadOnly && (
+                      <div className="flex items-center justify-center">
+                        
                         <button
                           onClick={() => handleRemoveFinding(finding.id)}
                           title={
@@ -788,8 +822,8 @@ export default function VehicleInspectionPanel({
                             {isLinkedToJob ? 'lock' : 'close'}
                           </span>
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -840,7 +874,7 @@ export default function VehicleInspectionPanel({
                           <span className="font-bold text-primary truncate">
                             #{fIndex + 1} - {finding.part_name}
                           </span>
-                          <span className="text-on-surface-variant font-medium">
+                          <span className="text-slate-600 font-medium">
                             {tools.find(t => t.type === finding.marker_type)?.label || finding.marker_type}
                           </span>
                         </div>
@@ -893,7 +927,7 @@ export default function VehicleInspectionPanel({
             {/* Modal Summary Bar */}
             <div className="px-6 py-3 bg-[#F8F9FA] border-b border-outline-variant/40 flex flex-wrap items-center justify-between text-[11px] gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-on-surface-variant font-medium">Người tham gia ({inspectors.length}):</span>
+                <span className="text-slate-600 font-medium">Người tham gia ({inspectors.length}):</span>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {inspectors.map((insp) => (
                     <span
@@ -974,7 +1008,7 @@ export default function VehicleInspectionPanel({
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1.5">
-                                <span className="text-on-surface-variant font-medium">Người ghi nhận:</span>
+                                <span className="text-slate-600 font-medium">Người ghi nhận:</span>
                                 <span className="inline-flex items-center gap-1 font-semibold text-on-surface">
                                   <span className="w-4 h-4 bg-[#20B2AA] text-white rounded-full flex items-center justify-center text-[8px] font-bold">
                                     {creatorName[0]?.toUpperCase()}
@@ -983,7 +1017,7 @@ export default function VehicleInspectionPanel({
                                 </span>
                               </div>
                               <div className="flex items-start gap-1.5">
-                                <span className="text-on-surface-variant font-medium shrink-0">Mô tả chi tiết:</span>
+                                <span className="text-slate-600 font-medium shrink-0">Mô tả chi tiết:</span>
                                 <span className="text-on-surface italic">
                                   {f.description ? `"${f.description}"` : 'Không có ghi chú thêm'}
                                 </span>
@@ -994,7 +1028,7 @@ export default function VehicleInspectionPanel({
                             <div>
                               {f.evidence_urls && f.evidence_urls.length > 0 ? (
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-on-surface-variant font-medium">Ảnh minh chứng:</span>
+                                  <span className="text-slate-600 font-medium">Ảnh minh chứng:</span>
                                   {f.evidence_urls.map((imgUrl, i) => (
                                     <img
                                       key={i}
