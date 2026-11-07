@@ -21,6 +21,7 @@ function mapIntakeToSourceType(intakeType: IntakeType): WorkOrderSourceType {
     WALK_IN: 'WALK_IN',
     TOW_IN: 'TOW_IN',
     APPOINTMENT: 'APPOINTMENT',
+    WARRANTY: 'WARRANTY',
   };
   return mapping[intakeType];
 }
@@ -102,6 +103,7 @@ export class WorkOrderService {
         vehicle_id: intake.vehicle_id,
         advisor_id: advisorId,
         source_type: sourceType,
+        order_type: intake.intake_type === 'WARRANTY' ? 'WARRANTY' : 'NORMAL',
         intake_record_id: intakeRecordId,
         appointment_id: appointmentId,
         status: 'DRAFT',

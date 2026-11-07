@@ -12,11 +12,12 @@
 | **Khách vãng lai (Guest)** | UC-01 → UC-03 | 3 use case |
 | **Khách hàng (Customer)** | UC-04 → UC-16, UC-79 | 14 use case |
 | **Nhân viên quầy dịch vụ (Front Desk Staff)** | UC-17 → UC-28 | 12 use case |
-| **Cố vấn dịch vụ (Service Advisor)** | UC-29 → UC-42 | 14 use case |
+| **Cố vấn dịch vụ** | UC-29 → UC-42 | 14 use case |
 | **Quản lý dịch vụ & Kho (Service Manager)** | UC-43 → UC-53 | 11 use case |
 | **Quản trị viên (Administrator)** | UC-54 → UC-77 | 24 use case |
 | **Hệ thống tự động (Background Jobs)** | UC-78 | 1 use case |
-| **Tổng cộng** | **UC-01 → UC-79** | **79 use case** |
+| **Phân hệ quản lý bảo hành** | UC-80 → UC-86 | 7 use case |
+| **Tổng cộng** | **UC-01 → UC-86** | **86 use case** |
 
 ---
 
@@ -505,239 +506,217 @@
 
 ---
 
-# PHẦN 4 – CỐ VẤN DỊCH VỤ (SERVICE ADVISOR)
+# PHẦN 4 – CỐ VẤN DỊCH VỤ
 
 ---
 
----
-
-## UC-29 – Tạo phiếu công việc (Create Work Order)
+## UC-29 – Tạo phiếu công việc
 
 | **Mã Use case**    | UC-29 |
 | ------------------ | ------ |
-| **Tên Use case**   | Tạo phiếu công việc (Create Work Order) |
-| **Mô tả**          | Cố vấn dịch vụ xem danh sách xe đang chờ xử lý và tạo phiếu công việc – hồ sơ trung tâm theo dõi toàn bộ quá trình sửa chữa / bảo dưỡng – cho từng xe trong hàng đợi. |
-| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Xe đã được nhân viên quầy đưa vào hàng đợi tiếp nhận (từ lịch hẹn đã đến, Walk-in hoặc Tow-in). |
-| **Hậu điều kiện**  | Thành công: Phiếu công việc được tạo và liên kết với xe, khách hàng và nguồn tiếp nhận tương ứng.<br>Thất bại: Hệ thống thông báo lỗi, phiếu không được tạo. |
-| **Luồng cơ bản**   | 1. Cố vấn vào mục **Hàng đợi tiếp nhận** và xem danh sách xe đang chờ.<br>2. Cố vấn chọn một xe trong danh sách.<br>3. Cố vấn nhấn **Tạo phiếu công việc**.<br>4. Hệ thống tạo phiếu công việc mới và liên kết với khách hàng, xe và nguồn tiếp nhận (lịch hẹn / Walk-in / Tow-in). |
-| **Luồng thay thế** | **[Cập nhật thông tin phiếu công việc]** Tại bất kỳ thời điểm nào khi phiếu chưa đóng, cố vấn có thể chọn **Cập nhật thông tin** để chỉnh sửa các trường chung (Biển số xe, Ghi chú, Số km, v.v.). Hệ thống lưu thông tin mới. |
-| **Luồng ngoại lệ** | Tại bước 3, nếu thông tin tiếp nhận không đầy đủ (thiếu khách hàng, thiếu xe hoặc thiếu nguồn tiếp nhận hợp lệ), hệ thống không cho phép tạo phiếu và thông báo thông tin còn thiếu. |
+| **Tên Use case**   | Tạo phiếu công việc |
+| **Mô tả**          | Cố vấn dịch vụ xem danh sách xe đang chờ tiếp nhận tại xưởng và tiến hành tạo phiếu công việc – hồ sơ trung tâm theo dõi toàn bộ chu trình khám xe, báo giá, thi công, kiểm định và bàn giao xe. |
+| **Đối tượng**      | Cố vấn dịch vụ |
+| **Tiền điều kiện** | Xe đã được nhân viên quầy đưa vào hàng đợi tiếp nhận ở trạng thái Chờ tiếp nhận từ nguồn lịch hẹn đã đến, xe vãng lai hoặc xe cứu hộ kéo về xưởng. |
+| **Hậu điều kiện**  | Thành công: Phiếu công việc được tạo ở trạng thái Bản nháp, liên kết chặt chẽ với khách hàng, phương tiện và nguồn tiếp nhận; bản ghi tiếp nhận chuyển sang trạng thái Đã tiếp nhận vào xưởng. Hệ thống tự động chuyển hướng đến màn hình chi tiết phiếu công việc mới.<br>Thất bại: Hệ thống thông báo lỗi, phiếu không được tạo. |
+| **Luồng cơ bản**   | 1. Cố vấn truy cập màn hình **Hàng đợi tiếp nhận** để xem danh sách xe đang chờ.<br>2. Cố vấn có thể nhấp vào dòng xe để mở ngăn chi tiết bên phải hoặc nhấn trực tiếp nút biểu tượng **Tạo phiếu công việc** tại cột thao tác.<br>3. Tại ngăn chi tiết hoặc bảng danh sách, cố vấn nhấn nút **Tạo phiếu công việc ngay**.<br>4. Hệ thống kiểm tra dữ liệu, tạo phiếu công việc mới với mã phiếu tự động (ví dụ: WO26090001), gán cố vấn phụ trách và liên kết thông tin khách hàng, xe và nguồn tiếp nhận.<br>5. Hệ thống hiển thị thông báo: *"Tạo phiếu thành công!"* và tự động chuyển hướng màn hình đến trang chi tiết phiếu công việc. |
+| **Luồng thay thế** | **[Chỉnh sửa thông tin khách hàng & xe]** Tại thanh tiêu đề trên cùng của màn hình chi tiết phiếu công việc bất cứ lúc nào:<br>1a. Cố vấn nhấn nút biểu tượng bút chì (**Sửa thông tin xe**) để mở hộp thoại **Chỉnh sửa thông tin xe** $	o$ Điều chỉnh số khung VIN, màu sơn, năm sản xuất $	o$ Nhấn **Lưu thay đổi** (hoặc **Hủy**).<br>2a. Cố vấn nhấn nút biểu tượng bút chì (**Sửa thông tin khách**) để mở hộp thoại **Chỉnh sửa thông tin khách hàng** $	o$ Điều chỉnh họ tên, số điện thoại, email liên hệ $	o$ Nhấn **Lưu thay đổi** (hoặc **Hủy**).<br><br>**[Xem lại phiếu đã tạo từ hàng đợi]** Đối với xe đã được tạo phiếu (trạng thái Đã tiếp nhận vào xưởng), cố vấn có thể nhấn **Xem phiếu công việc** để mở trực tiếp hồ sơ công việc đang xử lý. |
+| **Luồng ngoại lệ** | Tại bước 3, nếu bản ghi tiếp nhận bị thiếu thông tin bắt buộc (chưa chọn khách hàng hoặc phương tiện), hệ thống từ chối tạo phiếu và hiển thị thông báo lỗi cụ thể. |
 
 ---
 
----
-
-
-## UC-30 – Ghi nhận tình trạng xe (Record Vehicle Condition)
+## UC-30 – Ghi nhận tình trạng xe
 
 | **Mã Use case**    | UC-30 |
 | ------------------ | ------ |
-| **Tên Use case**   | Ghi nhận tình trạng xe (Record Vehicle Condition) |
-| **Mô tả**          | Cố vấn dịch vụ ghi lại tình trạng xe tại thời điểm tiếp nhận: đồng hồ km, mức xăng, vấn đề khách phản ánh, tài sản để trong xe, hư hỏng hiển nhiên quan sát được và hình ảnh minh chứng. |
-| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Phiếu công việc đã được tạo (UC-17). |
-| **Hậu điều kiện**  | Thành công: Thông tin tiếp nhận được lưu và khách hàng được thông báo để xác nhận (UC-09).<br>Thất bại: Hệ thống thông báo lỗi nếu thiếu thông tin bắt buộc. |
-| **Luồng cơ bản**   | 1. Cố vấn mở phiếu công việc và chọn **Ghi nhận tình trạng xe**.<br>2. Cố vấn điền thông tin bắt buộc: số km hiện tại, mức xăng, nội dung phàn nàn / yêu cầu của khách và tình trạng xe quan sát bên ngoài.<br>3. Cố vấn ghi thêm tài sản trong xe nếu có.<br>4. Cố vấn chụp hoặc đính kèm hình ảnh minh chứng tình trạng xe.<br>5. Cố vấn nhấn **Lưu Thông Tin**.<br>6. Hệ thống lưu thông tin và gửi thông báo xác nhận cho khách hàng (UC-09). |
-| **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Tại bước 5, nếu thiếu thông tin bắt buộc (km, xăng, phàn nàn hoặc tình trạng xe), hệ thống từ chối lưu và hiển thị các trường còn thiếu. |
+| **Tên Use case**   | Ghi nhận tình trạng xe |
+| **Mô tả**          | Cố vấn dịch vụ ghi nhận chi tiết hiện trạng xe tại thời điểm bàn giao tiếp nhận vào xưởng: số công-tơ-mét (ODO), mức xăng, các phản ánh/yêu cầu của khách hàng, tình trạng ngoại quan quan sát được, tài sản khách để trên xe và hình ảnh chụp hiện trường. |
+| **Đối tượng**      | Cố vấn dịch vụ |
+| **Tiền điều kiện** | Phiếu công việc đã được tạo (UC-29) và đang ở trạng thái Bản nháp hoặc Đang lập kế hoạch. |
+| **Hậu điều kiện**  | Thành công: Thông tin tiếp nhận được lưu thành công, phiếu công việc hoàn tất bước tiếp nhận ban đầu và chuyển sang trạng thái Đang lập kế hoạch, sẵn sàng cho việc kiểm tra xe và lên kế hoạch dịch vụ.<br>Thất bại: Hệ thống thông báo lỗi nếu thiếu các trường thông tin bắt buộc. |
+| **Luồng cơ bản**   | 1. Cố vấn mở màn hình chi tiết phiếu công việc và truy cập tab **Tiếp nhận & Kiểm tra** (Tab 1).<br>2. Tại khung **TÌNH TRẠNG XE LÚC TIẾP NHẬN**, cố vấn (nhấn **Chỉnh sửa** nếu phiếu đã có dữ liệu trước đó) tiến hành nhập các thông tin:<br>- **Số ODO (km):** Nhập số km hiện tại trên đồng hồ xe.<br>- **Mức nhiên liệu:** Nhấp chọn 1 trong 5 mức xăng chuẩn hóa (**Bình cạn E**, **1/4**, **1/2**, **3/4**, **Đầy bình F**).<br>- **Vấn đề khách phản ánh:** Nhấp chọn các thẻ triệu chứng nhanh hoặc nhấn **+ Thêm phàn nàn** để nhập nội dung khách yêu cầu.<br>- **Tình trạng xe quan sát bên ngoài:** Ghi chú hiện trạng ngoại thất tổng thể.<br>- **Tài sản để trên xe:** Ghi nhận các vật phẩm giá trị khách để lại trong xe (ví dụ: Thẻ từ, USB, Kính râm...).<br>- **Hình ảnh minh chứng:** Nhấp tải lên hoặc chụp các bức ảnh ghi nhận tổng quan góc xe.<br>3. Cố vấn nhấn nút **Lưu Thông Tin**.<br>4. Hệ thống kiểm tra dữ liệu hợp lệ, lưu thông tin tiếp nhận, chuyển trạng thái phiếu sang **Đang lập kế hoạch** và hiển thị thông báo: *"Lưu ghi nhận tình trạng xe thành công"*. |
+| **Luồng thay thế** | **[Hủy thao tác chỉnh sửa]** Cố vấn có thể nhấn nút **Hủy** để khôi phục lại các giá trị ban đầu trước khi lưu. |
+| **Luồng ngoại lệ** | Tại bước 3, nếu số km ODO bị bỏ trống hoặc nhỏ hơn hoặc bằng 0, hoặc chưa chọn mức nhiên liệu, hệ thống từ chối lưu và hiển thị cảnh báo các trường thông tin còn thiếu. |
 
 ---
 
----
-
-## UC-31 – Thêm hạng mục dịch vụ (Add Service)
+## UC-31 – Thêm hạng mục dịch vụ
 
 | **Mã Use case**    | UC-31 |
 | ------------------ | ------ |
-| **Tên Use case**   | Thêm hạng mục dịch vụ (Add Service) |
-| **Mô tả**          | Cố vấn dịch vụ thêm hạng mục dịch vụ mới vào phiếu công việc để lên kế hoạch sửa chữa/bảo dưỡng cho khách hàng. |
-| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Cố vấn dịch vụ đã đăng nhập và phiếu công việc (Work Order) đang ở trạng thái cho phép chỉnh sửa. |
-| **Hậu điều kiện**  | Thành công: Hạng mục dịch vụ mới được lưu thành công vào phiếu công việc.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu phiếu công việc giữ nguyên. |
-| **Luồng cơ bản**   | 1. Cố vấn dịch vụ truy cập màn hình chi tiết phiếu công việc.<br>2. Cố vấn nhấn nút **Thêm dịch vụ**.<br>3. Hệ thống hiển thị danh mục các dịch vụ hiện có.<br>4. (Tùy chọn) Cố vấn nhập từ khóa vào ô tìm kiếm để lọc dịch vụ mong muốn.<br>5. Cố vấn chọn dịch vụ từ danh sách.<br>6. Hệ thống thêm dịch vụ vào danh sách của phiếu công việc và tự động lưu. |
-| **Luồng thay thế** | **[Không tìm thấy dịch vụ]** Tại bước 4, nếu không có dịch vụ nào khớp với từ khóa tìm kiếm:<br>4a. Hệ thống hiển thị thông báo "Không tìm thấy dịch vụ phù hợp". |
-| **Luồng ngoại lệ** | Tại bước 6, nếu kết nối lỗi hoặc dịch vụ không hợp lệ, hệ thống hiển thị thông báo lỗi cụ thể và từ chối lưu. |
-
+| **Tên Use case**   | Thêm hạng mục dịch vụ |
+| **Mô tả**          | Cố vấn dịch vụ chọn và thêm các gói/hạng mục dịch vụ từ danh mục dịch vụ chuẩn của trung tâm vào phiếu công việc để định hình các khối công việc sửa chữa hoặc bảo dưỡng cho khách hàng. |
+| **Đối tượng**      | Cố vấn dịch vụ |
+| **Tiền điều kiện** | Cố vấn dịch vụ đã đăng nhập và phiếu công việc đang ở trạng thái cho phép lập kế hoạch (Bản nháp hoặc Đang lập kế hoạch). |
+| **Hậu điều kiện**  | Thành công: Hạng mục dịch vụ được lưu vào phiếu công việc và tự động hiển thị đồng bộ ở cả tab Tiếp nhận & Kiểm tra và tab Hạng mục sửa chữa.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu phiếu giữ nguyên. |
+| **Luồng cơ bản**   | 1. Tại tab **Tiếp nhận & Kiểm tra** (hoặc tab **Hạng mục sửa chữa**), cố vấn nhấn nút **Thêm dịch vụ**.<br>2. Hệ thống hiển thị hộp thoại tìm kiếm danh mục các dịch vụ hiện có của trung tâm.<br>3. (Tùy chọn) Cố vấn nhập từ khóa vào ô tìm kiếm để lọc dịch vụ theo tên.<br>4. Cố vấn nhấp chọn dịch vụ mong muốn từ danh sách kết quả.<br>5. Hệ thống thêm dịch vụ vào phiếu công việc, khởi tạo cấu trúc dịch vụ và tự động lưu thay đổi. |
+| **Luồng thay thế** | **[Không tìm thấy dịch vụ]** Tại bước 3, nếu không có dịch vụ nào khớp với từ khóa:<br>3a. Hệ thống hiển thị thông báo "Không tìm thấy dịch vụ phù hợp". Cố vấn có thể đổi từ khóa hoặc đóng danh mục. |
+| **Luồng ngoại lệ** | Tại bước 4, nếu dịch vụ đã tồn tại trong phiếu công việc, hệ thống tự động ẩn hoặc cảnh báo dịch vụ này đã có trong phiếu để tránh thêm trùng lặp. |
 
 ---
 
-## UC-32 – Xóa hạng mục dịch vụ (Remove Service)
+## UC-32 – Xóa hạng mục dịch vụ
 
 | **Mã Use case**    | UC-32 |
 | ------------------ | ------ |
-| **Tên Use case**   | Xóa hạng mục dịch vụ (Remove Service) |
-| **Mô tả**          | Cố vấn dịch vụ xóa hạng mục dịch vụ khỏi phiếu công việc khi khách hàng không đồng ý hoặc không còn nhu cầu. |
-| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Cố vấn dịch vụ đã đăng nhập, phiếu công việc đang mở và đã có ít nhất một hạng mục dịch vụ. |
-| **Hậu điều kiện**  | Thành công: Hạng mục dịch vụ được loại bỏ khỏi phiếu công việc.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu được giữ nguyên. |
-| **Luồng cơ bản**   | 1. Cố vấn dịch vụ truy cập màn hình chi tiết phiếu công việc.<br>2. (Tùy chọn) Cố vấn nhập từ khóa vào ô tìm kiếm để lọc dịch vụ cần xóa khỏi danh sách.<br>3. Cố vấn chọn hạng mục dịch vụ cần xóa và nhấn **Xóa**.<br>4. Hệ thống hiển thị hộp thoại xác nhận thao tác.<br>5. Cố vấn nhấn **Xác nhận**.<br>6. Hệ thống tiến hành loại bỏ hạng mục dịch vụ đó khỏi phiếu công việc và cập nhật danh sách. |
-| **Luồng thay thế** | **[Không tìm thấy dịch vụ]** Tại bước 2, nếu không có dịch vụ nào khớp với từ khóa tìm kiếm:<br>2a. Hệ thống hiển thị thông báo "Không tìm thấy dịch vụ phù hợp". |
-| **Luồng ngoại lệ** | Tại bước 6, nếu dịch vụ đã bắt đầu thực hiện hoặc đã thanh toán, hệ thống từ chối xóa và hiển thị thông báo lỗi (ví dụ: Không thể xóa dịch vụ đang thực hiện). |
-
+| **Tên Use case**   | Xóa hạng mục dịch vụ |
+| **Mô tả**          | Cố vấn dịch vụ loại bỏ một hạng mục dịch vụ đã thêm khỏi phiếu công việc khi khách hàng không có nhu cầu hoặc chuyển đổi phương án sửa chữa. |
+| **Đối tượng**      | Cố vấn dịch vụ |
+| **Tiền điều kiện** | Phiếu công việc đang ở trạng thái cho phép lập kế hoạch (Bản nháp hoặc Đang lập kế hoạch) và đã có ít nhất một hạng mục dịch vụ. |
+| **Hậu điều kiện**  | Thành công: Hạng mục dịch vụ và các công việc phụ thuộc chưa thi công được loại bỏ hoàn toàn khỏi phiếu công việc.<br>Thất bại: Hệ thống từ chối xóa và hiển thị thông báo lỗi. |
+| **Luồng cơ bản**   | 1. Cố vấn truy cập tab **Tiếp nhận & Kiểm tra** hoặc tab **Hạng mục sửa chữa**.<br>2. Cố vấn tìm đến thẻ dịch vụ cần loại bỏ và nhấp vào biểu tượng dấu nhân (**Xóa dịch vụ**) trên góc thẻ.<br>3. Hệ thống kiểm tra điều kiện xóa hợp lệ và tiến hành loại bỏ dịch vụ khỏi phiếu công việc.<br>4. Hệ thống cập nhật lại danh sách hiển thị và tính toán lại chi phí ước tính. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Tại bước 2, nếu báo giá chứa dịch vụ này đã được khách hàng phê duyệt, hoặc dịch vụ đã có công việc bắt đầu thi công trong xưởng, hệ thống khóa nút xóa và thông báo lỗi: *"Không thể xóa dịch vụ khi báo giá đã được phê duyệt hoặc dịch vụ đang thực hiện."* |
 
 ---
 
-## UC-33 – Kiểm tra xe (Inspect Vehicle)
+## UC-33 – Kiểm tra xe
 
 | **Mã Use case**    | UC-33 |
 | ------------------ | ------ |
-| **Tên Use case**   | Kiểm tra xe (Inspect Vehicle) |
-| **Mô tả**          | Cố vấn dịch vụ mở giao diện kiểm tra xe (Vehicle Inspection), chọn loại dấu vết (Damage / Rust / Missing / Dent / Scratch,...) và nhấp chọn trực tiếp trên hình ảnh sơ đồ thân xe (Car Diagram UI) để đặt marker tại vị trí phát hiện hư hỏng (ví dụ: Driver side - Front door, Driver side - Front bumper,...). Hệ thống tự động ghi nhận vị trí và tạo dòng vấn đề phát hiện (Finding / Issue) tương ứng, cho phép cố vấn ghi chú, đính kèm hình ảnh và liên kết với công việc (Job). |
-| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Phiếu công việc đã được tạo (UC-17). Cố vấn đã ghi nhận tình trạng tiếp nhận xe (UC-18). Xe đang ở trong xưởng, chưa thực hiện sửa chữa. |
-| **Hậu điều kiện**  | Thành công: Danh sách các vấn đề phát hiện (Finding) kèm vị trí marker trên sơ đồ xe được lưu vào phiếu công việc, sẵn sàng để lên kế hoạch tạo Job xử lý.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu không được lưu. |
-| **Luồng cơ bản**   | 1. Cố vấn cuộn đến phần **Kiểm tra xe** trong phiếu công việc.<br>2. Hệ thống hiển thị sơ đồ thân xe và thanh công cụ chứa các loại marker (Damage, Rust, Missing, Dent, Scratch).<br>3. Cố vấn chọn một loại marker trên thanh công cụ và nhấp chuột vào bộ phận tương ứng trên sơ đồ xe.<br>4. Hệ thống đặt đánh dấu (marker) lên sơ đồ xe và tự động thêm một dòng thông tin phát hiện (Finding) vào danh sách bên phải.<br>5. Cố vấn nhập trực tiếp nội dung ghi chú (Note) vào ô nhập liệu của dòng Finding.<br>6. (Tùy chọn) Cố vấn nhấp vào biểu tượng tải lên để đính kèm hình ảnh minh chứng (Photo).<br>7. (Tùy chọn) Cố vấn chọn công việc (Job) từ danh sách hoặc nhấp **Thêm công việc** để liên kết với Finding.<br>8. Hệ thống tự động ghi nhận thay đổi (không cần nhấn nút lưu riêng biệt). |
-| **Luồng thay thế** | **[Xóa vấn đề phát hiện]** Cố vấn nhấp vào biểu tượng xóa (dấu X) xuất hiện khi rê chuột vào dòng Finding trong danh sách: Hệ thống xóa Finding và gỡ marker khỏi sơ đồ xe.<br><br>**[Chỉnh sửa thông tin]** Cố vấn có thể sửa trực tiếp ghi chú (Note) trên ô nhập liệu hoặc tải lên lại ảnh ở bất kỳ thời điểm nào. |
-| **Luồng ngoại lệ** | Tại bước 5a của luồng Xóa, nếu Finding đã được liên kết với một Job, hệ thống từ chối xóa và hiển thị thông báo yêu cầu hủy liên kết Job trước. |
+| **Tên Use case**   | Kiểm tra xe |
+| **Mô tả**          | Cố vấn dịch vụ sử dụng sơ đồ tương tác thân xe để đánh dấu chính xác vị trí và loại khuyết tật ngoại quan quan sát được trên xe (móp méo, trầy xước, nứt vỡ, rỉ sét, thiếu chi tiết). Mỗi điểm đánh dấu tự động sinh một bản ghi vết lỗi phát hiện kèm ghi chú, ảnh chụp hiện trường và cho phép tạo ngay công việc xử lý tương ứng. |
+| **Đối tượng**      | Cố vấn dịch vụ |
+| **Tiền điều kiện** | Phiếu công việc đã được tạo (UC-29) và đã lưu thông tin tiếp nhận (UC-30). Xe đang ở xưởng và chưa duyệt thi công. |
+| **Hậu điều kiện**  | Thành công: Các điểm đánh dấu được lưu trên sơ đồ xe kèm danh sách vết lỗi phát hiện chi tiết, sẵn sàng liên kết tạo việc xử lý (UC-34).<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu không được lưu. |
+| **Luồng cơ bản**   | 1. Tại tab **Tiếp nhận & Kiểm tra**, cố vấn cuộn đến khu vực **SƠ ĐỒ KIỂM TRA XE & VẾT LỖI**.<br>2. Cố vấn chọn góc nhìn xe phù hợp (**Trước**, **Sau**, **Trái**, **Phải**).<br>3. Cố vấn chọn một loại đánh dấu khuyết tật trên thanh công cụ:<br>- **Móp méo**<br>- **Trầy xước**<br>- **Hư hỏng bể vỡ**<br>- **Rỉ sét**<br>- **Thiếu phụ tùng**<br>4. Cố vấn nhấp chuột trực tiếp vào bộ phận bị lỗi trên sơ đồ xe.<br>5. Hệ thống đặt điểm đánh dấu lên xe và tự động thêm một dòng vết lỗi vào bảng danh sách bên phải.<br>6. Cố vấn nhập trực tiếp nội dung mô tả lỗi vào ô ghi chú của dòng vết lỗi.<br>7. (Tùy chọn) Cố vấn nhấp biểu tượng máy ảnh (**Tải ảnh minh chứng**) để đính kèm ảnh chụp hiện trường (ảnh được tự động nén dung lượng trước khi tải lên).<br>8. (Tùy chọn) Cố vấn nhấn nút **+ Job** tại dòng vết lỗi để mở hộp thoại tạo ngay công việc xử lý cho vết lỗi này (chuyển tiếp sang UC-34). |
+| **Luồng thay thế** | **[Xóa đánh dấu vết lỗi]** Tại bảng danh sách vết lỗi bên phải, cố vấn nhấp vào biểu tượng thùng rác (**Xóa đánh dấu**) trên dòng cần xóa:<br>Hệ thống xóa bản ghi vết lỗi và tự động gỡ điểm đánh dấu tương ứng khỏi sơ đồ xe.<br><br>**[Chỉnh sửa thông tin vết lỗi]** Cố vấn có thể sửa đổi nội dung ghi chú trực tiếp hoặc tải ảnh thay thế bất kỳ lúc nào khi phiếu chưa duyệt. |
+| **Luồng ngoại lệ** | Tại luồng Xóa, nếu vết lỗi đã được liên kết với một công việc thi công, hệ thống từ chối xóa và hiển thị thông báo lỗi: *"Vấn đề phát hiện đã được liên kết với công việc, không thể xóa trực tiếp. Vui lòng hủy liên kết công việc trước."*<br><br>Khi báo giá đã được duyệt hoặc phương tiện đang thi công sửa chữa, toàn bộ sơ đồ xe và danh sách vết lỗi tự động khóa chuyển sang chế độ chỉ đọc để bảo toàn hiện trạng ban đầu. |
 
 ---
 
----
-
-## UC-34 – Lên kế hoạch công việc (Plan Jobs)
+## UC-34 – Lên kế hoạch công việc
 
 | **Mã Use case**    | UC-34 |
 | ------------------ | ------ |
-| **Tên Use case**   | Lên kế hoạch công việc (Plan Jobs) |
-| **Mô tả**          | Cố vấn dịch vụ tạo các job (đầu công việc) cần thực hiện trong phiếu công việc. Hệ thống hỗ trợ tạo Job trực tiếp từ một Finding phát hiện khi kiểm tra xe (nhấn nút **+ New Job** tại dòng Finding), gán Finding vào Job đã có từ danh sách chọn (Select a job...), sinh Job từ mẫu dịch vụ (Service Template) hoặc tạo Job thủ công không qua Finding. |
-| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Phiếu công việc đã được tạo (UC-17) và có ít nhất một dịch vụ (UC-19). |
-| **Hậu điều kiện**  | Thành công: Job mới được tạo, lưu trong phiếu công việc và được liên kết trực tiếp với Finding/dịch vụ tương ứng.<br>Thất bại: Hệ thống thông báo lỗi, job không được tạo. |
-| **Luồng cơ bản**   | **[Tạo Job trực tiếp từ Finding]**<br>1. Cố vấn vào màn hình kiểm tra xe hoặc danh sách Finding của phiếu công việc.<br>2. Tại bảng danh sách Finding, cố vấn tìm đến dòng Finding cần xử lý và nhấn nút thêm Job.<br>3. Hệ thống hiển thị cửa sổ hộp thoại **Tạo công việc (Create Dispatch Jobs)**.<br>4. Cố vấn điền thông tin chung cho Job: Tên job, Loại job (Type), Kỹ thuật viên đảm nhận (Technician) và Mô tả công việc.<br>5. Cố vấn nhấn **Lưu (Save)**.<br>6. Hệ thống khởi tạo Job mới với mã tự động (ví dụ: `JOB26090001`), lưu thông tin nhân công / phụ tùng đã khai báo, đồng thời cập nhật mã Job này vào ô `Job No.` của dòng Finding tương ứng để xác nhận liên kết. |
-| **Luồng thay thế** | **[Tạo job từ mẫu dịch vụ]** Tại màn hình danh sách Job của phiếu:<br>1b. Cố vấn chọn một dịch vụ (ví dụ: Bảo dưỡng 10.000 km) và nhấn **Sinh job từ mẫu**.<br>2b. Hệ thống tự động sinh danh sách các Job mặc định kèm nhân công và phụ tùng theo mẫu đã cấu hình.<br>3b. Cố vấn kiểm tra, chỉnh sửa nếu cần và nhấn **Xác nhận**.<br><br>**[Tạo job thủ công độc lập (không từ Finding)]** Tại màn hình danh sách Job:<br>1c. Cố vấn chọn **Thêm job thủ công**.<br>2c. Cố vấn nhập tên, loại job, nhân công, phụ tùng và không chọn liên kết với Finding nào.<br>3c. Cố vấn nhấn **Lưu**.<br><br>**[Chỉnh sửa / Xóa job]**:<br>1d. Cố vấn chọn Job từ danh sách để xem/chỉnh sửa thông tin ở các tab hoặc nhấn **Xóa** (nếu Job chưa thực hiện/chưa xuất kho). |
-| **Luồng ngoại lệ** | Tại bước 1d của luồng Xóa, nếu Job đã có phụ tùng được xuất kho hoặc đã bắt đầu thực hiện, hệ thống từ chối xóa và hiển thị lý do cụ thể. |
+| **Tên Use case**   | Lên kế hoạch công việc |
+| **Mô tả**          | Cố vấn dịch vụ tạo và tổ chức các hạng mục công việc cần thực hiện trong phiếu công việc. Hệ thống hỗ trợ tạo công việc trực tiếp từ vết lỗi phát hiện lúc kiểm tra xe (nút **+ Job** tại bảng danh sách vết lỗi), tạo công việc thủ công từ tab Hạng mục sửa chữa (nút **Thêm việc** / **Thêm dịch vụ**), hoặc sử dụng trợ lý AI phân tích vết lỗi và đề xuất tự động (nút **Đề xuất bằng AI**). |
+| **Đối tượng**      | Cố vấn dịch vụ |
+| **Tiền điều kiện** | Phiếu công việc đã được tạo (UC-29) và đã ghi nhận tình trạng xe (UC-30). Phiếu đang ở trạng thái cho phép lập kế hoạch (Đang lập kế hoạch hoặc Bản nháp). |
+| **Hậu điều kiện**  | Thành công: Đầu việc mới được khởi tạo với mã tự động (ví dụ: JOB26090001), liên kết với dịch vụ và vết lỗi tương ứng, sẵn sàng cho bước khai báo phụ tùng và báo giá.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu phiếu giữ nguyên. |
+| **Luồng cơ bản**   | **[Trường hợp 1 – Tạo công việc trực tiếp từ Vết lỗi phát hiện]**<br>1. Cố vấn mở màn hình chi tiết phiếu công việc và chọn tab **Tiếp nhận & Kiểm tra** (khu vực bảng danh sách vết lỗi phát hiện sau khi cắm đánh dấu trên sơ đồ xe).<br>2. Cố vấn tìm đến dòng vết lỗi cần xử lý và nhấn nút **+ Job**.<br>3. Hệ thống hiển thị hộp thoại **Thêm công việc mới** và tự động gán liên kết với vết lỗi đang chọn.<br>4. Cố vấn điền thông tin công việc:<br>- **Tên công việc:** Nhập tên đầu việc kỹ thuật cần làm (hệ thống tự gợi ý tên theo vết lỗi).<br>- **Hạng mục dịch vụ:** Chọn dịch vụ cha hiện có trong phiếu hoặc chọn **+ Hạng mục dịch vụ mới** và nhập tên dịch vụ mới.<br>- **Loại công việc:** Chọn loại việc từ danh mục (Bảo dưỡng, Sửa chữa chung, Đồng sơn, Điện - Điện lạnh...).<br>- **Kỹ thuật viên đảm nhận:** Chọn thợ chính thực hiện từ danh sách kỹ thuật viên đang hoạt động.<br>- **Số giờ dự kiến & Đơn giá:** Khai báo định mức giờ công và đơn giá nhân công (mặc định 1.0 giờ và 150.000 đ/giờ).<br>- **Mô tả công việc:** Ghi chú quy trình xử lý, lưu ý tháo lắp hoặc tiêu chuẩn kiểm tra.<br>5. Cố vấn nhấn **Lưu công việc**.<br>6. Hệ thống khởi tạo công việc mới với mã tự động, lưu thông tin phân công và cập nhật mã công việc lên dòng vết lỗi để xác nhận liên kết thành công. |
+| **Luồng thay thế** | **[Trường hợp 2 – Tạo công việc thủ công độc lập]**<br>1a. Cố vấn chuyển sang tab **Hạng mục sửa chữa**.<br>2a. Cố vấn nhấn **Thêm dịch vụ** (chọn dịch vụ từ danh mục mẫu) hoặc nhấn **Thêm việc** tại thẻ dịch vụ mong muốn (hoặc nhấn **Thêm dịch vụ thủ công**).<br>3a. Hệ thống mở hộp thoại **Thêm công việc mới**.<br>4a. Cố vấn nhập đầy đủ các trường thông tin (tên việc, dịch vụ, loại việc, thợ kỹ thuật, giờ công, mô tả) và không liên kết với vết lỗi nào.<br>5a. Cố vấn nhấn **Lưu công việc**.<br><br>**[Trường hợp 3 – Đề xuất kế hoạch công việc tự động bằng AI]**<br>1b. Tại tab **Hạng mục sửa chữa**, cố vấn nhấn nút **Đề xuất bằng AI**.<br>2b. Hệ thống kích hoạt trợ lý AI phân tích các triệu chứng khách báo và toàn bộ vết lỗi chưa xử lý, tổng hợp thành danh sách các hạng mục dịch vụ và công việc tối ưu.<br>3b. Cố vấn tích chọn các công việc phù hợp và nhấn **Áp dụng kế hoạch**.<br>4b. Hệ thống tự động tạo các dịch vụ và công việc tương ứng vào phiếu công việc.<br><br>**[Chỉnh sửa công việc]**<br>1c. Tại tab **Hạng mục sửa chữa**, cố vấn nhấp vào thẻ công việc cần chỉnh sửa.<br>2c. Hệ thống hiển thị hộp thoại **Chỉnh sửa công việc** với thông tin hiện tại.<br>3c. Cố vấn điều chỉnh tên, thợ phân công, giờ công hoặc mô tả và nhấn **Cập nhật**.<br><br>**[Xóa công việc]**<br>1d. Tại hộp thoại **Chỉnh sửa công việc**, cố vấn nhấn nút **Xóa việc** (biểu tượng thùng rác màu đỏ).<br>2d. Hệ thống hiển thị câu hỏi xác nhận **Xác nhận xóa?**.<br>3d. Cố vấn nhấn **Xóa ngay** (hoặc nhấn nút hủy dấu X để bỏ qua).<br>4d. Hệ thống xóa công việc khỏi phiếu và giải phóng liên kết vết lỗi (nếu có) về trạng thái ban đầu. |
+| **Luồng ngoại lệ** | Tại bước 1d của luồng Chỉnh sửa/Xóa, nếu báo giá của phiếu đã được khách hàng phê duyệt, phương tiện đang thi công hoặc công việc đã có phụ tùng xuất kho thi công, hệ thống khóa tính năng chỉnh sửa/xóa, chuyển hộp thoại sang chế độ chỉ đọc (**Chi tiết công việc**) và thông báo lỗi: *"Không thể xóa công việc khi báo giá đã được khách hàng phê duyệt. Mọi điều chỉnh công việc sau khi duyệt cần thông qua quy trình Báo giá bổ sung."* |
 
 ---
 
----
-
-## UC-35 – Khai báo nhân công (Declare Labour)
+## UC-35 – Khai báo nhân công
 
 | **Mã Use case**    | UC-35 |
 | ------------------ | ------ |
-| **Tên Use case**   | Khai báo nhân công (Declare Labour) |
-| **Mô tả**          | Cố vấn dịch vụ khai báo các labour lines cho từng job: loại nhân công, mô tả chi tiết task cần thực hiện, kỹ thuật viên đảm nhận và số lượng giờ / đơn vị ước tính. Thông tin này được dùng để tính chi phí nhân công trong báo giá. |
-| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Job đã được tạo trong phiếu công việc (UC-33). |
-| **Hậu điều kiện**  | Thành công: Labour line được ghi nhận và liên kết với job, sẵn sàng tính vào báo giá.<br>Thất bại: Hệ thống thông báo lỗi, labour line không được tạo. |
-| **Luồng cơ bản**   | 1. Cố vấn mở một job và chọn **Thêm nhân công**.<br>2. Hệ thống hiển thị danh mục loại nhân công đã được cấu hình (UC-36).<br>3. Cố vấn chọn loại nhân công và nhập mô tả chi tiết task cần thực hiện.<br>4. Cố vấn chọn kỹ thuật viên thực hiện từ danh sách nhân viên đang hoạt động.<br>5. Cố vấn nhập số lượng giờ / đơn vị ước tính.<br>6. Cố vấn nhấn **Lưu**.<br>7. Hệ thống ghi nhận labour line và tự động tính chi phí nhân công theo đơn giá đã cấu hình. |
-| **Luồng thay thế** | **[Chỉnh sửa labour line]** Tại bước 1, thay vì chọn **Thêm nhân công**, cố vấn chọn dòng đã có:<br>1a. Cố vấn chọn labour line cần chỉnh sửa từ danh sách.<br>2a. Cố vấn nhấn **Chỉnh sửa**.<br>3a. Cố vấn thay đổi loại nhân công, mô tả, kỹ thuật viên hoặc số lượng giờ.<br>4a. Cố vấn nhấn **Lưu**.<br>5a. Hệ thống lưu thông tin mới và tính lại chi phí nhân công.<br><br>**[Xóa labour line]** Tại bước 1, cố vấn chọn dòng cần xóa:<br>1b. Cố vấn chọn labour line cần xóa từ danh sách.<br>2b. Cố vấn nhấn **Xóa** và xác nhận.<br>3b. Hệ thống xóa labour line khỏi job. |
-| **Luồng ngoại lệ** | Tại bước 3b của luồng Xóa, nếu báo giá đã được khách hàng duyệt, hệ thống không cho phép xóa và yêu cầu tạo báo giá bổ sung để điều chỉnh (UC-24). |
+| **Tên Use case**   | Khai báo nhân công |
+| **Mô tả**          | Cố vấn dịch vụ khai báo chi tiết nhân công thi công cho từng đầu việc: loại công việc kỹ thuật, kỹ thuật viên đảm nhận, định mức giờ công ước tính và đơn giá nhân công. Dữ liệu này dùng để phân công công việc thực tế trong xưởng và tự động tính toán tổng chi phí nhân công trong bản báo giá gửi khách hàng. |
+| **Đối tượng**      | Cố vấn dịch vụ |
+| **Tiền điều kiện** | Phiếu công việc đã được tạo (UC-29) và đã tạo ít nhất một công việc (UC-34). Phiếu đang ở trạng thái cho phép lập kế hoạch (Đang lập kế hoạch hoặc báo giá chưa duyệt). |
+| **Hậu điều kiện**  | Thành công: Thông tin nhân công được liên kết với công việc, tự động tính thành tiền (*Giờ công × Đơn giá*) và cập nhật vào bảng chiết tính báo giá.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu giữ nguyên. |
+| **Luồng cơ bản**   | 1. Khi tạo mới hoặc chỉnh sửa công việc (tại hộp thoại **Thêm công việc mới** / **Chỉnh sửa công việc** của UC-34):<br>2. Cố vấn chọn **Loại công việc** từ danh mục phân loại kỹ thuật (Bảo dưỡng, Sửa chữa chung, Đồng sơn, Điện - Điện lạnh...).<br>3. Cố vấn chọn **Kỹ thuật viên đảm nhận** từ danh sách nhân viên kỹ thuật đang hoạt động trong xưởng.<br>4. Cố vấn nhập **Số giờ dự kiến** cần thiết để hoàn thành công việc (định mức giờ chuẩn theo phân loại việc).<br>5. Cố vấn nhập hoặc kiểm tra **Đơn giá nhân công (VNĐ)** theo đơn giá niêm yết (mặc định 150.000 đ/giờ).<br>6. Hệ thống tự động tính thành tiền nhân công dự kiến.<br>7. Cố vấn nhấn **Lưu công việc** (khi tạo mới) hoặc **Cập nhật** (khi chỉnh sửa).<br>8. Hệ thống ghi nhận bản ghi nhân công cho công việc và hiển thị tên kỹ thuật viên cùng định mức giờ trực tiếp trên thẻ công việc tại tab **Hạng mục sửa chữa**. |
+| **Luồng thay thế** | **[Phân công lại kỹ thuật viên hoặc điều chỉnh giờ công]**<br>1a. Tại tab **Hạng mục sửa chữa**, cố vấn nhấp vào thẻ công việc cần điều chỉnh.<br>2a. Hệ thống mở hộp thoại **Chỉnh sửa công việc**.<br>3a. Cố vấn chọn lại **Kỹ thuật viên đảm nhận** khác hoặc cập nhật lại **Số giờ dự kiến** / **Đơn giá nhân công**.<br>4a. Cố vấn nhấn **Cập nhật**.<br>5a. Hệ thống cập nhật phân công công việc mới và tính toán lại chi phí nhân công tương ứng. |
+| **Luồng ngoại lệ** | Nếu báo giá của phiếu đã được khách hàng phê duyệt, đơn giá và giờ công nhân công bị khóa cố định. Hệ thống ngăn chặn việc chỉnh sửa trực tiếp và thông báo: *"Báo giá đã được phê duyệt, không thể thay đổi nhân công trực tiếp. Vui lòng tạo Báo giá bổ sung (UC-37) nếu có phát sinh công việc mới."*<br><br>Nếu cố vấn nhập số giờ dự kiến hoặc đơn giá nhỏ hơn hoặc bằng 0, hệ thống báo lỗi: *"Số giờ công và đơn giá nhân công phải lớn hơn 0."* |
 
 ---
 
----
-
-## UC-36 – Khai báo phụ tùng (Declare Parts)
+## UC-36 – Khai báo phụ tùng
 
 | **Mã Use case**    | UC-36 |
 | ------------------ | ------ |
-| **Tên Use case**   | Khai báo phụ tùng (Declare Parts) |
-| **Mô tả**          | Cố vấn dịch vụ khai báo danh sách phụ tùng và vật tư dự kiến cần dùng cho từng job. Sau khi thực hiện xong, cố vấn cập nhật số lượng thực tế đã sử dụng để truy vết chi phí. |
-| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Job đã được tạo trong phiếu công việc (UC-33). |
-| **Hậu điều kiện**  | Thành công: Danh sách phụ tùng / vật tư được lưu theo từng job và có thể truy vết.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu không được lưu. |
-| **Luồng cơ bản**   | 1. Cố vấn mở một job và chọn **Thêm phụ tùng / vật tư**.<br>2. Cố vấn tìm kiếm mặt hàng từ danh mục kho và chọn phụ tùng / vật tư cần dùng.<br>3. Cố vấn nhập số lượng dự kiến cần sử dụng.<br>4. Cố vấn nhấn **Lưu**.<br>5. Hệ thống ghi nhận phụ tùng / vật tư và số lượng kế hoạch cho job. |
-| **Luồng thay thế** | **[Cập nhật số lượng thực tế]** Sau khi job hoàn thành (UC-25), tại bước 1:<br>1a. Cố vấn mở job đã hoàn thành.<br>2a. Cố vấn chọn phụ tùng cần cập nhật số lượng thực tế.<br>3a. Cố vấn nhấn **Cập nhật số lượng thực tế**.<br>4a. Cố vấn nhập số lượng thực tế đã sử dụng.<br>5a. Cố vấn nhấn **Lưu**.<br>6a. Hệ thống ghi nhận số lượng thực tế.<br><br>**[Xóa phụ tùng / vật tư]** Tại bước 1, cố vấn chọn xóa mặt hàng không còn cần thiết:<br>1b. Cố vấn mở job có phụ tùng cần xóa.<br>2b. Cố vấn chọn dòng phụ tùng cần xóa.<br>3b. Cố vấn nhấn **Xóa** và xác nhận.<br>4b. Hệ thống xóa dòng đó khỏi danh sách job. |
-| **Luồng ngoại lệ** | Tại bước 4b của luồng Xóa, nếu phụ tùng đã được xuất kho cho job, hệ thống từ chối xóa và yêu cầu thực hiện nhập trả kho trước (UC-29). |
+| **Tên Use case**   | Khai báo phụ tùng |
+| **Mô tả**          | Cố vấn dịch vụ khai báo danh mục phụ tùng, linh kiện và vật tư phụ dự kiến cần dùng cho từng công việc cụ thể của xe. Hệ thống hỗ trợ tìm kiếm phụ tùng trong kho, trợ lý AI đề xuất phụ tùng phù hợp theo dòng xe, cảnh báo thiếu hàng tồn kho, và đồng bộ trạng thái phụ tùng xuyên suốt chu trình sửa chữa. |
+| **Đối tượng**      | Cố vấn dịch vụ |
+| **Tiền điều kiện** | Phiếu công việc đã có ít nhất một công việc (UC-34). Phiếu đang ở trạng thái cho phép lập kế hoạch (Đang lập kế hoạch). |
+| **Hậu điều kiện**  | Thành công: Phụ tùng được lưu vào công việc với trạng thái Kế hoạch, hiển thị trên bảng danh sách phụ tùng của phiếu và tự động tính vào tổng tiền báo giá.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu không được lưu. |
+| **Luồng cơ bản**   | 1. Cố vấn mở phiếu công việc và chuyển sang tab **Phụ tùng & Vật tư**.<br>2. Cố vấn nhấn nút **Khai báo phụ tùng** (hoặc **Khai báo phụ tùng ngay** ở giữa màn hình nếu danh sách đang trống).<br>3. Hệ thống hiển thị hộp thoại **Khai báo phụ tùng & vật tư**.<br>4. Cố vấn nhấp vào menu chọn **Công việc áp dụng** và chọn đúng đầu việc cần cấp phụ tùng.<br>5. Cố vấn tìm kiếm và chọn phụ tùng:<br>- Nhập tên phụ tùng hoặc mã quản lý kho vào ô tìm kiếm.<br>- Danh sách phụ tùng trong kho hiển thị thông tin: Mã linh kiện, Tên linh kiện, Đơn vị tính, Đơn giá niêm yết, và Số lượng tồn kho thực tế.<br>- Cố vấn nhấp chọn mặt hàng mong muốn.<br>- *(Tùy chọn trợ lý AI)*: Cố vấn có thể nhấn **Nhận gợi ý** tại khung "Trợ lý AI gợi ý phụ tùng" $	o$ Hệ thống phân tích đề xuất phụ tùng chính xác $	o$ Cố vấn nhấn **Áp dụng** để điền tự động.<br>6. Cố vấn nhập **Số lượng dự kiến** và kiểm tra **Đơn giá dự kiến (VNĐ)**.<br>- *Cảnh báo thiếu kho*: Nếu số lượng dự kiến lớn hơn tồn kho khả dụng, hệ thống hiển thị dòng cảnh báo màu vàng: *"Số lượng dự kiến vượt quá số lượng tồn thực tế... Cần thông báo bộ phận kho chuẩn bị hoặc nhập thêm hàng."* nhưng vẫn cho phép khai báo kế hoạch.<br>7. Cố vấn nhấn nút **Khai báo phụ tùng**.<br>8. Hệ thống lưu phụ tùng vào công việc với trạng thái Kế hoạch, cập nhật lên bảng danh sách phụ tùng và tự động tính tổng tiền phụ tùng vào báo giá của phiếu. |
+| **Luồng thay thế** | **[Chỉnh sửa phụ tùng đã khai báo]**<br>1a. Tại bảng danh sách phụ tùng ở tab **Phụ tùng & Vật tư**, cố vấn nhấn nút biểu tượng bút chì (**Chỉnh sửa số lượng / đơn giá**) tại dòng phụ tùng cần sửa.<br>2a. Hệ thống mở hộp thoại **Chỉnh sửa phụ tùng & vật tư** với thông tin hiện có.<br>3a. Cố vấn điều chỉnh lại số lượng dự kiến hoặc đơn giá.<br>4a. Cố vấn nhấn **Lưu thay đổi**.<br>5a. Hệ thống lưu thông tin mới và cập nhật lại chi phí.<br><br>**[Xóa phụ tùng khỏi công việc]**<br>1b. Tại bảng danh sách phụ tùng, cố vấn tìm đến dòng phụ tùng không còn nhu cầu sử dụng.<br>2b. Cố vấn nhấn nút biểu tượng thùng rác (**Xóa phụ tùng khỏi công việc**).<br>3b. Hệ thống tiến hành xóa phụ tùng khỏi công việc, tính toán lại tổng tiền báo giá và hiển thị thông báo: *"Đã xóa phụ tùng khỏi công việc"*. |
+| **Luồng ngoại lệ** | Tại bước 4, nếu phiếu công việc chưa tạo bất kỳ công việc nào, hệ thống khóa menu chọn công việc và hiển thị cảnh báo: *"⚠️ Cần tạo ít nhất một công việc trong tab 'Hạng mục sửa chữa' trước khi thêm phụ tùng."* Cố vấn buộc phải quay lại tab Hạng mục sửa chữa tạo công việc trước.<br><br>Tại luồng Xóa, nếu phụ tùng đã được xuất kho thi công cho thợ, nút xóa bị khóa kèm chú thích *"Không thể xóa phụ tùng đã xuất kho"*. Hệ thống từ chối xóa và hiển thị thông báo: *"Phụ tùng này đã được xuất kho thi công, không thể xóa trực tiếp. Vui lòng hoàn trả kho trước."*<br><br>Tại bước 6, nếu cố vấn nhập số lượng dự kiến nhỏ hơn hoặc bằng 0, hệ thống cảnh báo: *"Số lượng dự kiến phải lớn hơn 0."* và không cho phép gửi biểu mẫu. |
 
 ---
 
----
-
-## UC-37 – Tạo báo giá (Create Quotation)
+## UC-37 – Tạo báo giá
 
 | **Mã Use case**    | UC-37 |
 | ------------------ | ------ |
-| **Tên Use case**   | Tạo báo giá (Create Quotation) |
-| **Mô tả**          | Cố vấn dịch vụ tổng hợp toàn bộ các dịch vụ, công việc kỹ thuật và phụ tùng đã lập kế hoạch trong phiếu dịch vụ thành bản báo giá hoàn chỉnh để gửi khách hàng. Hệ thống tự động tính toán chi phí theo kiểu tính giá tương ứng của từng dịch vụ và cho phép áp dụng chiết khấu ưu đãi. |
-| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Cố vấn dịch vụ đã đăng nhập hệ thống; Phiếu dịch vụ đang ở trạng thái **Đang lập kế hoạch** (hoặc **Bản nháp**) và có ít nhất một hạng mục có chi phí lớn hơn 0 đồng. |
-| **Hậu điều kiện**  | Thành công: Bản báo giá mới được tạo ở trạng thái **Bản nháp** kèm đầy đủ danh sách các khoản chi phí chi tiết.<br>Thất bại: Hệ thống hiển thị thông báo lỗi cụ thể, không tạo bản báo giá. |
-| **Luồng cơ bản**   | 1. Cố vấn dịch vụ mở phiếu dịch vụ cần xử lý và chọn mục **Báo giá**.<br>2. Hệ thống kiểm tra kế hoạch công việc và vật tư trong phiếu dịch vụ.<br>3. Cố vấn dịch vụ nhấn **Tạo báo giá tự động**.<br>4. Hệ thống tự động tính toán chi phí theo đúng kiểu tính giá của từng hạng mục:<br>- Dịch vụ trọn gói cố định: Áp dụng đơn giá cố định của gói, không cộng lẻ từng công việc bên trong.<br>- Dịch vụ tính theo kích cỡ xe: Tự động xác định phân khúc kích thước xe (xe nhỏ, xe vừa, xe lớn, xe đa dụng, xe bán tải) và áp dụng đúng đơn giá quy định cho phân khúc đó.<br>- Dịch vụ tính theo nhân công và phụ tùng: Tính tiền nhân công theo giờ định mức và tiền phụ tùng theo số lượng nhân với đơn giá niêm yết.<br>5. Hệ thống tính tổng tiền dịch vụ, áp dụng thuế giá trị gia tăng 0% theo quy định của trung tâm.<br>6. Hệ thống thực hiện kiểm tra chống trùng lặp: So sánh chi tiết từng dòng chi phí và tổng tiền với các bản báo giá đã lập trước đó của phiếu:<br>- Nếu dữ liệu hoàn toàn trùng khớp: Hệ thống không tạo mới mà hiển thị lại bản báo giá cũ kèm thông báo: *"Kế hoạch dịch vụ và phụ tùng không có thay đổi so với báo giá đã lập. Hệ thống tự động mở lại bản báo giá này."* (Kết thúc use case).<br>- Nếu có thay đổi: Hệ thống chuyển sang bước 7.<br>7. Hệ thống tự động cấp mã báo giá theo quy chuẩn và hiển thị bảng chi tiết.<br>8. Cố vấn dịch vụ có thể nhập thêm số tiền hoặc tỷ lệ chiết khấu giảm giá (nếu có chính sách ưu đãi).<br>9. Cố vấn dịch vụ nhấn **Lưu báo giá**.<br>10. Hệ thống lưu bản báo giá ở trạng thái **Bản nháp** và hiển thị đầy đủ chi tiết lên màn hình để cố vấn kiểm tra trước khi gửi khách hàng. |
-| **Luồng thay thế** | **[Tạo báo giá bổ sung]** Khi phương tiện đang trong quá trình sửa chữa mà phát hiện hư hỏng phát sinh:<br>3a. Cố vấn dịch vụ thêm các hạng mục công việc hoặc phụ tùng phát sinh vào phiếu dịch vụ và chọn **Tạo báo giá bổ sung**.<br>4a. Hệ thống ghi nhận đây là báo giá bổ sung, tự động liên kết với báo giá ban đầu và chỉ tính toán các chi phí mới phát sinh để trình khách hàng phê duyệt. |
-| **Luồng ngoại lệ** | Tại bước 2, nếu phiếu dịch vụ chưa có bất kỳ hạng mục nào có chi phí, hệ thống thông báo: *"Phiếu dịch vụ chưa có hạng mục dịch vụ hoặc phụ tùng nào có chi phí. Vui lòng lập kế hoạch trước khi tạo báo giá."*<br><br>Tại bước 2, nếu phiếu dịch vụ đã đóng, đã hủy hoặc xe đã bàn giao xong, hệ thống thông báo lỗi: *"Phiếu dịch vụ đã hoàn tất hoặc đã kết thúc, không thể tạo báo giá mới."* |
+| **Tên Use case**   | Tạo báo giá |
+| **Mô tả**          | Cố vấn dịch vụ tổng hợp toàn bộ các dịch vụ, công việc kỹ thuật và phụ tùng đã lập kế hoạch trong phiếu công việc thành bản báo giá chi tiết để gửi khách hàng. Hệ thống tự động tính toán chi phí theo kiểu tính giá tương ứng của từng dịch vụ, áp dụng thuế VAT 0% và thực hiện cơ chế chống tạo báo giá trùng lặp. |
+| **Đối tượng**      | Cố vấn dịch vụ |
+| **Tiền điều kiện** | Cố vấn dịch vụ đã đăng nhập hệ thống; Phiếu công việc đang ở trạng thái Đang lập kế hoạch hoặc Bản nháp và có ít nhất một hạng mục có chi phí lớn hơn 0 đồng. |
+| **Hậu điều kiện**  | Thành công: Bản báo giá mới được tạo ở trạng thái Bản nháp kèm bảng chi tiết đầy đủ các khoản chi phí nhân công và vật tư.<br>Thất bại: Hệ thống hiển thị thông báo lỗi cụ thể, không tạo bản báo giá. |
+| **Luồng cơ bản**   | 1. Cố vấn mở màn hình chi tiết phiếu công việc và chuyển sang tab **Báo giá** (Tab 4).<br>2. Nếu phiếu chưa từng tạo báo giá nào, cố vấn nhấn nút **Tạo Báo giá từ kế hoạch**.<br>3. Hệ thống quét toàn bộ danh mục công việc và phụ tùng đã khai báo trong phiếu, tự động tính toán chi phí theo đúng kiểu giá dịch vụ:<br>- Dịch vụ trọn gói cố định: Áp dụng đơn giá cố định của gói.<br>- Dịch vụ tính theo kích cỡ xe: Tự động xác định phân khúc kích thước xe (nhỏ, vừa, lớn, SUV, bán tải) và áp dụng đúng đơn giá quy định.<br>- Dịch vụ tính theo nhân công và phụ tùng: Tính tiền nhân công theo giờ định mức × đơn giá và tiền phụ tùng theo số lượng × đơn giá niêm yết.<br>4. Hệ thống áp dụng mức thuế VAT 0% theo quy định tài chính của trung tâm.<br>5. Hệ thống thực hiện kiểm tra chống trùng lặp:<br>- Nếu danh mục dịch vụ và phụ tùng hoàn toàn trùng khớp với bản báo giá đã lập trước đó: Hệ thống không tạo mới mà hiển thị lại bản báo giá cũ kèm thông báo: *"Kế hoạch dịch vụ và phụ tùng không có thay đổi so với báo giá đã lập. Hệ thống tự động mở lại bản báo giá này."* (Kết thúc use case).<br>- Nếu có thay đổi: Chuyển sang bước 6.<br>6. Hệ thống tự động cấp mã báo giá chuẩn hóa (ví dụ: QUO26090001-V1), lưu bản ghi ở trạng thái Bản nháp và hiển thị bảng chiết tính chi phí lên màn hình. |
+| **Luồng thay thế** | **[Tạo báo giá bổ sung]** Khi phương tiện đang trong quá trình thi công sửa chữa mà phát sinh hư hỏng mới:<br>2a. Cố vấn khai báo các hạng mục công việc hoặc phụ tùng phát sinh ở các tab tương ứng.<br>3a. Tại tab Báo giá, cố vấn nhấn nút **+ Bổ sung** (tiêu đề: *Tạo báo giá bổ sung cho các hạng mục phát sinh*).<br>4a. Hệ thống khởi tạo báo giá bổ sung, tự động liên kết với báo giá gốc và chỉ tính toán các chi phí mới phát sinh để trình khách hàng duyệt.<br><br>**[Tạo báo giá mới khi báo giá cũ bị từ chối]**<br>2b. Nếu khách hàng từ chối báo giá trước đó, tại tab Báo giá, cố vấn nhấn nút **Tạo báo giá mới** để khởi tạo phiên bản báo giá điều chỉnh tiếp theo. |
+| **Luồng ngoại lệ** | Tại bước 2, nếu phiếu công việc chưa có bất kỳ hạng mục công việc hoặc phụ tùng nào có chi phí, hệ thống thông báo lỗi: *"Phiếu dịch vụ chưa có hạng mục dịch vụ hoặc phụ tùng nào có chi phí. Vui lòng lập kế hoạch trước khi tạo báo giá."*<br><br>Nếu phiếu công việc đã đóng, đã hủy hoặc xe đã bàn giao xong, hệ thống khóa nút tạo báo giá và từ chối thao tác. |
 
 ---
 
-## UC-38 – Xem báo giá (View Quotation)
+## UC-38 – Xem báo giá
 
 | **Mã Use case**    | UC-38 |
 | ------------------ | ------ |
-| **Tên Use case**   | Xem báo giá (View Quotation) |
-| **Mô tả**          | Cố vấn dịch vụ, nhân viên liên quan hoặc khách hàng xem chi tiết bảng chiết tính chi phí của báo giá (công thợ, phụ tùng, giảm giá), theo dõi lịch sử các phiên bản báo giá và in/xuất tệp báo giá khi cần. |
-| **Đối tượng**      | Cố vấn dịch vụ, Khách hàng, Nhân viên quầy dịch vụ |
-| **Tiền điều kiện** | Người dùng đã đăng nhập hệ thống và có quyền xem thông tin (khách hàng chỉ được xem báo giá của xe mình sở hữu). |
-| **Hậu điều kiện**  | Hệ thống hiển thị đầy đủ, rõ ràng các khoản chi phí và trạng thái của báo giá. |
-| **Luồng cơ bản**   | 1. Người dùng mở phiếu dịch vụ và chọn mục **Báo giá** (hoặc khách hàng chọn xem báo giá từ màn hình theo dõi tiến độ xe trên ứng dụng khách hàng).<br>2. Hệ thống tải toàn bộ danh sách báo giá của phiếu và tự động hiển thị bản báo giá mới nhất được gửi cho khách hàng.<br>3. Hệ thống hiển thị giao diện báo giá trực quan gồm các khu vực:<br>- Thông tin tổng quan: Mã số báo giá, ngày lập, ngày gửi, người lập, và trạng thái hiện tại (Bản nháp, Chờ khách duyệt, Đã duyệt, Đã từ chối, Đã hủy).<br>- Chi tiết dịch vụ và công việc: Tên công việc, định mức giờ công, đơn giá và thành tiền.<br>- Chi tiết phụ tùng và vật tư: Tên phụ tùng, xuất xứ/hãng sản xuất, số lượng, đơn vị tính, đơn giá niêm yết và thành tiền.<br>- Tổng kết tài chính: Tổng tiền dịch vụ ban đầu, số tiền chiết khấu (nếu có), thuế suất (0%) và tổng tiền thanh toán cuối cùng.<br>4. Người dùng có thể nhấn **Lịch sử báo giá** để xem lại các phiên bản báo giá trước đó kèm ghi chú lý do khách hàng từ chối ở các lần trước (nếu có).<br>5. Người dùng nhấn **Xuất tệp / In** để xuất bản báo giá chuẩn hóa phục vụ lưu trữ hoặc in ra giấy gửi khách hàng. |
-| **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Tại bước 1, nếu khách hàng cố tình xem báo giá của phương tiện khác không thuộc quyền sở hữu của mình, hệ thống từ chối truy cập và thông báo: *"Bạn không có quyền xem thông tin báo giá này."*<br><br>Tại bước 1, nếu phiếu dịch vụ chưa từng tạo bản báo giá nào, hệ thống hiển thị thông báo: *"Chưa có bản báo giá nào được tạo cho phiếu dịch vụ này."* |
+| **Tên Use case**   | Xem báo giá |
+| **Mô tả**          | Cố vấn dịch vụ, nhân viên liên quan hoặc khách hàng xem chi tiết bảng chiết tính chi phí của báo giá (công thợ, phụ tùng, giảm giá), theo dõi lịch sử các phiên bản báo giá, và xuất file tài liệu báo giá gửi khách hàng. |
+| **Đối tượng**      | Cố vấn dịch vụ, Khách hàng, Thu ngân, Quản lý dịch vụ |
+| **Tiền điều kiện** | Phiếu công việc đã có ít nhất một bản báo giá được tạo (UC-37). |
+| **Hậu điều kiện**  | Thành công: Người dùng xem được đầy đủ chi tiết bảng báo giá, tải file PDF hoặc theo dõi được trạng thái phản hồi của khách hàng.<br>Thất bại: Hệ thống thông báo lỗi nếu không tìm thấy dữ liệu báo giá. |
+| **Luồng cơ bản**   | 1. Người dùng mở tab **Báo giá** trong phiếu công việc (hoặc khách hàng mở liên kết báo giá trực tuyến gửi qua tin nhắn/email).<br>2. Hệ thống hiển thị giao diện báo giá với các thông tin chi tiết:<br>- **Thanh điều hướng phiên bản:** Liệt kê các phiên bản báo giá kèm huy hiệu trạng thái (Bản nháp, Đã gửi khách, Đã duyệt, Bị từ chối).<br>- **Thông tin khách hàng & xe:** Họ tên, số điện thoại, biển số xe, số ODO tiếp nhận.<br>- **Bảng kê chi tiết chi phí:** Phân tách rõ ràng tiền nhân công theo từng đầu việc và tiền phụ tùng/vật tư thay thế.<br>- **Tổng kết tài chính:** Tổng tiền dịch vụ, tổng tiền phụ tùng, số tiền giảm giá chiết khấu, thuế VAT và Tổng thanh toán cuối cùng.<br>3. (Tùy chọn) Người dùng nhấn nút **Tải báo giá (PDF)** để xuất và tải file báo giá dạng tài liệu in ấn chuẩn của xưởng. |
+| **Luồng thay thế** | **[Khách hàng xem báo giá trên cổng thông tin trực tuyến]**<br>1a. Khách hàng nhấp vào đường dẫn nhận được trong tin nhắn hoặc email thông báo báo giá.<br>2a. Hệ thống hiển thị trang xem báo giá trực tuyến dành riêng cho khách hàng với đầy đủ chi tiết các hạng mục và hai nút hành động: **Đồng ý báo giá** hoặc **Từ chối báo giá** (chuyển tiếp sang UC-39). |
+| **Luồng ngoại lệ** | Tại bước 1, nếu đường dẫn xem báo giá không tồn tại hoặc đã hết hạn truy cập, hệ thống hiển thị thông báo lỗi: *"Báo giá không tồn tại hoặc phiên làm việc đã hết hạn. Vui lòng liên hệ cố vấn dịch vụ để được hỗ trợ."* |
 
 ---
 
-## UC-39 – Cập nhật và duyệt báo giá (Approve & Update Quotation)
+## UC-39 – Cập nhật và duyệt báo giá
 
 | **Mã Use case**    | UC-39 |
 | ------------------ | ------ |
-| **Tên Use case**   | Cập nhật và duyệt báo giá (Approve & Update Quotation) |
-| **Mô tả**          | Cố vấn dịch vụ gửi báo giá cho khách hàng qua ứng dụng và email. Khách hàng xem xét và thực hiện phê duyệt (hoặc cố vấn ghi nhận phê duyệt theo ủy quyền của khách). Trường hợp khách hàng không đồng ý, hệ thống xử lý phân nhánh theo yêu cầu (điều chỉnh lại báo giá hoặc hủy dịch vụ để lấy lại xe). Khi duyệt, hệ thống tự động khóa đơn giá và giữ chỗ phụ tùng trong kho. |
-| **Đối tượng**      | Khách hàng (Customer), Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Báo giá đang ở trạng thái **Bản nháp** hoặc **Chờ khách duyệt**. |
-| **Hậu điều kiện**  | - Nếu phê duyệt: Báo giá chuyển sang trạng thái **Đã duyệt**; phiếu dịch vụ chuyển sang trạng thái **Đã duyệt**; phụ tùng trong kho chuyển sang trạng thái **Đã giữ chỗ**; biên bản tiếp nhận xe được xác nhận chính thức.<br>- Nếu từ chối (yêu cầu điều chỉnh): Báo giá chuyển sang trạng thái **Đã từ chối**; phiếu dịch vụ quay về trạng thái **Đang lập kế hoạch** để cố vấn chỉnh sửa.<br>- Nếu từ chối (hủy dịch vụ lấy lại xe): Báo giá chuyển sang trạng thái **Đã từ chối**; hệ thống chuyển sang thủ tục xuất trả xe cho khách hàng.<br>- Thất bại: Hệ thống thông báo lỗi, trạng thái dữ liệu giữ nguyên. |
-| **Luồng cơ bản**   | 1. Cố vấn dịch vụ kiểm tra bản báo giá nháp và nhấn **Gửi cho khách hàng**.<br>2. Hệ thống chuyển trạng thái báo giá sang **Chờ khách duyệt**, chuyển phiếu dịch vụ sang trạng thái **Chờ duyệt báo giá**, đồng thời tự động gửi email và thông báo lên ứng dụng của khách hàng kèm bảng tóm tắt chi phí và liên kết truy cập nhanh.<br>3. Khách hàng đăng nhập vào ứng dụng hoặc nhấp vào liên kết trong email để xem chi tiết báo giá.<br>4. Khách hàng (hoặc cố vấn dịch vụ ghi nhận sau khi trao đổi xác nhận trực tiếp với khách) nhấn **Phê duyệt báo giá**.<br>5. Hệ thống hiển thị hộp thoại xác nhận cam kết chi phí. Người dùng nhấn **Xác nhận duyệt**.<br>6. Hệ thống thực hiện chuỗi xử lý tự động:<br>- Chuyển trạng thái báo giá sang **Đã duyệt** và khóa cố định toàn bộ đơn giá tại thời điểm phê duyệt.<br>- Tự động chuyển trạng thái các phụ tùng trong báo giá sang **Đã giữ chỗ trong kho** để đảm bảo linh kiện sẵn sàng và không bị phân bổ cho xe khác.<br>- Chuyển trạng thái phiếu dịch vụ sang **Đã duyệt**, sẵn sàng cho việc phân công kỹ thuật viên bắt đầu sửa chữa.<br>- Chuyển trạng thái biên bản kiểm tra ban đầu sang **Đã xác nhận**.<br>7. Hệ thống hiển thị thông báo phê duyệt thành công và cập nhật trạng thái hiển thị trên màn hình. |
-| **Luồng thay thế** | **[Khách hàng từ chối báo giá]** Tại bước 4, khách hàng nhấn nút **Từ chối báo giá**:<br>4a. Hệ thống hiển thị biểu mẫu yêu cầu chọn phân loại lý do từ chối:<br>- *Trường hợp 1 - Yêu cầu điều chỉnh lại chi phí:* Khách hàng nêu lý do (vượt ngân sách, bỏ bớt hạng mục chưa cần thiết, đổi loại phụ tùng,...). Hệ thống chuyển trạng thái báo giá sang **Đã từ chối**, đưa phiếu dịch vụ quay về trạng thái **Đang lập kế hoạch** để cố vấn dịch vụ điều chỉnh lại kế hoạch và lập báo giá mới.<br>- *Trường hợp 2 - Hủy dịch vụ và nhận lại xe:* Khách hàng không đồng ý làm dịch vụ và yêu cầu nhận lại xe ngay. Hệ thống chuyển trạng thái báo giá sang **Đã từ chối**, ghi nhận lý do và kích hoạt thủ tục chuẩn bị xuất trả xe sớm cho khách hàng. |
-| **Luồng ngoại lệ** | Tại bước 4, nếu báo giá đã ở trạng thái **Đã duyệt**, hệ thống khóa nút duyệt và thông báo báo giá đã được phê duyệt trước đó.<br><br>Nếu phương tiện đã bắt đầu bước thi công sửa chữa, hệ thống ngăn chặn việc từ chối báo giá để bảo vệ chi phí và vật tư của xưởng. |
+| **Tên Use case**   | Cập nhật và duyệt báo giá |
+| **Mô tả**          | Cố vấn dịch vụ gửi báo giá cho khách hàng, ghi nhận quyết định phê duyệt hoặc từ chối của khách hàng (hoặc khách hàng tự duyệt/từ chối trực tuyến). Khi khách hàng phê duyệt, hệ thống khóa cố định nội dung báo giá, đồng bộ trạng thái phiếu công việc và tự động chuyển trạng thái phụ tùng sang diện giữ chỗ trong kho để phục vụ thi công. |
+| **Đối tượng**      | Cố vấn dịch vụ, Khách hàng |
+| **Tiền điều kiện** | Báo giá đang ở trạng thái Bản nháp hoặc Đã gửi khách, chưa được chốt duyệt trước đó. |
+| **Hậu điều kiện**  | - Khi duyệt: Báo giá chuyển sang trạng thái Đã duyệt, toàn bộ đơn giá và danh mục bị khóa cố định; phiếu công việc chuyển sang trạng thái Đã duyệt; các phụ tùng trong báo giá tự động chuyển sang trạng thái Giữ chỗ trong kho; hệ thống kích hoạt quyền phân công điều phối thợ thi công.<br>- Khi từ chối: Báo giá chuyển sang trạng thái Bị từ chối, ghi nhận lý do từ chối để cố vấn tạo phiên bản báo giá điều chỉnh tiếp theo.<br>- Thất bại: Hệ thống thông báo lỗi, trạng thái dữ liệu giữ nguyên. |
+| **Luồng cơ bản**   | 1. Tại tab **Báo giá**, cố vấn xem lại bản báo giá cần phê duyệt (hoặc khách hàng xem trên trang báo giá trực tuyến).<br>2. (Tùy chọn gửi khách) Cố vấn nhấn nút **Gửi khách hàng** để chuyển trạng thái báo giá sang Đã gửi khách và tự động gửi thông báo qua tin nhắn/email cho khách.<br>3. Khi khách hàng xác nhận đồng ý phương án sửa chữa:<br>- Nếu khách tự duyệt trực tuyến: Khách nhấn nút **Đồng ý báo giá**.<br>- Nếu khách xác nhận trực tiếp hoặc qua điện thoại: Cố vấn nhấn nút **Khách đã đồng ý (Duyệt báo giá)**.<br>4. Hệ thống hiển thị hộp thoại xác nhận phê duyệt báo giá.<br>5. Người dùng nhấn **Xác nhận**.<br>6. Hệ thống thực hiện một chuỗi xử lý tự động đồng bộ:<br>- Cập nhật trạng thái báo giá thành Đã duyệt và khóa toàn bộ nội dung chi phí.<br>- Cập nhật trạng thái phiếu công việc thành Đã duyệt (sẵn sàng chuyển sang Đang thi công khi thợ bắt đầu nhận việc).<br>- Tự động cập nhật trạng thái các phụ tùng trong phiếu từ Kế hoạch sang Giữ chỗ trong kho để đảm bảo đủ vật tư thi công.<br>- Gửi thông báo đến Cố vấn dịch vụ và Tổ điều phối để phân công kỹ thuật viên bắt đầu sửa chữa.<br>7. Màn hình tab Báo giá cập nhật giao diện đã duyệt với huy hiệu màu xanh lá cây. |
+| **Luồng thay thế** | **[Khách hàng từ chối báo giá]**<br>3a. Khách hàng hoặc Cố vấn nhấn nút **Từ chối**.<br>4a. Hệ thống hiển thị hộp thoại nhập lý do từ chối (ví dụ: Chi phí vượt ngân sách, muốn hoãn sửa chữa một số hạng mục...).<br>5a. Người dùng nhập lý do và nhấn **Xác nhận từ chối**.<br>6a. Hệ thống cập nhật trạng thái báo giá thành Bị từ chối và ghi lại lý do phản hồi.<br>7a. Cố vấn trao đổi lại với khách hàng và nhấn **Tạo báo giá mới** để lập phương án điều chỉnh giá hoặc rút gọn hạng mục phù hợp. |
+| **Luồng ngoại lệ** | Tại bước 5, nếu báo giá đã ở trạng thái Đã duyệt, hệ thống khóa các nút duyệt và từ chối, hiển thị dòng thông báo: *"Báo giá này đã được chốt và khóa cố định. Để thay đổi, vui lòng lập Báo giá bổ sung."*<br><br>Nếu phương tiện đã bắt đầu bước thi công sửa chữa trong xưởng, hệ thống ngăn chặn việc từ chối báo giá để bảo vệ chi phí vật tư và công thợ. |
 
 ---
 
-## UC-40 – Hủy báo giá (Cancel Quotation)
+## UC-40 – Hủy báo giá
 
 | **Mã Use case**    | UC-40 |
 | ------------------ | ------ |
-| **Tên Use case**   | Hủy báo giá (Cancel Quotation) |
-| **Mô tả**          | Cố vấn dịch vụ áp dụng chính sách giảm giá, chiết khấu trực tiếp trên báo giá trước khi khách hàng duyệt, hoặc hủy bỏ một bản báo giá bị lập sai sót để giải phóng dữ liệu và lập lại kế hoạch. |
-| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Báo giá đang ở trạng thái **Bản nháp** hoặc **Chờ khách duyệt**. Tuyệt đối không áp dụng cho báo giá đã ở trạng thái **Đã duyệt**. |
-| **Hậu điều kiện**  | - Nếu điều chỉnh chiết khấu: Mức chiết khấu và tổng tiền thanh toán của báo giá được cập nhật chính xác.<br>- Nếu hủy: Báo giá chuyển sang trạng thái **Đã hủy**, phiếu dịch vụ quay về trạng thái **Đang lập kế hoạch**.<br>- Thất bại: Hệ thống thông báo lỗi, dữ liệu được giữ nguyên. |
-| **Luồng cơ bản**   | 1. **Áp dụng chiết khấu / Điều chỉnh giảm giá:**<br>- Cố vấn dịch vụ mở bản báo giá đang xử lý và chọn **Áp dụng chiết khấu**.<br>- Cố vấn chọn hình thức giảm giá: theo số tiền trực tiếp hoặc theo tỷ lệ phần trăm (%).<br>- Cố vấn nhập mức giảm giá và ghi rõ lý do ưu đãi (chương trình khuyến mãi, khách hàng thân thiết,...).<br>- Hệ thống tự động tính lại số tiền giảm và tổng tiền thanh toán cuối cùng của báo giá.<br>- Cố vấn nhấn **Lưu thay đổi**. Hệ thống lưu lại thông tin và cập nhật giao diện.<br>2. **Hủy bản báo giá sai sót:**<br>- Khi phát hiện bản báo giá bị sai sót, cố vấn mở báo giá và chọn **Hủy báo giá**.<br>- Hệ thống hiển thị hộp thoại cảnh báo: *"Bạn có chắc chắn muốn hủy bản báo giá này? Thao tác này không thể hoàn tác."*<br>- Cố vấn nhấn **Xác nhận hủy**.<br>- Hệ thống cập nhật trạng thái báo giá thành **Đã hủy**, đồng thời đưa phiếu dịch vụ quay lại trạng thái **Đang lập kế hoạch** để cố vấn tiếp tục hiệu chỉnh danh mục dịch vụ. |
-| **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Tại bước 1 hoặc 2, nếu báo giá đã ở trạng thái **Đã duyệt**, hệ thống ẩn hoàn toàn chức năng chỉnh sửa và hủy; nếu phát sinh yêu cầu can thiệp trái phép, hệ thống từ chối và thông báo: *"Báo giá đã được phê duyệt, không thể chỉnh sửa hoặc hủy bỏ."*<br><br>Tại bước 1, nếu số tiền giảm giá lớn hơn tổng tiền dịch vụ ban đầu, hệ thống cảnh báo mức chiết khấu không hợp lệ và không cho phép lưu. |
+| **Tên Use case**   | Hủy báo giá |
+| **Mô tả**          | Cố vấn dịch vụ áp dụng chính sách chiết khấu giảm giá trực tiếp trên bản báo giá trước khi khách hàng duyệt, hoặc hủy bỏ một bản báo giá bị lập sai sót để giải phóng dữ liệu và quay lại màn hình lập kế hoạch. |
+| **Đối tượng**      | Cố vấn dịch vụ |
+| **Tiền điều kiện** | Báo giá đang ở trạng thái Bản nháp hoặc Đã gửi khách. Tuyệt đối không áp dụng cho báo giá đã ở trạng thái Đã duyệt (Đã khóa). |
+| **Hậu điều kiện**  | - Nếu áp dụng chiết khấu: Số tiền giảm giá và tổng thanh toán của báo giá được cập nhật chính xác.<br>- Nếu hủy: Báo giá chuyển sang trạng thái Đã hủy, phiếu công việc quay về trạng thái Đang lập kế hoạch.<br>- Thất bại: Hệ thống thông báo lỗi, dữ liệu được giữ nguyên. |
+| **Luồng cơ bản**   | **[Áp dụng chiết khấu / Điều chỉnh giảm giá]**<br>1. Tại tab **Báo giá**, cố vấn mở bản báo giá đang xử lý và nhấn nút **Chiết khấu**.<br>2. Hệ thống hiển thị hộp thoại **Áp dụng chiết khấu**.<br>3. Cố vấn chọn hình thức giảm giá: theo tỷ lệ phần trăm (%) hoặc theo số tiền trực tiếp (VNĐ).<br>4. Cố vấn nhập giá trị giảm giá và ghi rõ lý do ưu đãi (chương trình khuyến mãi, khách hàng thân thiết...).<br>5. Hệ thống tự động tính lại số tiền giảm và tổng thanh toán sau thuế.<br>6. Cố vấn nhấn nút **Lưu thay đổi** (hoặc **Hủy bỏ**). Hệ thống lưu lại chiết khấu và hiển thị thông báo: *"Đã cập nhật chiết khấu thành công"*. |
+| **Luồng thay thế** | **[Hủy bản báo giá sai sót]**<br>1a. Khi phát hiện bản báo giá bị sai sót, cố vấn nhấn nút **Hủy nháp** (hoặc biểu tượng thùng rác **Hủy báo giá**).<br>2a. Hệ thống hiển thị hộp thoại cảnh báo: **Xác nhận hủy báo giá nháp?** (*"Bản ghi báo giá này sẽ bị xóa khỏi hệ thống. Bạn có thể tạo lại báo giá mới bất cứ lúc nào."*).<br>3a. Cố vấn nhấn **Xác nhận xóa** (hoặc nút **Hủy** để bỏ qua).<br>4a. Hệ thống cập nhật trạng thái báo giá thành **Đã hủy**, hiển thị thông báo *"Đã hủy báo giá nháp thành công"*, đồng thời đưa phiếu công việc quay lại trạng thái **Đang lập kế hoạch**.<br><br>**[Khách hàng yêu cầu nhận lại xe sớm khi hủy dịch vụ]** Nếu khách hàng không đồng ý sửa chữa và muốn nhận lại xe ngay, cố vấn chuyển sang tab Giao xe để thực hiện thủ tục xuất trả xe sớm (UC-42). |
+| **Luồng ngoại lệ** | Nếu báo giá đã ở trạng thái Đã duyệt (Đã khóa), hệ thống ẩn hoàn toàn nút Chiết khấu và nút Hủy nháp; nếu phát sinh yêu cầu can thiệp trái phép, hệ thống từ chối và thông báo lỗi: *"Báo giá đã được phê duyệt, không thể chỉnh sửa hoặc hủy bỏ."*<br><br>Tại bước 4 của luồng chiết khấu, nếu số tiền giảm giá lớn hơn tổng tiền dịch vụ ban đầu hoặc giá trị âm, hệ thống cảnh báo mức chiết khấu không hợp lệ và khóa nút lưu. |
 
 ---
 
-## UC-41 – Kiểm định chất lượng (Quality Inspection)
+## UC-41 – Kiểm định chất lượng
 
 | **Mã Use case**    | UC-41 |
 | ------------------ | ------ |
-| **Tên Use case**   | Kiểm định chất lượng (Quality Inspection) |
-| **Mô tả**          | Cố vấn dịch vụ hoặc nhân viên kiểm tra chất lượng thực hiện thẩm định tình trạng kỹ thuật của xe sau khi thợ thi công xong theo danh mục tiêu chuẩn. Nếu tất cả hạng mục đạt yêu cầu, hệ thống cho phép chuyển phiếu dịch vụ sang bước thanh toán và phát hành chứng nhận kiểm định chất lượng cho khách hàng. Nếu phát hiện có hạng mục chưa đạt, hệ thống tự động tạo công việc sửa lại để kỹ thuật viên khắc phục trước khi kiểm tra lại. |
-| **Đối tượng**      | Cố vấn dịch vụ, Nhân viên kiểm tra chất lượng |
-| **Tiền điều kiện** | Phiếu dịch vụ đang ở trạng thái **Đang sửa chữa**; toàn bộ các công việc thi công ban đầu của kỹ thuật viên đã hoàn thành (không còn công việc nào đang làm dở). |
-| **Hậu điều kiện**  | Thành công – Đạt 100%: Biên bản kiểm định ghi nhận kết quả **Đạt**, mở khóa để chuyển phiếu dịch vụ sang trạng thái **Chờ thanh toán**, khách hàng có thể xem chứng nhận kiểm định chất lượng trên ứng dụng.<br>Thành công – Có mục Không đạt: Biên bản ghi nhận kết quả **Không đạt**, hệ thống tự động tạo công việc sửa lại tương ứng, giữ phiếu dịch vụ ở trạng thái **Đang sửa chữa** và khóa bước chuyển sang thanh toán.<br>Thất bại: Hệ thống thông báo lỗi, kết quả kiểm định không được lưu. |
-| **Luồng cơ bản**   | 1. Cố vấn dịch vụ hoặc nhân viên kiểm tra chất lượng mở phiếu dịch vụ và chọn mục **Kiểm tra chất lượng**.<br>2. Hệ thống kiểm tra tiến độ thi công của phương tiện: xác nhận 100% công việc sửa chữa ban đầu đã hoàn thành và hiển thị danh sách các tiêu chí kiểm định kỹ thuật chuẩn hóa (An toàn phanh và lái; Động cơ và vận hành; Hệ thống điện và đèn; Khung gầm và lốp xe; Chạy thử thực tế trên đường; Vệ sinh xe trước khi giao).<br>3. Người kiểm tra tiến hành kiểm tra thực tế xe và chọn kết quả **Đạt** cho từng tiêu chí (hoặc nhấn **Đánh dấu tất cả đạt** nếu xe đã qua chạy thử hoàn hảo), kèm ghi chú nghiệm thu thực tế.<br>4. Người kiểm tra nhấn **Xác nhận kết quả kiểm định**.<br>5. Hệ thống ghi nhận biên bản kiểm định với kết quả **Đạt** 100% và mở khóa tính năng chuyển sang thanh toán.<br>6. Cố vấn dịch vụ nhấn **Yêu cầu tính tiền**.<br>7. Hệ thống chuyển trạng thái phiếu dịch vụ sang **Chờ thanh toán**, gửi thông báo cho bộ phận thu ngân chuẩn bị lập hóa đơn, đồng thời cấp giấy chứng nhận kiểm định chất lượng điện tử để khách hàng có thể tra cứu và xem trực tiếp trên ứng dụng. |
-| **Luồng thay thế** | **[Phát hiện lỗi kỹ thuật – Kiểm định không đạt và sửa lại]** Tại bước 3, nếu phát hiện có hạng mục kỹ thuật chưa đạt yêu cầu:<br>3a. Người kiểm tra chọn kết quả **Không đạt** tại tiêu chí tương ứng và chọn mức độ nghiêm trọng (Nghiêm trọng, Nặng, hoặc Nhẹ).<br>3b. Người kiểm tra nhập mô tả chi tiết lỗi, hướng dẫn kỹ thuật cần khắc phục và chọn kỹ thuật viên chịu trách nhiệm sửa lại.<br>3c. Người kiểm tra nhấn **Xác nhận kiểm định và yêu cầu sửa lại**.<br>3d. Hệ thống lưu kết quả kiểm định là **Không đạt**, tự động tạo công việc sửa lại tương ứng (tránh tạo trùng lặp nếu công việc sửa lại cho lỗi này đã được tạo trước đó), giữ phiếu dịch vụ ở trạng thái **Đang sửa chữa** và khóa chặt nút yêu cầu tính tiền.<br>3e. Kỹ thuật viên nhận thông báo, tiến hành khắc phục lỗi theo đúng hướng dẫn và xác nhận hoàn thành công việc sửa lại.<br>3f. Người kiểm tra mở lại mục Kiểm tra chất lượng để thẩm định lại các tiêu chí lỗi. Nếu đạt chuẩn, tiếp tục thực hiện từ bước 4 của luồng cơ bản. |
-| **Luồng ngoại lệ** | Tại bước 2, nếu còn công việc thi công chưa hoàn thành, hệ thống hiển thị cảnh báo và khóa chức năng xác nhận kiểm định chất lượng.<br><br>Tại bước 3, nếu người kiểm tra bỏ sót chưa đánh giá một trong các tiêu chí bắt buộc, hệ thống yêu cầu đánh giá đầy đủ trước khi lưu kết quả.<br><br>Tại bước 6, nếu xe chưa hoàn tất kiểm định chất lượng hoặc còn công việc sửa lại chưa hoàn thành, hệ thống từ chối yêu cầu tính tiền và thông báo lý do phương tiện chưa đủ điều kiện xuất xưởng. |
+| **Tên Use case**   | Kiểm định chất lượng |
+| **Mô tả**          | Cố vấn dịch vụ hoặc nhân viên kiểm định chất lượng (KCS) thẩm định tình trạng kỹ thuật của xe sau khi thợ thi công xong theo danh mục tiêu chuẩn nghiệm thu. Nếu tất cả hạng mục đạt yêu cầu, hệ thống mở khóa chức năng gửi yêu cầu thanh toán để chuyển sang lập hóa đơn. Nếu phát hiện có hạng mục chưa đạt, hệ thống tự động tạo công việc sửa lại để kỹ thuật viên khắc phục trước khi kiểm định lại. |
+| **Đối tượng**      | Cố vấn dịch vụ, Nhân viên kiểm định chất lượng (KCS) |
+| **Tiền điều kiện** | Phiếu công việc đang ở trạng thái Đang thi công; 100% các công việc kỹ thuật ban đầu của thợ đã hoàn thành (không còn công việc nào đang thi công dở dang). |
+| **Hậu điều kiện**  | Thành công – Đạt 100%: Biên bản kiểm định ghi nhận kết quả ĐẠT toàn diện, xuất hiện thông báo mở khóa nút Gửi yêu cầu lập hóa đơn, chuyển phiếu công việc sang trạng thái Chờ thanh toán.<br>Thành công – Có mục Lỗi: Biên bản ghi nhận kết quả LỖI / SỬA LẠI, hệ thống tự động tạo công việc sửa lại tương ứng, giữ phiếu công việc ở trạng thái Đang thi công và khóa chức năng thanh toán.<br>Thất bại: Hệ thống thông báo lỗi, kết quả kiểm định không được lưu. |
+| **Luồng cơ bản**   | 1. Cố vấn hoặc nhân viên kiểm định mở màn hình chi tiết phiếu công việc và chọn tab **Kiểm tra chất lượng** (Tab 5).<br>2. Hệ thống kiểm tra tiến độ thi công của phương tiện: xác nhận 100% công việc sửa chữa ban đầu đã hoàn thành và hiển thị danh sách các tiêu chí kiểm định kỹ thuật chuẩn hóa theo từng dịch vụ.<br>3. Người kiểm tra tiến hành kiểm tra thực tế xe và có thể nhấn nút **Đạt tất cả ({count})** để đánh dấu nhanh toàn bộ danh mục, hoặc trên từng dòng tiêu chí nhấn chọn nút **ĐẠT** (màu xanh lá) và nhập ghi chú nghiệm thu thực tế.<br>4. Người kiểm tra nhấn nút **Lưu đánh giá KCS**.<br>5. Hệ thống ghi nhận biên bản kiểm định với kết quả Đạt 100%, tự động hiển thị thông báo nổi bật: *"Toàn bộ dịch vụ đã hoàn tất & Vượt qua kiểm định KCS! Chất lượng kỹ thuật xe đã đạt 100%."* kèm nút hành động kích hoạt thanh toán.<br>6. Cố vấn dịch vụ nhấn nút **Gửi yêu cầu lập hóa đơn**.<br>7. Hệ thống chuyển trạng thái phiếu công việc sang **Chờ thanh toán**, gửi thông báo tức thời cho bộ phận Thu ngân quầy dịch vụ chuẩn bị lập hóa đơn, đồng thời cấp chứng nhận kiểm định chất lượng điện tử cho khách hàng. |
+| **Luồng thay thế** | **[Phát hiện lỗi kỹ thuật – Kiểm định không đạt và sửa lại]** Tại bước 3, nếu phát hiện có hạng mục kỹ thuật chưa đạt yêu cầu:<br>3a. Người kiểm tra nhấp chọn nút **LỖI / SỬA LẠI** (màu đỏ) tại tiêu chí tương ứng.<br>3b. Hệ thống tự động mở rộng khung nhập liệu bắt buộc: **"Yêu cầu sửa lại:"**.<br>3c. Người kiểm tra nhập mô tả chi tiết nguyên nhân lỗi và hướng dẫn kỹ thuật cần khắc phục để thợ thi công.<br>3d. Người kiểm tra nhấn nút **Lưu đánh giá KCS**.<br>3e. Hệ thống ghi nhận kết quả kiểm định là Không đạt, tự động tạo một công việc sửa lại tương ứng có tên dạng `[Sửa lại - KCS] ...` với trạng thái Sửa lại, giữ phiếu công việc ở trạng thái **Đang thi công** và khóa nút gửi yêu cầu thanh toán.<br>3f. Kỹ thuật viên nhận thông báo công việc sửa lại, tiến hành khắc phục và xác nhận hoàn thành.<br>3g. Người kiểm tra mở lại tab Kiểm tra chất lượng để thẩm định lại các tiêu chí lỗi. Khi đạt chuẩn 100%, tiếp tục thực hiện từ bước 5 của luồng cơ bản. |
+| **Luồng ngoại lệ** | Tại bước 2, nếu còn công việc thi công chưa hoàn thành, hệ thống hiển thị trạng thái cảnh báo và khóa chức năng nghiệm thu KCS.<br><br>Tại bước 3a, nếu chọn LỖI / SỬA LẠI mà để trống ô mô tả yêu cầu sửa lại, hệ thống hiển thị thông báo lỗi: *"Vui lòng nhập lý do sửa lại cho mục..."* và không cho phép lưu.<br><br>Tại bước 6, nếu xe chưa hoàn tất kiểm định chất lượng hoặc còn công việc sửa lại chưa hoàn thành, hệ thống từ chối yêu cầu thanh toán và thông báo lý do phương tiện chưa đủ điều kiện xuất xưởng. |
 
 ---
 
----
-
-
----
-
-## UC-42 – Bàn giao xe (Release Vehicle)
+## UC-42 – Bàn giao xe
 
 | **Mã Use case**    | UC-42 |
 | ------------------ | ------ |
-| **Tên Use case**   | Bàn giao xe (Release Vehicle) |
-| **Mô tả**          | Cố vấn dịch vụ kiểm tra toàn bộ điều kiện bàn giao (job xong, kiểm định đạt, hóa đơn đã thanh toán) và thực hiện thủ tục bàn giao xe chính thức cho khách hàng. |
-| **Đối tượng**      | Cố vấn dịch vụ (Service Advisor) |
-| **Tiền điều kiện** | Tất cả job đã hoàn thành, kiểm định chất lượng đạt và hóa đơn đã được thanh toán đầy đủ (hệ thống đã tự động xác nhận qua UC-16). |
-| **Hậu điều kiện**  | Thành công: Xe được bàn giao, phiếu công việc chuyển sang trạng thái **Đã bàn giao** và khách hàng nhận thông báo.<br>Thất bại: Hệ thống từ chối nếu chưa đủ điều kiện. |
-| **Luồng cơ bản**   | 1. Cố vấn vào phiếu công việc và chọn **Bàn giao xe**.<br>2. Hệ thống tự động kiểm tra: job hoàn thành, kiểm định đạt và hóa đơn đã thanh toán.<br>3. Nếu đủ điều kiện, cố vấn ghi chú bàn giao nếu cần.<br>4. Cố vấn nhấn **Xác nhận bàn giao**.<br>5. Hệ thống cập nhật trạng thái phiếu thành **Đã bàn giao** và gửi thông báo cho khách hàng. |
-| **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Tại bước 2, nếu bất kỳ điều kiện nào chưa đạt, hệ thống không cho phép bàn giao và hiển thị danh sách điều kiện còn thiếu cụ thể. |
+| **Tên Use case**   | Bàn giao xe |
+| **Mô tả**          | Cố vấn dịch vụ hoàn tất thủ tục bàn giao phương tiện cho khách hàng khi xe đã thỏa mãn đầy đủ các điều kiện xuất xưởng: toàn bộ công việc hoàn tất, kiểm định chất lượng đạt chuẩn và tài chính đã quyết toán xong. Cố vấn đối chiếu ODO, nhiên liệu thực tế, thu thập chữ ký điện tử xác nhận của khách hàng, xuất biên bản bàn giao điện tử và thực hiện đóng hồ sơ lưu trữ lịch sử sửa chữa. |
+| **Đối tượng**      | Cố vấn dịch vụ |
+| **Tiền điều kiện** | Phiếu công việc đã thỏa mãn đầy đủ các điều kiện xuất xưởng: Tất cả các công việc đã hoàn thành, kiểm định chất lượng đạt 100% và hóa đơn dịch vụ đã được thanh toán đầy đủ (Phiếu công việc ở trạng thái Đã quyết toán tài chính). |
+| **Hậu điều kiện**  | Thành công: Phương tiện được bàn giao chính thức cho khách hàng, phiếu công việc chuyển sang trạng thái ĐÃ XUẤT XƯỞNG, biên bản bàn giao xe điện tử được khởi tạo (có thể xuất file PDF) và gửi thông báo hoàn tất đến khách hàng.<br>Thất bại: Hệ thống từ chối bàn giao nếu vi phạm bất kỳ điều kiện nào của quy định xuất xưởng. |
+| **Luồng cơ bản**   | 1. Cố vấn mở màn hình chi tiết phiếu công việc và chuyển sang tab **Giao xe** (Tab 6).<br>2. Hệ thống kiểm tra trạng thái phiếu xác nhận đã ở mức Đã quyết toán tài chính và hiển thị thông báo sẵn sàng bàn giao.<br>3. Cố vấn nhấn nút **Bàn giao xe cho khách**.<br>4. Hệ thống hiển thị hộp thoại **Biên bản bàn giao xe xuất xưởng**.<br>5. Cố vấn tiến hành kiểm tra thực tế và điền các thông tin xuất xưởng:<br>- **Số ODO lúc giao xe (km):** Nhập số ODO thực tế trên đồng hồ xe khi xuất xưởng (phải lớn hơn hoặc bằng ODO lúc tiếp nhận).<br>- **Mức nhiên liệu lúc giao xe:** Chọn từ danh sách mức xăng (Bình cạn E, 1/4 bình, 1/2 bình, 3/4 bình, Đầy bình F).<br>- **Danh mục kiểm tra bàn giao:** Tích chọn xác nhận các mục `Rửa xe và dọn vệ sinh nội thất hoàn tất` và `Kiểm tra và hoàn trả đầy đủ tài sản để trên xe`.<br>- **Xử lý phụ tùng cũ thay ra:** Chọn 1 trong 2 hình thức: *Bàn giao lại toàn bộ cho khách mang về* hoặc *Khách nhờ xưởng tiêu hủy giúp*.<br>- **Điều khoản bảo hành:** Kiểm tra nội dung cam kết bảo hành dịch vụ và phụ tùng.<br>- **Ghi chú bàn giao:** Ghi nhận thêm các căn dặn hoặc lưu ý vận hành cho khách.<br>- **Chữ ký điện tử của khách hàng:** Khách hàng kiểm tra xe và ký tên trực tiếp lên khung vẽ chữ ký điện tử (có nút **Ký lại** nếu cần xóa vẽ lại).<br>6. Cố vấn nhấn nút **Xác nhận bàn giao & Xuất xưởng**.<br>7. Hệ thống kiểm tra tính hợp lệ của toàn bộ thông tin, lưu biên bản bàn giao, cập nhật trạng thái phiếu công việc thành **ĐÃ XUẤT XƯỞNG**, đồng thời tự động gửi thông báo xác nhận và biên bản bàn giao điện tử cho khách hàng.<br>8. Màn hình tab Giao xe cập nhật giao diện đã xuất xưởng, hiển thị nút **Tải biên bản bàn giao (PDF)** và nút **Đóng hồ sơ**. |
+| **Luồng thay thế** | **[Đóng hồ sơ sửa chữa và lưu trữ lịch sử]** Sau khi xe đã xuất xưởng:<br>1a. Cố vấn nhấn nút **Đóng hồ sơ** trên thanh thông báo trạng thái xuất xưởng.<br>2a. Hệ thống hiển thị hộp thoại **Đóng hồ sơ sửa chữa**.<br>3a. Cố vấn kiểm tra thông tin và nhấn nút **Xác nhận đóng hồ sơ** (hoặc **Hủy**).<br>4a. Hệ thống cập nhật trạng thái phiếu công việc sang **ĐÃ ĐÓNG HỒ SƠ**, chính thức khóa lưu trữ toàn bộ hồ sơ và đồng bộ dữ liệu vào Lịch sử sửa chữa của phương tiện (UC-79).<br><br>**[Xuất trả xe khi khách hủy dịch vụ hoặc từ chối báo giá]**<br>1b. Nếu khách hàng từ chối làm dịch vụ và yêu cầu nhận lại xe sớm, tại tab Giao xe hệ thống hiển thị nút xuất trả xe sớm.<br>2b. Cố vấn mở hộp thoại **Xuất trả xe**, kiểm tra hoàn trả tài sản, đối chiếu phụ tùng kho và nhấn **Xác nhận xuất trả xe** để bàn giao xe về cho khách. |
+| **Luồng ngoại lệ** | Tại bước 2 hoặc 6, nếu xe chưa hoàn tất quyết toán tài chính, còn công việc chưa hoàn thành, hoặc kiểm định chất lượng chưa đạt, hệ thống từ chối mở hộp thoại hoặc từ chối lưu và thông báo: *"Phương tiện chưa hoàn tất quyết toán tài chính. Vui lòng hoàn tất thanh toán hóa đơn trước khi bàn giao xe."*<br><br>Tại bước 5, nếu số ODO xuất xưởng nhỏ hơn số ODO lúc tiếp nhận xe, hệ thống báo lỗi: *"Số ODO xuất xưởng không được nhỏ hơn ODO tiếp nhận."* và không cho phép xác nhận xuất xưởng. |
 
 ---
 
@@ -1365,3 +1344,134 @@
 | **Luồng cơ bản**   | 1. Khách hàng truy cập mục **Lịch sử sửa chữa** (Sổ bảo dưỡng & Lịch sử sửa chữa).<br>2. Hệ thống tải và hiển thị thống kê tổng quan (tổng lượt hoàn tất, tổng chi phí đã quyết toán, lần xuất xưởng gần nhất) cùng danh sách các hồ sơ sửa chữa ở trạng thái **Hoàn tất & Lưu trữ**, **Đã giao xe** hoặc **Đã hủy dịch vụ**.<br>3. Khách hàng có thể tìm kiếm nhanh theo mã phiếu, biển số, tên dịch vụ hoặc lọc theo phương tiện, trạng thái và khoảng thời gian (Từ ngày – Đến ngày).<br>4. Hệ thống cập nhật lại danh sách hồ sơ theo tiêu chí tìm kiếm và bộ lọc đã chọn.<br>5. Khách hàng nhấn **Xem sổ bảo dưỡng** trên một hồ sơ cụ thể.<br>6. Hệ thống hiển thị cửa sổ chi tiết **Sổ bảo dưỡng điện tử** gồm 4 mục: **Tổng quan & Tiếp nhận** (tình trạng ban đầu, số km lúc vào, yêu cầu của khách), **Hạng mục & Phụ tùng** (danh sách dịch vụ đã thực hiện), **Kiểm định QC & Tiến trình** (kết quả nghiệm thu chất lượng và mốc thời gian), và **Bàn giao & Bảo hành** (số km xuất xưởng, thời gian bàn giao, chính sách bảo hành). |
 | **Luồng thay thế** | **[Tải chứng từ PDF]** Tại danh sách lịch sử (bước 2) hoặc trong cửa sổ chi tiết sổ bảo dưỡng (bước 6):<br>6a. Khách hàng nhấn **Biên bản bàn giao (PDF)** hoặc **Hóa đơn VAT**.<br>6b. Hệ thống trích xuất và tải xuống tệp PDF tương ứng về thiết bị của khách hàng.<br><br>**[Xóa bộ lọc]** Tại bước 3, khách hàng nhấn **Xóa bộ lọc**:<br>3a. Hệ thống đặt lại toàn bộ điều kiện lọc và hiển thị lại danh sách lịch sử sửa chữa mặc định. |
 | **Luồng ngoại lệ** | Tại bước 2 hoặc 4, nếu khách hàng chưa có lịch sử sửa chữa hoặc không có hồ sơ nào khớp với điều kiện lọc, hệ thống hiển thị thông báo "Không tìm thấy hồ sơ nào".<br><br>Tại bước 6, nếu hồ sơ không tồn tại hoặc không thuộc quyền sở hữu của khách hàng, hệ thống từ chối truy cập và hiển thị thông báo lỗi. |
+
+---
+
+# PHẦN 8 – PHÂN HỆ QUẢN LÝ BẢO HÀNH
+
+---
+
+> **Phân hệ quản lý toàn diện quy trình bảo hành phương tiện, phụ tùng và dịch vụ kỹ thuật.**  
+> - **Kế thừa quy trình cốt lõi:** Lấy Phiếu công việc làm hồ sơ trung tâm, vận hành xuyên suốt chu trình quản lý chuẩn 10 bước (Bản nháp $ightarrow$ Đang lập kế hoạch $ightarrow$ Chờ khách duyệt $ightarrow$ Đã duyệt $ightarrow$ Đang thi công $ightarrow$ Chờ thanh toán $ightarrow$ Đã quyết toán tài chính $ightarrow$ Đã xuất xưởng $ightarrow$ Đã đóng hồ sơ).  
+> - **Chính sách 0 đồng & Quyết toán tự động:** Áp dụng đơn giá bán 0 đồng cho khách hàng đối với các hạng mục bảo hành hợp lệ; khi phát hành hóa đơn 0 đồng, hệ thống tự động hoàn tất quyết toán tài chính, giúp xe đủ điều kiện xuất xưởng nhanh chóng mà không bị ách tắc tại quầy thu ngân.  
+> - **Hạch toán chi phí nội bộ:** Phụ tùng bảo hành xuất kho làm giảm số lượng tồn kho vật lý thực tế, chi phí vốn phụ tùng được hạch toán theo phương pháp Giá vốn bình quân di động vào chi phí quản lý chất lượng của xưởng.  
+> - **Bảo mật báo cáo quản trị:** Báo cáo chi phí và tỷ lệ lỗi bảo hành được phân quyền nghiêm ngặt, chỉ duy nhất Quản lý dịch vụ hoặc Quản trị viên hệ thống mới có quyền truy cập.
+
+---
+
+## BẢNG TỔNG HỢP USE CASE PHÂN HỆ BẢO HÀNH
+
+| Mã UC | Tên Use Case | Đối tượng thực hiện | Phạm vi & Nghiệp vụ cốt lõi |
+| :---: | :--- | :--- | :--- |
+| **UC-80** | **Tra cứu thông tin bảo hành** | Khách hàng, Nhân viên quầy, Cố vấn | Tra cứu thời hạn và số km bảo hành còn lại của các dịch vụ, phụ tùng đã làm trên xe. |
+| **UC-81** | **Đặt lịch hẹn bảo hành** | Khách hàng | Khách hàng chủ động đặt lịch hẹn mang xe đến xử lý bảo hành trực tuyến kèm ảnh/video mô tả sự cố. |
+| **UC-82** | **Tiếp nhận bảo hành** | Nhân viên quầy dịch vụ | Tiếp nhận xe đến xưởng, ghi nhận ODO hiện tại, kiểm tra điều kiện và liên kết với phiếu dịch vụ gốc. |
+| **UC-83** | **Tạo phiếu công việc bảo hành** | Cố vấn dịch vụ | Lập phiếu công việc bảo hành, đánh dấu các công việc và phụ tùng bảo hành để áp dụng đơn giá 0 đồng. |
+| **UC-84** | **Xử lý hóa đơn bảo hành** | Nhân viên quầy dịch vụ, Thu ngân | Phát hành hóa đơn 0 đồng; hệ thống tự động ghi nhận đã thanh toán và chuyển trạng thái hoàn tất quyết toán tài chính để xuất xưởng. |
+| **UC-85** | **Phê duyệt bảo hành thiện chí** | Quản lý dịch vụ | Quản lý xem xét và phê duyệt hỗ trợ bảo hành ngoại lệ cho các trường hợp khách hàng quá hạn nhẹ hoặc khách hàng thân thiết. |
+| **UC-86** | **Xem báo cáo bảo hành** | Quản lý dịch vụ | Quản lý xem thống kê mật về tỷ lệ xe bảo hành, chi phí vốn phụ tùng bảo hành và các lỗi kỹ thuật lặp lại. |
+
+---
+
+## UC-80 – Tra cứu thông tin bảo hành
+
+| **Mã Use case**    | UC-80 |
+| ------------------ | ------ |
+| **Tên Use case**   | Tra cứu thông tin bảo hành |
+| **Mô tả**          | Khách hàng hoặc nhân viên tra cứu danh sách các dịch vụ và phụ tùng đã sử dụng trên phương tiện để kiểm tra thời hạn và điều kiện bảo hành còn hiệu lực (số ngày còn lại, số km ODO còn lại). |
+| **Đối tượng**      | Khách hàng, Nhân viên quầy dịch vụ, Cố vấn dịch vụ |
+| **Tiền điều kiện** | Người dùng đã đăng nhập vào hệ thống. Phương tiện đã từng hoàn thành chu trình dịch vụ tại trung tâm (phiếu công việc cũ đã xuất xưởng hoặc đã đóng hồ sơ). |
+| **Hậu điều kiện**  | Thành công: Hệ thống hiển thị danh sách các hạng mục dịch vụ, phụ tùng kèm trạng thái còn hạn hoặc hết hạn bảo hành rõ ràng.<br>Thất bại: Hệ thống thông báo không tìm thấy dữ liệu hoặc thông báo lỗi. |
+| **Luồng cơ bản**   | 1. Người dùng truy cập màn hình tra cứu bảo hành (hoặc chọn mục **Bảo hành** trong Sổ bảo dưỡng điện tử).<br>2. Người dùng chọn phương tiện cần tra cứu theo biển số xe hoặc số khung VIN.<br>3. Hệ thống tải toàn bộ lịch sử các dịch vụ đã thi công và phụ tùng đã lắp đặt trên xe từ các phiếu công việc đã hoàn tất trước đây.<br>4. Hệ thống tự động đối chiếu số km ODO và số ngày sử dụng hiện tại với chính sách bảo hành:<br>- **Mục còn hạn bảo hành:** Hiển thị nhãn màu xanh lá *"Còn bảo hành"*, số ngày bảo hành còn lại và số km còn lại.<br>- **Mục đã hết hạn:** Hiển thị nhãn màu xám *"Hết hạn bảo hành"* và thời điểm hết hạn.<br>5. Người dùng xem chi tiết các điều khoản cam kết bảo hành và phạm vi áp dụng cho từng hạng mục.<br>6. (Đối với khách hàng) Nếu phát hiện hạng mục gặp sự cố còn hạn bảo hành, khách hàng có thể nhấn nút **Đặt lịch hẹn bảo hành ngay** để chuyển tiếp sang UC-81. |
+| **Luồng thay thế** | Không có. |
+| **Luồng ngoại lệ** | Tại bước 3, nếu phương tiện chưa từng làm dịch vụ tại trung tâm hoặc chưa có phiếu sửa chữa nào hoàn thành, hệ thống hiển thị thông báo: *"Xe chưa có lịch sử dịch vụ hoặc phụ tùng bảo hành tại trung tâm."* |
+
+---
+
+## UC-81 – Đặt lịch hẹn bảo hành
+
+| **Mã Use case**    | UC-81 |
+| ------------------ | ------ |
+| **Tên Use case**   | Đặt lịch hẹn bảo hành |
+| **Mô tả**          | Khách hàng chủ động tạo lịch hẹn trực tuyến mang xe đến trung tâm để kiểm tra và khắc phục sự cố bảo hành đối với các dịch vụ hoặc phụ tùng còn trong thời hạn cam kết. |
+| **Đối tượng**      | Khách hàng |
+| **Tiền điều kiện** | Khách hàng đã đăng nhập vào hệ thống và phương tiện sở hữu có ít nhất một hạng mục dịch vụ hoặc phụ tùng còn hiệu lực bảo hành. |
+| **Hậu điều kiện**  | Thành công: Dữ liệu lịch hẹn bảo hành (phân loại là Bảo hành) được lưu vào hệ thống, hiển thị trong danh sách lịch hẹn của khách và gửi thông báo xác nhận.<br>Thất bại: Hệ thống thông báo lỗi, lịch hẹn không được tạo. |
+| **Luồng cơ bản**   | 1. Khách hàng truy cập màn hình đặt lịch hẹn và chọn loại lịch hẹn là **Bảo hành**.<br>2. Hệ thống hiển thị biểu mẫu đặt lịch hẹn bảo hành kèm danh sách các hạng mục phụ tùng/dịch vụ còn hiệu lực bảo hành của xe.<br>3. Khách hàng tích chọn một hoặc nhiều hạng mục cần đưa vào diện kiểm tra bảo hành.<br>4. Khách hàng nhập nội dung mô tả chi tiết hiện tượng sự cố gặp phải (tiếng kêu lạ, chảy dầu, rung lắc...) và tải lên hình ảnh hoặc video minh chứng hiện trường.<br>5. Khách hàng chọn ngày hẹn và khung giờ hẹn mong muốn từ danh sách khung giờ còn chỗ trống.<br>6. Khách hàng nhấn **Xác nhận đặt lịch**.<br>7. Hệ thống kiểm tra tính hợp lệ của dữ liệu, đảm bảo khung giờ hẹn hợp lệ và không bị trùng tải xưởng.<br>8. Hệ thống lưu lịch hẹn bảo hành mới, gửi email xác nhận cho khách hàng, gửi thông báo đẩy đến quầy dịch vụ và cập nhật vào danh sách lịch hẹn của khách. |
+| **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình nhập liệu, khách hàng chọn **Hủy**:<br>Hệ thống đóng biểu mẫu và quay lại màn hình trước đó mà không lưu dữ liệu.<br><br>**[Khách hàng kết hợp làm thêm dịch vụ thông thường]** Tại bước 3, nếu khách hàng muốn làm thêm dịch vụ bảo dưỡng/sửa chữa có thu phí, khách hàng nhấn **Thêm dịch vụ khác**:<br>Hệ thống hiển thị danh mục dịch vụ tiêu chuẩn để khách chọn bổ sung. Lịch hẹn được đánh dấu là loại kết hợp bảo hành và dịch vụ tính phí. |
+| **Luồng ngoại lệ** | Tại bước 7, nếu khung giờ đã chọn vừa hết chỗ hoặc dữ liệu bị thiếu (chưa tích chọn hạng mục bảo hành hoặc để trống mô tả sự cố), hệ thống hiển thị thông báo lỗi chi tiết tại trường tương ứng và yêu cầu hoàn thiện trước khi xác nhận. |
+
+---
+
+## UC-82 – Tiếp nhận bảo hành
+
+| **Mã Use case**    | UC-82 |
+| ------------------ | ------ |
+| **Tên Use case**   | Tiếp nhận bảo hành |
+| **Mô tả**          | Nhân viên quầy dịch vụ tiếp nhận phương tiện mang đến xưởng theo diện bảo hành, ghi nhận số km ODO thực tế, đối chiếu điều kiện bảo hành với phiếu dịch vụ gốc và chuyển tiếp hồ sơ sang hàng đợi của Cố vấn dịch vụ. |
+| **Đối tượng**      | Nhân viên quầy dịch vụ |
+| **Tiền điều kiện** | Nhân viên quầy đã đăng nhập hệ thống. Phương tiện có mặt tại trung tâm theo lịch hẹn bảo hành trước đó hoặc khách mang xe đến trực tiếp. |
+| **Hậu điều kiện**  | Thành công: Hồ sơ tiếp nhận bảo hành được lưu ở trạng thái Chờ tiếp nhận với nguồn Bảo hành, liên kết với phiếu dịch vụ gốc; hiển thị trên hàng đợi tiếp nhận của Cố vấn dịch vụ.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu tiếp nhận không được lưu. |
+| **Luồng cơ bản**   | 1. Nhân viên quầy truy cập màn hình tiếp nhận và chọn **Tiếp nhận bảo hành** (hoặc chọn từ danh sách lịch hẹn bảo hành đến xưởng hôm nay).<br>2. Hệ thống hiển thị biểu mẫu tiếp nhận bảo hành.<br>3. Nhân viên nhập biển số xe (hoặc số điện thoại khách hàng).<br>4. Hệ thống tải thông tin phương tiện, chủ xe và danh sách các phiếu dịch vụ đã thực hiện trước đây.<br>5. Nhân viên quầy nhập số km ODO hiện tại của xe và chọn phiếu dịch vụ gốc liên quan đến khiếu nại bảo hành.<br>6. Hệ thống đối chiếu số km ODO và thời hạn bảo hành của các hạng mục trong phiếu gốc:<br>- Nếu hạng mục còn hạn hợp lệ: Hệ thống đánh dấu hợp lệ và hiển thị thông tin chi tiết.<br>- Nếu hạng mục đã quá hạn nhẹ: Hệ thống hiển thị tùy chọn *"Gửi yêu cầu bảo hành thiện chí"* (chuyển tiếp sang UC-85).<br>7. Nhân viên ghi nhận các triệu chứng khách mô tả và đính kèm ảnh chụp hiện trạng xe (nếu có).<br>8. Nhân viên nhấn **Lưu tiếp nhận**.<br>9. Hệ thống khởi tạo bản ghi tiếp nhận bảo hành ở trạng thái Chờ tiếp nhận, liên kết chặt chẽ với phiếu dịch vụ cũ và hiển thị ngay trên hàng đợi tiếp nhận của Cố vấn dịch vụ. |
+| **Luồng thay thế** | **[Tiếp nhận xe bảo hành thiện chí đã được duyệt trước]** Nếu yêu cầu bảo hành thiện chí cho xe đã được Quản lý dịch vụ phê duyệt (UC-85):<br>6a. Hệ thống tự động nhận diện quyết định phê duyệt và gắn thông tin bảo hành thiện chí vào hồ sơ tiếp nhận.<br>7a. Nhân viên tiếp tục quy trình tiếp nhận bình thường mà không bị hệ thống chặn hết hạn. |
+| **Luồng ngoại lệ** | Tại bước 5, nếu số km ODO nhập vào nhỏ hơn số ODO ghi nhận tại lần xuất xưởng của phiếu dịch vụ gốc, hệ thống báo lỗi: *"Số ODO tiếp nhận không được nhỏ hơn ODO xuất xưởng của phiếu dịch vụ trước."* và yêu cầu kiểm tra lại đồng hồ công-tơ-mét. |
+
+---
+
+## UC-83 – Tạo phiếu công việc bảo hành
+
+| **Mã Use case**    | UC-83 |
+| ------------------ | ------ |
+| **Tên Use case**   | Tạo phiếu công việc bảo hành |
+| **Mô tả**          | Cố vấn dịch vụ lập phiếu công việc chuyên biệt cho xe bảo hành; thẩm định tình trạng xe, gắn cờ bảo hành cho các hạng mục công việc và phụ tùng thay thế để áp dụng chính sách miễn phí 100% (đơn giá 0 đồng), tạo báo giá 0 đồng và chuyển sang điều phối thi công. |
+| **Đối tượng**      | Cố vấn dịch vụ |
+| **Tiền điều kiện** | Hồ sơ tiếp nhận bảo hành đang ở trạng thái Chờ tiếp nhận trên hàng đợi tiếp nhận của Cố vấn dịch vụ. |
+| **Hậu điều kiện**  | Thành công: Phiếu công việc bảo hành được tạo với phân loại là Bảo hành, liên kết với phiếu dịch vụ gốc; các công việc và phụ tùng bảo hành được áp dụng đơn giá 0 đồng; báo giá được duyệt và chuyển sang cho điều phối kỹ thuật viên thi công.<br>Thất bại: Hệ thống thông báo lỗi, phiếu không được tạo. |
+| **Luồng cơ bản**   | 1. Cố vấn mở màn hình Hàng đợi tiếp nhận và chọn hồ sơ xe bảo hành đang chờ.<br>2. Cố vấn nhấn **Tạo phiếu công việc ngay**.<br>3. Hệ thống tạo phiếu công việc mới với phân loại là Bảo hành, tự động kế thừa thông tin khách hàng, xe và liên kết với phiếu dịch vụ gốc.<br>4. Cố vấn tiến hành khám xe và lập kế hoạch các hạng mục xử lý sự cố (UC-33, UC-34).<br>5. Tại tab **Hạng mục sửa chữa** và tab **Phụ tùng & Vật tư**, cố vấn tích chọn cờ **Bảo hành** cho các công việc và linh kiện thuộc diện bảo hành miễn phí.<br>6. Cố vấn chuyển sang tab **Báo giá** và nhấn nút **Tạo Báo giá từ kế hoạch**.<br>7. Hệ thống tự động áp dụng đơn giá 0 đồng cho toàn bộ các công việc và phụ tùng có đánh dấu bảo hành; tổng thanh toán báo giá được tính bằng 0 đồng.<br>8. Cố vấn kiểm tra nội dung và nhấn nút **Khách đã đồng ý (Duyệt báo giá)**.<br>9. Hệ thống chuyển trạng thái báo giá sang Đã duyệt, phiếu công việc chuyển sang Đã duyệt, tự động giữ chỗ phụ tùng bảo hành trong kho và chuyển sang danh sách điều phối kỹ thuật viên thi công. |
+| **Luồng thay thế** | **[Phiếu công việc kết hợp bảo hành và dịch vụ tính phí]** Tại bước 4, nếu khách hàng yêu cầu làm thêm các hạng mục dịch vụ/bảo dưỡng thông thường phát sinh ngoài diện bảo hành:<br>4a. Cố vấn thêm các dịch vụ và phụ tùng đó nhưng không đánh dấu cờ bảo hành.<br>4b. Hệ thống tự động tính tiền các hạng mục phát sinh theo bảng giá niêm yết chuẩn, đồng thời giữ nguyên đơn giá 0 đồng cho các hạng mục bảo hành. Phiếu công việc được chuyển sang phân loại kết hợp bảo hành và dịch vụ tính phí. |
+| **Luồng ngoại lệ** | Tại bước 6, nếu phụ tùng thay thế bảo hành trong kho có số lượng tồn khả dụng bằng 0, hệ thống hiển thị cảnh báo thiếu kho. Cố vấn dịch vụ cần phối hợp với bộ phận kho tạo phiếu đặt hàng phụ tùng bảo hành hoặc chọn linh kiện thay thế tương đương. |
+
+---
+
+## UC-84 – Xử lý hóa đơn bảo hành
+
+| **Mã Use case**    | UC-84 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xử lý hóa đơn bảo hành |
+| **Mô tả**          | Nhân viên quầy dịch vụ hoặc thu ngân lập và phát hành hóa đơn 0 đồng cho phiếu công việc bảo hành; hệ thống tự động xác nhận hoàn tất quyết toán tài chính để xe đủ điều kiện làm thủ tục bàn giao xuất xưởng. |
+| **Đối tượng**      | Nhân viên quầy dịch vụ, Thu ngân |
+| **Tiền điều kiện** | Phiếu công việc bảo hành đã hoàn thành thi công 100% và vượt qua kiểm định chất lượng (Phiếu công việc ở trạng thái Chờ thanh toán). |
+| **Hậu điều kiện**  | Thành công: Hóa đơn 0 đồng được phát hành và tự động chuyển trạng thái Đã thanh toán; phiếu công việc tự động chuyển sang trạng thái Đã quyết toán tài chính, sẵn sàng cho thủ tục bàn giao xe xuất xưởng.<br>Thất bại: Hệ thống thông báo lỗi, hóa đơn không được phát hành. |
+| **Luồng cơ bản**   | 1. Nhân viên quầy dịch vụ hoặc thu ngân mở danh sách hàng chờ lập hóa đơn và chọn phiếu công việc bảo hành đang chờ tính tiền.<br>2. Nhân viên nhấn **Tạo hóa đơn**.<br>3. Hệ thống hiển thị bảng xem trước hóa đơn, tự động trích xuất các dòng chi phí từ báo giá bảo hành với đơn giá 0 đồng và tổng tiền thanh toán bằng 0 đồng.<br>4. Nhân viên kiểm tra tính chuẩn xác và nhấn **Phát hành hóa đơn**.<br>5. Hệ thống kiểm tra tổng tiền hóa đơn: Nhận diện tổng tiền bằng 0 đồng, hệ thống tự động chuyển trạng thái hóa đơn sang **Đã thanh toán** mà không yêu cầu mở hộp thoại thu tiền mặt/thẻ/chuyển khoản QR.<br>6. Hệ thống tự động chuyển trạng thái phiếu công việc sang **Đã quyết toán tài chính**, mở khóa điều kiện xuất xưởng.<br>7. Hệ thống tạo hóa đơn điện tử 0 đồng, gửi email biên lai điện tử cho khách hàng và thông báo cho Cố vấn dịch vụ xe đã sẵn sàng làm thủ tục xuất xưởng (UC-42). |
+| **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình xem trước hóa đơn, nhân viên chọn **Hủy**:<br>Hệ thống đóng màn hình xem trước và quay lại danh sách chờ lập hóa đơn mà không phát sinh dữ liệu mới. |
+| **Luồng ngoại lệ** | Tại bước 5, nếu phiếu công việc là loại kết hợp có các hạng mục dịch vụ phát sinh ngoài bảo hành dẫn đến tổng thanh toán lớn hơn 0 đồng, hệ thống chuyển sang quy trình thu tiền chuẩn (UC-28) để thu phần tiền phát sinh trước khi kích hoạt trạng thái Đã quyết toán tài chính. |
+
+---
+
+## UC-85 – Phê duyệt bảo hành thiện chí
+
+| **Mã Use case**    | UC-85 |
+| ------------------ | ------ |
+| **Tên Use case**   | Phê duyệt bảo hành thiện chí |
+| **Mô tả**          | Quản lý dịch vụ xem xét và phê duyệt các yêu cầu bảo hành ngoại lệ đối với trường hợp phương tiện hoặc phụ tùng đã hết hạn bảo hành tiêu chuẩn nhưng được hỗ trợ chi phí theo chính sách chăm sóc khách hàng đặc biệt của trung tâm. |
+| **Đối tượng**      | Quản lý dịch vụ |
+| **Tiền điều kiện** | Người dùng đăng nhập tài khoản có vai trò Quản lý dịch vụ (hoặc Quản trị viên hệ thống). Có yêu cầu đề xuất bảo hành thiện chí đang ở trạng thái chờ duyệt. |
+| **Hậu điều kiện**  | Thành công: Yêu cầu bảo hành thiện chí được phê duyệt (hoặc từ chối), hệ thống mở quyền tạo phiếu công việc bảo hành cho Cố vấn dịch vụ và lưu vết thông tin người phê duyệt.<br>Thất bại: Hệ thống thông báo lỗi, trạng thái yêu cầu giữ nguyên. |
+| **Luồng cơ bản**   | 1. Quản lý dịch vụ truy cập màn hình **Phê duyệt bảo hành thiện chí**.<br>2. Quản lý chọn một hồ sơ đề xuất cần thẩm định và nhấn **Xem chi tiết**.<br>3. Hệ thống hiển thị hồ sơ thẩm định toàn diện: Thông tin khách hàng, số lần làm dịch vụ tại xưởng, lịch sử tuân thủ bảo dưỡng, hạng mục sự cố, số ngày hoặc số km đã vượt quá hạn cam kết, và lý do giải trình đề xuất của nhân viên.<br>4. Quản lý dịch vụ chọn mức độ hỗ trợ thiện chí:<br>- **Hỗ trợ 100%:** Miễn phí toàn bộ cả tiền công và tiền phụ tùng.<br>- **Hỗ trợ tiền công:** Miễn phí 100% tiền công, tính tiền phụ tùng theo giá vốn hoặc giá niêm yết.<br>- **Hỗ trợ tỷ lệ phần trăm (%):** Giảm trừ một tỷ lệ chi phí nhất định.<br>5. Quản lý dịch vụ nhập bắt buộc nội dung ghi chú phê duyệt (căn cứ duyệt, lưu ý kỹ thuật).<br>6. Quản lý dịch vụ nhấn **Phê duyệt**.<br>7. Hệ thống cập nhật trạng thái yêu cầu thành **Đã duyệt**, lưu thông tin người phê duyệt vào hồ sơ, gửi thông báo đến Cố vấn dịch vụ để tiến hành tạo phiếu công việc bảo hành và hiển thị thông báo thành công. |
+| **Luồng thay thế** | **[Từ chối phê duyệt]** Tại bước 6, nếu không chấp thuận hỗ trợ ngoại lệ:<br>6a. Quản lý dịch vụ nhập lý do từ chối cụ thể và nhấn **Từ chối**.<br>6b. Hệ thống cập nhật trạng thái yêu cầu thành **Bị từ chối**, gửi thông báo đến Cố vấn dịch vụ để giải thích cho khách hàng và chuyển sang phương án sửa chữa có thu phí thông thường.<br><br>**[Hủy thao tác]** Quản lý nhấn **Đóng** để thoát khỏi màn hình xem chi tiết và giữ nguyên trạng thái chờ duyệt. |
+| **Luồng ngoại lệ** | Tại bước 6, nếu quản lý dịch vụ để trống ô ghi chú giải trình khi nhấn Phê duyệt hoặc Từ chối, hệ thống ngăn chặn xử lý và hiển thị thông báo: *"Vui lòng nhập lý do giải trình phê duyệt/từ chối"*. |
+
+---
+
+## UC-86 – Xem báo cáo bảo hành
+
+| **Mã Use case**    | UC-86 |
+| ------------------ | ------ |
+| **Tên Use case**   | Xem báo cáo bảo hành |
+| **Mô tả**          | Quản lý dịch vụ theo dõi các chỉ số thống kê tài chính và kỹ thuật mật về hoạt động bảo hành: tỷ lệ xe bảo hành trên tổng lượt phục vụ, tổng chi phí vốn phụ tùng bảo hành xuất kho (tính theo giá vốn bình quân di động), danh sách phụ tùng lỗi lặp lại và nhà cung cấp bồi hoàn. Chức năng này được bảo vệ phân quyền nghiêm ngặt, các vai trò khác không được quyền truy cập. |
+| **Đối tượng**      | **Chỉ duy nhất Quản lý dịch vụ** *(hoặc Quản trị viên hệ thống)* |
+| **Tiền điều kiện** | Người dùng đã đăng nhập với vai trò Quản lý dịch vụ (hoặc Quản trị viên) và được cấp quyền xem dữ liệu tài chính của xưởng. |
+| **Hậu điều kiện**  | Thành công: Hệ thống hiển thị bảng chỉ số, biểu đồ phân tích và bảng kê chi phí bảo hành theo tiêu chí đã lọc; cho phép xuất file báo cáo.<br>Thất bại: Hệ thống báo lỗi hoặc từ chối truy cập nếu không đủ quyền hạn. |
+| **Luồng cơ bản**   | 1. Quản lý dịch vụ truy cập phân hệ Báo cáo thống kê và chọn mục **Báo cáo bảo hành**.<br>2. Hệ thống kiểm tra quyền hạn tài khoản và tải màn hình báo cáo kèm các bộ lọc mặc định (theo tháng hiện tại).<br>3. Quản lý dịch vụ chọn khoảng thời gian cần thống kê (Từ ngày – Đến ngày) và chọn tiêu chí phân tích (theo nhóm dịch vụ, theo danh mục phụ tùng, hoặc theo kỹ thuật viên thi công).<br>4. Quản lý dịch vụ nhấn **Xem báo cáo**.<br>5. Hệ thống kết xuất dữ liệu và hiển thị các khối chỉ số quản trị cốt lõi:<br>- **Chỉ số vận hành:** Tổng số lượt xe tiếp nhận bảo hành, tỷ lệ xe bảo hành trên tổng số xe phục vụ.<br>- **Chi phí vốn thiệt hại:** Tổng giá vốn phụ tùng đã xuất kho phục vụ bảo hành trong kỳ (tính theo phương pháp giá vốn bình quân di động).<br>- **Danh sách phụ tùng hư hỏng nhiều nhất:** Thống kê mã linh kiện, tên phụ tùng, số lượng lỗi, tỷ lệ lỗi và thông tin nhà cung cấp tương ứng để xưởng thực hiện thủ tục đòi bồi hoàn phụ tùng lỗi.<br>- **Phân tích lỗi kỹ thuật lặp lại:** Thống kê các lỗi phát sinh theo thợ thi công hoặc nhóm dịch vụ để nâng cao chất lượng tay nghề.<br>6. Quản lý dịch vụ có thể nhấn **Xuất file** (Excel / PDF) để tải báo cáo phân tích về máy tính. |
+| **Luồng thay thế** | **[Đặt lại bộ lọc]** Tại bước 3, quản lý nhấn **Đặt lại**:<br>Hệ thống xóa các điều kiện lọc tùy chỉnh và đưa thời gian về mặc định tháng hiện tại. |
+| **Luồng ngoại lệ** | Tại bước 1, nếu tài khoản không có vai trò Quản lý dịch vụ hoặc Quản trị viên hệ thống (ví dụ: Nhân viên quầy, Cố vấn hoặc Kỹ thuật viên), hệ thống chặn truy cập ngay lập tức, ghi log bảo mật và hiển thị cảnh báo: *"Bạn không có quyền truy cập dữ liệu báo cáo tài chính và chất lượng của xưởng."*<br><br>Tại bước 4, nếu khoảng thời gian chọn không hợp lệ (ngày bắt đầu lớn hơn ngày kết thúc), hệ thống báo lỗi: *"Khoảng thời gian không hợp lệ. Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc."* |
