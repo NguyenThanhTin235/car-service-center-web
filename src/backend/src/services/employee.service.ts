@@ -2,19 +2,56 @@ import { PrismaClient, EmployeePosition } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+export type CanonicalPosition = 'MANAGER' | 'TECHNICIAN' | 'ADVISOR' | 'FRONT_DESK';
+
 export interface CreateEmployeeDto {
   fullName: string;
-  position: EmployeePosition;
+  position: EmployeePosition | string;
   userId?: number; // optional: link to existing user account
   skillIds?: number[];
 }
 
 export interface UpdateEmployeeDto {
   fullName?: string;
-  position?: EmployeePosition;
+  position?: EmployeePosition | string;
   userId?: number | null;
   isActive?: boolean;
   skillIds?: number[];
+}
+
+function normalizePosition(pos: EmployeePosition | string, user?: any): CanonicalPosition {
+  const roles: string[] = (user?.roles || []).map((r: any) => String(r.role?.name || '').toUpperCase());
+  const email = String(user?.email || '').toLowerCase();
+  const raw = String(pos || '').toUpperCase();
+
+  if (raw === 'MANAGER' || roles.some((r) => r.includes('MANAGE') || r.includes('ADMIN')) || email.includes('manager')) {
+    return 'MANAGER';
+  }
+  if (
+    raw === 'FRONT_DESK' ||
+    raw === 'RECEPTIONIST' ||
+    roles.some((r) => r.includes('DESK') || r.includes('RECEPT') || r.includes('LỄ TÂN') || r.includes('LE TAN')) ||
+    email.includes('desk')
+  ) {
+    return 'FRONT_DESK';
+  }
+  if (raw === 'ADVISOR' || roles.some((r) => r === 'SA' || r.includes('ADVISOR')) || email.includes('advisor')) {
+    return 'ADVISOR';
+  }
+  return 'TECHNICIAN';
+}
+
+function mapPositionToEnum(position?: string): EmployeePosition {
+  if (!position) return EmployeePosition.TECHNICIAN;
+  const p = position.toUpperCase();
+  if (p === 'MANAGER') return EmployeePosition.OTHER;
+  if (p === 'FRONT_DESK' || p === 'RECEPTIONIST') return EmployeePosition.OTHER;
+  if (p === 'ADVISOR') return EmployeePosition.ADVISOR;
+  if (p === 'TECHNICIAN') return EmployeePosition.TECHNICIAN;
+  if (Object.values(EmployeePosition).includes(p as EmployeePosition)) {
+    return p as EmployeePosition;
+  }
+  return EmployeePosition.OTHER;
 }
 
 export class EmployeeService {
@@ -25,11 +62,42 @@ export class EmployeeService {
     let whereClause: any = {};
 
     if (position) {
-      whereClause.position = position as EmployeePosition;
+      const p = position.toUpperCase();
+      if (p === 'MANAGER') {
+        whereClause.OR = [
+          { position: EmployeePosition.OTHER, user: { roles: { some: { role: { name: { in: ['MANAGER', 'ADMIN'] } } } } } },
+          { user: { email: { contains: 'manager' } } },
+        ];
+      } else if (p === 'FRONT_DESK' || p === 'RECEPTIONIST') {
+        whereClause.OR = [
+          { position: EmployeePosition.OTHER, user: { roles: { some: { role: { name: { in: ['DESK STAFF', 'DESK_STAFF'] } } } } } },
+          { user: { email: { contains: 'desk' } } },
+        ];
+      } else if (p === 'ADVISOR') {
+        whereClause.OR = [
+          { position: EmployeePosition.ADVISOR },
+          { user: { roles: { some: { role: { name: { in: ['SA', 'ADVISOR'] } } } } } },
+          { user: { email: { contains: 'advisor' } } },
+        ];
+      } else if (p === 'TECHNICIAN') {
+        whereClause.OR = [
+          { position: { in: [EmployeePosition.TECHNICIAN, EmployeePosition.DETAILER, EmployeePosition.QC_STAFF] } },
+          { user: { roles: { some: { role: { name: { in: ['TECHNICIAN', 'TECH'] } } } } } },
+        ];
+      } else if (Object.values(EmployeePosition).includes(p as EmployeePosition)) {
+        whereClause.position = p as EmployeePosition;
+      }
     }
 
     if (searchQuery) {
-      whereClause.full_name = { contains: searchQuery };
+      const searchCond = { contains: searchQuery };
+      if (whereClause.OR) {
+        whereClause = {
+          AND: [{ OR: whereClause.OR }, { full_name: searchCond }],
+        };
+      } else {
+        whereClause.full_name = searchCond;
+      }
     }
 
     const skip = (page - 1) * limit;
@@ -42,7 +110,17 @@ export class EmployeeService {
         take: limit,
         include: {
           user: {
-            select: { id: true, email: true, phone: true, is_active: true },
+            select: {
+              id: true,
+              email: true,
+              phone: true,
+              is_active: true,
+              roles: {
+                select: {
+                  role: { select: { id: true, name: true } },
+                },
+              },
+            },
           },
           skills: {
             include: { skill: true },
@@ -55,7 +133,8 @@ export class EmployeeService {
     const data = employees.map((e) => ({
       id: e.id,
       fullName: e.full_name,
-      position: e.position,
+      position: normalizePosition(e.position, e.user),
+      rawPosition: e.position,
       isActive: e.is_active,
       user: e.user
         ? {
@@ -88,7 +167,18 @@ export class EmployeeService {
       where: { id },
       include: {
         user: {
-          select: { id: true, email: true, phone: true, is_active: true, address: true },
+          select: {
+            id: true,
+            email: true,
+            phone: true,
+            is_active: true,
+            address: true,
+            roles: {
+              select: {
+                role: { select: { id: true, name: true } },
+              },
+            },
+          },
         },
         skills: { include: { skill: true } },
       },
@@ -99,7 +189,8 @@ export class EmployeeService {
     return {
       id: employee.id,
       fullName: employee.full_name,
-      position: employee.position,
+      position: normalizePosition(employee.position, employee.user),
+      rawPosition: employee.position,
       isActive: employee.is_active,
       user: employee.user
         ? {
@@ -131,7 +222,7 @@ export class EmployeeService {
       const employee = await tx.employee.create({
         data: {
           full_name: data.fullName,
-          position: data.position,
+          position: mapPositionToEnum(data.position as string),
           user_id: data.userId,
         },
       });
@@ -178,7 +269,7 @@ export class EmployeeService {
         where: { id },
         data: {
           full_name: data.fullName,
-          position: data.position,
+          position: data.position !== undefined ? mapPositionToEnum(data.position as string) : undefined,
           is_active: data.isActive,
           user_id: data.userId,
         },

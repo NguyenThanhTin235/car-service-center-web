@@ -63,31 +63,31 @@ export default function MonthlyCalendarGrid({
     switch (status) {
       case 'CONFIRMED':
       case 'RESCHEDULED':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-blue-100 text-[#0050cd]';
       case 'ARRIVED':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        return 'bg-emerald-100 text-emerald-800';
       case 'CANCELLED':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-rose-100 text-rose-800';
       default:
-        return 'bg-amber-100 text-amber-800 border-amber-200'; // REQUESTED
+        return 'bg-amber-100 text-amber-800'; // REQUESTED
     }
   };
 
   return (
-    <div className="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-sm overflow-hidden flex flex-col relative">
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col relative">
       <div className="overflow-x-auto">
         <div className="min-w-[800px]">
           {/* Header Row */}
-          <div className="grid grid-cols-7 bg-[#F8FAFC] border-b border-outline-variant divide-x divide-outline-variant">
+          <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200 divide-x divide-slate-200">
             {dayNames.map((name, idx) => (
-              <div key={idx} className="p-3 text-center text-label-sm font-label-sm font-semibold text-secondary uppercase tracking-wider">
+              <div key={idx} className="p-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
                 {name}
               </div>
             ))}
           </div>
 
           {/* Calendar Grid Body */}
-          <div className="grid grid-cols-7 divide-x divide-y divide-outline-variant/50">
+          <div className="grid grid-cols-7 divide-x divide-y divide-slate-200/70">
             {calendarDays.map((day, idx) => {
               const dayAppointments = getAppointmentsForDay(day.fullDate);
               
@@ -99,7 +99,7 @@ export default function MonthlyCalendarGrid({
               return (
                 <div 
                   key={idx} 
-                  className={`min-h-[120px] p-1.5 flex flex-col gap-1 hover:bg-slate-50/50 transition-colors cursor-pointer border-b ${!day.isCurrentMonth ? 'bg-slate-50/40 opacity-60' : day.isWeekend ? 'bg-slate-50/20' : ''}`}
+                  className={`min-h-[120px] p-2 flex flex-col gap-1 hover:bg-slate-50/50 transition-colors cursor-pointer border-b ${!day.isCurrentMonth ? 'bg-slate-50/40 opacity-60' : day.isWeekend ? 'bg-slate-50/20' : ''}`}
                   onClick={(e) => {
                     if (e.target === e.currentTarget && onTimeSlotClick) {
                       onTimeSlotClick(new Date(day.fullDate), '08:00'); // Default to 8 AM when clicking a day
@@ -107,11 +107,11 @@ export default function MonthlyCalendarGrid({
                   }}
                 >
                   <div className="flex justify-between items-start mb-1 pointer-events-none">
-                    <span className={`w-6 h-6 flex items-center justify-center rounded-full text-label-sm font-semibold ${day.isToday ? 'bg-primary text-on-primary' : 'text-on-surface'}`}>
+                    <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${day.isToday ? 'bg-[#0050cd] text-white' : 'text-slate-900'}`}>
                       {day.dateNum}
                     </span>
                     {dayAppointments.length > 0 && (
-                      <span className="text-[10px] text-secondary font-medium bg-surface-container px-1.5 rounded-full">
+                      <span className="text-xs text-slate-700 font-semibold bg-slate-100 px-2 py-0.5 rounded-full">
                         {dayAppointments.length} lịch
                       </span>
                     )}
@@ -122,7 +122,7 @@ export default function MonthlyCalendarGrid({
                       <div 
                         key={apt.id}
                         onClick={() => onAppointmentClick && onAppointmentClick(apt)}
-                        className={`shrink-0 text-[11px] leading-tight px-1.5 py-1 rounded truncate border ${getStatusColor(apt.status)} cursor-pointer hover:opacity-80 transition-opacity`}
+                        className={`shrink-0 text-xs leading-tight px-2 py-1 rounded truncate ${getStatusColor(apt.status)} cursor-pointer hover:opacity-85 transition-opacity`}
                         title={`${apt.scheduled_time_str} - ${apt.customer?.full_name || 'Khách'}`}
                       >
                         <span className="font-semibold mr-1">{apt.scheduled_time_str}</span>

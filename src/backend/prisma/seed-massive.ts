@@ -6,10 +6,10 @@ import {
   ServiceStatus, InspectionStatus, InspectionResultValue,
   Severity, FindingStatus, MarkerType, JobStatus, PartAllocationStatus,
   QuotationType, QuotationStatus, LineType, QcResult,
-  ItemType, ReceiptType, MovementType, ReferenceType, AdjustmentStatus,
+  ItemType, ReceiptType, GoodsReceiptStatus, MovementType, ReferenceType, AdjustmentStatus,
   InvoiceStatus, PaymentMethod, PaymentStatus,
   CatalogType, InspectionTemplateType,
-  NotificationType, AuditAction
+  NotificationType, AuditAction,
 } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
@@ -95,55 +95,71 @@ const STAFF_NAMES = [
 
 // Xe & hãng (từ Vehicle.csv + ML_Car_Diagnostic.csv)
 const VEHICLE_DATA: { make: string; models: { name: string; years: number[] }[] }[] = [
-  { make: 'Toyota', models: [
-    { name: 'Vios', years: [2019, 2020, 2021, 2022, 2023] },
-    { name: 'Camry', years: [2018, 2019, 2020, 2021, 2022] },
-    { name: 'Corolla Cross', years: [2020, 2021, 2022, 2023] },
-    { name: 'Fortuner', years: [2019, 2020, 2021, 2022] },
-    { name: 'Innova', years: [2018, 2019, 2020, 2021] },
-    { name: 'Land Cruiser', years: [2020, 2021, 2022] },
-  ]},
-  { make: 'Honda', models: [
-    { name: 'City', years: [2019, 2020, 2021, 2022, 2023] },
-    { name: 'Civic', years: [2019, 2020, 2021, 2022] },
-    { name: 'CR-V', years: [2018, 2019, 2020, 2021, 2022] },
-    { name: 'Accord', years: [2019, 2020, 2021] },
-    { name: 'HR-V', years: [2022, 2023] },
-  ]},
-  { make: 'Hyundai', models: [
-    { name: 'Accent', years: [2018, 2019, 2020, 2021, 2022] },
-    { name: 'Tucson', years: [2019, 2020, 2021, 2022] },
-    { name: 'Santa Fe', years: [2019, 2020, 2021, 2022] },
-    { name: 'Creta', years: [2022, 2023] },
-  ]},
-  { make: 'Kia', models: [
-    { name: 'Seltos', years: [2020, 2021, 2022, 2023] },
-    { name: 'Sportage', years: [2018, 2019, 2020, 2021] },
-    { name: 'Carnival', years: [2021, 2022, 2023] },
-    { name: 'Sorento', years: [2020, 2021, 2022] },
-  ]},
-  { make: 'Ford', models: [
-    { name: 'Ranger', years: [2018, 2019, 2020, 2021, 2022] },
-    { name: 'Everest', years: [2019, 2020, 2021, 2022, 2023] },
-    { name: 'Territory', years: [2022, 2023] },
-  ]},
-  { make: 'Mercedes-Benz', models: [
-    { name: 'C200', years: [2019, 2020, 2021, 2022] },
-    { name: 'E300', years: [2020, 2021, 2022] },
-    { name: 'GLC 200', years: [2020, 2021, 2022] },
-    { name: 'S-Class', years: [2020, 2021] },
-  ]},
-  { make: 'BMW', models: [
-    { name: '3 Series', years: [2019, 2020, 2021, 2022] },
-    { name: '5 Series', years: [2020, 2021, 2022, 2023] },
-    { name: 'X3', years: [2020, 2021, 2022] },
-    { name: 'X5', years: [2021, 2022] },
-  ]},
-  { make: 'Nissan', models: [
-    { name: 'Navara', years: [2018, 2019, 2020, 2021] },
-    { name: 'X-Trail', years: [2019, 2020, 2021] },
-    { name: 'Almera', years: [2021, 2022, 2023] },
-  ]},
+  {
+    make: 'Toyota', models: [
+      { name: 'Vios', years: [2019, 2020, 2021, 2022, 2023] },
+      { name: 'Camry', years: [2018, 2019, 2020, 2021, 2022] },
+      { name: 'Corolla Cross', years: [2020, 2021, 2022, 2023] },
+      { name: 'Fortuner', years: [2019, 2020, 2021, 2022] },
+      { name: 'Innova', years: [2018, 2019, 2020, 2021] },
+      { name: 'Land Cruiser', years: [2020, 2021, 2022] },
+    ]
+  },
+  {
+    make: 'Honda', models: [
+      { name: 'City', years: [2019, 2020, 2021, 2022, 2023] },
+      { name: 'Civic', years: [2019, 2020, 2021, 2022] },
+      { name: 'CR-V', years: [2018, 2019, 2020, 2021, 2022] },
+      { name: 'Accord', years: [2019, 2020, 2021] },
+      { name: 'HR-V', years: [2022, 2023] },
+    ]
+  },
+  {
+    make: 'Hyundai', models: [
+      { name: 'Accent', years: [2018, 2019, 2020, 2021, 2022] },
+      { name: 'Tucson', years: [2019, 2020, 2021, 2022] },
+      { name: 'Santa Fe', years: [2019, 2020, 2021, 2022] },
+      { name: 'Creta', years: [2022, 2023] },
+    ]
+  },
+  {
+    make: 'Kia', models: [
+      { name: 'Seltos', years: [2020, 2021, 2022, 2023] },
+      { name: 'Sportage', years: [2018, 2019, 2020, 2021] },
+      { name: 'Carnival', years: [2021, 2022, 2023] },
+      { name: 'Sorento', years: [2020, 2021, 2022] },
+    ]
+  },
+  {
+    make: 'Ford', models: [
+      { name: 'Ranger', years: [2018, 2019, 2020, 2021, 2022] },
+      { name: 'Everest', years: [2019, 2020, 2021, 2022, 2023] },
+      { name: 'Territory', years: [2022, 2023] },
+    ]
+  },
+  {
+    make: 'Mercedes-Benz', models: [
+      { name: 'C200', years: [2019, 2020, 2021, 2022] },
+      { name: 'E300', years: [2020, 2021, 2022] },
+      { name: 'GLC 200', years: [2020, 2021, 2022] },
+      { name: 'S-Class', years: [2020, 2021] },
+    ]
+  },
+  {
+    make: 'BMW', models: [
+      { name: '3 Series', years: [2019, 2020, 2021, 2022] },
+      { name: '5 Series', years: [2020, 2021, 2022, 2023] },
+      { name: 'X3', years: [2020, 2021, 2022] },
+      { name: 'X5', years: [2021, 2022] },
+    ]
+  },
+  {
+    make: 'Nissan', models: [
+      { name: 'Navara', years: [2018, 2019, 2020, 2021] },
+      { name: 'X-Trail', years: [2019, 2020, 2021] },
+      { name: 'Almera', years: [2021, 2022, 2023] },
+    ]
+  },
 ];
 
 const COLORS = ['Trắng', 'Đen', 'Bạc', 'Xám', 'Đỏ', 'Xanh dương', 'Xanh lá', 'Nâu', 'Vàng cát'];
@@ -263,11 +279,11 @@ async function main() {
   console.log('\n📦 [2/10] Tạo Master Data...');
 
   // 2.1 Roles
-  const rolesData = ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA', 'CUSTOMER'];
+  const rolesData = ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA', 'TECHNICIAN', 'CUSTOMER'];
   const createdRoles: any[] = [];
   for (const r of rolesData) createdRoles.push(await prisma.role.create({ data: { name: r } }));
-  const [roleAdmin, roleManager, roleDeskStaff, roleSA, roleCustomer] = createdRoles;
-  console.log('   ✅ 5 Roles');
+  const [roleAdmin, roleManager, roleDeskStaff, roleSA, roleTechnician, roleCustomer] = createdRoles;
+  console.log('   ✅ 6 Roles');
 
   // 2.2 SystemCatalogs
   const catalogs: any = {};
@@ -460,395 +476,395 @@ async function main() {
 
   // 2.8 InspectionTemplates + Items
   const inspTemplateData: { stIdx: number; type: InspectionTemplateType; name: string; items: string[] }[] = [
-  // -------------------------------------------------------------
-  // NHÓM 1: MẪU KIỂM TRA CHẨN ĐOÁN & ĐỊNH KỲ (INSPECTION)
-  // -------------------------------------------------------------
-  {
-    stIdx: 1 /* Bảo dưỡng 10.000 km */,
-    type: InspectionTemplateType.INSPECTION,
-    name: 'Kiểm tra bảo dưỡng định kỳ 10.000 km',
-    items: [
-      'Kiểm tra mức và chất lượng dầu động cơ, dầu phanh, nước làm mát',
-      'Kiểm tra tình trạng lọc gió động cơ và lọc gió điều hòa',
-      'Kiểm tra độ mòn má phanh và đĩa phanh 4 bánh',
-      'Kiểm tra áp suất và độ mòn lốp xe, chiều sâu gai lốp',
-      'Kiểm tra toàn bộ hệ thống đèn chiếu sáng, đèn xi-nhan và còi',
-      'Kiểm tra các đăng, rô-tuyn, cao su giảm chấn gầm xe',
-    ],
-  },
-  {
-    stIdx: 2 /* Bảo dưỡng 40.000 km */,
-    type: InspectionTemplateType.INSPECTION,
-    name: 'Kiểm tra bảo dưỡng cấp lớn 40.000 km',
-    items: [
-      'Kiểm tra tổng thể hệ thống truyền động và gầm bệ',
-      'Kiểm tra tình trạng bugi, kim phun và bướm ga',
-      'Kiểm tra độ ẩm dầu phanh và tình trạng dầu trợ lực lái',
-      'Kiểm tra dây đai curoa tổng và các puli tăng đơ',
-      'Kiểm tra hệ thống treo, giảm xóc và thanh cân bằng',
-      'Kiểm tra bình ắc quy bằng máy đo chuyên dụng (CCA, điện áp)',
-    ],
-  },
-  {
-    stIdx: 3 /* Sửa chữa quá nhiệt động cơ */,
-    type: InspectionTemplateType.INSPECTION,
-    name: 'Kiểm tra chẩn đoán hệ thống làm mát & quá nhiệt',
-    items: [
-      'Kiểm tra áp suất nén buồng đốt và độ kín gioăng quy-lát',
-      'Kiểm tra rò rỉ két nước, nắp két nước và bình nước phụ',
-      'Kiểm tra hoạt động của van hằng nhiệt và bơm nước làm mát',
-      'Kiểm tra hoạt động quạt tản nhiệt làm mát động cơ',
-      'Kiểm tra cảm biến nhiệt độ nước làm mát (ECT Sensor)',
-    ],
-  },
-  {
-    stIdx: 4 /* Thay bugi & bô bin */,
-    type: InspectionTemplateType.INSPECTION,
-    name: 'Kiểm tra chẩn đoán hệ thống đánh lửa',
-    items: [
-      'Đọc mã lỗi đánh lửa chập chờn (Misfire P0300 - P0304)',
-      'Kiểm tra điện trở và độ rò rỉ điện trên thân bô bin đánh lửa',
-      'Kiểm tra màu sắc, khe hở và độ mòn điện cực bugi các máy',
-      'Kiểm tra giắc cắm và đường dây điện tín hiệu kích hoạt bô bin',
-    ],
-  },
-  {
-    stIdx: 5 /* Sửa chữa động cơ bỏ máy */,
-    type: InspectionTemplateType.INSPECTION,
-    name: 'Kiểm tra chẩn đoán nguyên nhân bỏ máy động cơ',
-    items: [
-      'Đọc dữ liệu Freeze Frame và đếm số lần misfire từng máy',
-      'Đo áp suất nén buồng đốt từng xylanh',
-      'Kiểm tra lưu lượng phun và độ tơi của kim phun nhiên liệu',
-      'Kiểm tra áp suất bơm xăng trên đường ống phân phối',
-      'Kiểm tra rò rỉ đường ống chân không cổ hút động cơ',
-    ],
-  },
-  {
-    stIdx: 7 /* Đại tu hộp số */,
-    type: InspectionTemplateType.INSPECTION,
-    name: 'Kiểm tra chẩn đoán & rã hộp số',
-    items: [
-      'Kiểm tra mã lỗi điều khiển hộp số tự động TCM',
-      'Kiểm tra chất lượng và mùi cháy khét của dầu hộp số cũ',
-      'Kiểm tra độ mòn các lá bố, lá thép bộ ly hợp',
-      'Kiểm tra tình trạng thân van thủy lực (Valve Body) và solenoid',
-      'Kiểm tra khe hở các bánh răng hành tinh và biến mô',
-    ],
-  },
-  {
-    stIdx: 8 /* Sửa trượt số */,
-    type: InspectionTemplateType.INSPECTION,
-    name: 'Kiểm tra chẩn đoán hiện tượng trượt số',
-    items: [
-      'Đọc mã lỗi áp suất dầu hộp số và cảm biến tốc độ trục',
-      'Thử nghiệm Stall Test để đánh giá độ bám của ly hợp',
-      'Đo áp suất đường dầu chính tại các cổng kiểm tra thủy lực',
-      'Kiểm tra độ mòn màng gioăng piston ép và sin phốt trục',
-    ],
-  },
-  {
-    stIdx: 11 /* Bảo dưỡng phanh tổng quát */,
-    type: InspectionTemplateType.INSPECTION,
-    name: 'Kiểm tra chẩn đoán hệ thống phanh tổng thể',
-    items: [
-      'Đo độ dày má phanh và đĩa phanh cả 4 bánh',
-      'Kiểm tra độ ẩm và độ sôi của dầu phanh bằng bút đo',
-      'Kiểm tra độ kín khít của cupen xilanh phanh và đường ống dầu',
-      'Kiểm tra hành trình tự do của bàn đạp phanh và độ căng phanh tay',
-      'Kiểm tra cảm biến tốc độ vòng quay bánh xe ABS',
-    ],
-  },
-  {
-    stIdx: 13 /* Sửa chữa hệ thống điện */,
-    type: InspectionTemplateType.INSPECTION,
-    name: 'Kiểm tra chẩn đoán hệ thống điện ô tô',
-    items: [
-      'Kiểm tra dòng rò tĩnh (Parasitic Drain) khi xe khóa cửa',
-      'Kiểm tra hộp cầu chì, rơ-le và các giắc nối điện trung tâm',
-      'Kiểm tra điện áp cấp nguồn và mass (GND) tại các hộp ECU',
-      'Đọc mã lỗi mạng giao tiếp CAN-Bus / LIN-Bus',
-      'Kiểm tra sụt áp trên cọc bình và cáp mass thân xe',
-    ],
-  },
-  {
-    stIdx: 15 /* Thay phuộc giảm xóc */,
-    type: InspectionTemplateType.INSPECTION,
-    name: 'Kiểm tra chẩn đoán gầm và hệ thống treo',
-    items: [
-      'Kiểm tra rò rỉ dầu ty phuộc và tình trạng cao su tăm bông',
-      'Kiểm tra độ rơ lắc bát bèo và bạc đạn xoay giảm xóc',
-      'Kiểm tra cao su càng A, rô-tuyn cân bằng và rô-tuyn lái',
-      'Kiểm tra tình trạng lò xo giảm xóc (nứt gãy, xẹp lún)',
-    ],
-  },
-  {
-    stIdx: 16 /* Cân chỉnh thước lái */,
-    type: InspectionTemplateType.INSPECTION,
-    name: 'Kiểm tra góc đặt bánh xe và hệ thống lái',
-    items: [
-      'Kiểm tra độ rơ của thước lái và các khớp rô-tuyn lái',
-      'Kiểm tra độ mòn không đều trên bề mặt lốp (vẹt trong, vẹt ngoài)',
-      'Đo góc Camber, Caster và Toe ban đầu trên máy cân chỉnh laser',
-      'Kiểm tra độ cân bằng động của mâm lốp',
-    ],
-  },
-  {
-    stIdx: 18 /* Gò nắn thân xe */,
-    type: InspectionTemplateType.INSPECTION,
-    name: 'Kiểm tra giám định biến dạng thân xe & panel',
-    items: [
-      'Đo đạc kích thước chéo và độ biến dạng khung sườn xe',
-      'Đánh giá diện tích và độ sâu các vết móp méo panel',
-      'Kiểm tra độ thẳng hàng của khe hở cửa, capo và cốp sau',
-      'Kiểm tra tình trạng các điểm hàn bấm và keo chỉ zin',
-    ],
-  },
+    // -------------------------------------------------------------
+    // NHÓM 1: MẪU KIỂM TRA CHẨN ĐOÁN & ĐỊNH KỲ (INSPECTION)
+    // -------------------------------------------------------------
+    {
+      stIdx: 1 /* Bảo dưỡng 10.000 km */,
+      type: InspectionTemplateType.INSPECTION,
+      name: 'Kiểm tra bảo dưỡng định kỳ 10.000 km',
+      items: [
+        'Kiểm tra mức và chất lượng dầu động cơ, dầu phanh, nước làm mát',
+        'Kiểm tra tình trạng lọc gió động cơ và lọc gió điều hòa',
+        'Kiểm tra độ mòn má phanh và đĩa phanh 4 bánh',
+        'Kiểm tra áp suất và độ mòn lốp xe, chiều sâu gai lốp',
+        'Kiểm tra toàn bộ hệ thống đèn chiếu sáng, đèn xi-nhan và còi',
+        'Kiểm tra các đăng, rô-tuyn, cao su giảm chấn gầm xe',
+      ],
+    },
+    {
+      stIdx: 2 /* Bảo dưỡng 40.000 km */,
+      type: InspectionTemplateType.INSPECTION,
+      name: 'Kiểm tra bảo dưỡng cấp lớn 40.000 km',
+      items: [
+        'Kiểm tra tổng thể hệ thống truyền động và gầm bệ',
+        'Kiểm tra tình trạng bugi, kim phun và bướm ga',
+        'Kiểm tra độ ẩm dầu phanh và tình trạng dầu trợ lực lái',
+        'Kiểm tra dây đai curoa tổng và các puli tăng đơ',
+        'Kiểm tra hệ thống treo, giảm xóc và thanh cân bằng',
+        'Kiểm tra bình ắc quy bằng máy đo chuyên dụng (CCA, điện áp)',
+      ],
+    },
+    {
+      stIdx: 3 /* Sửa chữa quá nhiệt động cơ */,
+      type: InspectionTemplateType.INSPECTION,
+      name: 'Kiểm tra chẩn đoán hệ thống làm mát & quá nhiệt',
+      items: [
+        'Kiểm tra áp suất nén buồng đốt và độ kín gioăng quy-lát',
+        'Kiểm tra rò rỉ két nước, nắp két nước và bình nước phụ',
+        'Kiểm tra hoạt động của van hằng nhiệt và bơm nước làm mát',
+        'Kiểm tra hoạt động quạt tản nhiệt làm mát động cơ',
+        'Kiểm tra cảm biến nhiệt độ nước làm mát (ECT Sensor)',
+      ],
+    },
+    {
+      stIdx: 4 /* Thay bugi & bô bin */,
+      type: InspectionTemplateType.INSPECTION,
+      name: 'Kiểm tra chẩn đoán hệ thống đánh lửa',
+      items: [
+        'Đọc mã lỗi đánh lửa chập chờn (Misfire P0300 - P0304)',
+        'Kiểm tra điện trở và độ rò rỉ điện trên thân bô bin đánh lửa',
+        'Kiểm tra màu sắc, khe hở và độ mòn điện cực bugi các máy',
+        'Kiểm tra giắc cắm và đường dây điện tín hiệu kích hoạt bô bin',
+      ],
+    },
+    {
+      stIdx: 5 /* Sửa chữa động cơ bỏ máy */,
+      type: InspectionTemplateType.INSPECTION,
+      name: 'Kiểm tra chẩn đoán nguyên nhân bỏ máy động cơ',
+      items: [
+        'Đọc dữ liệu Freeze Frame và đếm số lần misfire từng máy',
+        'Đo áp suất nén buồng đốt từng xylanh',
+        'Kiểm tra lưu lượng phun và độ tơi của kim phun nhiên liệu',
+        'Kiểm tra áp suất bơm xăng trên đường ống phân phối',
+        'Kiểm tra rò rỉ đường ống chân không cổ hút động cơ',
+      ],
+    },
+    {
+      stIdx: 7 /* Đại tu hộp số */,
+      type: InspectionTemplateType.INSPECTION,
+      name: 'Kiểm tra chẩn đoán & rã hộp số',
+      items: [
+        'Kiểm tra mã lỗi điều khiển hộp số tự động TCM',
+        'Kiểm tra chất lượng và mùi cháy khét của dầu hộp số cũ',
+        'Kiểm tra độ mòn các lá bố, lá thép bộ ly hợp',
+        'Kiểm tra tình trạng thân van thủy lực (Valve Body) và solenoid',
+        'Kiểm tra khe hở các bánh răng hành tinh và biến mô',
+      ],
+    },
+    {
+      stIdx: 8 /* Sửa trượt số */,
+      type: InspectionTemplateType.INSPECTION,
+      name: 'Kiểm tra chẩn đoán hiện tượng trượt số',
+      items: [
+        'Đọc mã lỗi áp suất dầu hộp số và cảm biến tốc độ trục',
+        'Thử nghiệm Stall Test để đánh giá độ bám của ly hợp',
+        'Đo áp suất đường dầu chính tại các cổng kiểm tra thủy lực',
+        'Kiểm tra độ mòn màng gioăng piston ép và sin phốt trục',
+      ],
+    },
+    {
+      stIdx: 11 /* Bảo dưỡng phanh tổng quát */,
+      type: InspectionTemplateType.INSPECTION,
+      name: 'Kiểm tra chẩn đoán hệ thống phanh tổng thể',
+      items: [
+        'Đo độ dày má phanh và đĩa phanh cả 4 bánh',
+        'Kiểm tra độ ẩm và độ sôi của dầu phanh bằng bút đo',
+        'Kiểm tra độ kín khít của cupen xilanh phanh và đường ống dầu',
+        'Kiểm tra hành trình tự do của bàn đạp phanh và độ căng phanh tay',
+        'Kiểm tra cảm biến tốc độ vòng quay bánh xe ABS',
+      ],
+    },
+    {
+      stIdx: 13 /* Sửa chữa hệ thống điện */,
+      type: InspectionTemplateType.INSPECTION,
+      name: 'Kiểm tra chẩn đoán hệ thống điện ô tô',
+      items: [
+        'Kiểm tra dòng rò tĩnh (Parasitic Drain) khi xe khóa cửa',
+        'Kiểm tra hộp cầu chì, rơ-le và các giắc nối điện trung tâm',
+        'Kiểm tra điện áp cấp nguồn và mass (GND) tại các hộp ECU',
+        'Đọc mã lỗi mạng giao tiếp CAN-Bus / LIN-Bus',
+        'Kiểm tra sụt áp trên cọc bình và cáp mass thân xe',
+      ],
+    },
+    {
+      stIdx: 15 /* Thay phuộc giảm xóc */,
+      type: InspectionTemplateType.INSPECTION,
+      name: 'Kiểm tra chẩn đoán gầm và hệ thống treo',
+      items: [
+        'Kiểm tra rò rỉ dầu ty phuộc và tình trạng cao su tăm bông',
+        'Kiểm tra độ rơ lắc bát bèo và bạc đạn xoay giảm xóc',
+        'Kiểm tra cao su càng A, rô-tuyn cân bằng và rô-tuyn lái',
+        'Kiểm tra tình trạng lò xo giảm xóc (nứt gãy, xẹp lún)',
+      ],
+    },
+    {
+      stIdx: 16 /* Cân chỉnh thước lái */,
+      type: InspectionTemplateType.INSPECTION,
+      name: 'Kiểm tra góc đặt bánh xe và hệ thống lái',
+      items: [
+        'Kiểm tra độ rơ của thước lái và các khớp rô-tuyn lái',
+        'Kiểm tra độ mòn không đều trên bề mặt lốp (vẹt trong, vẹt ngoài)',
+        'Đo góc Camber, Caster và Toe ban đầu trên máy cân chỉnh laser',
+        'Kiểm tra độ cân bằng động của mâm lốp',
+      ],
+    },
+    {
+      stIdx: 18 /* Gò nắn thân xe */,
+      type: InspectionTemplateType.INSPECTION,
+      name: 'Kiểm tra giám định biến dạng thân xe & panel',
+      items: [
+        'Đo đạc kích thước chéo và độ biến dạng khung sườn xe',
+        'Đánh giá diện tích và độ sâu các vết móp méo panel',
+        'Kiểm tra độ thẳng hàng của khe hở cửa, capo và cốp sau',
+        'Kiểm tra tình trạng các điểm hàn bấm và keo chỉ zin',
+      ],
+    },
 
-  // -------------------------------------------------------------
-  // NHÓM 2: BỘ TIÊU CHUẨN NGHIỆM THU KCS XUẤT XƯỞNG (QC) - 20 DỊCH VỤ
-  // -------------------------------------------------------------
-  {
-    stIdx: 0 /* Thay dầu máy */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Thay dầu máy',
-    items: [
-      'Mức dầu động cơ nằm giữa vạch Min-Max trên thước thăm',
-      'Lọc dầu mới được siết đúng mô-men lực, gioăng cao su kín khít',
-      'Bulong xả đáy các-te siết đủ lực và thay long-đen đệm mới',
-      'Không có hiện tượng rò rỉ dầu dưới đáy các-te sau khi nổ máy 5 phút',
-      'Đã dán tem nhắc nhở và reset mốc km thay dầu trên đồng hồ ODO',
-    ],
-  },
-  {
-    stIdx: 1 /* Bảo dưỡng 10.000 km */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Bảo dưỡng 10.000 km',
-    items: [
-      'Tất cả các mức dung dịch (dầu máy, nước mát, dầu phanh) đạt vạch Full',
-      'Lọc gió động cơ và cabin sạch sẽ, lắp đúng chiều hướng gió',
-      'Áp suất lốp 4 bánh và lốp dự phòng chuẩn thông số kỹ thuật (2.2 - 2.5 bar)',
-      'Bulong 4 bánh xe được siết bằng cần cân lực đúng tiêu chuẩn',
-      'Xe vận hành êm ái, phanh nhạy, không có đèn cảnh báo lỗi trên taplo',
-      'Khoang động cơ và nội thất được vệ sinh sạch sẽ trước khi giao xe',
-    ],
-  },
-  {
-    stIdx: 2 /* Bảo dưỡng 40.000 km */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Bảo dưỡng 40.000 km',
-    items: [
-      'Hoàn tất thay mới toàn bộ dầu máy, dầu hộp số và dầu phanh đạt chuẩn',
-      'Bugi mới được cân chỉnh khe hở điện cực và siết đủ lực',
-      'Dây curoa có độ căng đạt tiêu chuẩn, puli quay êm không rơ lắc',
-      'Góc đặt bánh xe và độ chụm đạt thông số xuất xưởng',
-      'Động cơ nổ êm ở chế độ không tải (idle), vòng tua ổn định',
-      'Thử phanh trên đường thử: xe dừng thẳng, không lệch lái, ABS phản hồi tốt',
-    ],
-  },
-  {
-    stIdx: 3 /* Sửa chữa quá nhiệt động cơ */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Sửa chữa quá nhiệt động cơ',
-    items: [
-      'Két nước làm mát kín tuyệt đối, đã xả e (air) hoàn toàn bọt khí',
-      'Van hằng nhiệt mở đúng nhiệt độ quy định (82°C - 88°C)',
-      'Quạt tản nhiệt đóng ngắt tự động đúng nhiệt độ cài đặt',
-      'Chạy thử xe 30 phút: kim nhiệt độ duy trì ổn định ở vị trí giữa',
-      'Không có dấu hiệu sôi nước, rò rỉ dung dịch hoặc hao hụt nước làm mát',
-    ],
-  },
-  {
-    stIdx: 4 /* Thay bugi & bô bin */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Thay bugi & bô bin',
-    items: [
-      'Toàn bộ bugi mới đúng chỉ số nhiệt và khoảng cách điện cực quy định',
-      'Ren bugi được bôi mỡ chống kẹt và siết đúng mô-men lực tiêu chuẩn',
-      'Bô bin đánh lửa lắp chắc chắn, giắc điện gài lẫy an toàn',
-      'Động cơ khởi động nhạy, tăng tốc mượt mà, không còn hiện tượng giật cục',
-      'Quét lại OBD-II: Xóa sạch mã lỗi misfire, thông số live-data ổn định',
-    ],
-  },
-  {
-    stIdx: 5 /* Sửa chữa động cơ bỏ máy */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Sửa chữa động cơ bỏ máy',
-    items: [
-      'Cân bằng công suất giữa các xylanh đạt độ đồng đều trên 95%',
-      'Động cơ nổ êm dịu, không còn rung lắc thân xe ở dải tua cầm chừng',
-      'Tăng ga đáp ứng tức thì, công suất động cơ phục hồi đạt chuẩn',
-      'Khí thải không có mùi xăng sống, không ra khói đen hoặc khói xanh',
-      'Lái thử thực tế trên đường: Thử tải leo dốc và đạp ga gấp đạt độ mượt mà',
-    ],
-  },
-  {
-    stIdx: 6 /* Thay dầu hộp số */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Thay dầu hộp số',
-    items: [
-      'Dầu hộp số đúng phẩm cấp tiêu chuẩn của nhà sản xuất (ATF/CVTF/MTF)',
-      'Mức dầu hộp số đo chính xác ở nhiệt độ vận hành tiêu chuẩn (50°C - 60°C)',
-      'Gioăng đáy các-te hộp số và bulong xả được làm kín, không rò rỉ',
-      'Đã thực hiện reset/học lại giá trị dầu hộp số (TCM Adaptation Reset)',
-      'Chuyển số thử tại chỗ (P-R-N-D): Chuyển số êm ái, không bị trễ hay giật mạnh',
-    ],
-  },
-  {
-    stIdx: 7 /* Đại tu hộp số */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Đại tu hộp số',
-    items: [
-      'Biến mô và các đĩa ma sát mới được lắp ráp đúng khe hở kỹ thuật',
-      'Thân van (Valve Body) sạch tuyệt đối, các van điện từ đóng mở chính xác',
-      'Chuyển số mượt mà từ số 1 đến số cao nhất khi chạy thử thực tế',
-      'Khóa biến mô (Lock-up) kích hoạt đúng thời điểm ở dải tốc độ cao',
-      'Không có tiếng hú, tiếng va đập bánh răng hay rò rỉ dầu sau 20km chạy thử',
-    ],
-  },
-  {
-    stIdx: 8 /* Sửa trượt số */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Sửa trượt số',
-    items: [
-      'Áp suất mạch dầu thủy lực đạt chuẩn ở mọi dải số và vòng tua',
-      'Bắt khớp ly hợp tức thì khi sang số, loại bỏ hoàn toàn hiện tượng vọt tua máy',
-      'Tăng tốc từ 0 - 80 km/h: Tỷ số truyền chuyển đổi mượt mà, không trượt',
-      'Đọc dữ liệu cảm biến: Tốc độ trục sơ cấp và thứ cấp ăn khớp chính xác',
-    ],
-  },
-  {
-    stIdx: 9 /* Thay má phanh trước */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Thay má phanh trước',
-    items: [
-      'Má phanh mới đúng quy cách, lắp đúng chiều và đầy đủ phe cài chống ồn',
-      'Đĩa phanh được vệ sinh sạch dầu mỡ, bề mặt tiếp xúc phẳng nhẵn',
-      'Ắc suốt phanh (Caliper Slide Pins) được bôi mỡ silicon chịu nhiệt và di chuyển êm',
-      'Mức dầu phanh trong bình chứa đạt vạch Max, không tràn',
-      'Thử phanh dừng xe: Phanh ăn đều, êm ái, không có tiếng kêu rít kim loại',
-    ],
-  },
-  {
-    stIdx: 10 /* Thay đĩa phanh */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Thay đĩa phanh',
-    items: [
-      'Mặt bích moay-ơ được đánh sạch rỉ sét trước khi lắp đĩa phanh mới',
-      'Độ đảo mặt đầu của đĩa phanh (Runout) nằm trong giới hạn cho phép (< 0.05mm)',
-      'Bulong cùm phanh được siết đủ lực theo cẩm nang bảo dưỡng',
-      'Bề mặt má phanh và đĩa phanh tiếp xúc đều trên toàn bộ diện tích',
-      'Đạp phanh ở tốc độ 60 - 80 km/h: Vô lăng và bàn đạp phanh không bị rung lắc',
-    ],
-  },
-  {
-    stIdx: 11 /* Bảo dưỡng phanh tổng quát */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Bảo dưỡng phanh tổng quát',
-    items: [
-      'Toàn bộ cùm phanh 4 bánh được làm sạch bụi bố phanh và bôi mỡ chuyên dụng',
-      'Dầu phanh mới được xả e (bleeding) triệt để, không còn bọt khí trong đường ống',
-      'Lực phanh phân bổ cân bằng giữa các bánh xe (độ lệch < 8%)',
-      'Phanh tay giữ xe đứng vững trên dốc nghiêng 20% ở nấc 5-7 răng',
-      'Đèn cảnh báo phanh trên bảng đồng hồ tắt bình thường sau khi nổ máy',
-    ],
-  },
-  {
-    stIdx: 12 /* Thay bình ắc quy */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Thay bình ắc quy',
-    items: [
-      'Bình ắc quy mới đúng dung lượng (Ah), dòng khởi động (CCA) và kích thước cọc',
-      'Khung gá giữ bình ắc quy được siết chặt, đệm cao su giảm chấn chắc chắn',
-      'Cọc bình được làm sạch oxit, siết chặt và xịt mỡ bảo vệ chống ăn mòn',
-      'Điện áp sạc từ máy phát đạt chuẩn (13.8V - 14.4V khi nổ máy)',
-      'Đã khai báo/cài đặt bình ắc quy mới vào hệ thống quản lý năng lượng BMS của xe',
-    ],
-  },
-  {
-    stIdx: 13 /* Sửa chữa hệ thống điện */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Sửa chữa hệ thống điện',
-    items: [
-      'Các đường dây điện sửa chữa được bọc gen cách nhiệt và cố định gọn gàng',
-      'Cầu chì thay thế đúng thông số ampe thiết kế, không câu móc tắt',
-      'Toàn bộ thiết bị điện liên quan (đèn, gạt mưa, nâng hạ kính, khóa cửa) hoạt động hoàn hảo',
-      'Dòng tiêu thụ tĩnh sau khi xe vào chế độ ngủ (Sleep Mode) đạt tiêu chuẩn',
-      'Không còn mã lỗi điện tử lưu trong các hộp điều khiển',
-    ],
-  },
-  {
-    stIdx: 14 /* Thay máy phát điện */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Thay máy phát điện',
-    items: [
-      'Máy phát điện mới lắp đúng tâm puli và bulong chân máy siết đủ lực',
-      'Dây curoa dẫn động có độ căng chuẩn, không bị trượt rít khi bật tải cao',
-      'Cáp sạc chính B+ và giắc kích từ được kết nối chặt chẽ, chụp cao su bảo vệ kín',
-      'Điện áp ngõ ra khi bật tải tối đa (đèn pha + điều hòa + sấy kính) duy trì trên 13.5V',
-      'Đèn báo nạp ắc quy trên taplo tắt ngay sau khi động cơ khởi động',
-    ],
-  },
-  {
-    stIdx: 15 /* Thay phuộc giảm xóc */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Thay phuộc giảm xóc',
-    items: [
-      'Cụm giảm xóc mới đúng chủng loại, lò xo và bát bèo định vị đúng khớp',
-      'Cao su tăm bông và chụp bụi phuộc nguyên vẹn, lắp chắc chắn',
-      'Bulong ngỗng moay-ơ và ốc đầu ty giảm xóc siết đúng mô-men lực',
-      'Chạy qua gờ giảm tốc: Thân xe dập tắt dao động nhanh chóng, không kêu lục cục',
-      'Thước lái không bị lệch, góc camber bánh xe không bị sai lệch',
-    ],
-  },
-  {
-    stIdx: 16 /* Cân chỉnh thước lái */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Cân chỉnh thước lái',
-    items: [
-      'Áp suất lốp 4 bánh đã được hiệu chỉnh chuẩn trước khi lên bàn cân',
-      'Góc Camber, Caster và Toe (độ chụm) 4 bánh đều nằm trong dải dung sai cho phép',
-      'Vô lăng nằm chính giữa tuyệt đối khi xe chạy thẳng trên đường bằng',
-      'Xe buông tay lái không bị nhao lái hoặc trôi xe sang một bên',
-      'Vô lăng tự động trả lái mượt mà sau khi vào cua',
-    ],
-  },
-  {
-    stIdx: 17 /* Sơn lại panel */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Sơn lại panel',
-    items: [
-      'Bề mặt panel phẳng phiu, các đường gân chỉ thân xe liền lạc, mép khe hở đều',
-      'Màu sơn khớp 100% với màu các chi tiết lân cận dưới ánh sáng tự nhiên và đèn kiểm tra',
-      'Bề mặt sơn căng bóng, không bị da cam (orange peel), không bọt khí hay bụi sơn bám',
-      'Độ dày lớp sơn và clear coat đạt tiêu chuẩn kỹ thuật (110 - 140 micromet)',
-      'Các chi tiết che chắn (roong kính, nẹp mạ crom, đèn) sạch sẽ, không dính bụi sơn',
-    ],
-  },
-  {
-    stIdx: 18 /* Gò nắn thân xe */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Gò nắn thân xe',
-    items: [
-      'Vùng kim loại bị móp méo được kéo nắn phục hồi đúng biên dạng hình học nguyên bản',
-      'Khe hở giữa các panel (cửa, tai vè, nắp capo) đều tăm tắp, đúng thông số khe hở zin (3.5 - 4.5mm)',
-      'Đóng mở cửa/cốp nhẹ nhàng, chắc chắn, ron cao su kín khít không lọt nước',
-      'Mặt trong panel được phủ sơn lót chống rỉ sét bảo vệ mối hàn/nắn',
-      'Khung xương chịu lực (nếu có nắn) đảm bảo kích thước chéo chuẩn khung xe',
-    ],
-  },
-  {
-    stIdx: 19 /* Vệ sinh nội thất toàn bộ */,
-    type: InspectionTemplateType.QC,
-    name: 'KCS Nghiệm thu Vệ sinh nội thất toàn bộ',
-    items: [
-      'Ghế da/nỉ được giặt sạch sâu, không còn vết ố bẩn, da được dưỡng mềm mại',
-      'Trần xe, sàn xe và thảm lót chân sạch bụi bẩn, không còn mùi ẩm mốc',
-      'Bảng taplo, tapi cửa và các khe cửa gió điều hòa được lau sạch và khử khuẩn',
-      'Toàn bộ các mặt kính bên trong xe trong suốt, không để lại vệt lau',
-      'Khoang hành lý phía sau được hút bụi sạch sẽ và sắp xếp ngăn nắp',
-    ],
-  },
+    // -------------------------------------------------------------
+    // NHÓM 2: BỘ TIÊU CHUẨN NGHIỆM THU KCS XUẤT XƯỞNG (QC) - 20 DỊCH VỤ
+    // -------------------------------------------------------------
+    {
+      stIdx: 0 /* Thay dầu máy */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Thay dầu máy',
+      items: [
+        'Mức dầu động cơ nằm giữa vạch Min-Max trên thước thăm',
+        'Lọc dầu mới được siết đúng mô-men lực, gioăng cao su kín khít',
+        'Bulong xả đáy các-te siết đủ lực và thay long-đen đệm mới',
+        'Không có hiện tượng rò rỉ dầu dưới đáy các-te sau khi nổ máy 5 phút',
+        'Đã dán tem nhắc nhở và reset mốc km thay dầu trên đồng hồ ODO',
+      ],
+    },
+    {
+      stIdx: 1 /* Bảo dưỡng 10.000 km */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Bảo dưỡng 10.000 km',
+      items: [
+        'Tất cả các mức dung dịch (dầu máy, nước mát, dầu phanh) đạt vạch Full',
+        'Lọc gió động cơ và cabin sạch sẽ, lắp đúng chiều hướng gió',
+        'Áp suất lốp 4 bánh và lốp dự phòng chuẩn thông số kỹ thuật (2.2 - 2.5 bar)',
+        'Bulong 4 bánh xe được siết bằng cần cân lực đúng tiêu chuẩn',
+        'Xe vận hành êm ái, phanh nhạy, không có đèn cảnh báo lỗi trên taplo',
+        'Khoang động cơ và nội thất được vệ sinh sạch sẽ trước khi giao xe',
+      ],
+    },
+    {
+      stIdx: 2 /* Bảo dưỡng 40.000 km */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Bảo dưỡng 40.000 km',
+      items: [
+        'Hoàn tất thay mới toàn bộ dầu máy, dầu hộp số và dầu phanh đạt chuẩn',
+        'Bugi mới được cân chỉnh khe hở điện cực và siết đủ lực',
+        'Dây curoa có độ căng đạt tiêu chuẩn, puli quay êm không rơ lắc',
+        'Góc đặt bánh xe và độ chụm đạt thông số xuất xưởng',
+        'Động cơ nổ êm ở chế độ không tải (idle), vòng tua ổn định',
+        'Thử phanh trên đường thử: xe dừng thẳng, không lệch lái, ABS phản hồi tốt',
+      ],
+    },
+    {
+      stIdx: 3 /* Sửa chữa quá nhiệt động cơ */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Sửa chữa quá nhiệt động cơ',
+      items: [
+        'Két nước làm mát kín tuyệt đối, đã xả e (air) hoàn toàn bọt khí',
+        'Van hằng nhiệt mở đúng nhiệt độ quy định (82°C - 88°C)',
+        'Quạt tản nhiệt đóng ngắt tự động đúng nhiệt độ cài đặt',
+        'Chạy thử xe 30 phút: kim nhiệt độ duy trì ổn định ở vị trí giữa',
+        'Không có dấu hiệu sôi nước, rò rỉ dung dịch hoặc hao hụt nước làm mát',
+      ],
+    },
+    {
+      stIdx: 4 /* Thay bugi & bô bin */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Thay bugi & bô bin',
+      items: [
+        'Toàn bộ bugi mới đúng chỉ số nhiệt và khoảng cách điện cực quy định',
+        'Ren bugi được bôi mỡ chống kẹt và siết đúng mô-men lực tiêu chuẩn',
+        'Bô bin đánh lửa lắp chắc chắn, giắc điện gài lẫy an toàn',
+        'Động cơ khởi động nhạy, tăng tốc mượt mà, không còn hiện tượng giật cục',
+        'Quét lại OBD-II: Xóa sạch mã lỗi misfire, thông số live-data ổn định',
+      ],
+    },
+    {
+      stIdx: 5 /* Sửa chữa động cơ bỏ máy */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Sửa chữa động cơ bỏ máy',
+      items: [
+        'Cân bằng công suất giữa các xylanh đạt độ đồng đều trên 95%',
+        'Động cơ nổ êm dịu, không còn rung lắc thân xe ở dải tua cầm chừng',
+        'Tăng ga đáp ứng tức thì, công suất động cơ phục hồi đạt chuẩn',
+        'Khí thải không có mùi xăng sống, không ra khói đen hoặc khói xanh',
+        'Lái thử thực tế trên đường: Thử tải leo dốc và đạp ga gấp đạt độ mượt mà',
+      ],
+    },
+    {
+      stIdx: 6 /* Thay dầu hộp số */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Thay dầu hộp số',
+      items: [
+        'Dầu hộp số đúng phẩm cấp tiêu chuẩn của nhà sản xuất (ATF/CVTF/MTF)',
+        'Mức dầu hộp số đo chính xác ở nhiệt độ vận hành tiêu chuẩn (50°C - 60°C)',
+        'Gioăng đáy các-te hộp số và bulong xả được làm kín, không rò rỉ',
+        'Đã thực hiện reset/học lại giá trị dầu hộp số (TCM Adaptation Reset)',
+        'Chuyển số thử tại chỗ (P-R-N-D): Chuyển số êm ái, không bị trễ hay giật mạnh',
+      ],
+    },
+    {
+      stIdx: 7 /* Đại tu hộp số */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Đại tu hộp số',
+      items: [
+        'Biến mô và các đĩa ma sát mới được lắp ráp đúng khe hở kỹ thuật',
+        'Thân van (Valve Body) sạch tuyệt đối, các van điện từ đóng mở chính xác',
+        'Chuyển số mượt mà từ số 1 đến số cao nhất khi chạy thử thực tế',
+        'Khóa biến mô (Lock-up) kích hoạt đúng thời điểm ở dải tốc độ cao',
+        'Không có tiếng hú, tiếng va đập bánh răng hay rò rỉ dầu sau 20km chạy thử',
+      ],
+    },
+    {
+      stIdx: 8 /* Sửa trượt số */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Sửa trượt số',
+      items: [
+        'Áp suất mạch dầu thủy lực đạt chuẩn ở mọi dải số và vòng tua',
+        'Bắt khớp ly hợp tức thì khi sang số, loại bỏ hoàn toàn hiện tượng vọt tua máy',
+        'Tăng tốc từ 0 - 80 km/h: Tỷ số truyền chuyển đổi mượt mà, không trượt',
+        'Đọc dữ liệu cảm biến: Tốc độ trục sơ cấp và thứ cấp ăn khớp chính xác',
+      ],
+    },
+    {
+      stIdx: 9 /* Thay má phanh trước */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Thay má phanh trước',
+      items: [
+        'Má phanh mới đúng quy cách, lắp đúng chiều và đầy đủ phe cài chống ồn',
+        'Đĩa phanh được vệ sinh sạch dầu mỡ, bề mặt tiếp xúc phẳng nhẵn',
+        'Ắc suốt phanh (Caliper Slide Pins) được bôi mỡ silicon chịu nhiệt và di chuyển êm',
+        'Mức dầu phanh trong bình chứa đạt vạch Max, không tràn',
+        'Thử phanh dừng xe: Phanh ăn đều, êm ái, không có tiếng kêu rít kim loại',
+      ],
+    },
+    {
+      stIdx: 10 /* Thay đĩa phanh */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Thay đĩa phanh',
+      items: [
+        'Mặt bích moay-ơ được đánh sạch rỉ sét trước khi lắp đĩa phanh mới',
+        'Độ đảo mặt đầu của đĩa phanh (Runout) nằm trong giới hạn cho phép (< 0.05mm)',
+        'Bulong cùm phanh được siết đủ lực theo cẩm nang bảo dưỡng',
+        'Bề mặt má phanh và đĩa phanh tiếp xúc đều trên toàn bộ diện tích',
+        'Đạp phanh ở tốc độ 60 - 80 km/h: Vô lăng và bàn đạp phanh không bị rung lắc',
+      ],
+    },
+    {
+      stIdx: 11 /* Bảo dưỡng phanh tổng quát */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Bảo dưỡng phanh tổng quát',
+      items: [
+        'Toàn bộ cùm phanh 4 bánh được làm sạch bụi bố phanh và bôi mỡ chuyên dụng',
+        'Dầu phanh mới được xả e (bleeding) triệt để, không còn bọt khí trong đường ống',
+        'Lực phanh phân bổ cân bằng giữa các bánh xe (độ lệch < 8%)',
+        'Phanh tay giữ xe đứng vững trên dốc nghiêng 20% ở nấc 5-7 răng',
+        'Đèn cảnh báo phanh trên bảng đồng hồ tắt bình thường sau khi nổ máy',
+      ],
+    },
+    {
+      stIdx: 12 /* Thay bình ắc quy */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Thay bình ắc quy',
+      items: [
+        'Bình ắc quy mới đúng dung lượng (Ah), dòng khởi động (CCA) và kích thước cọc',
+        'Khung gá giữ bình ắc quy được siết chặt, đệm cao su giảm chấn chắc chắn',
+        'Cọc bình được làm sạch oxit, siết chặt và xịt mỡ bảo vệ chống ăn mòn',
+        'Điện áp sạc từ máy phát đạt chuẩn (13.8V - 14.4V khi nổ máy)',
+        'Đã khai báo/cài đặt bình ắc quy mới vào hệ thống quản lý năng lượng BMS của xe',
+      ],
+    },
+    {
+      stIdx: 13 /* Sửa chữa hệ thống điện */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Sửa chữa hệ thống điện',
+      items: [
+        'Các đường dây điện sửa chữa được bọc gen cách nhiệt và cố định gọn gàng',
+        'Cầu chì thay thế đúng thông số ampe thiết kế, không câu móc tắt',
+        'Toàn bộ thiết bị điện liên quan (đèn, gạt mưa, nâng hạ kính, khóa cửa) hoạt động hoàn hảo',
+        'Dòng tiêu thụ tĩnh sau khi xe vào chế độ ngủ (Sleep Mode) đạt tiêu chuẩn',
+        'Không còn mã lỗi điện tử lưu trong các hộp điều khiển',
+      ],
+    },
+    {
+      stIdx: 14 /* Thay máy phát điện */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Thay máy phát điện',
+      items: [
+        'Máy phát điện mới lắp đúng tâm puli và bulong chân máy siết đủ lực',
+        'Dây curoa dẫn động có độ căng chuẩn, không bị trượt rít khi bật tải cao',
+        'Cáp sạc chính B+ và giắc kích từ được kết nối chặt chẽ, chụp cao su bảo vệ kín',
+        'Điện áp ngõ ra khi bật tải tối đa (đèn pha + điều hòa + sấy kính) duy trì trên 13.5V',
+        'Đèn báo nạp ắc quy trên taplo tắt ngay sau khi động cơ khởi động',
+      ],
+    },
+    {
+      stIdx: 15 /* Thay phuộc giảm xóc */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Thay phuộc giảm xóc',
+      items: [
+        'Cụm giảm xóc mới đúng chủng loại, lò xo và bát bèo định vị đúng khớp',
+        'Cao su tăm bông và chụp bụi phuộc nguyên vẹn, lắp chắc chắn',
+        'Bulong ngỗng moay-ơ và ốc đầu ty giảm xóc siết đúng mô-men lực',
+        'Chạy qua gờ giảm tốc: Thân xe dập tắt dao động nhanh chóng, không kêu lục cục',
+        'Thước lái không bị lệch, góc camber bánh xe không bị sai lệch',
+      ],
+    },
+    {
+      stIdx: 16 /* Cân chỉnh thước lái */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Cân chỉnh thước lái',
+      items: [
+        'Áp suất lốp 4 bánh đã được hiệu chỉnh chuẩn trước khi lên bàn cân',
+        'Góc Camber, Caster và Toe (độ chụm) 4 bánh đều nằm trong dải dung sai cho phép',
+        'Vô lăng nằm chính giữa tuyệt đối khi xe chạy thẳng trên đường bằng',
+        'Xe buông tay lái không bị nhao lái hoặc trôi xe sang một bên',
+        'Vô lăng tự động trả lái mượt mà sau khi vào cua',
+      ],
+    },
+    {
+      stIdx: 17 /* Sơn lại panel */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Sơn lại panel',
+      items: [
+        'Bề mặt panel phẳng phiu, các đường gân chỉ thân xe liền lạc, mép khe hở đều',
+        'Màu sơn khớp 100% với màu các chi tiết lân cận dưới ánh sáng tự nhiên và đèn kiểm tra',
+        'Bề mặt sơn căng bóng, không bị da cam (orange peel), không bọt khí hay bụi sơn bám',
+        'Độ dày lớp sơn và clear coat đạt tiêu chuẩn kỹ thuật (110 - 140 micromet)',
+        'Các chi tiết che chắn (roong kính, nẹp mạ crom, đèn) sạch sẽ, không dính bụi sơn',
+      ],
+    },
+    {
+      stIdx: 18 /* Gò nắn thân xe */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Gò nắn thân xe',
+      items: [
+        'Vùng kim loại bị móp méo được kéo nắn phục hồi đúng biên dạng hình học nguyên bản',
+        'Khe hở giữa các panel (cửa, tai vè, nắp capo) đều tăm tắp, đúng thông số khe hở zin (3.5 - 4.5mm)',
+        'Đóng mở cửa/cốp nhẹ nhàng, chắc chắn, ron cao su kín khít không lọt nước',
+        'Mặt trong panel được phủ sơn lót chống rỉ sét bảo vệ mối hàn/nắn',
+        'Khung xương chịu lực (nếu có nắn) đảm bảo kích thước chéo chuẩn khung xe',
+      ],
+    },
+    {
+      stIdx: 19 /* Vệ sinh nội thất toàn bộ */,
+      type: InspectionTemplateType.QC,
+      name: 'KCS Nghiệm thu Vệ sinh nội thất toàn bộ',
+      items: [
+        'Ghế da/nỉ được giặt sạch sâu, không còn vết ố bẩn, da được dưỡng mềm mại',
+        'Trần xe, sàn xe và thảm lót chân sạch bụi bẩn, không còn mùi ẩm mốc',
+        'Bảng taplo, tapi cửa và các khe cửa gió điều hòa được lau sạch và khử khuẩn',
+        'Toàn bộ các mặt kính bên trong xe trong suốt, không để lại vệt lau',
+        'Khoang hành lý phía sau được hút bụi sạch sẽ và sắp xếp ngăn nắp',
+      ],
+    },
   ];
 
   const inspTemplates: any[] = [];
@@ -875,21 +891,29 @@ async function main() {
 
   // 2.9 Suppliers
   const supplierData = [
-    { name: 'Công ty TNHH Phụ tùng Toyota Việt Nam', contact: 'Nguyễn Thanh Tâm', phone: '02838123456' },
-    { name: 'Đại lý Honda Parts Sài Gòn', contact: 'Trần Minh Hoàng', phone: '02838234567' },
-    { name: 'Nhà phân phối Bosch Việt Nam', contact: 'Lê Quốc Dũng', phone: '02838345678' },
-    { name: 'Công ty vật tư ô tô Hòa Bình', contact: 'Phạm Văn Tuấn', phone: '02838456789' },
-    { name: 'Nhà cung cấp phụ tùng BMW chính hãng', contact: 'Võ Minh Khoa', phone: '02838567890' },
-    { name: 'Công ty TNHH Dầu nhớt Shell', contact: 'Đặng Thị Hương', phone: '02838678901' },
-    { name: 'Kho phụ tùng Đại Nam', contact: 'Bùi Văn Phú', phone: '02838789012' },
-    { name: 'Nhà phân phối Denso Việt Nam', contact: 'Hoàng Minh Trí', phone: '02838890123' },
-    { name: 'Công ty TNHH lốp xe Bridgestone', contact: 'Huỳnh Văn Bảo', phone: '02838901234' },
-    { name: 'Kho vật tư ô tô Phú Mỹ', contact: 'Ngô Thị Lan', phone: '02838012345' },
+    { code: 'NCC-001', name: 'Công ty TNHH Phụ tùng Toyota Việt Nam', taxCode: '0100778899', contact: 'Nguyễn Thanh Tâm', phone: '02838123456', address: 'KCN Long Bình, TP. Biên Hòa, Đồng Nai' },
+    { code: 'NCC-002', name: 'Đại lý Honda Parts Sài Gòn', taxCode: '0301234567', contact: 'Trần Minh Hoàng', phone: '02838234567', address: '128 Nguyễn Văn Linh, Quận 7, TP.HCM' },
+    { code: 'NCC-003', name: 'Nhà phân phối Bosch Việt Nam', taxCode: '0309876543', contact: 'Lê Quốc Dũng', phone: '02838345678', address: '364 Cộng Hòa, Quận Tân Bình, TP.HCM' },
+    { code: 'NCC-004', name: 'Công ty vật tư ô tô Hòa Bình', taxCode: '0311223344', contact: 'Phạm Văn Tuấn', phone: '02838456789', address: '45 Quốc lộ 13, TP. Thủ Đức, TP.HCM' },
+    { code: 'NCC-005', name: 'Nhà cung cấp phụ tùng BMW chính hãng', taxCode: '0312345678', contact: 'Võ Minh Khoa', phone: '02838567890', address: '80 Nguyễn Văn Trỗi, Quận Phú Nhuận, TP.HCM' },
+    { code: 'NCC-006', name: 'Công ty TNHH Dầu nhớt Shell', taxCode: '0304455667', contact: 'Đặng Thị Hương', phone: '02838678901', address: 'Lầu 7, Tòa nhà Kumho, Quận 1, TP.HCM' },
+    { code: 'NCC-007', name: 'Kho phụ tùng Đại Nam', taxCode: '0313344556', contact: 'Bùi Văn Phú', phone: '02838789012', address: '215 An Dương Vương, Quận 5, TP.HCM' },
+    { code: 'NCC-008', name: 'Nhà phân phối Denso Việt Nam', taxCode: '0102233445', contact: 'Hoàng Minh Trí', phone: '02838890123', address: 'KCN Thăng Long, Đông Anh, Hà Nội' },
+    { code: 'NCC-009', name: 'Công ty TNHH lốp xe Bridgestone', taxCode: '0305566778', contact: 'Huỳnh Văn Bảo', phone: '02838901234', address: 'Lầu 9, Báo Sài Gòn Giải Phóng, Quận 3, TP.HCM' },
+    { code: 'NCC-010', name: 'Kho vật tư ô tô Phú Mỹ', taxCode: '0316677889', contact: 'Ngô Thị Lan', phone: '02838012345', address: '92 Nguyễn Hữu Cảnh, Quận Bình Thạnh, TP.HCM' },
   ];
   const suppliers: any[] = [];
   for (const sd of supplierData) {
     suppliers.push(await prisma.supplier.create({
-      data: { name: sd.name, contact_person: sd.contact, phone: sd.phone, email: `lienhe@${sd.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15)}.vn` }
+      data: {
+        code: sd.code,
+        name: sd.name,
+        tax_code: sd.taxCode,
+        contact_person: sd.contact,
+        phone: sd.phone,
+        address: sd.address,
+        email: `lienhe@${sd.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15)}.vn`,
+      }
     }));
   }
   console.log('   ✅ 10 Suppliers');
@@ -936,17 +960,17 @@ async function main() {
     { roleObj: roleDeskStaff, position: EmployeePosition.OTHER },
     { roleObj: roleDeskStaff, position: EmployeePosition.OTHER },
     { roleObj: roleDeskStaff, position: EmployeePosition.OTHER },
-    // 4 TECHNICIAN (no system role, just employee)
-    { roleObj: roleDeskStaff, position: EmployeePosition.TECHNICIAN },
-    { roleObj: roleDeskStaff, position: EmployeePosition.TECHNICIAN },
-    { roleObj: roleDeskStaff, position: EmployeePosition.TECHNICIAN },
-    { roleObj: roleDeskStaff, position: EmployeePosition.TECHNICIAN },
-    // 2 QC_STAFF
-    { roleObj: roleDeskStaff, position: EmployeePosition.QC_STAFF },
-    { roleObj: roleDeskStaff, position: EmployeePosition.QC_STAFF },
-    // 2 DETAILER
-    { roleObj: roleDeskStaff, position: EmployeePosition.DETAILER },
-    { roleObj: roleDeskStaff, position: EmployeePosition.DETAILER },
+    // 4 TECHNICIAN
+    { roleObj: roleTechnician, position: EmployeePosition.TECHNICIAN },
+    { roleObj: roleTechnician, position: EmployeePosition.TECHNICIAN },
+    { roleObj: roleTechnician, position: EmployeePosition.TECHNICIAN },
+    { roleObj: roleTechnician, position: EmployeePosition.TECHNICIAN },
+    // 2 QC_STAFF (Technical)
+    { roleObj: roleTechnician, position: EmployeePosition.QC_STAFF },
+    { roleObj: roleTechnician, position: EmployeePosition.QC_STAFF },
+    // 2 DETAILER (Technical)
+    { roleObj: roleTechnician, position: EmployeePosition.DETAILER },
+    { roleObj: roleTechnician, position: EmployeePosition.DETAILER },
   ];
 
   const staffs: any[] = [];
@@ -1116,6 +1140,7 @@ async function main() {
     // Variant thứ 2 (hãng khác, giá khác) cho category chẵn
     if (i % 2 === 0) {
       const altBrand = catalogs.brand[brands[(i + 1) % brands.length]];
+      const isLowStockSample = i >= 30; // Tạo 5 mã chạm/dưới định mức an toàn để demo cảnh báo nhập hàng
       extraVariants.push(await prisma.inventoryItem.create({
         data: {
           part_category_id: category.id,
@@ -1123,8 +1148,8 @@ async function main() {
           brand_id: altBrand.id,
           selling_price: Math.round(d.selling * 1.15),
           average_cost: Math.round(d.cost * 1.15),
-          on_hand: Math.round(d.onHand / 2),
-          reorder_level: Math.round(d.onHand * 0.1),
+          on_hand: isLowStockSample ? 2 : Math.round(d.onHand / 2),
+          reorder_level: isLowStockSample ? 8 : Math.round(d.onHand * 0.1),
         }
       }));
     }
@@ -1162,14 +1187,27 @@ async function main() {
   let grCount = 0;
   let smCount = 0;
   for (let i = 0; i < 15; i++) {
+    const isOpening = i === 0;
+    const receiptStatus =
+      i === 13 ? GoodsReceiptStatus.DRAFT : i === 14 ? GoodsReceiptStatus.CANCELLED : GoodsReceiptStatus.POSTED;
+    const taxRate = isOpening ? 0 : i % 2 === 0 ? 10 : 8;
+
     const gr = await prisma.goodsReceipt.create({
       data: {
-        receipt_number: `GR-${String(i + 1).padStart(4, '0')}`,
-        supplier_id: suppliers[i % suppliers.length].id,
-        receipt_type: i === 0 ? ReceiptType.OPENING_STOCK : ReceiptType.PURCHASE,
-        received_date: randomDate(60, 5),
-        notes: `Phiếu nhập kho số ${i + 1}`,
-        created_by_id: staffs[0].id,
+        receipt_number: `GR-202611-${String(i + 1).padStart(3, '0')}`,
+        supplier_id: isOpening ? null : suppliers[i % suppliers.length].id,
+        receipt_type: isOpening ? ReceiptType.OPENING_STOCK : ReceiptType.PURCHASE,
+        status: receiptStatus,
+        reference_no: isOpening ? 'KK-DAUKY-2026' : `HD-VAT-00${120 + i}`,
+        received_date: randomDate(60, 2),
+        notes: isOpening
+          ? 'Nhập số dư tồn kho đầu kỳ chuyển sang hệ thống mới'
+          : receiptStatus === GoodsReceiptStatus.DRAFT
+            ? 'Hàng mới giao tới kho, đang chờ thủ kho kiểm đếm số lượng thực tế'
+            : `Nhập phụ tùng định kỳ đợt ${i} theo hợp đồng cung ứng`,
+        cancel_reason: receiptStatus === GoodsReceiptStatus.CANCELLED ? 'Nhà cung cấp xuất sai quy cách mã phụ tùng trên hóa đơn VAT' : null,
+        cancelled_at: receiptStatus === GoodsReceiptStatus.CANCELLED ? new Date() : null,
+        created_by_id: staffs[2].id, // Manager
       }
     });
     grCount++;
@@ -1177,32 +1215,72 @@ async function main() {
     // Each receipt has 2-4 items
     const numItems = randomBetween(2, 4);
     const usedItemIds = new Set<number>();
+    let subtotal = 0;
+    let discountAmount = 0;
+
     for (let j = 0; j < numItems; j++) {
       let itemIdx: number;
       do { itemIdx = randomBetween(0, inventoryItems.length - 1); } while (usedItemIds.has(itemIdx));
       usedItemIds.add(itemIdx);
 
-      const qty = randomBetween(10, 50);
+      const qty = randomBetween(10, 40);
       const unitCost = itemData[itemIdx].cost;
+      const discountRate = !isOpening && j === 0 ? 5 : 0;
+      const netUnitCost = unitCost * (1 - discountRate / 100);
+      const lineTotal = qty * netUnitCost;
+      const oldOnHand = Math.max(5, itemData[itemIdx].onHand - qty);
+      const oldAvgCost = Math.round(unitCost * 0.96);
+      const newAvgCost = Math.round((oldOnHand * oldAvgCost + qty * netUnitCost) / (oldOnHand + qty));
+
+      subtotal += qty * unitCost;
+      discountAmount += qty * unitCost * (discountRate / 100);
 
       await prisma.goodsReceiptItem.create({
-        data: { receipt_id: gr.id, item_id: inventoryItems[itemIdx].id, quantity: qty, unit_cost: unitCost }
-      });
-
-      await prisma.stockMovement.create({
         data: {
+          receipt_id: gr.id,
           item_id: inventoryItems[itemIdx].id,
-          movement_type: i === 0 ? MovementType.OPENING : MovementType.RECEIPT,
-          reference_type: ReferenceType.GOODS_RECEIPT,
-          reference_id: gr.id,
           quantity: qty,
           unit_cost: unitCost,
-          balance_after: itemData[itemIdx].onHand + qty,
-          created_by_id: staffs[0].id,
+          discount_rate: discountRate,
+          line_total: lineTotal,
+          old_on_hand: oldOnHand,
+          old_average_cost: oldAvgCost,
+          new_average_cost: newAvgCost,
         }
       });
-      smCount++;
+
+      if (receiptStatus === GoodsReceiptStatus.POSTED) {
+        await prisma.stockMovement.create({
+          data: {
+            item_id: inventoryItems[itemIdx].id,
+            movement_type: isOpening ? MovementType.OPENING : MovementType.RECEIPT,
+            reference_type: ReferenceType.GOODS_RECEIPT,
+            reference_id: gr.id,
+            quantity: qty,
+            unit_cost: netUnitCost,
+            balance_after: itemData[itemIdx].onHand,
+            notes: gr.notes,
+            created_by_id: staffs[2].id,
+          }
+        });
+        smCount++;
+      }
     }
+
+    const netSub = subtotal - discountAmount;
+    const taxAmount = Math.round(netSub * (taxRate / 100));
+    const grandTotal = Math.round(netSub + taxAmount);
+
+    await prisma.goodsReceipt.update({
+      where: { id: gr.id },
+      data: {
+        subtotal,
+        discount_amount: discountAmount,
+        tax_rate: taxRate,
+        tax_amount: taxAmount,
+        grand_total: grandTotal,
+      }
+    });
   }
   console.log(`   ✅ ${grCount} GoodsReceipts + ${smCount} StockMovements`);
 
@@ -1531,7 +1609,7 @@ async function main() {
               ? scenario.partItemIdx
               : randomBetween(0, 19);
 
-            await prisma.jobPart.create({
+            const createdPart = await prisma.jobPart.create({
               data: {
                 job_id: job.id,
                 item_id: inventoryItems[partIdx].id,
@@ -1545,6 +1623,34 @@ async function main() {
                 unit_price: itemData[partIdx].selling,
               }
             });
+
+            // Ghi nhận bút toán Xuất sửa chữa (ISSUE) vào Thẻ kho (StockMovement)
+            const partQtyToIssue = Number(createdPart.issued_quantity) > 0 ? Number(createdPart.issued_quantity) : Number(createdPart.planned_quantity);
+            if (partQtyToIssue > 0 && jobStatus !== JobStatus.PLANNED) {
+              const currentInv = await prisma.inventoryItem.findUnique({ where: { id: inventoryItems[partIdx].id } });
+              const currentStock = currentInv?.on_hand ?? 10;
+              const newBalance = Math.max(0, currentStock - partQtyToIssue);
+              await prisma.inventoryItem.update({
+                where: { id: inventoryItems[partIdx].id },
+                data: { on_hand: newBalance },
+              });
+              await prisma.stockMovement.create({
+                data: {
+                  item_id: inventoryItems[partIdx].id,
+                  movement_type: MovementType.ISSUE,
+                  reference_type: ReferenceType.JOB,
+                  reference_id: job.id,
+                  job_id: job.id,
+                  job_part_id: createdPart.id,
+                  quantity: -partQtyToIssue,
+                  unit_cost: currentInv?.average_cost ?? itemData[partIdx].cost,
+                  balance_after: newBalance,
+                  notes: `Xuất cho công việc [${mjt.name}] · Lệnh sửa chữa #${wo.wo_number}`,
+                  created_by_id: adv.id,
+                  created_at: new Date(Date.now() - randomBetween(1, 10) * 86400000),
+                },
+              });
+            }
           }
         }
       }

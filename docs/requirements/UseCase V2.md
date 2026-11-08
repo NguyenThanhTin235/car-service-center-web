@@ -1367,7 +1367,15 @@
 ---
 
 > **Phân hệ quản lý toàn diện quy trình bảo hành phương tiện, phụ tùng và dịch vụ kỹ thuật.**  
-> - **Kế thừa quy trình cốt lõi:** Lấy Phiếu công việc làm hồ sơ trung tâm, vận hành xuyên suốt chu trình quản lý chuẩn 10 bước (Bản nháp $ightarrow$ Đang lập kế hoạch $ightarrow$ Chờ khách duyệt $ightarrow$ Đã duyệt $ightarrow$ Đang thi công $ightarrow$ Chờ thanh toán $ightarrow$ Đã quyết toán tài chính $ightarrow$ Đã xuất xưởng $ightarrow$ Đã đóng hồ sơ).  
+> - **Kế thừa quy trình cốt lõi:** Lấy Phiếu công việc làm hồ sơ trung tâm, vận hành xuyên suốt chu trình quản lý chuẩn 10 bước (Bản nháp $
+ightarrow$ Đang lập kế hoạch $
+ightarrow$ Chờ khách duyệt $
+ightarrow$ Đã duyệt $
+ightarrow$ Đang thi công $
+ightarrow$ Chờ thanh toán $
+ightarrow$ Đã quyết toán tài chính $
+ightarrow$ Đã xuất xưởng $
+ightarrow$ Đã đóng hồ sơ).  
 > - **Chính sách 0 đồng & Quyết toán tự động:** Áp dụng đơn giá bán 0 đồng cho khách hàng đối với các hạng mục bảo hành hợp lệ; khi phát hành hóa đơn 0 đồng, hệ thống tự động hoàn tất quyết toán tài chính, giúp xe đủ điều kiện xuất xưởng nhanh chóng mà không bị ách tắc tại quầy thu ngân.  
 > - **Hạch toán chi phí nội bộ:** Phụ tùng bảo hành xuất kho làm giảm số lượng tồn kho vật lý thực tế, chi phí vốn phụ tùng được hạch toán theo phương pháp Giá vốn bình quân di động vào chi phí quản lý chất lượng của xưởng.  
 > - **Bảo mật báo cáo quản trị:** Báo cáo chi phí và tỷ lệ lỗi bảo hành được phân quyền nghiêm ngặt, chỉ duy nhất Quản lý dịch vụ hoặc Quản trị viên hệ thống mới có quyền truy cập.

@@ -4,6 +4,9 @@ import {
   createInventoryItemSchema,
   updateInventoryItemSchema,
   createGoodsReceiptSchema,
+  cancelGoodsReceiptSchema,
+  createSupplierSchema,
+  updateSupplierSchema,
   createPartCategorySchema,
   updatePartCategorySchema,
 } from '../dtos/inventory.dto';
@@ -156,14 +159,44 @@ export const toggleItem = async (req: Request, res: Response) => {
   }
 };
 
+export const getItemMovements = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 15;
+    const result = await inventoryService.getItemMovements(id, page, limit);
+    res.status(200).json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 export const getReceipts = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const result = await inventoryService.getReceipts(page, limit);
+    const filters = {
+      search: req.query.search as string | undefined,
+      supplierId: req.query.supplierId ? parseInt(req.query.supplierId as string) : undefined,
+      receiptType: req.query.receiptType as any,
+      status: req.query.status as any,
+      fromDate: req.query.fromDate as string | undefined,
+      toDate: req.query.toDate as string | undefined,
+    };
+    const result = await inventoryService.getReceipts(page, limit, filters);
     res.status(200).json({ success: true, data: result });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const getReceiptById = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const result = await inventoryService.getReceiptById(id);
+    res.status(200).json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(404).json({ success: false, message: error.message });
   }
 };
 
@@ -181,9 +214,64 @@ export const createReceipt = async (req: Request, res: Response) => {
   }
 };
 
+export const postDraftReceipt = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const userId = (req as any).user?.id || 1;
+    const result = await inventoryService.postDraftReceipt(id, userId);
+    res.status(200).json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const cancelReceipt = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const { error, value } = cancelGoodsReceiptSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ success: false, message: error.details[0].message });
+    }
+    const userId = (req as any).user?.id || 1;
+    const result = await inventoryService.cancelReceipt(id, value.cancelReason, userId);
+    res.status(200).json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 export const getSuppliers = async (req: Request, res: Response) => {
   try {
-    const result = await inventoryService.getSuppliers();
+    const search = req.query.search as string | undefined;
+    const includeInactive = req.query.includeInactive === 'true';
+    const result = await inventoryService.getSuppliers(search, includeInactive);
+    res.status(200).json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const createSupplier = async (req: Request, res: Response) => {
+  try {
+    const { error, value } = createSupplierSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ success: false, message: error.details[0].message });
+    }
+    const result = await inventoryService.createSupplier(value);
+    res.status(201).json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const updateSupplier = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const { error, value } = updateSupplierSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ success: false, message: error.details[0].message });
+    }
+    const result = await inventoryService.updateSupplier(id, value);
     res.status(200).json({ success: true, data: result });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });

@@ -196,9 +196,9 @@ _Bảng 1-6: Quy định/công thức – Cố vấn dịch vụ (Service Adviso
 | MGR-B01 | Xem bảng điều hành cơ bản | Tra cứu | QĐ-MGR01 | Theo dõi Work Order, Service và Job. |
 | MGR-B02a | Quản lý Danh mục phụ tùng (Part Category) | Lưu trữ/Cập nhật | QĐ-MGR03a | Thêm, sửa, xóa mềm các danh mục phụ tùng dùng làm Master Data cho Inventory Item. |
 | MGR-B02b | Quản lý Phụ tùng thực tế (Inventory Item/SKU) | Lưu trữ/Cập nhật | QĐ-MGR03b | Thêm, sửa, ngừng kinh doanh mã SKU theo từng hãng; hệ thống hỗ trợ tự sinh mã SKU từ tên danh mục và thương hiệu. |
-| MGR-B03 | Quản lý Supplier cơ bản | Lưu trữ/Cập nhật | QĐ-MGR04 | Lưu thông tin nhà cung cấp phục vụ Direct Goods Receipt. |
-| MGR-B04 | Nhập tồn đầu kỳ/Direct Goods Receipt | Lưu trữ | QĐ-MGR05 | Tăng On-hand và tạo Stock Movement. |
-| MGR-B05 | Tính Average Cost | Tính toán | QĐ-MGR06 | Tính giá vốn bình quân gia quyền sau mỗi lần nhập. |
+| MGR-B03 | Quản lý Supplier | Lưu trữ/Cập nhật | QĐ-MGR03 | Quản lý thông tin nhà cung cấp (Mã NCC, Tên, Mã số thuế, Liên hệ) và hỗ trợ tạo nhanh khi lập phiếu nhập. |
+| MGR-B04 | Quản lý Phiếu nhập kho (Goods Receipt) | Lưu trữ/Xử lý | QĐ-MGR04 | Hỗ trợ lập phiếu Nháp (`DRAFT`), Ghi sổ (`POSTED`), Hủy phiếu an toàn (`CANCELLED`), gợi ý nhập bù hàng chạm định mức an toàn và in Phiếu Nhập Kho. |
+| MGR-B05 | Tính Average Cost & Cảnh báo Biên lợi nhuận | Tính toán | QĐ-MGR05 | Mô phỏng trước và tự động tính giá vốn bình quân gia quyền sau mỗi lần Ghi sổ nhập kho; cảnh báo khi giá vốn mới vượt giá bán niêm yết. |
 | MGR-B06 | Issue Part cho Job | Xuất kho | QĐ-MGR07 | Giảm tồn và gắn Stock Movement với Job. |
 | MGR-B07 | Return Part từ Job | Nhập trả | QĐ-MGR08 | Nhập lại lượng phụ tùng chưa sử dụng. |
 | MGR-B08 | Xem tồn và Stock Card | Tra cứu | QĐ-MGR09 | Xem On-hand và lịch sử Stock Movement. |
@@ -213,9 +213,9 @@ _Bảng 1-6: Quy định/công thức – Cố vấn dịch vụ (Service Adviso
 | **Mã** | **Tên quy định** | **Mô tả chi tiết** | **Ghi chú** |
 | QĐ-MGR01 | Dashboard MVP | Hiển thị trạng thái hiện tại của Work Order, Service và Job; chưa yêu cầu real-time hoặc KPI nâng cao. |  |
 | QĐ-MGR02 | Inventory Item | Mỗi item có SKU duy nhất, type Part/Consumable/Chemical/Accessory và một UoM cơ sở. |  |
-| QĐ-MGR03 | Supplier MVP | Supplier chỉ lưu dữ liệu cơ bản; chưa có RFQ, hợp đồng hoặc công nợ nhà cung cấp. |  |
-| QĐ-MGR04 | Goods Receipt | Receipt phải lưu supplier/reference, item, quantity, unit purchase cost và received date; tăng tồn và tạo Stock Movement. |  |
-| QĐ-MGR05 | Average Cost | Giá vốn mới được tính theo Moving Weighted Average; không thay đổi giá bán snapshot của Quotation đã duyệt. | CT-MGR01 |
+| QĐ-MGR03 | Supplier | Lưu thông tin nhà cung cấp (Mã NCC, Tên, Mã số thuế, Người liên hệ, SĐT, Email, Địa chỉ); hỗ trợ tạo mới/cập nhật trực tiếp trên phân hệ kho. |  |
+| QĐ-MGR04 | Goods Receipt | Vòng đời chứng từ 2 bước (`DRAFT` $\rightarrow$ `POSTED` $\rightarrow$ `CANCELLED`); lưu chiết khấu dòng, thuế suất GTGT (VAT), snapshot tồn/giá vốn trước và sau nhập; chỉ tăng tồn và tạo Stock Movement khi ở trạng thái `POSTED`; chỉ cho phép hủy khi tồn hiện tại đủ trừ ngược. |  |
+| QĐ-MGR05 | Average Cost | Giá vốn mới được mô phỏng thời gian thực trên biểu mẫu và tính theo Moving Weighted Average khi Ghi sổ; cảnh báo đỏ nếu giá vốn mới $\ge$ giá bán niêm yết; không thay đổi giá bán snapshot của Quotation đã duyệt. | CT-INV01 |
 | QĐ-MGR06 | Issue to Job | Không cho xuất vượt On-hand; mọi lần xuất tạo Stock Movement và lưu unit cost tại thời điểm xuất. | CT-MGR02 |
 | QĐ-MGR07 | Return from Job | Số lượng trả không vượt số lượng đã issue chưa dùng; nhập lại theo unit cost của movement gốc. |  |
 | QĐ-MGR08 | Không sửa tồn trực tiếp | On-hand được tổng hợp từ Stock Movement; thay đổi tồn phải qua nghiệp vụ nhập, xuất, trả hoặc adjustment được phê duyệt. |  |

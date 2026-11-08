@@ -1,58 +1,58 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f2f4f8;
-  --foreground: #18181b;
+  --background: #f6f8fc;
+  --foreground: #0f172a;
 }
 
 @theme inline {
-  --color-surface-container-highest: #e1e2e7;
-  --color-on-secondary-container: #00752d;
-  --color-inverse-primary: #b3c5ff;
-  --color-on-secondary-fixed-variant: #00531d;
-  --color-tertiary: #7c5000;
+  --color-surface-container-highest: #e2e8f0;
+  --color-on-secondary-container: #047857;
+  --color-inverse-primary: #93c5fd;
+  --color-on-secondary-fixed-variant: #065f46;
+  --color-tertiary: #b45309;
   --color-primary: #0050cd;
-  --color-surface-container: #edeef2;
-  --color-surface-tint: #0054d7;
-  --color-surface-bright: #f8f9fe;
-  --color-on-surface: #18181b;
-  --color-on-tertiary-fixed: #291800;
-  --color-on-tertiary-fixed-variant: #633f00;
-  --color-inverse-on-surface: #f0f0f5;
-  --color-on-background: #18181b;
-  --color-on-primary-fixed-variant: #003fa5;
-  --color-secondary-fixed-dim: #6fdd7f;
-  --color-secondary: #006e29;
-  --color-outline: #727687;
+  --color-surface-container: #f1f5f9;
+  --color-surface-tint: #0866ff;
+  --color-surface-bright: #ffffff;
+  --color-on-surface: #0f172a;
+  --color-on-tertiary-fixed: #451a03;
+  --color-on-tertiary-fixed-variant: #92400e;
+  --color-inverse-on-surface: #f8fafc;
+  --color-on-background: #0f172a;
+  --color-on-primary-fixed-variant: #1d4ed8;
+  --color-secondary-fixed-dim: #6ee7b7;
+  --color-secondary: #059669;
+  --color-outline: #64748b;
   --color-surface-container-lowest: #ffffff;
   --color-primary-container: #0866ff;
-  --color-surface: #f2f4f8;
+  --color-surface: #f6f8fc;
   --color-on-tertiary: #ffffff;
-  --color-secondary-container: #8bfa98;
-  --color-on-error-container: #93000a;
-  --color-surface-dim: #d9dade;
-  --color-background: #f2f4f8;
-  --color-primary-fixed-dim: #b3c5ff;
+  --color-secondary-container: #d1fae5;
+  --color-on-error-container: #9f1239;
+  --color-surface-dim: #e2e8f0;
+  --color-background: #f6f8fc;
+  --color-primary-fixed-dim: #bfdbfe;
   --color-on-error: #ffffff;
-  --color-surface-variant: #e1e2e7;
-  --color-surface-container-low: #f3f4f7;
-  --color-inverse-surface: #18181b;
-  --color-surface-container-high: #e4e7ec;
-  --color-tertiary-fixed: #ffddb4;
-  --color-tertiary-fixed-dim: #ffb955;
-  --color-on-tertiary-container: #fff6ef;
+  --color-surface-variant: #e2e8f0;
+  --color-surface-container-low: #f8fafc;
+  --color-inverse-surface: #0f172a;
+  --color-surface-container-high: #e2e8f0;
+  --color-tertiary-fixed: #fef3c7;
+  --color-tertiary-fixed-dim: #fcd34d;
+  --color-on-tertiary-container: #ffffff;
   --color-on-primary: #ffffff;
-  --color-error: #ba1a1a;
-  --color-error-container: #ffdad6;
-  --color-on-surface-variant: #525866;
+  --color-error: #e11d48;
+  --color-error-container: #ffe4e6;
+  --color-on-surface-variant: #475569;
   --color-on-secondary: #ffffff;
-  --color-secondary-fixed: #8bfa98;
-  --color-on-primary-container: #f9f7ff;
-  --color-tertiary-container: #9d6600;
-  --color-on-primary-fixed: #00184a;
-  --color-on-secondary-fixed: #002107;
-  --color-outline-variant: #d0d5dd;
-  --color-primary-fixed: #dbe1ff;
+  --color-secondary-fixed: #d1fae5;
+  --color-on-primary-container: #ffffff;
+  --color-tertiary-container: #d97706;
+  --color-on-primary-fixed: #1e3a8a;
+  --color-on-secondary-fixed: #064e3b;
+  --color-outline-variant: #e2e8f0;
+  --color-primary-fixed: #dbeafe;
 
   --text-body-lg: 1rem;
   --text-body-lg--line-height: 1.5rem;
@@ -224,3 +224,22 @@ body {
 .animate-slide-up {
   animation: slide-up 0.2s ease-out both;
 }
+
+/* Harmonic Sapphire & Soft Slate SaaS Surface Utilities */
+.saas-card {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 1rem;
+  box-shadow: 0 2px 12px -4px rgba(15, 23, 42, 0.04);
+}
+
+.saas-hero-gradient {
+  background: linear-gradient(135deg, #091d3e 0%, #0043ad 55%, #0050cd 100%);
+  box-shadow: 0 2px 10px -2px rgba(15, 23, 42, 0.08);
+}
+
+.saas-subtle-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+

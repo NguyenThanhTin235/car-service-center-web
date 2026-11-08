@@ -684,7 +684,12 @@ export const addPartToJob = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const createdPart = await workOrderService.addPartToJob(workOrderId, jobId, value);
+    const createdPart = await workOrderService.addPartToJob(
+      workOrderId,
+      jobId,
+      value,
+      (req as any).user?.id
+    );
 
     res.status(201).json({
       success: true,

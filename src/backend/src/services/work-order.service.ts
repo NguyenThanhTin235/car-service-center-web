@@ -1,4 +1,4 @@
-import { IntakeType, WorkOrderSourceType, FuelLevel, WoCloseType } from '@prisma/client';
+import { IntakeType, WorkOrderSourceType, FuelLevel, WoCloseType, MovementType, ReferenceType } from '@prisma/client';
 import {
   isValidWorkOrderTransition,
   WO_AUTO_CLOSE_ON_HANDOVER,
@@ -1693,11 +1693,11 @@ export class WorkOrderService {
     item_id: number;
     planned_quantity: number;
     unit_price?: number;
-  }) {
+  }, userId?: number) {
     // 1. Kiểm tra Work Order
     const wo = await prisma.workOrder.findUnique({
       where: { id: workOrderId },
-      select: { id: true, status: true },
+      select: { id: true, wo_number: true, advisor_id: true, status: true },
     });
     if (!wo) throw new Error('Không tìm thấy phiếu công việc.');
     if (['CLOSED', 'CANCELLED', 'RELEASED'].includes(wo.status)) {
@@ -1712,7 +1712,7 @@ export class WorkOrderService {
           work_order_id: workOrderId,
         },
       },
-      select: { id: true, name: true },
+      select: { id: true, name: true, status: true },
     });
     if (!job) throw new Error('Công việc không tồn tại hoặc không thuộc phiếu công việc này.');
 
@@ -1781,6 +1781,32 @@ export class WorkOrderService {
         },
       },
     });
+
+    // 5. Ghi nhận bút toán Xuất kho (ISSUE) vào Thẻ kho (Stock Movement) & trừ tồn kho
+    const qtyToIssue = initialIssuedQty > 0 ? initialIssuedQty : Number(data.planned_quantity);
+    if (qtyToIssue > 0) {
+      const newOnHand = Math.max(0, item.on_hand - qtyToIssue);
+      await prisma.inventoryItem.update({
+        where: { id: item.id },
+        data: { on_hand: newOnHand },
+      });
+
+      await prisma.stockMovement.create({
+        data: {
+          item_id: item.id,
+          movement_type: MovementType.ISSUE,
+          reference_type: ReferenceType.JOB,
+          reference_id: jobId,
+          job_id: jobId,
+          job_part_id: jobPart.id,
+          quantity: -qtyToIssue,
+          unit_cost: item.average_cost,
+          balance_after: newOnHand,
+          notes: `Xuất phụ tùng cho công việc [${job.name}] · Lệnh sửa chữa #${wo.wo_number}`,
+          created_by_id: userId || wo.advisor_id || 1,
+        },
+      });
+    }
 
     return jobPart;
   }

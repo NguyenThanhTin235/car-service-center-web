@@ -77,6 +77,7 @@ app.use('/api/service-categories', serviceCategoryRoutes);
 
 app.use('/api/job-types', jobTypeRoutes);
 app.use('/api/system-catalogs', catalogRoutes);
+app.use('/api/catalogs', catalogRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api', inventoryRoutes);
 app.use('/api/invoices', invoiceRoutes);

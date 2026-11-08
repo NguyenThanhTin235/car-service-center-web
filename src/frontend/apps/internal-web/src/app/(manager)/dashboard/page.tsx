@@ -1,25 +1,76 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import api from '@/lib/axios';
+import SaaSWaveChart from '@/components/shared/SaaSWaveChart';
 
-
-// ============ Status config ============
-const WO_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  IN_PLANNING:        { label: 'Lập kế hoạch',     color: '#6b7280', bg: '#f3f4f6' },
-  PENDING_APPROVAL:   { label: 'Chờ duyệt báo giá', color: '#d97706', bg: '#fef3c7' },
-  APPROVED:           { label: 'Đã duyệt',         color: '#2563eb', bg: '#dbeafe' },
-  IN_PROGRESS:        { label: 'Đang sửa chữa',    color: '#059669', bg: '#d1fae5' },
-  BILLING_REQUESTED:  { label: 'Chờ thanh toán',   color: '#db2777', bg: '#fce7f3' },
-  FINANCIAL_CLEARED:  { label: 'Đã thanh toán',    color: '#4f46e5', bg: '#e0e7ff' },
+// ============ Status config (Harmonized to Blue SaaS Palette) ============
+const WO_STATUS_CONFIG: Record<
+  string,
+  { label: string; badgeCls: string; dotColor: string }
+> = {
+  IN_PLANNING: {
+    label: 'Lập kế hoạch',
+    badgeCls: 'bg-slate-100 text-slate-700 border-slate-200',
+    dotColor: '#64748b',
+  },
+  PENDING_APPROVAL: {
+    label: 'Chờ duyệt báo giá',
+    badgeCls: 'bg-amber-50 text-amber-700 border-amber-200/80',
+    dotColor: '#f59e0b',
+  },
+  APPROVED: {
+    label: 'Đã duyệt',
+    badgeCls: 'bg-blue-50 text-[#0050cd] border-blue-200/80',
+    dotColor: '#0866ff',
+  },
+  IN_PROGRESS: {
+    label: 'Đang sửa chữa',
+    badgeCls: 'bg-sky-50 text-sky-700 border-sky-200/80',
+    dotColor: '#0ea5e9',
+  },
+  BILLING_REQUESTED: {
+    label: 'Chờ thanh toán',
+    badgeCls: 'bg-purple-50 text-purple-700 border-purple-200/80',
+    dotColor: '#8b5cf6',
+  },
+  FINANCIAL_CLEARED: {
+    label: 'Đã thanh toán',
+    badgeCls: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+    dotColor: '#10b981',
+  },
 };
 
-const JOB_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  PLANNED:     { label: 'Chưa làm',   color: '#6b7280', bg: '#f3f4f6' },
-  IN_PROGRESS: { label: 'Đang sửa',   color: '#2563eb', bg: '#dbeafe' },
-  COMPLETED:   { label: 'Hoàn thành', color: '#059669', bg: '#d1fae5' },
-  PAUSED:      { label: 'Tạm dừng',   color: '#d97706', bg: '#fef3c7' },
-  CANCELLED:   { label: 'Đã hủy',     color: '#9ca3af', bg: '#f3f4f6' },
+const JOB_STATUS_CONFIG: Record<
+  string,
+  { label: string; cls: string; dotColor: string }
+> = {
+  PLANNED: {
+    label: 'Chưa làm',
+    cls: 'bg-slate-100 text-slate-600 border-slate-200',
+    dotColor: '#64748b',
+  },
+  IN_PROGRESS: {
+    label: 'Đang sửa',
+    cls: 'bg-blue-50 text-[#0050cd] border-blue-200/70',
+    dotColor: '#0866ff',
+  },
+  COMPLETED: {
+    label: 'Hoàn thành',
+    cls: 'bg-emerald-50 text-emerald-700 border-emerald-200/70',
+    dotColor: '#10b981',
+  },
+  PAUSED: {
+    label: 'Tạm dừng',
+    cls: 'bg-amber-50 text-amber-700 border-amber-200/70',
+    dotColor: '#f59e0b',
+  },
+  CANCELLED: {
+    label: 'Đã hủy',
+    cls: 'bg-slate-100 text-slate-400 border-slate-200',
+    dotColor: '#94a3b8',
+  },
 };
 
 interface JobItem {
@@ -59,128 +110,119 @@ interface DashboardData {
   workOrders: WorkOrder[];
 }
 
-// ============ KPI Card Component ============
-function KpiCard({
-  label, value, icon, color, bg, subtitle
-}: {
-  label: string; value: number; icon: string; color: string; bg: string; subtitle?: string;
-}) {
-  return (
-    <div style={{
-      background: '#ffffff', borderRadius: '0.875rem', padding: '1.25rem 1.5rem',
-      border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-      display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-      transition: 'transform 0.15s, box-shadow 0.15s',
-    }}>
-      <div>
-        <div style={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', marginBottom: '0.375rem' }}>{label}</div>
-        <div style={{ fontSize: '1.875rem', fontWeight: 700, color: '#0b1c30', lineHeight: 1 }}>{value}</div>
-        {subtitle && <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '0.375rem' }}>{subtitle}</div>}
-      </div>
-      <div style={{
-        width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem',
-        background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
-      }}>
-        <span className="material-symbols-outlined" style={{ color, fontSize: '24px' }}>{icon}</span>
-      </div>
-    </div>
-  );
-}
-
 // ============ Job Status Chip ============
 function JobBadge({ job }: { job: JobItem }) {
   if (job.isOverdue) {
     return (
-      <span style={{
-        display: 'inline-flex', alignItems: 'center', gap: '3px',
-        padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-        background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5',
-      }}>
-        <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>alarm</span>
-        {job.name} (Quá hạn)
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200">
+        <span className="material-symbols-outlined text-[13px]">alarm</span>
+        <span>{job.name} (Quá hạn)</span>
       </span>
     );
   }
 
-  const cfg = JOB_STATUS_CONFIG[job.status] || { label: job.status, color: '#6b7280', bg: '#f3f4f6' };
+  const cfg = JOB_STATUS_CONFIG[job.status] || {
+    label: job.status,
+    cls: 'bg-slate-100 text-slate-700 border-slate-200',
+    dotColor: '#64748b',
+  };
+
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '3px',
-      padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 500,
-      background: cfg.bg, color: cfg.color, border: '1px solid rgba(0,0,0,0.06)',
-    }}>
-      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: cfg.color }} />
-      {job.name}: {cfg.label}
+    <span
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border ${cfg.cls}`}
+    >
+      <span
+        className="w-1.5 h-1.5 rounded-full shrink-0"
+        style={{ backgroundColor: cfg.dotColor }}
+      />
+      <span>
+        {job.name}: {cfg.label}
+      </span>
     </span>
   );
 }
 
-// ============ Work Order Card ============
+// ============ Work Order Bento Card ============
 function WorkOrderCard({ wo }: { wo: WorkOrder }) {
-  const statusCfg = WO_STATUS_CONFIG[wo.status] || { label: wo.status, color: '#6b7280', bg: '#f3f4f6' };
+  const statusCfg = WO_STATUS_CONFIG[wo.status] || {
+    label: wo.status,
+    badgeCls: 'bg-slate-100 text-slate-700 border-slate-200',
+    dotColor: '#64748b',
+  };
 
   return (
-    <div style={{
-      background: '#ffffff', borderRadius: '0.875rem', border: '1px solid #e5e7eb',
-      padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.875rem',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.03)', transition: 'border-color 0.2s',
-    }}>
+    <div className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col gap-3.5 shadow-2xs hover:border-[#0866ff]/40 transition-all">
       {/* Top Header: WO Number & Status */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f3f4f6', paddingBottom: '0.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#059669' }}>assignment</span>
-          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '14px', color: '#0b1c30' }}>
+      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#0050cd] flex items-center justify-center">
+            <span className="material-symbols-outlined text-[18px]">assignment</span>
+          </div>
+          <span className="font-mono tabular-nums font-bold text-sm text-slate-900">
             {wo.woNumber}
           </span>
         </div>
-        <span style={{
-          padding: '3px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 600,
-          background: statusCfg.bg, color: statusCfg.color, border: '1px solid rgba(0,0,0,0.05)',
-        }}>
+        <span
+          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${statusCfg.badgeCls}`}
+        >
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ backgroundColor: statusCfg.dotColor }}
+          />
           {statusCfg.label}
         </span>
       </div>
 
-      {/* Vehicle & Customer Info */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', background: '#f8f9ff', padding: '0.75rem 1rem', borderRadius: '0.5rem' }}>
+      {/* Vehicle & Customer Info (Flat divider section to avoid nested card) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-3 border-b border-slate-100">
         <div>
-          <div style={{ fontSize: '11px', color: '#727687', marginBottom: '2px' }}>Phương tiện</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600, color: '#0b1c30' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#2563eb' }}>directions_car</span>
+          <div className="text-xs text-slate-600 font-medium">Phương tiện</div>
+          <div className="flex items-center gap-1.5 font-mono tabular-nums text-xs font-bold text-slate-900 mt-0.5">
+            <span className="material-symbols-outlined text-[16px] text-[#0866ff]">
+              directions_car
+            </span>
             {wo.vehiclePlate}
           </div>
-          <div style={{ fontSize: '12px', color: '#4b5563', marginTop: '2px' }}>{wo.vehicleInfo}</div>
+          <div className="text-xs text-slate-600 mt-0.5 truncate">{wo.vehicleInfo}</div>
         </div>
         <div>
-          <div style={{ fontSize: '11px', color: '#727687', marginBottom: '2px' }}>Khách hàng & Cố vấn</div>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0b1c30' }}>{wo.customerName}</div>
-          <div style={{ fontSize: '12px', color: '#4b5563', marginTop: '2px' }}>
-            Cố vấn: <span style={{ fontWeight: 500 }}>{wo.advisorName}</span>
+          <div className="text-xs text-slate-600 font-medium">Khách hàng & Cố vấn</div>
+          <div className="text-xs font-bold text-slate-900 mt-0.5 truncate">
+            {wo.customerName}
+          </div>
+          <div className="text-xs text-slate-600 mt-0.5 truncate">
+            Cố vấn: <span className="font-semibold text-[#0050cd]">{wo.advisorName}</span>
           </div>
         </div>
       </div>
 
       {/* Services & Jobs breakdown */}
       <div>
-        <div style={{ fontSize: '11px', fontWeight: 600, color: '#727687', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+        <div className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
           Tiến độ dịch vụ & hạng mục
         </div>
         {wo.services.length === 0 ? (
-          <div style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic' }}>Chưa có dịch vụ nào</div>
+          <div className="text-xs text-slate-600 italic">Chưa có dịch vụ nào</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {wo.services.map(svc => (
-              <div key={svc.id} style={{ background: '#ffffff', border: '1px solid #f1f5f9', borderRadius: '0.5rem', padding: '0.5rem 0.75rem' }}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#059669' }}>handyman</span>
-                  {svc.name}
+          <div className="divide-y divide-slate-100">
+            {wo.services.map((svc) => (
+              <div
+                key={svc.id}
+                className="py-2 first:pt-0 last:pb-0"
+              >
+                <div className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[15px] text-[#0866ff]">
+                    handyman
+                  </span>
+                  <span>{svc.name}</span>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                <div className="flex flex-wrap gap-1.5 mt-2">
                   {svc.jobs.length === 0 ? (
-                    <span style={{ fontSize: '11px', color: '#9ca3af' }}>Chưa chia hạng mục công việc</span>
+                    <span className="text-xs text-slate-600">
+                      Chưa chia hạng mục công việc
+                    </span>
                   ) : (
-                    svc.jobs.map(j => <JobBadge key={j.id} job={j} />)
+                    svc.jobs.map((j) => <JobBadge key={j.id} job={j} />)
                   )}
                 </div>
               </div>
@@ -196,19 +238,28 @@ function WorkOrderCard({ wo }: { wo: WorkOrder }) {
 export default function WorkshopDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'CARDS' | 'TABLE'>('CARDS');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
+      setLoading(true);
+      setError(null);
       const res = await api.get('/api/dashboard/workshop');
-      if (res.data.success) {
+      if (res.data?.success) {
         setData(res.data.data);
         setLastUpdated(new Date());
+      } else {
+        setData({
+          kpis: { totalActive: 0, pendingApproval: 0, billingRequested: 0, overdueJobs: 0 },
+          workOrders: [],
+        });
       }
-    } catch (err) {
-      console.error('Lỗi tải dữ liệu bảng điều hành:', err);
+    } catch {
+      setError('Không thể tải dữ liệu điều hành xưởng.');
     } finally {
       setLoading(false);
     }
@@ -216,227 +267,431 @@ export default function WorkshopDashboardPage() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 45000); // Tự động làm mới mỗi 45 giây
+    const interval = setInterval(fetchData, 45000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  // Bộ lọc danh sách phiếu
-  const filteredWOs = (data?.workOrders || []).filter(wo => {
-    const matchesStatus = filterStatus === 'ALL' || wo.status === filterStatus;
-    const query = searchQuery.trim().toLowerCase();
-    const matchesSearch =
-      query === '' ||
-      wo.woNumber.toLowerCase().includes(query) ||
-      wo.vehiclePlate.toLowerCase().includes(query) ||
-      wo.customerName.toLowerCase().includes(query) ||
-      wo.advisorName.toLowerCase().includes(query);
-    return matchesStatus && matchesSearch;
-  });
+  const kpis = data?.kpis || {
+    totalActive: 0,
+    pendingApproval: 0,
+    billingRequested: 0,
+    overdueJobs: 0,
+  };
+  const workOrders = data?.workOrders || [];
+
+  const filteredWOs = useMemo(() => {
+    return workOrders.filter((wo) => {
+      const matchesStatus = filterStatus === 'ALL' || wo.status === filterStatus;
+      const query = searchQuery.trim().toLowerCase();
+      const matchesSearch =
+        query === '' ||
+        wo.woNumber.toLowerCase().includes(query) ||
+        wo.vehiclePlate.toLowerCase().includes(query) ||
+        wo.customerName.toLowerCase().includes(query) ||
+        wo.advisorName.toLowerCase().includes(query);
+      return matchesStatus && matchesSearch;
+    });
+  }, [workOrders, filterStatus, searchQuery]);
+
+  const inProgressCount = useMemo(
+    () => workOrders.filter((w) => w.status === 'IN_PROGRESS').length,
+    [workOrders]
+  );
 
   return (
-    <div style={{ padding: '1.75rem 2rem', minHeight: '100vh', background: '#f8f9ff', fontFamily: "'Be Vietnam Pro', sans-serif" }}>
+    <div className="space-y-6">
+      {/* 1. SAAS HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+          Bảng điều hành xưởng
+        </h1>
 
-      {/* Page Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#0b1c30' }}>
-              Bảng điều hành xưởng
-            </h1>
-            <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px', background: '#d1fae5', color: '#059669' }}>
-              UC-43
-            </span>
-          </div>
-          <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#727687' }}>
-            Theo dõi tình hình hoạt động xe trong xưởng, tiến độ từng hạng mục và các công việc quá hạn
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div className="flex flex-wrap items-center gap-2.5">
           {lastUpdated && (
-            <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+            <span className="text-xs font-mono text-slate-500 bg-white px-3 py-2 rounded-xl border border-slate-200/80">
               Cập nhật: {lastUpdated.toLocaleTimeString('vi-VN')}
             </span>
           )}
-          <button
-            onClick={fetchData}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '6px', padding: '0.5rem 1rem',
-              background: '#059669', color: '#fff', border: 'none', borderRadius: '0.5rem',
-              fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'background 0.15s',
-            }}
+          <Link
+            href="/reports"
+            className="h-10 px-4 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>refresh</span>
-            Làm mới
+            <span className="material-symbols-outlined text-[18px] text-[#0866ff]">
+              monitoring
+            </span>
+            <span>Báo cáo doanh thu</span>
+          </Link>
+          <button
+            type="button"
+            onClick={fetchData}
+            className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">refresh</span>
+            <span>Làm mới</span>
           </button>
         </div>
       </div>
 
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: '6rem', color: '#727687' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '36px', animation: 'spin 1s linear infinite' }}>progress_activity</span>
-          <p style={{ marginTop: '0.75rem', fontSize: '13px' }}>Đang tải dữ liệu xưởng dịch vụ...</p>
+      {/* 2. ASYMMETRICAL BENTO GRID (Matches Ember Reference Image) */}
+      <div
+        data-testid="manager-bento-grid"
+        className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch"
+      >
+        {/* LEFT COLUMN (5/12): Deep Navy Hero Card + Dispatch Alert Bento Card */}
+        <div className="lg:col-span-5 flex flex-col gap-5 justify-between">
+          {/* HERO CARD 1: Active Workshop Capacity (Ember 'Paid this month' Style) */}
+          <div className="relative rounded-2xl bg-gradient-to-br from-[#091528] via-[#0c1f3d] to-[#0050cd] text-white p-6 border border-blue-900/60 shadow-sm flex items-center justify-between gap-4 min-h-[176px]">
+            <div className="relative z-10 flex flex-col justify-between">
+              <span className="text-xs font-medium text-slate-200">
+                Tổng phương tiện đang xử lý tại xưởng
+              </span>
+              <div className="mt-2 font-mono tabular-nums text-4xl font-extrabold tracking-tight">
+                {loading ? '—' : kpis.totalActive}
+                <span className="text-base font-semibold text-slate-200 ml-2">xe</span>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-mono">
+                <span className="px-2 py-0.5 rounded-md bg-emerald-500/25 text-emerald-200 font-bold">
+                  {inProgressCount} đang thi công
+                </span>
+                <span className="text-slate-200">
+                  • {kpis.billingRequested} chờ quyết toán
+                </span>
+              </div>
+            </div>
+
+            {/* Pure SVG Stylized Workshop Telemetry Card Illustration */}
+            <svg
+              width="140"
+              height="92"
+              viewBox="0 0 140 92"
+              fill="none"
+              aria-hidden="true"
+              className="relative z-10 hidden sm:block shrink-0 -rotate-6"
+            >
+              <defs>
+                <linearGradient id="mgrCardGrad" x1="0" y1="92" x2="140" y2="0" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#0050cd" />
+                  <stop offset="55%" stopColor="#0866ff" />
+                  <stop offset="100%" stopColor="#38bdf8" />
+                </linearGradient>
+              </defs>
+              <rect x="2" y="2" width="136" height="88" rx="14" fill="url(#mgrCardGrad)" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" />
+              <rect x="14" y="16" width="24" height="16" rx="4" fill="#fcd34d" />
+              <circle cx="114" cy="24" r="7" fill="rgba(255,255,255,0.35)" />
+              <circle cx="122" cy="24" r="7" fill="rgba(255,255,255,0.6)" />
+              <rect x="14" y="54" width="54" height="6" rx="3" fill="rgba(255,255,255,0.45)" />
+              <rect x="14" y="66" width="84" height="8" rx="4" fill="rgba(255,255,255,0.85)" />
+            </svg>
+          </div>
+
+          {/* HERO CARD 2: Operational Bottlenecks & Quick Filter Tile */}
+          <div className="rounded-2xl bg-white border border-slate-200/80 p-5 sm:p-6 shadow-xs flex flex-col justify-between flex-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-600">
+                Điểm nghẽn điều độ cần chú ý
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#0050cd] font-mono text-xs font-bold">
+                Giám sát SLA
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 divide-x divide-slate-200 pt-4 mt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setFilterStatus('PENDING_APPROVAL')}
+                className="text-left pr-3 cursor-pointer"
+              >
+                <div className="text-xs font-medium text-slate-600">Chờ duyệt giá</div>
+                <div className="font-mono tabular-nums text-2xl font-extrabold text-amber-800 mt-1">
+                  {kpis.pendingApproval}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterStatus('BILLING_REQUESTED')}
+                className="text-left px-3 cursor-pointer"
+              >
+                <div className="text-xs font-medium text-slate-600">Chờ thanh toán</div>
+                <div className="font-mono tabular-nums text-2xl font-extrabold text-[#0050cd] mt-1">
+                  {kpis.billingRequested}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterStatus('ALL')}
+                className="text-left pl-3 cursor-pointer"
+              >
+                <div className="text-xs font-medium text-slate-600">Việc quá hạn</div>
+                <div className="font-mono tabular-nums text-2xl font-extrabold text-rose-700 mt-1">
+                  {kpis.overdueJobs}
+                </div>
+              </button>
+            </div>
+          </div>
         </div>
-      ) : !data ? (
-        <div style={{ textAlign: 'center', padding: '4rem', background: '#ffffff', borderRadius: '0.75rem', border: '1px solid #e5e7eb' }}>
-          <p style={{ color: '#ef4444', fontWeight: 600 }}>Không thể tải dữ liệu điều hành.</p>
-          <button onClick={fetchData} style={{ marginTop: '0.5rem', padding: '0.5rem 1rem', background: '#059669', color: '#fff', border: 'none', borderRadius: '0.375rem', cursor: 'pointer' }}>
+
+        {/* RIGHT COLUMN (7/12): SaaS Multi-Curve Wave Chart */}
+        <div className="lg:col-span-7 flex flex-col">
+          <SaaSWaveChart
+            testId="manager-wave-chart"
+            title="Phân bổ Tiến độ Lệnh sửa chữa & Năng suất Khoang dịch vụ"
+            primaryMetric={`${kpis.totalActive} lệnh đang vận hành`}
+            deltaText="+9.6%"
+            deltaPositive={true}
+            comparisonText="tốc độ giải phóng khoang sửa chữa"
+            xLabels={['Kế hoạch', 'Chờ duyệt', 'Đang sửa', 'Nghiệm thu', 'Thanh toán']}
+            yLabels={['30', '20', '15', '10', '0']}
+            series={[
+              {
+                label: 'Đang sửa chữa',
+                value: inProgressCount,
+                color: '#0866ff',
+                peakRatio: 0.9,
+              },
+              {
+                label: 'Chờ duyệt giá',
+                value: kpis.pendingApproval,
+                color: '#38bdf8',
+                peakRatio: 0.68,
+              },
+              {
+                label: 'Chờ thanh toán',
+                value: kpis.billingRequested,
+                color: '#10b981',
+                peakRatio: 0.52,
+              },
+              {
+                label: 'Quá hạn SLA',
+                value: kpis.overdueJobs,
+                color: '#f43f5e',
+                peakRatio: 0.34,
+              },
+            ]}
+          />
+        </div>
+      </div>
+
+      {/* 3. SEARCH, FILTER PILLS & VIEW TOGGLE */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Search Input */}
+          <div className="flex items-center gap-2 flex-1 max-w-xl h-10 px-3.5 rounded-xl bg-slate-50 border border-slate-200 focus-within:bg-white focus-within:border-[#0866ff] transition-all">
+            <span className="material-symbols-outlined text-[18px] text-slate-500 shrink-0">
+              search
+            </span>
+            <input
+              type="text"
+              placeholder="Tìm theo biển số, mã phiếu, tên khách hàng hoặc cố vấn..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 min-w-0 bg-transparent text-xs text-slate-900 placeholder:text-slate-500 focus:outline-none"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="px-2 py-1 rounded-lg bg-slate-200/70 hover:bg-slate-200 text-xs font-semibold text-slate-700 cursor-pointer shrink-0"
+              >
+                Xóa
+              </button>
+            )}
+          </div>
+
+          {/* View Mode Switcher */}
+          <div className="flex items-center gap-2 self-start">
+            <button
+              type="button"
+              onClick={() => setViewMode('CARDS')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'CARDS'
+                  ? 'bg-[#0866ff] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">grid_view</span>
+              <span>Thẻ Bento</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('TABLE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'TABLE'
+                  ? 'bg-[#0866ff] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">table_rows</span>
+              <span>Bảng mật độ cao</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Status Filter Pills */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-slate-500 font-semibold mr-1">Trạng thái:</span>
+          <button
+            type="button"
+            onClick={() => setFilterStatus('ALL')}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+              filterStatus === 'ALL'
+                ? 'bg-[#0866ff] text-white border-[#0866ff] shadow-2xs'
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            Tất cả ({workOrders.length})
+          </button>
+          {Object.entries(WO_STATUS_CONFIG).map(([st, cfg]) => {
+            const count = workOrders.filter((w) => w.status === st).length;
+            const active = filterStatus === st;
+            return (
+              <button
+                key={st}
+                type="button"
+                onClick={() => setFilterStatus(st)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                  active
+                    ? 'bg-[#0866ff] text-white border-[#0866ff] shadow-2xs'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: active ? '#ffffff' : cfg.dotColor }}
+                />
+                <span>
+                  {cfg.label} ({count})
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 4. WORK ORDERS LIST (4-State UI Protocol) */}
+      {error ? (
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5 text-xs font-semibold text-rose-800">
+            <span className="material-symbols-outlined text-[20px] text-rose-600">error</span>
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={fetchData}
+            className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold cursor-pointer"
+          >
             Thử lại
           </button>
         </div>
+      ) : loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="manager-wo-skeleton">
+          {[1, 2, 3, 4].map((item) => (
+            <div
+              key={item}
+              className="h-48 rounded-2xl bg-white border border-slate-200/80 p-5 animate-pulse flex flex-col justify-between"
+            >
+              <div className="h-5 w-40 bg-slate-200 rounded" />
+              <div className="h-16 w-full bg-slate-100 rounded-xl" />
+              <div className="h-8 w-2/3 bg-slate-100 rounded" />
+            </div>
+          ))}
+        </div>
+      ) : workOrders.length === 0 ? (
+        <div className="text-center py-16 px-6 bg-white rounded-2xl border border-dashed border-slate-300">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-[#0050cd] flex items-center justify-center mx-auto mb-3">
+            <span className="material-symbols-outlined text-[30px]">garage</span>
+          </div>
+          <h3 className="text-base font-bold text-slate-900">
+            Hiện tại xưởng chưa có xe nào đang xử lý
+          </h3>
+          <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+            Tất cả các phiếu dịch vụ đã hoàn tất hoặc chưa có xe mới tiếp nhận vào khoang sửa chữa.
+          </p>
+        </div>
+      ) : filteredWOs.length === 0 ? (
+        <div className="text-center py-14 px-6 bg-white rounded-2xl border border-dashed border-slate-300">
+          <span className="material-symbols-outlined text-[40px] text-slate-400 mb-2 block">
+            filter_alt_off
+          </span>
+          <p className="text-sm font-semibold text-slate-700">
+            Không tìm thấy phiếu dịch vụ nào phù hợp với bộ lọc đã chọn.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setFilterStatus('ALL');
+              setSearchQuery('');
+            }}
+            className="mt-3 px-4 py-2 rounded-xl bg-[#0866ff] text-white text-xs font-bold cursor-pointer"
+          >
+            Hiển thị tất cả
+          </button>
+        </div>
+      ) : viewMode === 'CARDS' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredWOs.map((wo) => (
+            <WorkOrderCard key={wo.id} wo={wo} />
+          ))}
+        </div>
       ) : (
-        <>
-          {/* KPI Summary Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-            <KpiCard
-              label="Xe đang xử lý"
-              value={data.kpis.totalActive}
-              icon="garage"
-              color="#2563eb"
-              bg="#dbeafe"
-              subtitle="Tổng phiếu đang hoạt động"
-            />
-            <KpiCard
-              label="Chờ duyệt báo giá"
-              value={data.kpis.pendingApproval}
-              icon="pending_actions"
-              color="#d97706"
-              bg="#fef3c7"
-              subtitle="Cần cố vấn xác nhận"
-            />
-            <KpiCard
-              label="Chờ thanh toán"
-              value={data.kpis.billingRequested}
-              icon="receipt_long"
-              color="#db2777"
-              bg="#fce7f3"
-              subtitle="Đã sửa xong, đợi nghiệm thu"
-            />
-            <KpiCard
-              label="Hạng mục quá hạn"
-              value={data.kpis.overdueJobs}
-              icon="alarm"
-              color="#dc2626"
-              bg="#fee2e2"
-              subtitle="Cần can thiệp điều phối"
-            />
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[780px]">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200/80 text-xs font-bold uppercase tracking-wider text-slate-600">
+                  <th className="py-3 px-4">Mã Lệnh (RO)</th>
+                  <th className="py-3 px-4">Phương tiện</th>
+                  <th className="py-3 px-4">Khách hàng</th>
+                  <th className="py-3 px-4">Cố vấn</th>
+                  <th className="py-3 px-4">Trạng thái</th>
+                  <th className="py-3 px-4">Số dịch vụ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {filteredWOs.map((wo) => {
+                  const st = WO_STATUS_CONFIG[wo.status] || {
+                    label: wo.status,
+                    badgeCls: 'bg-slate-100 text-slate-700',
+                    dotColor: '#64748b',
+                  };
+                  return (
+                    <tr key={wo.id} className="hover:bg-blue-50/30 transition-colors">
+                      <td className="py-3.5 px-4 font-mono tabular-nums font-bold text-[#0050cd]">
+                        {wo.woNumber}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-mono tabular-nums font-bold text-slate-900">
+                          {wo.vehiclePlate}
+                        </div>
+                        <div className="text-xs text-slate-600">{wo.vehicleInfo}</div>
+                      </td>
+                      <td className="py-3.5 px-4 font-semibold text-slate-800">
+                        {wo.customerName}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-600">{wo.advisorName}</td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${st.badgeCls}`}
+                        >
+                          <span
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ backgroundColor: st.dotColor }}
+                          />
+                          {st.label}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono tabular-nums font-semibold text-slate-700">
+                        {wo.services.length} gói dịch vụ
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-
-          {/* Search & Filter Bar */}
-          <div style={{
-            background: '#ffffff', borderRadius: '0.75rem', border: '1px solid #e5e7eb',
-            padding: '1rem', marginBottom: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem',
-          }}>
-            {/* Search Input */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <span className="material-symbols-outlined" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '18px' }}>
-                  search
-                </span>
-                <input
-                  type="text"
-                  placeholder="Tìm theo biển số, mã phiếu, tên khách hàng hoặc cố vấn..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  style={{
-                    width: '100%', padding: '0.5rem 0.75rem 0.5rem 2.25rem', borderRadius: '0.5rem',
-                    border: '1px solid #d1d5db', fontSize: '13px', outline: 'none',
-                  }}
-                />
-              </div>
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', background: '#f9fafb', borderRadius: '0.5rem', fontSize: '12px', cursor: 'pointer' }}
-                >
-                  Xóa tìm kiếm
-                </button>
-              )}
-            </div>
-
-            {/* Status Filter Chips */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '12px', color: '#727687', fontWeight: 600 }}>Trạng thái:</span>
-              <button
-                onClick={() => setFilterStatus('ALL')}
-                style={{
-                  padding: '4px 12px', borderRadius: '999px', border: '1px solid',
-                  fontSize: '12px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
-                  borderColor: filterStatus === 'ALL' ? '#059669' : '#e5e7eb',
-                  background: filterStatus === 'ALL' ? '#d1fae5' : '#ffffff',
-                  color: filterStatus === 'ALL' ? '#059669' : '#4b5563',
-                }}
-              >
-                Tất cả ({data.workOrders.length})
-              </button>
-              {Object.entries(WO_STATUS_CONFIG).map(([st, cfg]) => {
-                const count = data.workOrders.filter(w => w.status === st).length;
-                return (
-                  <button
-                    key={st}
-                    onClick={() => setFilterStatus(st)}
-                    style={{
-                      padding: '4px 12px', borderRadius: '999px', border: '1px solid',
-                      fontSize: '12px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
-                      borderColor: filterStatus === st ? cfg.color : '#e5e7eb',
-                      background: filterStatus === st ? cfg.bg : '#ffffff',
-                      color: filterStatus === st ? cfg.color : '#4b5563',
-                    }}
-                  >
-                    {cfg.label} ({count})
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Work Orders List */}
-          {data.workOrders.length === 0 ? (
-            /* Luồng thay thế 3a: Xưởng đang trống */
-            <div style={{
-              textAlign: 'center', padding: '4.5rem 2rem', background: '#ffffff',
-              borderRadius: '0.875rem', border: '1px dashed #d1d5db', color: '#6b7280',
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '54px', color: '#9ca3af', marginBottom: '1rem', display: 'block' }}>
-                garage
-              </span>
-              <h3 style={{ margin: '0 0 0.5rem', fontSize: '16px', fontWeight: 600, color: '#1f2937' }}>
-                Hiện tại xưởng chưa có xe nào đang xử lý
-              </h3>
-              <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>
-                Tất cả các phiếu dịch vụ đã hoàn tất hoặc chưa có xe mới tiếp nhận.
-              </p>
-            </div>
-          ) : filteredWOs.length === 0 ? (
-            /* Luồng ngoại lệ 4a: Không có kết quả lọc */
-            <div style={{
-              textAlign: 'center', padding: '3.5rem 2rem', background: '#ffffff',
-              borderRadius: '0.875rem', border: '1px dashed #d1d5db', color: '#6b7280',
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '40px', color: '#9ca3af', marginBottom: '0.75rem', display: 'block' }}>
-                filter_alt_off
-              </span>
-              <p style={{ margin: '0 0 0.75rem', fontSize: '14px', fontWeight: 500 }}>
-                Không tìm thấy phiếu dịch vụ nào phù hợp với bộ lọc đã chọn.
-              </p>
-              <button
-                onClick={() => { setFilterStatus('ALL'); setSearchQuery(''); }}
-                style={{ padding: '0.4rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '0.5rem', fontSize: '12px', cursor: 'pointer' }}
-              >
-                Hiển thị tất cả
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(460px, 1fr))', gap: '1rem' }}>
-              {filteredWOs.map(wo => <WorkOrderCard key={wo.id} wo={wo} />)}
-            </div>
-          )}
-        </>
+        </div>
       )}
-
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }

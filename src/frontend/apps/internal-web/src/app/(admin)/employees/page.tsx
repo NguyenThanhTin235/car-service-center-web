@@ -4,8 +4,35 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { employeeApi, EmployeeData } from '@/lib/api/employees';
 import { userApi, UserData } from '@/lib/api/users';
 
-const POSITIONS: Record<string, string> = { TECHNICIAN: 'Kỹ thuật viên', DETAILER: 'Detailer', QC_STAFF: 'QC Staff', ADVISOR: 'Cố vấn DV', OTHER: 'Khác' };
-const POS_COLOR: Record<string, string> = { TECHNICIAN: 'bg-[#fffbeb] text-[#92400e]', DETAILER: 'bg-[#eff6ff] text-[#1d4ed8]', QC_STAFF: 'bg-[#ecfdf5] text-[#065f46]', ADVISOR: 'bg-[#0050cd]/10 text-[#0050cd]', OTHER: 'bg-[#f8f9ff] text-[#424656]' };
+const POSITIONS: Record<string, string> = {
+  MANAGER: 'Quản lý',
+  TECHNICIAN: 'Kỹ thuật viên',
+  ADVISOR: 'Cố vấn',
+  FRONT_DESK: 'Lễ tân',
+};
+
+const POS_COLOR: Record<string, string> = {
+  MANAGER: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+  TECHNICIAN: 'bg-amber-50 text-amber-800 border-amber-200/80',
+  ADVISOR: 'bg-blue-50 text-[#0050cd] border-blue-200/80',
+  FRONT_DESK: 'bg-sky-50 text-sky-700 border-sky-200/80',
+};
+
+const getPositionMeta = (pos?: string, email?: string) => {
+  const p = String(pos || '').toUpperCase();
+  const mail = String(email || '').toLowerCase();
+
+  if (p === 'MANAGER' || mail.includes('manager')) {
+    return { key: 'MANAGER', label: 'Quản lý', color: POS_COLOR.MANAGER };
+  }
+  if (p === 'ADVISOR' || mail.includes('advisor')) {
+    return { key: 'ADVISOR', label: 'Cố vấn', color: POS_COLOR.ADVISOR };
+  }
+  if (p === 'FRONT_DESK' || p === 'RECEPTIONIST' || mail.includes('desk')) {
+    return { key: 'FRONT_DESK', label: 'Lễ tân', color: POS_COLOR.FRONT_DESK };
+  }
+  return { key: 'TECHNICIAN', label: 'Kỹ thuật viên', color: POS_COLOR.TECHNICIAN };
+};
 
 interface FormData { fullName: string; position: string; userId: string; skillIds: number[]; }
 const defaultForm: FormData = { fullName: '', position: 'TECHNICIAN', userId: '', skillIds: [] };
@@ -41,8 +68,15 @@ export default function EmployeesPage() {
     setShowModal(true); 
   };
   const openEdit = (e: EmployeeData) => {
-    setEditingEmp(e); setFormData({ fullName: e.fullName, position: e.position, userId: e.user?.id.toString() || '', skillIds: e.skills.map(s => s.id) });
-    setError(''); 
+    const meta = getPositionMeta(e.position, e.user?.email);
+    setEditingEmp(e);
+    setFormData({
+      fullName: e.fullName,
+      position: meta.key,
+      userId: e.user?.id.toString() || '',
+      skillIds: e.skills.map((s) => s.id),
+    });
+    setError('');
     loadAvailableUsers(e.id);
     setShowModal(true);
   };
@@ -83,228 +117,403 @@ export default function EmployeesPage() {
   const activeCount = employees.filter(e => e.isActive).length;
 
   return (
-    <div className="min-h-screen bg-[#f8f9ff] font-[Be_Vietnam_Pro,sans-serif] text-[#0b1c30]">
-      <header className="fixed top-0 left-64 right-0 h-14 z-30 bg-white/90 backdrop-blur border-b border-[#c2c6d8]/30 flex items-center justify-between px-6">
-        <div className="flex items-center gap-1 text-xs text-[#424656]">
-          <span>Admin</span>
-          <span className="material-symbols-outlined text-sm text-[#727687]">chevron_right</span>
-          <span className="font-semibold text-[#0b1c30]">Quản lý Nhân viên</span>
-        </div>
-      </header>
+    <div className="space-y-6 font-[Be_Vietnam_Pro,sans-serif] text-slate-900">
+      {/* 1. SaaS Page Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
+          Quản lý Nhân viên
+        </h1>
+        <button
+          onClick={openCreate}
+          className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white flex items-center gap-2 text-xs font-bold transition-all active:scale-[0.98] shadow-md shadow-[#0866ff]/20 self-start lg:self-auto cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-[18px]">person_add</span>
+          <span>+ Thêm nhân viên</span>
+        </button>
+      </div>
 
-      <main className="pt-14 px-6 py-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold text-[#0b1c30] tracking-tight">Quản lý Nhân viên</h1>
-              <span className="px-2 py-0.5 rounded-full bg-[#e5eeff] text-[#0050cd] font-mono text-xs font-semibold">Staff Directory</span>
+      {/* 2. Asymmetrical 12-Col Bento Summary (5 + 7 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Hero Card (5 cols) */}
+        <div className="lg:col-span-5 rounded-2xl saas-hero-gradient text-white p-5 relative overflow-hidden flex flex-col justify-between">
+          <div className="absolute inset-0 saas-subtle-grid pointer-events-none" />
+          <div className="relative z-10 flex items-start justify-between">
+            <div>
+              <span className="text-xs font-medium text-blue-100/90">Tổng nhân sự hệ thống</span>
+              <div className="text-3xl font-mono font-extrabold tabular-nums tracking-tight mt-1">
+                {pagination.totalRecords}{' '}
+                <span className="text-sm font-sans font-medium text-blue-100/80">nhân viên</span>
+              </div>
             </div>
-            <p className="text-sm text-[#424656] mt-1">Quản lý hồ sơ nhân viên, chức vụ, kỹ năng và liên kết tài khoản hệ thống.</p>
+            <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center backdrop-blur-xs">
+              <span className="material-symbols-outlined text-[22px] text-white">groups</span>
+            </div>
           </div>
-          <button onClick={openCreate} className="h-9 px-4 rounded bg-[#0866ff] hover:bg-[#1877f2] text-white flex items-center gap-2 text-xs font-semibold transition-all active:scale-[0.98] shadow-sm self-start lg:self-center">
-            <span className="material-symbols-outlined text-lg">person_add</span>
-            Thêm nhân viên
+          <div className="relative z-10 mt-4 pt-3.5 border-t border-white/15 flex items-center justify-between text-xs text-blue-50">
+            <span>Danh mục kỹ năng kỹ thuật</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-white/15 font-mono font-semibold">
+              {skills.length} kỹ năng
+            </span>
+          </div>
+        </div>
+
+        {/* 3 Status & Position Tiles (7 cols) */}
+        <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="saas-card p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Đang hoạt động</span>
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200/60 text-emerald-600 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[18px]">engineering</span>
+              </div>
+            </div>
+            <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-2">
+              {activeCount}
+            </div>
+            <span className="text-[11px] text-emerald-700 font-medium mt-1">Sẵn sàng nhận việc</span>
+          </div>
+
+          <div className="saas-card p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Vô hiệu hóa</span>
+              <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200/60 text-rose-600 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[18px]">person_off</span>
+              </div>
+            </div>
+            <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-2">
+              {Math.max(0, pagination.totalRecords - activeCount)}
+            </div>
+            <span className="text-[11px] text-slate-400 font-medium mt-1">Tạm ngưng công tác</span>
+          </div>
+
+          <div className="saas-card p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Kỹ năng hệ thống</span>
+              <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200/60 text-[#0866ff] flex items-center justify-center">
+                <span className="material-symbols-outlined text-[18px]">psychology</span>
+              </div>
+            </div>
+            <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-2">
+              {skills.length}
+            </div>
+            <span className="text-[11px] text-[#0866ff] font-medium mt-1">Chuyên môn kỹ thuật</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Table card */}
+      <div className="w-full saas-card overflow-hidden">
+        <div className="p-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 border-b border-slate-200/80">
+          <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            <div className="flex items-center gap-2 flex-1 max-w-lg h-9 px-3 rounded-xl bg-slate-50/80 border border-slate-200/80 focus-within:bg-white focus-within:border-[#0866ff] transition-all">
+              <span className="material-symbols-outlined text-slate-500 text-[18px] shrink-0">
+                search
+              </span>
+              <input
+                className="flex-1 min-w-0 bg-transparent text-slate-900 placeholder:text-slate-500 text-xs focus:outline-none"
+                placeholder="Tìm theo Họ tên nhân viên..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && loadEmployees(1)}
+              />
+            </div>
+            <div className="w-full sm:w-48">
+              <select
+                className="w-full h-9 px-3 rounded-xl bg-slate-50/80 border border-slate-200/80 text-slate-700 font-semibold text-xs focus:outline-none focus:border-[#0866ff] cursor-pointer"
+                value={filterPos}
+                onChange={(e) => setFilterPos(e.target.value)}
+              >
+                <option value="">Tất cả chức vụ</option>
+                {Object.entries(POSITIONS).map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <button
+            onClick={() => loadEmployees(1)}
+            className="h-9 px-3.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-slate-600 hover:text-[#0866ff] flex items-center justify-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer"
+            title="Làm mới"
+          >
+            <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin text-[#0866ff]' : ''}`}>
+              sync
+            </span>
+            <span className=" sm:inline">Làm mới</span>
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          {[
-            { label: 'Tổng nhân viên', value: pagination.totalRecords, icon: 'groups', color: 'text-[#0050cd]' },
-            { label: 'Đang hoạt động', value: activeCount, icon: 'engineering', color: 'text-[#10b981]' },
-            { label: 'Vô hiệu hóa', value: pagination.totalRecords - activeCount, icon: 'person_off', color: 'text-[#ef4444]' },
-            { label: 'Kỹ năng hệ thống', value: skills.length, icon: 'psychology', color: 'text-[#525970]' },
-          ].map(s => (
-            <div key={s.label} className="p-4 rounded-xl bg-white shadow-sm border border-[#e5eeff] flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-[#424656] uppercase tracking-wider font-semibold">{s.label}</span>
-                <span className={`material-symbols-outlined text-lg ${s.color}`}>{s.icon}</span>
-              </div>
-              <div className="font-mono text-2xl font-bold text-[#0b1c30]">{s.value}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Table card */}
-        <div className="w-full rounded-xl bg-white shadow-sm border border-[#e5eeff] overflow-hidden">
-          <div className="p-3 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 border-b border-[#e5eeff]">
-            <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2">
-              <div className="relative flex-1 max-w-lg">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#525970] text-lg">search</span>
-                <input className="w-full h-9 pl-9 pr-4 rounded bg-[#eff4ff] text-[#0b1c30] placeholder:text-[#424656] text-xs focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#0866ff] transition-all"
-                  placeholder="Tìm theo Họ tên nhân viên..." value={search}
-                  onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && loadEmployees(1)} />
-              </div>
-              <div className="relative w-full sm:w-44">
-                <select className="w-full h-9 pl-3 pr-8 rounded bg-[#eff4ff] text-[#0b1c30] text-xs appearance-none focus:outline-none cursor-pointer"
-                  value={filterPos} onChange={e => setFilterPos(e.target.value)}>
-                  <option value="">Tất cả chức vụ</option>
-                  {Object.entries(POSITIONS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-                <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[#424656] text-sm">unfold_more</span>
-              </div>
-            </div>
-            <button onClick={() => loadEmployees(1)} className="h-9 w-9 rounded bg-[#eff4ff] hover:bg-[#e5eeff] text-[#424656] flex items-center justify-center transition-colors" title="Làm mới">
-              <span className="material-symbols-outlined text-lg">sync</span>
-            </button>
-          </div>
-
-          <div className="w-full overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[900px]">
-              <thead>
-                <tr className="h-9 bg-[#f8f9ff] text-[#424656] text-[11px] uppercase tracking-wider font-semibold border-b border-[#e5eeff]">
-                  <th className="px-4 font-mono">ID</th>
-                  <th className="px-4">Họ và tên</th>
-                  <th className="px-4">Chức vụ</th>
-                  <th className="px-4">Tài khoản liên kết</th>
-                  <th className="px-4">Kỹ năng</th>
-                  <th className="px-4 text-right pr-6">Trạng thái & Thao tác</th>
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[900px]">
+            <thead>
+              <tr className="bg-slate-50/80 text-slate-500 text-[11px] uppercase tracking-wider font-semibold border-b border-slate-200/80">
+                <th className="py-3.5 px-5 font-mono">ID</th>
+                <th className="py-3.5 px-5">Họ và tên</th>
+                <th className="py-3.5 px-5">Chức vụ</th>
+                <th className="py-3.5 px-5">Tài khoản liên kết</th>
+                <th className="py-3.5 px-5">Kỹ năng</th>
+                <th className="py-3.5 px-5 text-right pr-6">Trạng thái &amp; Thao tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200/60">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-xs text-slate-500">
+                    Đang tải dữ liệu nhân sự...
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f1f5f9]">
-                {loading ? (
-                  <tr><td colSpan={6} className="py-12 text-center text-sm text-[#424656]">Đang tải dữ liệu...</td></tr>
-                ) : employees.length === 0 ? (
-                  <tr><td colSpan={6} className="py-12 text-center text-sm text-[#424656]">Không tìm thấy nhân viên phù hợp</td></tr>
-                ) : employees.map(emp => (
-                  <tr key={emp.id} className={`h-14 hover:bg-[#f8f9ff]/40 transition-colors ${!emp.isActive ? 'opacity-70' : ''}`}>
-                    <td className="px-4 font-mono text-xs font-medium text-[#0050cd]">EMP-{String(emp.id).padStart(4, '0')}</td>
-                    <td className="px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-[#0058bc] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
-                          {emp.fullName.split(' ').map((n: string) => n[0]).slice(-2).join('').toUpperCase()}
+              ) : employees.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-xs text-slate-400">
+                    Không tìm thấy nhân viên phù hợp
+                  </td>
+                </tr>
+              ) : (
+                employees.map((emp) => (
+                  <tr
+                    key={emp.id}
+                    className={`hover:bg-blue-50/25 transition-colors ${
+                      !emp.isActive ? 'opacity-65' : ''
+                    }`}
+                  >
+                    <td className="py-3.5 px-5 font-mono text-xs font-bold text-[#0866ff]">
+                      EMP-{String(emp.id).padStart(4, '0')}
+                    </td>
+                    <td className="py-3.5 px-5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                          {emp.fullName
+                            .split(' ')
+                            .map((n: string) => n[0])
+                            .slice(-2)
+                            .join('')
+                            .toUpperCase()}
                         </div>
-                        <span className="text-xs font-semibold text-[#0b1c30]">{emp.fullName}</span>
+                        <span className="text-sm font-semibold text-slate-900">{emp.fullName}</span>
                       </div>
                     </td>
-                    <td className="px-4">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold ${POS_COLOR[emp.position] || 'bg-[#f8f9ff] text-[#424656]'}`}>
-                        {POSITIONS[emp.position] || emp.position}
-                      </span>
+                    <td className="py-3.5 px-5">
+                      {(() => {
+                        const meta = getPositionMeta(emp.position, emp.user?.email);
+                        return (
+                          <span
+                            className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${meta.color}`}
+                          >
+                            {meta.label}
+                          </span>
+                        );
+                      })()}
                     </td>
-                    <td className="px-4">
+                    <td className="py-3.5 px-5">
                       {emp.user ? (
                         <div>
-                          <div className="font-mono text-[11px] text-[#525970]">{emp.user.email}</div>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <span className={`w-1.5 h-1.5 rounded-full ${emp.user.isActive ? 'bg-[#10b981]' : 'bg-[#ef4444]'}`}></span>
-                            <span className="text-[10px] text-[#424656]">{emp.user.isActive ? 'Active' : 'Inactive'}</span>
+                          <div className="font-mono text-xs font-semibold text-slate-800">{emp.user.email}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span
+                              className={`w-2 h-2 rounded-full ${
+                                emp.user.isActive ? 'bg-emerald-500' : 'bg-rose-500'
+                              }`}
+                            />
+                            <span className={`text-xs font-semibold ${emp.user.isActive ? 'text-emerald-700' : 'text-rose-700'}`}>
+                              {emp.user.isActive ? 'Đang hoạt động' : 'Đã khóa'}
+                            </span>
                           </div>
                         </div>
-                      ) : <span className="text-[11px] text-[#727687]">Chưa liên kết</span>}
+                      ) : (
+                        <span className="text-xs text-slate-500 italic">Chưa liên kết</span>
+                      )}
                     </td>
-                    <td className="px-4">
-                      <div className="flex flex-wrap gap-1">
-                        {emp.skills.slice(0, 2).map(s => (
-                          <span key={s.id} className="px-1.5 py-0.5 rounded bg-[#f8f9ff] text-[#424656] text-[10px] border border-[#e5eeff]">{s.name}</span>
+                    <td className="py-3.5 px-5">
+                      <div className="flex flex-wrap gap-1.5">
+                        {emp.skills.slice(0, 2).map((s) => (
+                          <span
+                            key={s.id}
+                            className="px-2 py-0.5 rounded-lg bg-blue-50/70 text-slate-700 text-xs border border-blue-200/60"
+                          >
+                            {s.name}
+                          </span>
                         ))}
-                        {emp.skills.length > 2 && <span className="text-[10px] text-[#727687]">+{emp.skills.length - 2}</span>}
+                        {emp.skills.length > 2 && (
+                          <span className="text-xs font-mono text-slate-400">
+                            +{emp.skills.length - 2}
+                          </span>
+                        )}
                       </div>
                     </td>
-                    <td className="px-4 pr-6">
+                    <td className="py-3.5 px-5 pr-6">
                       <div className="flex items-center justify-end gap-2">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold ${emp.isActive ? 'bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0]' : 'bg-[#fef2f2] text-[#991b1b] border border-[#fecaca]'}`}>
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                            emp.isActive
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                              : 'bg-rose-50 text-rose-700 border-rose-200/80'
+                          }`}
+                        >
                           {emp.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}
                         </span>
-                        <button onClick={() => openEdit(emp)} className="w-7 h-7 rounded hover:bg-[#e5eeff] text-[#424656] flex items-center justify-center transition-colors" title="Chỉnh sửa">
-                          <span className="material-symbols-outlined text-base">edit</span>
+                        <button
+                          onClick={() => openEdit(emp)}
+                          className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-[#0866ff] flex items-center justify-center transition-colors cursor-pointer"
+                          title="Chỉnh sửa"
+                        >
+                          <span className="material-symbols-outlined text-[17px]">edit</span>
                         </button>
                         {emp.isActive ? (
-                          <button onClick={() => handleDeactivate(emp)} className="w-7 h-7 rounded bg-[#fef2f2] hover:bg-[#ef4444] hover:text-white text-[#ef4444] flex items-center justify-center transition-colors" title="Vô hiệu hóa">
-                            <span className="material-symbols-outlined text-base">person_off</span>
+                          <button
+                            onClick={() => handleDeactivate(emp)}
+                            className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-200/80 text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
+                            title="Vô hiệu hóa"
+                          >
+                            <span className="material-symbols-outlined text-[17px]">
+                              person_off
+                            </span>
                           </button>
                         ) : (
-                          <button onClick={() => handleReactivate(emp)} className="w-7 h-7 rounded bg-[#ecfdf5] hover:bg-[#10b981] hover:text-white text-[#10b981] flex items-center justify-center transition-colors" title="Khôi phục">
-                            <span className="material-symbols-outlined text-base">how_to_reg</span>
+                          <button
+                            onClick={() => handleReactivate(emp)}
+                            className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-500 hover:text-white border border-emerald-200/80 text-emerald-600 flex items-center justify-center transition-colors cursor-pointer"
+                            title="Khôi phục"
+                          >
+                            <span className="material-symbols-outlined text-[17px]">
+                              how_to_reg
+                            </span>
                           </button>
                         )}
                       </div>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="p-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[#e5eeff]">
-            <span className="text-xs text-[#424656]">
-              Hiển thị <span className="font-semibold text-[#0b1c30]">{employees.length}</span> trong tổng số <span className="font-semibold text-[#0b1c30]">{pagination.totalRecords}</span> nhân viên
-            </span>
-            {pagination.totalPages > 1 && (
-              <div className="flex items-center gap-1">
-                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(page => (
-                  <button key={page} onClick={() => loadEmployees(page)}
-                    className={`w-8 h-8 rounded font-mono text-xs font-semibold transition-colors ${page === pagination.currentPage ? 'bg-[#0866ff] text-white' : 'bg-[#eff4ff] hover:bg-[#e5eeff] text-[#0b1c30]'}`}>
-                    {page}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      </main>
+
+        <div className="px-5 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200/80 bg-slate-50/40">
+          <span className="text-xs text-slate-700">
+            Hiển thị <span className="font-mono font-bold text-slate-900">{employees.length}</span>{' '}
+            trong tổng số{' '}
+            <span className="font-mono font-bold text-slate-900">{pagination.totalRecords}</span>{' '}
+            nhân viên
+          </span>
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => loadEmployees(page)}
+                  className={`w-8 h-8 rounded-lg font-mono text-xs font-semibold transition-colors cursor-pointer ${
+                    page === pagination.currentPage
+                      ? 'bg-[#0866ff] text-white'
+                      : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-800'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between p-5 border-b border-[#e5eeff]">
-              <h2 className="text-base font-semibold text-[#0b1c30]">{editingEmp ? 'Cập nhật nhân viên' : 'Thêm nhân viên mới'}</h2>
-              <button onClick={() => setShowModal(false)} className="w-7 h-7 rounded hover:bg-[#eff4ff] text-[#424656] flex items-center justify-center">
-                <span className="material-symbols-outlined text-base">close</span>
+        <div className="fixed inset-0 bg-slate-950/45 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-slate-200/80">
+              <h2 className="text-base font-bold text-slate-900">
+                {editingEmp ? 'Cập nhật nhân viên' : 'Thêm nhân viên mới'}
+              </h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="w-8 h-8 rounded-xl hover:bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
-              {error && <div className="p-3 rounded bg-[#fef2f2] text-[#dc2626] text-xs border border-[#fecaca]">{error}</div>}
+              {error && (
+                <div className="p-3 rounded-xl bg-rose-50 text-rose-600 text-xs border border-rose-200">
+                  {error}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-[#424656]">Họ và tên *</span>
-                  <input required value={formData.fullName} onChange={e => setFormData(p => ({ ...p, fullName: e.target.value }))}
-                    className="h-9 px-3 border border-[#c2c6d8] rounded text-sm bg-white focus:outline-none focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff]"
-                    placeholder="Nguyễn Văn A" />
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-slate-600">Họ và tên *</span>
+                  <input
+                    required
+                    value={formData.fullName}
+                    onChange={(e) => setFormData((p) => ({ ...p, fullName: e.target.value }))}
+                    className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15"
+                    placeholder="Nguyễn Văn A"
+                  />
                 </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-[#424656]">Chức vụ *</span>
-                  <div className="relative">
-                    <select required value={formData.position} onChange={e => setFormData(p => ({ ...p, position: e.target.value }))}
-                      className="w-full h-9 pl-3 pr-8 border border-[#c2c6d8] rounded text-sm bg-white appearance-none focus:outline-none focus:border-[#0866ff]">
-                      {Object.entries(POSITIONS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                    </select>
-                    <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[#424656] text-sm">unfold_more</span>
-                  </div>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-slate-600">Chức vụ *</span>
+                  <select
+                    required
+                    value={formData.position}
+                    onChange={(e) => setFormData((p) => ({ ...p, position: e.target.value }))}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff] cursor-pointer"
+                  >
+                    {Object.entries(POSITIONS).map(([v, l]) => (
+                      <option key={v} value={v}>
+                        {l}
+                      </option>
+                    ))}
+                  </select>
                 </label>
-                <label className="flex flex-col gap-1 col-span-2">
-                  <span className="text-xs font-semibold text-[#424656]">Tài khoản liên kết</span>
-                  <div className="relative">
-                    <select value={formData.userId} onChange={e => setFormData(p => ({ ...p, userId: e.target.value }))}
-                      className="w-full h-9 pl-3 pr-8 border border-[#c2c6d8] rounded text-sm bg-white appearance-none focus:outline-none focus:border-[#0866ff]">
-                      <option value="">-- Không liên kết (Bỏ trống) --</option>
-                      {availableUsers.map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.email} - {u.fullName}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[#424656] text-sm">unfold_more</span>
-                  </div>
+                <label className="flex flex-col gap-1.5 col-span-2">
+                  <span className="text-xs font-semibold text-slate-600">Tài khoản liên kết</span>
+                  <select
+                    value={formData.userId}
+                    onChange={(e) => setFormData((p) => ({ ...p, userId: e.target.value }))}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff] cursor-pointer"
+                  >
+                    <option value="">-- Không liên kết (Bỏ trống) --</option>
+                    {availableUsers.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.email} - {u.fullName}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
               {skills.length > 0 && (
                 <div>
-                  <div className="text-xs font-semibold text-[#424656] mb-2">Kỹ năng</div>
+                  <div className="text-xs font-semibold text-slate-600 mb-2">Kỹ năng</div>
                   <div className="flex flex-wrap gap-2">
-                    {skills.map(s => (
-                      <button key={s.id} type="button" onClick={() => toggleSkill(s.id)} className={`px-3 py-1.5 rounded border text-xs font-medium transition-all ${formData.skillIds.includes(s.id) ? 'bg-[#eff4ff] border-[#0866ff] text-[#0050cd]' : 'bg-white border-[#c2c6d8] text-[#424656] hover:border-[#0866ff]'}`}>
-                        {formData.skillIds.includes(s.id) && <span className="mr-1">✓</span>}{s.name}
+                    {skills.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => toggleSkill(s.id)}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                          formData.skillIds.includes(s.id)
+                            ? 'bg-blue-50 border-[#0866ff] text-[#0866ff]'
+                            : 'bg-white border-slate-200 text-slate-600 hover:border-[#0866ff]'
+                        }`}
+                      >
+                        {formData.skillIds.includes(s.id) && <span className="mr-1">✓</span>}
+                        {s.name}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
               <div className="flex gap-2 justify-end pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="h-9 px-4 rounded border border-[#c2c6d8] text-xs font-semibold text-[#0b1c30] hover:bg-[#f8f9ff]">Hủy</button>
-                <button type="submit" disabled={submitting} className="h-9 px-4 rounded bg-[#0866ff] hover:bg-[#1877f2] text-white text-xs font-semibold disabled:opacity-60 active:scale-[0.98]">
-                  {submitting ? 'Đang lưu...' : (editingEmp ? 'Cập nhật' : 'Tạo nhân viên')}
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="h-10 px-4 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white text-xs font-bold disabled:opacity-60 active:scale-[0.98] cursor-pointer"
+                >
+                  {submitting ? 'Đang lưu...' : editingEmp ? 'Cập nhật' : 'Tạo nhân viên'}
                 </button>
               </div>
             </form>

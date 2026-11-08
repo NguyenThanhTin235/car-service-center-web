@@ -7,43 +7,37 @@ interface AppointmentCardProps {
 }
 
 export default function AppointmentCard({ appointment, onClick }: AppointmentCardProps) {
-  // Determine styles based on status
+  // Determine styles based on status (Tone-on-tone surface without border-l-4 or nested card borders)
   let bgClass = '';
-  let borderClass = '';
   let dotClass = '';
   let timeTextClass = '';
 
   switch (appointment.status) {
     case 'CONFIRMED':
     case 'RESCHEDULED':
-      bgClass = 'bg-blue-50';
-      borderClass = 'border-l-primary border-blue-200';
-      dotClass = 'bg-primary';
-      timeTextClass = 'text-primary';
+      bgClass = 'bg-blue-50/90 hover:bg-blue-100/80';
+      dotClass = 'bg-[#0866ff]';
+      timeTextClass = 'text-[#0050cd]';
       break;
     case 'REQUESTED':
-      bgClass = 'bg-amber-50';
-      borderClass = 'border-l-amber-500 border-amber-200';
+      bgClass = 'bg-amber-50/90 hover:bg-amber-100/80';
       dotClass = 'bg-amber-500';
-      timeTextClass = 'text-amber-700';
+      timeTextClass = 'text-amber-800';
       break;
     case 'ARRIVED':
-      bgClass = 'bg-emerald-50';
-      borderClass = 'border-l-emerald-500 border-emerald-200';
-      dotClass = 'bg-emerald-500';
-      timeTextClass = 'text-emerald-700';
+      bgClass = 'bg-emerald-50/90 hover:bg-emerald-100/80';
+      dotClass = 'bg-emerald-600';
+      timeTextClass = 'text-emerald-800';
       break;
     case 'CANCELLED':
-      bgClass = 'bg-slate-50 opacity-60';
-      borderClass = 'border-l-slate-400 border-slate-200';
-      dotClass = 'bg-slate-400';
-      timeTextClass = 'text-slate-600';
+      bgClass = 'bg-slate-100 opacity-70';
+      dotClass = 'bg-slate-500';
+      timeTextClass = 'text-slate-700';
       break;
     default:
-      bgClass = 'bg-blue-50';
-      borderClass = 'border-l-primary border-blue-200';
-      dotClass = 'bg-primary';
-      timeTextClass = 'text-primary';
+      bgClass = 'bg-blue-50/90 hover:bg-blue-100/80';
+      dotClass = 'bg-[#0866ff]';
+      timeTextClass = 'text-[#0050cd]';
   }
 
   let isOverdue = false;
@@ -60,48 +54,44 @@ export default function AppointmentCard({ appointment, onClick }: AppointmentCar
       
       if (now > aptDate) {
         isOverdue = true;
-        bgClass = 'bg-red-50';
-        borderClass = 'border-l-error border-red-200';
-        dotClass = 'bg-error';
-        timeTextClass = 'text-error';
+        bgClass = 'bg-rose-50/95 hover:bg-rose-100/80';
+        dotClass = 'bg-rose-600';
+        timeTextClass = 'text-rose-800';
       }
     }
   }
 
-  // Handle scheduled time display (format: HH:mm)
   const startTime = appointment.scheduled_time_str;
-
   const hasServices = appointment.services && appointment.services.length > 0;
 
   return (
     <div 
       onClick={() => onClick && onClick(appointment)}
-      className={`p-2 rounded-lg ${bgClass} border-l-4 ${borderClass} border shadow-2xs hover:shadow-md transition-shadow cursor-pointer`}
+      className={`p-2.5 rounded-lg ${bgClass} transition-colors cursor-pointer`}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
-          <span className={`text-[11px] font-bold ${timeTextClass}`}>{startTime}</span>
-          {isOverdue && <span className="material-symbols-outlined text-[14px] text-error" title="Quá giờ hẹn">warning</span>}
+          <span className={`text-xs font-mono font-bold ${timeTextClass}`}>{startTime}</span>
+          {isOverdue && <span className="material-symbols-outlined text-[14px] text-rose-700" title="Quá giờ hẹn">warning</span>}
         </div>
-        <span className={`w-1.5 h-1.5 rounded-full ${dotClass}`}></span>
+        <span className={`w-2 h-2 rounded-full ${dotClass}`}></span>
       </div>
-      <div className="font-bold text-on-surface text-body-sm truncate mt-0.5">
+      <div className="font-bold text-slate-900 text-xs truncate mt-1">
         {appointment.customer?.full_name || 'Unknown Customer'}
       </div>
-      <div className="inline-block px-1.5 py-0.2 bg-white border border-outline-variant/80 rounded font-code-mono text-[11px] text-on-surface mt-1 font-semibold">
+      <div className="font-mono text-xs text-slate-800 mt-0.5 font-semibold">
         {appointment.vehicle?.license_plate || 'No Plate'}
       </div>
       
       <div className="mt-1.5 flex flex-col gap-0.5">
         {hasServices ? (
           appointment.services?.map((s: any, idx: number) => (
-            <div key={idx} className="text-[11px] text-secondary leading-tight break-words flex items-start gap-1">
-              <span className="opacity-50 mt-[3px] text-[6px]">●</span>
-              <span>{s.name}</span>
+            <div key={idx} className="text-xs text-slate-700 leading-snug break-words">
+              • {s.name}
             </div>
           ))
         ) : (
-          <div className="text-[11px] text-secondary italic">Chưa có dịch vụ</div>
+          <div className="text-xs text-slate-600 italic">Chưa có dịch vụ</div>
         )}
       </div>
     </div>
