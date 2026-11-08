@@ -374,5 +374,154 @@ test.describe('SaaS Dashboard Redesign E2E: Staff, Manager & Admin Roles', () =>
     await toneToggle.click();
     await expect(toneToggle).toContainText('Sidebar Sapphire');
   });
+
+  test('5. Enterprise Goods Receipt & Inventory 3-Tab Workspace (/inventory): MWA Simulation, Ledger & Stock Card', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'user',
+        JSON.stringify({
+          id: 5,
+          email: 'manager@autocare.vn',
+          fullName: 'Lê Quản Lý',
+          roles: ['MANAGER'],
+        })
+      );
+      localStorage.setItem('token', 'mock-manager-jwt-token');
+    });
+
+    await page.route('**/api/inventory-items**', async (route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            items: [
+              {
+                id: 1,
+                sku: 'VT-001-A',
+                name: 'Lọc gió động cơ - Toyota OEM',
+                partCategoryId: 1,
+                partCategory: { id: 1, code: 'PC-001', name: 'Lọc gió động cơ', itemType: 'PART' },
+                brandId: 1,
+                brand: { id: 1, name: 'Toyota OEM' },
+                itemType: 'PART',
+                uomId: 1,
+                uom: { id: 1, name: 'Cái' },
+                sellingPrice: 250000,
+                averageCost: 150000,
+                onHand: 3,
+                reorderLevel: 10,
+                isActive: true,
+                createdAt: new Date().toISOString(),
+              },
+            ],
+            pagination: { page: 1, limit: 10, totalRecords: 1, totalPages: 1 },
+          },
+        }),
+      });
+    });
+
+    await page.route('**/api/inventory/receipts**', async (route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            receipts: [
+              {
+                id: 10,
+                receiptNumber: 'GR-202611-001',
+                supplierId: 1,
+                supplier: { id: 1, code: 'NCC-001', name: 'Công ty TNHH Phụ tùng Toyota Việt Nam', taxCode: '0100778899', phone: '02838123456' },
+                receiptType: 'PURCHASE',
+                status: 'POSTED',
+                referenceNo: 'HD-VAT-00125',
+                receivedDate: new Date().toISOString(),
+                subtotal: 3000000,
+                discountAmount: 0,
+                taxRate: 8,
+                taxAmount: 240000,
+                grandTotal: 3240000,
+                notes: 'Nhập định kỳ',
+                createdBy: { id: 5, fullName: 'Lê Quản Lý' },
+                createdAt: new Date().toISOString(),
+                items: [
+                  {
+                    id: 1,
+                    itemId: 1,
+                    item: { sku: 'VT-001-A', name: 'Lọc gió động cơ', uom: { name: 'Cái' } },
+                    quantity: 20,
+                    unitCost: 150000,
+                    discountRate: 0,
+                    lineTotal: 3000000,
+                    oldOnHand: 10,
+                    oldAverageCost: 140000,
+                    newAverageCost: 146667,
+                  },
+                ],
+              },
+            ],
+            stats: { totalReceipts: 1, postedCount: 1, draftCount: 0, cancelledCount: 0, totalPostedValue: 3240000 },
+            pagination: { page: 1, limit: 10, totalRecords: 1, totalPages: 1 },
+          },
+        }),
+      });
+    });
+
+    await page.route('**/api/inventory/suppliers**', async (route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: [
+            {
+              id: 1,
+              code: 'NCC-001',
+              name: 'Công ty TNHH Phụ tùng Toyota Việt Nam',
+              taxCode: '0100778899',
+              contactPerson: 'Nguyễn Thanh Tâm',
+              phone: '02838123456',
+              email: 'contact@toyota.vn',
+              address: 'Đồng Nai',
+              isActive: true,
+              receiptCount: 5,
+              totalPurchaseValue: 18500000,
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('http://localhost:3001/inventory', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('h1:has-text("Quản lý kho phụ tùng")')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('text=VT-001-A')).toBeVisible();
+
+    // Switch to Tab 2: Sổ Phiếu Nhập Kho
+    await page.click('button:has-text("Sổ Phiếu Nhập Kho")');
+    await expect(page.locator('text=GR-202611-001')).toBeVisible();
+    await expect(page.locator('text=HD-VAT-00125')).toBeVisible();
+
+    // Open Receipt Detail Modal
+    await page.click('button:has-text("Chi tiết / In")');
+    await expect(page.locator('h2:has-text("Chi Tiết Chứng Từ Nhập Kho: GR-202611-001")')).toBeVisible();
+    await page.click('button:has-text("Đóng")');
+
+    // Switch to Tab 3: Nhà cung cấp
+    await page.click('button:has-text("Nhà cung cấp")');
+    await expect(page.locator('text=NCC-001')).toBeVisible();
+
+    // Open Enterprise Goods Receipt Modal
+    await page.click('button:has-text("+ Nhập Kho")');
+    await expect(page.locator('h2:has-text("Lập Chứng Từ Nhập Kho Phụ Tùng")')).toBeVisible();
+    await expect(page.locator('button:has-text("Lưu bản nháp (DRAFT)")')).toBeVisible();
+    await expect(page.locator('button:has-text("Xác nhận & Ghi sổ Nhập kho")')).toBeVisible();
+  });
 });
 

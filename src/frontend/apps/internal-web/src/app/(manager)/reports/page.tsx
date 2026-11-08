@@ -65,11 +65,10 @@ function TypeBtn({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-        active
-          ? 'bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white border-[#0866ff] shadow-md shadow-[#0866ff]/20'
-          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-      }`}
+      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${active
+        ? 'bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white border-[#0866ff] shadow-md shadow-[#0866ff]/20'
+        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+        }`}
     >
       <span className="material-symbols-outlined text-[18px]">{icon}</span>
       <span>{label}</span>
@@ -92,11 +91,10 @@ function SummaryCard({
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-200/80 flex items-center gap-4 shadow-2xs">
       <div
-        className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-          variant === 'danger'
-            ? 'bg-rose-50 text-rose-600'
-            : 'bg-blue-50 text-[#0050cd]'
-        }`}
+        className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${variant === 'danger'
+          ? 'bg-rose-50 text-rose-600'
+          : 'bg-blue-50 text-[#0050cd]'
+          }`}
       >
         <span className="material-symbols-outlined text-[24px]">{icon}</span>
       </div>

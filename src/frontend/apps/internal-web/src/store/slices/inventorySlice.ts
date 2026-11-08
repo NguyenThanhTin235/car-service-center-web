@@ -67,13 +67,20 @@ export interface PartCategoryPayload {
 
 export interface Supplier {
   id: number;
+  code?: string;
   name: string;
+  taxCode?: string | null;
   contactPerson: string;
   phone: string;
   email: string;
   address: string;
   isActive: boolean;
+  receiptCount?: number;
+  totalPurchaseValue?: number;
+  createdAt?: string;
 }
+
+export type GoodsReceiptStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 
 export interface GoodsReceiptItem {
   id: number;
@@ -81,6 +88,11 @@ export interface GoodsReceiptItem {
   item: InventoryItem;
   quantity: number;
   unitCost: number;
+  discountRate?: number;
+  lineTotal?: number;
+  oldOnHand?: number | null;
+  oldAverageCost?: number | null;
+  newAverageCost?: number | null;
 }
 
 export interface GoodsReceipt {
@@ -89,13 +101,44 @@ export interface GoodsReceipt {
   supplierId: number | null;
   supplier: Supplier | null;
   receiptType: 'PURCHASE' | 'OPENING_STOCK';
+  status: GoodsReceiptStatus;
   referenceNo: string;
   receivedDate: string;
+  subtotal: number;
+  discountAmount: number;
+  taxRate: number;
+  taxAmount: number;
+  grandTotal: number;
   notes: string;
+  cancelReason?: string | null;
+  cancelledAt?: string | null;
   createdById: number;
-  createdBy: any;
+  createdBy: { id: number; fullName: string } | null;
   createdAt: string;
   items: GoodsReceiptItem[];
+}
+
+export interface GoodsReceiptStats {
+  totalReceipts: number;
+  postedCount: number;
+  draftCount: number;
+  cancelledCount: number;
+  totalPostedValue: number;
+}
+
+export interface StockMovementRecord {
+  id: number;
+  itemId: number;
+  movementType: 'RECEIPT' | 'OPENING' | 'ISSUE' | 'RETURN' | 'ADJUSTMENT';
+  referenceType: 'GOODS_RECEIPT' | 'JOB' | 'ADJUSTMENT';
+  referenceId: number;
+  referenceCode: string;
+  quantity: number;
+  unitCost: number;
+  balanceAfter: number;
+  notes?: string | null;
+  createdBy?: { id: number; fullName: string } | null;
+  createdAt: string;
 }
 
 interface Pagination {
@@ -107,15 +150,23 @@ interface Pagination {
 
 interface InventoryState {
   items: InventoryItem[];
+  allItems: InventoryItem[];
   pagination: Pagination | null;
   loading: boolean;
   error: string | null;
   
   receipts: GoodsReceipt[];
+  receiptsStats: GoodsReceiptStats | null;
   receiptsPagination: Pagination | null;
   receiptsLoading: boolean;
 
+  movements: StockMovementRecord[];
+  movementsItem: InventoryItem | null;
+  movementsPagination: Pagination | null;
+  movementsLoading: boolean;
+
   suppliers: Supplier[];
+  suppliersLoading: boolean;
 
   categories: PartCategory[];
   brands: Brand[];
@@ -127,13 +178,20 @@ interface InventoryState {
 
 const initialState: InventoryState = {
   items: [],
+  allItems: [],
   pagination: null,
   loading: false,
   error: null,
   receipts: [],
+  receiptsStats: null,
   receiptsPagination: null,
   receiptsLoading: false,
+  movements: [],
+  movementsItem: null,
+  movementsPagination: null,
+  movementsLoading: false,
   suppliers: [],
+  suppliersLoading: false,
   categories: [],
   brands: [],
   uoms: [],
@@ -250,9 +308,45 @@ export const toggleInventoryItem = createAsyncThunk(
   }
 );
 
+export const fetchAllInventoryItems = createAsyncThunk(
+  'inventory/fetchAllItems',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/api/inventory-items', { params: { page: 1, limit: 500 } });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải toàn bộ danh mục phụ tùng');
+    }
+  }
+);
+
+export const fetchItemMovements = createAsyncThunk(
+  'inventory/fetchItemMovements',
+  async ({ itemId, page = 1, limit = 15 }: { itemId: number; page?: number; limit?: number }, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/api/inventory-items/${itemId}/movements`, { params: { page, limit } });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải thẻ kho phụ tùng');
+    }
+  }
+);
+
 export const fetchReceipts = createAsyncThunk(
   'inventory/fetchReceipts',
-  async (params: { page?: number; limit?: number }, { rejectWithValue }) => {
+  async (
+    params: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      supplierId?: number;
+      receiptType?: string;
+      status?: string;
+      fromDate?: string;
+      toDate?: string;
+    } = {},
+    { rejectWithValue }
+  ) => {
     try {
       const response = await api.get('/api/inventory/receipts', { params });
       return response.data;
@@ -274,14 +368,62 @@ export const createReceipt = createAsyncThunk(
   }
 );
 
+export const postDraftReceipt = createAsyncThunk(
+  'inventory/postDraftReceipt',
+  async (id: number, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/api/inventory/receipts/${id}/post`);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Lỗi khi ghi sổ phiếu nhập kho');
+    }
+  }
+);
+
+export const cancelReceipt = createAsyncThunk(
+  'inventory/cancelReceipt',
+  async ({ id, cancelReason }: { id: number; cancelReason: string }, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/api/inventory/receipts/${id}/cancel`, { cancelReason });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Lỗi khi hủy phiếu nhập kho');
+    }
+  }
+);
+
 export const fetchSuppliers = createAsyncThunk(
   'inventory/fetchSuppliers',
-  async (_, { rejectWithValue }) => {
+  async (params: { search?: string; includeInactive?: boolean } | void, { rejectWithValue }) => {
     try {
-      const response = await api.get('/api/inventory/suppliers');
+      const response = await api.get('/api/inventory/suppliers', { params: params || {} });
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải danh sách nhà cung cấp');
+    }
+  }
+);
+
+export const createSupplier = createAsyncThunk(
+  'inventory/createSupplier',
+  async (data: Partial<Supplier>, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/api/inventory/suppliers', data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Lỗi khi thêm nhà cung cấp');
+    }
+  }
+);
+
+export const updateSupplier = createAsyncThunk(
+  'inventory/updateSupplier',
+  async ({ id, data }: { id: number; data: Partial<Supplier> }, { rejectWithValue }) => {
+    try {
+      const response = await api.put(`/api/inventory/suppliers/${id}`, data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Lỗi khi cập nhật nhà cung cấp');
     }
   }
 );
@@ -342,17 +484,44 @@ const inventorySlice = createSlice({
         state.actionError = action.payload as string;
       })
 
+      // Fetch All Items (for KPI & Autocomplete)
+      .addCase(fetchAllInventoryItems.fulfilled, (state, action) => {
+        state.allItems = Array.isArray(action.payload?.data?.items)
+          ? action.payload.data.items
+          : Array.isArray(action.payload?.data)
+          ? action.payload.data
+          : [];
+      })
+
+      // Fetch Item Movements (Stock Card)
+      .addCase(fetchItemMovements.pending, (state) => {
+        state.movementsLoading = true;
+      })
+      .addCase(fetchItemMovements.fulfilled, (state, action) => {
+        state.movementsLoading = false;
+        state.movementsItem = action.payload?.data?.item || null;
+        state.movements = action.payload?.data?.movements || [];
+        state.movementsPagination = action.payload?.data?.pagination || null;
+      })
+      .addCase(fetchItemMovements.rejected, (state) => {
+        state.movementsLoading = false;
+      })
+
       // Fetch Receipts
       .addCase(fetchReceipts.pending, (state) => {
         state.receiptsLoading = true;
       })
       .addCase(fetchReceipts.fulfilled, (state, action) => {
         state.receiptsLoading = false;
-        state.receipts = action.payload.data.receipts;
-        state.receiptsPagination = action.payload.data.pagination;
+        state.receipts = action.payload?.data?.receipts || [];
+        state.receiptsStats = action.payload?.data?.stats || null;
+        state.receiptsPagination = action.payload?.data?.pagination || null;
+      })
+      .addCase(fetchReceipts.rejected, (state) => {
+        state.receiptsLoading = false;
       })
       
-      // Create Receipt
+      // Create / Post / Cancel Receipt
       .addCase(createReceipt.pending, (state) => {
         state.actionLoading = true;
         state.actionError = null;
@@ -364,10 +533,51 @@ const inventorySlice = createSlice({
         state.actionLoading = false;
         state.actionError = action.payload as string;
       })
+      .addCase(postDraftReceipt.pending, (state) => {
+        state.actionLoading = true;
+        state.actionError = null;
+      })
+      .addCase(postDraftReceipt.fulfilled, (state) => {
+        state.actionLoading = false;
+      })
+      .addCase(postDraftReceipt.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.actionError = action.payload as string;
+      })
+      .addCase(cancelReceipt.pending, (state) => {
+        state.actionLoading = true;
+        state.actionError = null;
+      })
+      .addCase(cancelReceipt.fulfilled, (state) => {
+        state.actionLoading = false;
+      })
+      .addCase(cancelReceipt.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.actionError = action.payload as string;
+      })
 
-      // Fetch Suppliers
+      // Fetch / Create / Update Suppliers
+      .addCase(fetchSuppliers.pending, (state) => {
+        state.suppliersLoading = true;
+      })
       .addCase(fetchSuppliers.fulfilled, (state, action) => {
-        state.suppliers = action.payload.data;
+        state.suppliersLoading = false;
+        state.suppliers = Array.isArray(action.payload?.data) ? action.payload.data : [];
+      })
+      .addCase(fetchSuppliers.rejected, (state) => {
+        state.suppliersLoading = false;
+      })
+      .addCase(createSupplier.fulfilled, (state, action) => {
+        if (action.payload?.data) {
+          state.suppliers = [action.payload.data, ...state.suppliers];
+        }
+      })
+      .addCase(updateSupplier.fulfilled, (state, action) => {
+        if (action.payload?.data) {
+          state.suppliers = state.suppliers.map((s) =>
+            s.id === action.payload.data.id ? { ...s, ...action.payload.data } : s
+          );
+        }
       })
 
       // Categories / Brands / UOMs

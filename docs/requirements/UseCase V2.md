@@ -815,30 +815,30 @@
 | **Mã Use case**    | UC-48 |
 | ------------------ | ------ |
 | **Tên Use case**   | Thêm phụ tùng (Create Inventory Item) |
-| **Mô tả**          | Quản lý dịch vụ tạo mới dữ liệu phụ tùng thực tế (Variant/SKU) theo từng hãng vào hệ thống để theo dõi tồn kho và định giá. |
+| **Mô tả**          | Quản lý dịch vụ tạo mới dữ liệu phụ tùng thực tế theo từng hãng vào hệ thống để theo dõi tồn kho và định giá. Hệ thống tự động sinh mã quản lý (SKU) chuẩn hóa, giải phóng người dùng khỏi việc nhập mã thủ công. |
 | **Đối tượng**      | Quản lý dịch vụ |
 | **Tiền điều kiện** | Quản lý dịch vụ đã đăng nhập vào hệ thống và được cấp quyền thực hiện chức năng này. Danh mục phụ tùng tương ứng phải tồn tại trong hệ thống. |
-| **Hậu điều kiện**  | Thành công: Dữ liệu phụ tùng mới được lưu vào hệ thống và hiển thị trong danh sách.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu không được thêm. |
-| **Luồng cơ bản**   | 1. Quản lý dịch vụ truy cập màn hình kho phụ tùng và chọn hành động **Thêm phụ tùng**.<br>2. Hệ thống hiển thị biểu mẫu nhập thông tin chi tiết cho phụ tùng.<br>3. Quản lý dịch vụ chọn danh mục phụ tùng, chọn thương hiệu, điền mã SKU, giá bán dự kiến và mức cảnh báo tồn kho an toàn.<br>4. Quản lý dịch vụ nhấn **Lưu lại**.<br>5. Hệ thống kiểm tra tính hợp lệ của dữ liệu (không được bỏ trống các trường bắt buộc, mã SKU phải là duy nhất).<br>6. Hệ thống tiến hành lưu dữ liệu, hiển thị thông báo thành công và cập nhật danh sách hiển thị. |
+| **Hậu điều kiện**  | Thành công: Dữ liệu phụ tùng mới được lưu vào hệ thống kèm mã SKU tự sinh, hiển thị trực quan trong danh sách kho.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu không được thêm. |
+| **Luồng cơ bản**   | 1. Quản lý dịch vụ truy cập màn hình kho phụ tùng và chọn hành động **Thêm phụ tùng**.<br>2. Hệ thống hiển thị biểu mẫu nhập thông tin phụ tùng.<br>3. Quản lý dịch vụ chọn danh mục phụ tùng, chọn thương hiệu, đơn vị tính, nhập giá bán niêm yết và mức cảnh báo tồn kho an toàn (Mã SKU được hệ thống tự động sinh ngầm theo quy chuẩn `VT-{Prefix}-{RandomHex}`).<br>4. Quản lý dịch vụ nhấn **Lưu phụ tùng**.<br>5. Hệ thống kiểm tra tính hợp lệ của dữ liệu (không bỏ trống danh mục, giá bán $\ge 0$, mức an toàn $\ge 0$).<br>6. Hệ thống tiến hành lưu dữ liệu, hiển thị thông báo thành công và cập nhật danh sách hiển thị. |
 | **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình nhập liệu, quản lý dịch vụ chọn **Hủy**:<br>Hệ thống đóng biểu mẫu và quay lại màn hình danh sách mà không lưu thay đổi dữ liệu. |
-| **Luồng ngoại lệ** | Tại bước 5, nếu mã SKU đã tồn tại hoặc thiếu các trường thông tin bắt buộc, hệ thống hiển thị thông báo lỗi chi tiết tại các trường tương ứng. Use case quay lại bước 3. |
+| **Luồng ngoại lệ** | Tại bước 5, nếu thiếu các trường thông tin bắt buộc hoặc giá bán/mức an toàn không hợp lệ, hệ thống hiển thị thông báo lỗi chi tiết tại các trường tương ứng. Use case quay lại bước 3. |
 
 ---
 
 ---
 
-## UC-49 – Xem phụ tùng (View Inventory Item)
+## UC-49 – Xem phụ tùng & Thẻ kho (View Inventory Item & Stock Card)
 
 | **Mã Use case**    | UC-49 |
 | ------------------ | ------ |
-| **Tên Use case**   | Xem phụ tùng (View Inventory Item) |
-| **Mô tả**          | Quản lý dịch vụ tra cứu, tìm kiếm và xem chi tiết thông tin, giá bán, cùng số lượng tồn kho của các mã phụ tùng đã có trong hệ thống. |
+| **Tên Use case**   | Xem phụ tùng & Thẻ kho (View Inventory Item & Stock Card) |
+| **Mô tả**          | Quản lý dịch vụ tra cứu, tìm kiếm và xem chi tiết thông tin, giá vốn bình quân, giá bán, số lượng tồn kho của các mặt hàng phụ tùng theo bảng hiển thị chuẩn hóa; đồng thời theo dõi toàn bộ lịch sử biến động Thẻ kho (Stock Card) phản ánh 2 chiều Nhập kho mua hàng (`RECEIPT`) và Xuất kho sửa chữa (`ISSUE`). |
 | **Đối tượng**      | Quản lý dịch vụ |
 | **Tiền điều kiện** | Quản lý dịch vụ đã đăng nhập vào hệ thống và được cấp quyền thực hiện chức năng này. |
-| **Hậu điều kiện**  | Thành công: Danh sách và thông tin chi tiết của phụ tùng được hiển thị chính xác theo yêu cầu.<br>Thất bại: Hệ thống thông báo lỗi nếu không thể tải dữ liệu. |
-| **Luồng cơ bản**   | 1. Quản lý dịch vụ truy cập màn hình quản lý kho phụ tùng.<br>2. Hệ thống tải và hiển thị danh sách các mã phụ tùng hiện có.<br>3. Quản lý dịch vụ nhập từ khóa vào ô tìm kiếm hoặc sử dụng các bộ lọc (như phân loại, danh mục, trạng thái tồn kho) để thu hẹp kết quả.<br>4. Hệ thống cập nhật danh sách dựa trên các tiêu chí tìm kiếm/lọc tương ứng.<br>5. Quản lý dịch vụ chọn một bản ghi cụ thể để xem thêm thông tin chi tiết. |
-| **Luồng thay thế** | Không có. |
-| **Luồng ngoại lệ** | Tại bước 2 hoặc 4, nếu không có dữ liệu nào khớp với tiêu chí tìm kiếm, hệ thống hiển thị thông báo "Không có dữ liệu". |
+| **Hậu điều kiện**  | Thành công: Danh sách, thông tin chi tiết và lịch sử biến động Thẻ kho của phụ tùng được hiển thị chính xác theo yêu cầu.<br>Thất bại: Hệ thống thông báo lỗi nếu không thể tải dữ liệu. |
+| **Luồng cơ bản**   | 1. Quản lý dịch vụ truy cập màn hình quản lý kho phụ tùng.<br>2. Hệ thống tải và hiển thị các chỉ số tổng quan (Tổng giá trị vốn tồn kho, Tổng mặt hàng phụ tùng, Số mặt hàng dưới mức an toàn) cùng bảng danh sách phụ tùng trực quan (Cột **PHỤ TÙNG** hiển thị rõ Tên phụ tùng, Thương hiệu, Đơn vị tính, Tồn kho, Giá vốn bình quân và Giá bán niêm yết).<br>3. Quản lý dịch vụ nhập từ khóa vào ô tìm kiếm hoặc sử dụng các bộ lọc (danh mục, thương hiệu, trạng thái tồn kho) để thu hẹp kết quả.<br>4. Hệ thống cập nhật danh sách dựa trên các tiêu chí tìm kiếm/lọc tương ứng.<br>5. Quản lý dịch vụ chọn một bản ghi cụ thể để xem thông tin chi tiết. |
+| **Luồng thay thế** | **[Xem Thẻ kho (Stock Card) của phụ tùng]** Tại bước 5, quản lý dịch vụ nhấn nút **Thao tác** $\rightarrow$ chọn **Xem Thẻ kho** tại dòng phụ tùng mong muốn:<br>5a. Hệ thống mở hộp thoại tra cứu lịch sử biến động tồn kho (`StockMovement`) của mặt hàng đó.<br>5b. Hệ thống hiển thị danh sách biến động theo thứ tự thời gian giảm dần, phản ánh đầy đủ 2 luồng:<br>- **Nhập kho (`RECEIPT`):** Số lượng tăng (`+`), đơn giá mua, mã chứng từ nhập (`GR-...`), nhà cung cấp và giá vốn bình quân gia quyền cập nhật theo `CT-INV01`.<br>- **Xuất kho (`ISSUE`):** Số lượng giảm (`-`), đơn giá vốn xuất, mã Lệnh sửa chữa (#WO-...), tên công việc áp dụng và người thực hiện.<br>- Các trường thông tin chi tiết gồm: Ngày giờ giao dịch, Loại biến động, Mã chứng từ/Lệnh sửa chữa, Diễn giải công việc, Số lượng thay đổi, Tồn cuối sau biến động (`balance_after`) và Nhân sự thực hiện. |
+| **Luồng ngoại lệ** | Tại bước 2 hoặc 4, nếu không có dữ liệu nào khớp với tiêu chí tìm kiếm, hệ thống hiển thị thông báo "Không tìm thấy phụ tùng phù hợp". |
 
 ---
 
@@ -849,11 +849,11 @@
 | **Mã Use case**    | UC-50 |
 | ------------------ | ------ |
 | **Tên Use case**   | Cập nhật phụ tùng (Update Inventory Item) |
-| **Mô tả**          | Quản lý dịch vụ chỉnh sửa và cập nhật lại thông tin của một mã phụ tùng hiện có trong hệ thống (như giá bán, mức tồn kho cảnh báo) để đảm bảo dữ liệu luôn chính xác. |
+| **Mô tả**          | Quản lý dịch vụ chỉnh sửa và cập nhật lại thông tin của một phụ tùng hiện có trong hệ thống (như giá bán niêm yết, thương hiệu, mức cảnh báo tồn kho an toàn) để đảm bảo dữ liệu luôn chính xác. Mã SKU do hệ thống quản lý ngầm và được bảo vệ cố định. |
 | **Đối tượng**      | Quản lý dịch vụ |
 | **Tiền điều kiện** | Quản lý dịch vụ đã đăng nhập, có quyền cập nhật và bản ghi phụ tùng cần chỉnh sửa đang tồn tại trong hệ thống. |
 | **Hậu điều kiện**  | Thành công: Thông tin mới của phụ tùng được cập nhật và lưu trữ trong hệ thống.<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu được giữ nguyên trạng thái cũ. |
-| **Luồng cơ bản**   | 1. Quản lý dịch vụ truy cập danh sách kho phụ tùng và chọn hành động **Chỉnh sửa** trên bản ghi phụ tùng mong muốn.<br>2. Hệ thống hiển thị biểu mẫu cập nhật với các thông tin hiện tại của bản ghi (mã SKU không cho phép chỉnh sửa).<br>3. Quản lý dịch vụ thay đổi các trường thông tin cần thiết như giá bán, thương hiệu, mức cảnh báo tồn kho.<br>4. Quản lý dịch vụ nhấn **Lưu lại**.<br>5. Hệ thống kiểm tra tính hợp lệ của dữ liệu mới nhập.<br>6. Hệ thống tiến hành lưu các thay đổi, hiển thị thông báo cập nhật thành công và làm mới danh sách. |
+| **Luồng cơ bản**   | 1. Quản lý dịch vụ truy cập danh sách kho phụ tùng và chọn hành động **Chỉnh sửa** trên bản ghi phụ tùng mong muốn.<br>2. Hệ thống hiển thị biểu mẫu cập nhật với các thông tin hiện tại của bản ghi (mã SKU được khóa bảo vệ).<br>3. Quản lý dịch vụ thay đổi các trường thông tin cần thiết như giá bán niêm yết, thương hiệu, mức cảnh báo tồn kho an toàn.<br>4. Quản lý dịch vụ nhấn **Lưu thay đổi**.<br>5. Hệ thống kiểm tra tính hợp lệ của dữ liệu mới nhập.<br>6. Hệ thống tiến hành lưu các thay đổi, hiển thị thông báo cập nhật thành công và làm mới danh sách. |
 | **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình nhập liệu, quản lý dịch vụ chọn **Hủy**:<br>Hệ thống đóng biểu mẫu và quay lại màn hình danh sách mà không lưu thay đổi. |
 | **Luồng ngoại lệ** | Tại bước 5, nếu dữ liệu không hợp lệ hoặc thiếu thông tin bắt buộc, hệ thống hiển thị thông báo lỗi chi tiết. Use case quay lại bước 3.<br><br>Tại bước 6, nếu bản ghi đã bị vô hiệu hóa hoặc thay đổi bởi phiên làm việc khác, hệ thống thông báo lỗi xung đột dữ liệu. |
 
@@ -878,18 +878,18 @@
 
 ---
 
-## UC-52 – Nhập kho (Receive Inventory)
+## UC-52 – Quản lý Nhập kho & Sổ Phiếu Nhập (Manage Goods Receipt & Receipt Ledger)
 
 | **Mã Use case**    | UC-52 |
 | ------------------ | ------ |
-| **Tên Use case**   | Nhập kho (Receive Inventory) |
-| **Mô tả**          | Quản lý ghi nhận hàng nhập từ nhà cung cấp hoặc nhập tồn đầu kỳ. Sau mỗi lần nhập, hệ thống tự động tính lại giá vốn bình quân theo phương pháp bình quân gia quyền di động. |
+| **Tên Use case**   | Quản lý Nhập kho & Sổ Phiếu Nhập (Manage Goods Receipt & Receipt Ledger) |
+| **Mô tả**          | Quản lý dịch vụ ghi nhận hàng nhập từ nhà cung cấp theo quy trình chứng từ chuẩn (Lưu bản nháp `DRAFT` hoặc Xác nhận Ghi sổ `POSTED`). Hệ thống hỗ trợ mô phỏng Giá vốn bình quân gia quyền di động (`CT-INV01`), cảnh báo biên lợi nhuận âm, chiết khấu dòng, chọn nhanh hoặc nhập tùy chỉnh thuế suất GTGT (VAT), điền nhanh các phụ tùng chạm/dưới định mức tồn kho, đồng thời tra cứu Sổ Phiếu Nhập Kho, in chứng từ và hủy phiếu an toàn (`CANCELLED`). |
 | **Đối tượng**      | Quản lý dịch vụ (Service Manager) |
-| **Tiền điều kiện** | Mặt hàng đã có trong danh mục (UC-31). Nhà cung cấp đã được đăng ký nếu nhập từ nhà cung cấp. |
-| **Hậu điều kiện**  | Thành công: Số lượng tồn kho tăng, giá vốn bình quân được tính lại và phiếu nhập kho được lưu lại.<br>Thất bại: Hệ thống thông báo lỗi, tồn kho không thay đổi. |
-| **Luồng cơ bản**   | 1. Quản lý vào mục **Nhập kho** và chọn **Tạo phiếu nhập**.<br>2. Quản lý chọn nhà cung cấp và ngày nhập hàng.<br>3. Quản lý thêm từng mặt hàng: chọn tên hàng, nhập số lượng nhận và đơn giá mua vào.<br>4. Quản lý nhấn **Xác nhận nhập kho**.<br>5. Hệ thống tăng số lượng tồn kho, tự động tính lại giá vốn bình quân và ghi phiếu nhập. |
-| **Luồng thay thế** | **[Nhập tồn đầu kỳ]** Tại bước 1, thay vì chọn **Tạo phiếu nhập** thông thường:<br>1a. Quản lý chọn **Nhập tồn đầu kỳ**.<br>2a. Quản lý chọn từng mặt hàng cần nhập tồn ban đầu.<br>3a. Quản lý nhập số lượng và giá vốn ban đầu cho từng mặt hàng.<br>4a. Quản lý nhấn **Xác nhận nhập tồn**.<br>5a. Hệ thống ghi nhận tồn kho ban đầu và thiết lập giá vốn. |
-| **Luồng ngoại lệ** | Tại bước 4, nếu thiếu thông tin bắt buộc (nhà cung cấp, ngày, mặt hàng hoặc số lượng), hệ thống từ chối và hiển thị các trường cần bổ sung. |
+| **Tiền điều kiện** | Mặt hàng đã có trong danh mục kho phụ tùng (UC-48). Nhà cung cấp đã có hoặc được tạo mới nhanh ngay trên biểu mẫu nhập kho. |
+| **Hậu điều kiện**  | Thành công: Khi lưu nháp (`DRAFT`), chứng từ được lưu tạm chưa tăng tồn kho; khi Xác nhận Ghi sổ (`POSTED`), số lượng tồn kho tăng thực tế, giá vốn bình quân gia quyền được tính lại (lưu snapshot trước/sau nhập) và tự động sinh bản ghi biến động Thẻ kho `StockMovement` (loại `RECEIPT`).<br>Thất bại: Hệ thống thông báo lỗi chi tiết, tồn kho và giá vốn không thay đổi. |
+| **Luồng cơ bản**   | 1. Quản lý truy cập phân hệ **Quản lý kho phụ tùng** và nhấn nút **+ Nhập Kho**.<br>2. Hệ thống hiển thị modal **Lập Chứng Từ Nhập Kho Phụ Tùng** dạng Enterprise Split-Card:<br>- **Khối Đối tác:** Quản lý chọn **Nhà cung cấp** phân phối phụ tùng (hoặc bấm **+ Thêm nhanh NCC** nếu là đối tác mới).<br>- **Khối Chứng từ & Thuế:** Nhập **Số HĐ VAT / Chứng từ**, **Ngày nhập kho**, chọn nhanh mức thuế VAT (`0%`, `8%`, `10%`) hoặc tự gõ tỷ lệ thuế suất tùy chỉnh (%), và nhập ghi chú diễn giải.<br>3. Quản lý thêm dòng phụ tùng vào bảng chi tiết (cột **PHỤ TÙNG** hiển thị trực quan Tên phụ tùng · Thương hiệu, tồn hiện tại, giá bán niêm yết):<br>- Quản lý chọn phụ tùng từ danh sách hoặc dùng ô gõ tìm nhanh.<br>- Nhập **Số lượng nhập**, **Đơn giá mua** và **% Chiết khấu dòng** (nếu có).<br>4. Ngay khi nhập liệu, hệ thống mô phỏng trực tiếp trên từng dòng: **Tồn kho sau nhập**, **Giá vốn TB dự kiến** (`CT-INV01`), và hiển thị **Cảnh báo biên lợi nhuận âm** nếu Giá vốn TB dự kiến $\ge$ Giá bán niêm yết (kèm nút gợi ý nâng giá bán nhanh +25%).<br>5. Quản lý kiểm tra tiền hàng trước thuế, tiền thuế VAT, tổng giá trị phiếu và nhấn **Xác nhận & Ghi sổ Nhập kho (`POSTED`)**.<br>6. Hệ thống thực thi giao dịch nguyên tử: lưu Phiếu nhập kho, ghi snapshot giá vốn cũ/mới vào từng dòng, cộng số lượng tồn kho thực tế, cập nhật Giá vốn bình quân gia quyền và tự động sinh bản ghi `StockMovement` (loại `RECEIPT`). |
+| **Luồng thay thế** | **[Lưu bản nháp phiếu nhập (`DRAFT`)]** Tại bước 5, nếu hàng đang kiểm đếm thực tế hoặc chờ bổ sung chứng từ hóa đơn:<br>5a. Quản lý nhấn **Lưu bản nháp (DRAFT)**.<br>5b. Hệ thống lưu phiếu ở trạng thái `DRAFT` (chưa cộng tồn kho và chưa đổi giá vốn). Khi kiểm đếm xong, Quản lý mở phiếu nháp trong tab **Sổ Phiếu Nhập Kho** và nhấn **Ghi sổ nhập kho** để hoàn tất bước 6.<br><br>**[Điền nhanh phụ tùng dưới mức an toàn (`Auto-Fill Low Stock`)]** Tại bước 3:<br>3a. Quản lý nhấn nút **Điền nhanh hàng dưới định mức**.<br>3b. Hệ thống tự động lọc toàn bộ các phụ tùng có `on_hand <= reorder_level` và tính số lượng nhập bù an toàn theo công thức: $\text{SL Nhập} = \max(5, \; \text{reorder\_level} \times 2 - \text{on\_hand})$ kèm giá vốn trung bình hiện tại.<br><br>**[Thêm nhanh / Quản lý Nhà cung cấp]** Tại bước 2 hoặc tại tab **Nhà cung cấp**:<br>2a. Quản lý nhấn **+ Thêm nhanh NCC**, nhập Tên nhà cung cấp, Mã số thuế, Người liên hệ, Số điện thoại và lưu lại để sử dụng ngay trên phiếu nhập.<br><br>**[Tra cứu Sổ Phiếu Nhập, In Phiếu & Hủy Phiếu (`CANCELLED`)]** Tại tab **Sổ Phiếu Nhập Kho**:<br>6a. Quản lý lọc danh sách phiếu theo từ khóa, nhà cung cấp, trạng thái, xem chi tiết chứng từ hoặc nhấn **In Phiếu Nhập Kho**.<br>6b. Nếu phát hiện phiếu `POSTED` bị nhập sai, Quản lý chọn **Hủy phiếu nhập**, nhập lý do hủy bắt buộc; hệ thống kiểm tra tồn kho hiện tại đủ trừ ngược, hoàn lại số lượng tồn kho, khôi phục giá vốn bình quân và ghi bút toán đảo vào `StockMovement`. |
+| **Luồng ngoại lệ** | Tại bước 5, nếu phiếu nhập thiếu Nhà cung cấp hoặc Số chứng từ hóa đơn, hoặc có dòng phụ tùng số lượng $\le 0$, hệ thống từ chối ghi sổ và hiển thị thông báo lỗi chi tiết.<br><br>Tại bước 6b (Hủy phiếu), nếu bất kỳ mặt hàng nào trong phiếu đã được xuất dùng cho sửa chữa khiến số lượng tồn kho hiện tại nhỏ hơn số lượng của phiếu nhập cần hủy, hệ thống chặn thao tác hủy để bảo vệ nguyên tắc không âm kho (`CT-INV02`). |
 
 ---
 
@@ -1352,7 +1352,15 @@
 ---
 
 > **Phân hệ quản lý toàn diện quy trình bảo hành phương tiện, phụ tùng và dịch vụ kỹ thuật.**  
-> - **Kế thừa quy trình cốt lõi:** Lấy Phiếu công việc làm hồ sơ trung tâm, vận hành xuyên suốt chu trình quản lý chuẩn 10 bước (Bản nháp $ightarrow$ Đang lập kế hoạch $ightarrow$ Chờ khách duyệt $ightarrow$ Đã duyệt $ightarrow$ Đang thi công $ightarrow$ Chờ thanh toán $ightarrow$ Đã quyết toán tài chính $ightarrow$ Đã xuất xưởng $ightarrow$ Đã đóng hồ sơ).  
+> - **Kế thừa quy trình cốt lõi:** Lấy Phiếu công việc làm hồ sơ trung tâm, vận hành xuyên suốt chu trình quản lý chuẩn 10 bước (Bản nháp $
+ightarrow$ Đang lập kế hoạch $
+ightarrow$ Chờ khách duyệt $
+ightarrow$ Đã duyệt $
+ightarrow$ Đang thi công $
+ightarrow$ Chờ thanh toán $
+ightarrow$ Đã quyết toán tài chính $
+ightarrow$ Đã xuất xưởng $
+ightarrow$ Đã đóng hồ sơ).  
 > - **Chính sách 0 đồng & Quyết toán tự động:** Áp dụng đơn giá bán 0 đồng cho khách hàng đối với các hạng mục bảo hành hợp lệ; khi phát hành hóa đơn 0 đồng, hệ thống tự động hoàn tất quyết toán tài chính, giúp xe đủ điều kiện xuất xưởng nhanh chóng mà không bị ách tắc tại quầy thu ngân.  
 > - **Hạch toán chi phí nội bộ:** Phụ tùng bảo hành xuất kho làm giảm số lượng tồn kho vật lý thực tế, chi phí vốn phụ tùng được hạch toán theo phương pháp Giá vốn bình quân di động vào chi phí quản lý chất lượng của xưởng.  
 > - **Bảo mật báo cáo quản trị:** Báo cáo chi phí và tỷ lệ lỗi bảo hành được phân quyền nghiêm ngặt, chỉ duy nhất Quản lý dịch vụ hoặc Quản trị viên hệ thống mới có quyền truy cập.
