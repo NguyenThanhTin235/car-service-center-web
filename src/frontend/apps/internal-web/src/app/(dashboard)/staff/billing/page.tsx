@@ -63,169 +63,190 @@ export default function BillingQueuePage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Header Toolbar */}
+      {/* 1. SaaS Header Toolbar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-headline-lg font-bold text-on-surface flex items-center gap-2">
-            <span>Quản lý Hóa đơn &amp; Thu ngân</span>
-            <span className="material-symbols-outlined text-primary text-[28px]">receipt_long</span>
-          </h1>
-          <p className="text-body-md text-on-surface-variant mt-0.5">
-            Xử lý thanh toán các xe đã hoàn tất kiểm định KCS và phát hành hóa đơn dịch vụ chính thức.
-          </p>
-        </div>
+        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
+          Hóa đơn &amp; Thu ngân
+        </h1>
 
         <div className="flex items-center gap-2">
           <button
             onClick={() => dispatch(fetchBillingQueue({ tab, search, page }))}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-surface-container-lowest border border-outline-variant hover:bg-surface-container-low text-on-surface-variant hover:text-on-surface rounded-xl shadow-xs text-sm font-medium transition-colors"
+            className="h-10 px-4 bg-white border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 hover:text-[#0866ff] rounded-xl shadow-2xs text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
             title="Làm mới bảng"
             type="button"
           >
-            <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin' : ''}`}>
+            <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin text-[#0866ff]' : ''}`}>
               sync
             </span>
-            <span>Làm mới</span>
+            <span>Làm mới dữ liệu</span>
           </button>
         </div>
       </div>
 
-      {/* 2. KPI Summary Bento Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {/* Card 1: Chờ lập hóa đơn */}
-        <div
-          onClick={() => dispatch(setTab('PENDING'))}
-          className={`cursor-pointer rounded-2xl border p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between ${
-            tab === 'PENDING'
-              ? 'bg-amber-50/60 border-amber-300 ring-2 ring-amber-400/40'
-              : 'bg-surface-container-lowest border-outline-variant'
-          }`}
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
-                Chờ lập hóa đơn
-              </span>
-              <div className="text-3xl font-extrabold text-on-surface mt-1">
-                {summary.pendingCount}
-              </div>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[24px]">assignment_turned_in</span>
-            </div>
-          </div>
-          <div className="mt-4 pt-3 border-t border-outline-variant/60 flex items-center justify-between text-xs text-on-surface-variant">
-            <span>Xe đã xong QC 100%</span>
-            {summary.pendingCount > 0 && (
-              <span className="text-amber-700 font-bold flex items-center gap-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-ping"></span>
-                Cần lập bill
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Card 2: Hóa đơn nháp */}
-        <div
-          onClick={() => dispatch(setTab('DRAFT'))}
-          className={`cursor-pointer rounded-2xl border p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between ${
-            tab === 'DRAFT'
-              ? 'bg-blue-50/60 border-blue-300 ring-2 ring-blue-400/40'
-              : 'bg-surface-container-lowest border-outline-variant'
-          }`}
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
-                Bản nháp
-              </span>
-              <div className="text-3xl font-extrabold text-on-surface mt-1">
-                {summary.draftCount}
-              </div>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[24px]">edit_document</span>
-            </div>
-          </div>
-          <div className="mt-4 pt-3 border-t border-outline-variant/60 flex items-center justify-between text-xs text-on-surface-variant">
-            <span>Đang kiểm tra chiết khấu</span>
-            <span className="text-primary font-medium">Chờ phát hành</span>
-          </div>
-        </div>
-
-        {/* Card 3: Chờ thanh toán */}
-        <div
-          onClick={() => dispatch(setTab('ISSUED'))}
-          className={`cursor-pointer rounded-2xl border p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between ${
-            tab === 'ISSUED'
-              ? 'bg-purple-50/60 border-purple-300 ring-2 ring-purple-400/40'
-              : 'bg-surface-container-lowest border-outline-variant'
-          }`}
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
-                Chờ thanh toán
-              </span>
-              <div className="text-3xl font-extrabold text-on-surface mt-1">
-                {summary.issuedCount}
-              </div>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[24px]">pending_actions</span>
-            </div>
-          </div>
-          <div className="mt-4 pt-3 border-t border-outline-variant/60 flex items-center justify-between text-xs text-on-surface-variant">
-            <span>Đã gửi báo bill cho khách</span>
-            <span className="text-purple-700 font-bold">Chờ thu tiền</span>
-          </div>
-        </div>
-
-        {/* Card 4: Đã thu hôm nay */}
+      {/* 2. Asymmetrical 12-Col Bento Summary (5 + 7 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Hero Card: Đã thu hôm nay (5 cols) */}
         <div
           onClick={() => dispatch(setTab('PAID'))}
-          className={`cursor-pointer rounded-2xl border p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between ${
-            tab === 'PAID'
-              ? 'bg-emerald-50/60 border-emerald-300 ring-2 ring-emerald-400/40'
-              : 'bg-surface-container-lowest border-outline-variant'
+          className={`lg:col-span-5 cursor-pointer rounded-2xl saas-hero-gradient text-white p-5 flex flex-col justify-between transition-all ${
+            tab === 'PAID' ? 'ring-2 ring-blue-300 ring-offset-2' : 'hover:brightness-105'
           }`}
         >
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-4">
             <div>
-              <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
-                Đã thu hôm nay
-              </span>
-              <div className="text-2xl font-extrabold text-emerald-600 mt-1 truncate">
+              <span className="text-xs font-semibold text-white">Doanh thu đã thu hôm nay</span>
+              <div className="text-2xl sm:text-3xl font-mono font-extrabold tabular-nums tracking-tight mt-1 text-white">
                 {formatMoney(summary.paidTodayRevenue)}
               </div>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[24px]">paid</span>
+
+            {/* Pure SVG Decorative Credit Card Motif (No DOM Nested Card / No Clipping) */}
+            <svg
+              width="96"
+              height="60"
+              viewBox="0 0 96 60"
+              fill="none"
+              aria-hidden="true"
+              className="hidden sm:block shrink-0"
+            >
+              <rect
+                x="2"
+                y="2"
+                width="92"
+                height="56"
+                rx="10"
+                fill="rgba(255,255,255,0.14)"
+                stroke="rgba(255,255,255,0.3)"
+                strokeWidth="1.5"
+              />
+              <rect x="12" y="12" width="18" height="12" rx="3" fill="#fcd34d" />
+              <circle cx="74" cy="18" r="5" fill="rgba(255,255,255,0.35)" />
+              <circle cx="80" cy="18" r="5" fill="rgba(255,255,255,0.65)" />
+              <rect x="12" y="38" width="48" height="6" rx="3" fill="rgba(255,255,255,0.75)" />
+            </svg>
+          </div>
+
+          <div className="mt-5 pt-3.5 border-t border-white/20 flex items-center justify-between text-xs">
+            <span className="text-white flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-300" />
+              <strong className="font-mono text-white">{summary.paidTodayCount}</strong> hóa đơn đã quyết toán
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white font-semibold">
+              Hoàn tất thu
+            </span>
+          </div>
+        </div>
+
+        {/* 3 Status Filter Tiles (7 cols) */}
+        <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Tile 1: Chờ lập hóa đơn */}
+          <div
+            onClick={() => dispatch(setTab('PENDING'))}
+            className={`cursor-pointer rounded-2xl border p-4 transition-all flex flex-col justify-between ${
+              tab === 'PENDING'
+                ? 'bg-amber-50/90 border-amber-400 shadow-xs'
+                : 'bg-white border-slate-200/80 hover:border-amber-200'
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-xs font-semibold text-slate-600">Chờ lập hóa đơn</span>
+                <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
+                  {summary.pendingCount}
+                </div>
+              </div>
+              <span className="material-symbols-outlined text-[22px] text-amber-700">
+                assignment_turned_in
+              </span>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+              <span>Đã xong KCS 100%</span>
+              {summary.pendingCount > 0 ? (
+                <span className="text-amber-800 font-bold flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-amber-600" />
+                  Cần lập bill
+                </span>
+              ) : (
+                <span className="text-slate-600 font-medium">Trống</span>
+              )}
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-outline-variant/60 flex items-center justify-between text-xs text-on-surface-variant">
-            <span>{summary.paidTodayCount} hóa đơn đã quyết toán</span>
-            <span className="text-emerald-700 font-bold">Hoàn tất</span>
+
+          {/* Tile 2: Hóa đơn nháp */}
+          <div
+            onClick={() => dispatch(setTab('DRAFT'))}
+            className={`cursor-pointer rounded-2xl border p-4 transition-all flex flex-col justify-between ${
+              tab === 'DRAFT'
+                ? 'bg-blue-50/90 border-[#0866ff] shadow-xs'
+                : 'bg-white border-slate-200/80 hover:border-blue-200'
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-xs font-semibold text-slate-600">Bản nháp</span>
+                <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
+                  {summary.draftCount}
+                </div>
+              </div>
+              <span className="material-symbols-outlined text-[22px] text-[#0866ff]">
+                edit_document
+              </span>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+              <span>Kiểm tra chiết khấu</span>
+              <span className="text-[#0050cd] font-semibold">Chờ phát hành</span>
+            </div>
+          </div>
+
+          {/* Tile 3: Chờ thanh toán */}
+          <div
+            onClick={() => dispatch(setTab('ISSUED'))}
+            className={`cursor-pointer rounded-2xl border p-4 transition-all flex flex-col justify-between ${
+              tab === 'ISSUED'
+                ? 'bg-indigo-50/90 border-indigo-400 shadow-xs'
+                : 'bg-white border-slate-200/80 hover:border-indigo-200'
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-xs font-semibold text-slate-600">Chờ thanh toán</span>
+                <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
+                  {summary.issuedCount}
+                </div>
+              </div>
+              <span className="material-symbols-outlined text-[22px] text-indigo-700">
+                pending_actions
+              </span>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+              <span>Đã gửi bill cho khách</span>
+              <span className="text-indigo-700 font-semibold">Chờ thu tiền</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 3. Search & Tabs Toolbar */}
-      <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-4 shadow-xs space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-surface-container-high rounded-xl">
+      {/* 3. Search & Tabs Toolbar + High-Density Table */}
+      <div className="saas-card overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-slate-200/80 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          {/* Unboxed Tab Buttons (No Nested Card Wrapper) */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => dispatch(setTab('PENDING'))}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                 tab === 'PENDING'
-                  ? 'bg-surface-container-lowest text-amber-700 shadow-xs font-bold'
-                  : 'text-on-surface-variant hover:text-on-surface'
+                  ? 'bg-[#0866ff] text-white font-bold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <span>Chờ lập HĐ</span>
               {summary.pendingCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-200 text-amber-900 font-extrabold">
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-xs font-mono font-bold ${
+                    tab === 'PENDING' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
                   {summary.pendingCount}
                 </span>
               )}
@@ -233,15 +254,19 @@ export default function BillingQueuePage() {
 
             <button
               onClick={() => dispatch(setTab('DRAFT'))}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                 tab === 'DRAFT'
-                  ? 'bg-surface-container-lowest text-primary shadow-xs font-bold'
-                  : 'text-on-surface-variant hover:text-on-surface'
+                  ? 'bg-[#0866ff] text-white font-bold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <span>Bản nháp</span>
               {summary.draftCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-primary/20 text-primary font-bold">
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-xs font-mono font-bold ${
+                    tab === 'DRAFT' ? 'bg-white/20 text-white' : 'bg-blue-100 text-[#0050cd]'
+                  }`}
+                >
                   {summary.draftCount}
                 </span>
               )}
@@ -249,15 +274,19 @@ export default function BillingQueuePage() {
 
             <button
               onClick={() => dispatch(setTab('ISSUED'))}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                 tab === 'ISSUED'
-                  ? 'bg-surface-container-lowest text-purple-700 shadow-xs font-bold'
-                  : 'text-on-surface-variant hover:text-on-surface'
+                  ? 'bg-[#0866ff] text-white font-bold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <span>Chờ thanh toán</span>
               {summary.issuedCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-200 text-purple-900 font-bold">
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-xs font-mono font-bold ${
+                    tab === 'ISSUED' ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-800'
+                  }`}
+                >
                   {summary.issuedCount}
                 </span>
               )}
@@ -265,10 +294,10 @@ export default function BillingQueuePage() {
 
             <button
               onClick={() => dispatch(setTab('PAID'))}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 tab === 'PAID'
-                  ? 'bg-surface-container-lowest text-emerald-700 shadow-xs font-bold'
-                  : 'text-on-surface-variant hover:text-on-surface'
+                  ? 'bg-[#0866ff] text-white font-bold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               Đã thanh toán
@@ -276,30 +305,28 @@ export default function BillingQueuePage() {
 
             <button
               onClick={() => dispatch(setTab('ALL'))}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 tab === 'ALL'
-                  ? 'bg-surface-container-lowest text-on-surface shadow-xs font-bold'
-                  : 'text-on-surface-variant hover:text-on-surface'
+                  ? 'bg-[#0866ff] text-white font-bold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               Tất cả
             </button>
           </div>
 
-          {/* Search Box */}
+          {/* Search Box (Flex Siblings - No Overlapping Icon) */}
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 max-w-md w-full">
-            <div className="relative flex-1 flex items-center">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
-                  search
-                </span>
-              </div>
+            <div className="flex-1 flex items-center gap-2 px-3 rounded-xl border border-slate-200/80 bg-slate-50/80 focus-within:bg-white focus-within:border-[#0866ff] h-9 transition-all">
+              <span className="material-symbols-outlined text-[18px] text-slate-500 shrink-0">
+                search
+              </span>
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Tìm biển số, mã phiếu WO, tên khách hàng..."
-                className="w-full pl-9 pr-8 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-xs leading-normal h-9"
+                className="flex-1 min-w-0 bg-transparent outline-none text-xs text-slate-800 placeholder:text-slate-500"
               />
               {searchInput && (
                 <button
@@ -308,7 +335,7 @@ export default function BillingQueuePage() {
                     setSearchInput('');
                     dispatch(setSearch(''));
                   }}
-                  className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-on-surface-variant hover:text-on-surface cursor-pointer"
+                  className="flex items-center text-slate-500 hover:text-slate-800 cursor-pointer shrink-0"
                   title="Xóa tìm kiếm"
                 >
                   <span className="material-symbols-outlined text-[16px]">close</span>
@@ -317,25 +344,29 @@ export default function BillingQueuePage() {
             </div>
             <button
               type="submit"
-              className="px-4 py-2 bg-primary text-on-primary rounded-xl text-xs font-semibold hover:bg-primary-dark transition-colors shrink-0 h-9 flex items-center justify-center cursor-pointer shadow-2xs"
+              className="px-4 py-2 bg-[#0866ff] hover:bg-[#0050cd] text-white rounded-xl text-xs font-semibold transition-colors shrink-0 h-9 flex items-center justify-center cursor-pointer shadow-xs"
             >
               Tìm kiếm
             </button>
           </form>
         </div>
 
-        {/* 4. Table view */}
-        <div className="overflow-x-auto rounded-xl border border-outline-variant bg-surface-container-lowest">
+        {/* 4. Table view (Flush inside .saas-card - No Nested Card Border) */}
+        <div className="overflow-x-auto bg-white">
           <table className="w-full text-left text-sm min-w-[1020px]">
-            <thead className="bg-surface-container-low text-on-surface-variant font-semibold text-xs uppercase tracking-wider border-b border-outline-variant">
+            <thead className="bg-slate-50/80 text-slate-600 font-semibold text-xs uppercase tracking-wider border-b border-slate-200/80">
               {tab === 'PENDING' ? (
                 <tr>
                   <th className="py-3.5 px-4 w-[16%] min-w-[150px]">Mã phiếu WO</th>
                   <th className="py-3.5 px-4 w-[24%] min-w-[210px]">Biển số &amp; Xe</th>
                   <th className="py-3.5 px-4 w-[18%] min-w-[160px]">Khách hàng</th>
                   <th className="py-3.5 px-4 w-[16%] min-w-[150px]">Cố vấn dịch vụ</th>
-                  <th className="py-3.5 px-4 text-right w-[14%] min-w-[130px] whitespace-nowrap">Tạm tính (Báo giá duyệt)</th>
-                  <th className="py-3.5 px-4 text-center w-[12%] min-w-[130px] whitespace-nowrap">Thao tác</th>
+                  <th className="py-3.5 px-4 text-right w-[14%] min-w-[130px] whitespace-nowrap">
+                    Tạm tính (Báo giá duyệt)
+                  </th>
+                  <th className="py-3.5 px-4 text-center w-[12%] min-w-[130px] whitespace-nowrap">
+                    Thao tác
+                  </th>
                 </tr>
               ) : (
                 <tr>
@@ -343,65 +374,74 @@ export default function BillingQueuePage() {
                   <th className="py-3.5 px-4 w-[18%] min-w-[170px]">Mã WO &amp; Biển số</th>
                   <th className="py-3.5 px-4 w-[18%] min-w-[160px]">Khách hàng</th>
                   <th className="py-3.5 px-4 w-[13%] min-w-[130px]">Trạng thái</th>
-                  <th className="py-3.5 px-4 text-right w-[11%] min-w-[110px] whitespace-nowrap">Tổng tiền</th>
-                  <th className="py-3.5 px-4 text-right w-[11%] min-w-[110px] whitespace-nowrap">Còn phải trả</th>
-                  <th className="py-3.5 px-4 text-center w-[13%] min-w-[180px] whitespace-nowrap">Thao tác</th>
+                  <th className="py-3.5 px-4 text-right w-[11%] min-w-[110px] whitespace-nowrap">
+                    Tổng tiền
+                  </th>
+                  <th className="py-3.5 px-4 text-right w-[11%] min-w-[110px] whitespace-nowrap">
+                    Còn phải trả
+                  </th>
+                  <th className="py-3.5 px-4 text-center w-[13%] min-w-[180px] whitespace-nowrap">
+                    Thao tác
+                  </th>
                 </tr>
               )}
             </thead>
-            <tbody className="divide-y divide-outline-variant">
+            <tbody className="divide-y divide-slate-200/60">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-on-surface-variant">
-                    <span className="material-symbols-outlined text-[32px] animate-spin text-primary block mb-2 mx-auto">
+                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                    <span className="material-symbols-outlined text-[32px] animate-spin text-[#0866ff] block mb-2 mx-auto">
                       progress_activity
                     </span>
-                    <span>Đang tải danh sách...</span>
+                    <span className="text-xs">Đang tải danh sách hóa đơn...</span>
                   </td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-on-surface-variant">
-                    <span className="material-symbols-outlined text-[40px] opacity-40 block mb-1 mx-auto">
+                  <td colSpan={7} className="py-12 text-center text-slate-600">
+                    <span className="material-symbols-outlined text-[40px] text-slate-400 block mb-1 mx-auto">
                       inbox
                     </span>
-                    <span>Không có dữ liệu phù hợp trong mục này.</span>
+                    <span className="text-xs">Không có dữ liệu phù hợp trong mục này.</span>
                   </td>
                 </tr>
               ) : (
                 records.map((rec, index) => {
-                  const isWorkOrder = rec.type === 'WORK_ORDER' || (!rec.invoiceNumber && Boolean(rec.workOrderId));
+                  const isWorkOrder =
+                    rec.type === 'WORK_ORDER' || (!rec.invoiceNumber && Boolean(rec.workOrderId));
                   const rowKey = isWorkOrder
                     ? `wo-${rec.workOrderId ?? rec.id ?? index}`
                     : `inv-${rec.id ?? rec.invoiceNumber ?? index}`;
 
                   if (isWorkOrder) {
                     return (
-                      <tr key={rowKey} className="hover:bg-surface-container-low/50 transition-colors">
+                      <tr key={rowKey} className="hover:bg-blue-50/25 transition-colors">
                         <td className="py-3.5 px-4">
-                          <span className="font-mono font-bold text-primary">{rec.woNumber}</span>
-                          <div className="text-[11px] text-on-surface-variant whitespace-nowrap">
+                          <span className="font-mono font-bold text-[#0050cd]">{rec.woNumber}</span>
+                          <div className="text-xs font-mono text-slate-600 whitespace-nowrap">
                             {formatDate(rec.updatedAt)}
                           </div>
                         </td>
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-on-surface uppercase tracking-wide">
+                          <span className="px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-xs font-bold tracking-wider uppercase">
                             {rec.vehicle?.licensePlate || (rec.vehicle as any)?.license_plate || '-'}
-                          </div>
-                          <div className="text-xs text-on-surface-variant">
+                          </span>
+                          <div className="text-xs text-slate-600 mt-1">
                             {rec.vehicle?.make} {rec.vehicle?.model} ({rec.vehicle?.year})
                           </div>
                         </td>
                         <td className="py-3.5 px-4">
-                          <div className="font-medium text-on-surface">
+                          <div className="font-semibold text-slate-800">
                             {rec.customer?.fullName || (rec.customer as any)?.full_name || '-'}
                           </div>
-                          <div className="text-xs text-on-surface-variant font-mono">{rec.customer?.phone || '-'}</div>
+                          <div className="text-xs text-slate-600 font-mono">
+                            {rec.customer?.phone || '-'}
+                          </div>
                         </td>
-                        <td className="py-3.5 px-4 text-on-surface text-xs font-medium">
+                        <td className="py-3.5 px-4 text-slate-700 text-xs font-medium">
                           {rec.advisor?.fullName || (rec.advisor as any)?.full_name || '-'}
                         </td>
-                        <td className="py-3.5 px-4 text-right font-bold text-on-surface whitespace-nowrap">
+                        <td className="py-3.5 px-4 text-right font-mono font-bold tabular-nums text-slate-900 whitespace-nowrap">
                           {formatMoney(rec.estimatedTotal)}
                         </td>
                         <td className="py-3.5 px-4 text-center">
@@ -410,7 +450,7 @@ export default function BillingQueuePage() {
                               setSelectedWoId(rec.workOrderId!);
                               setIsCreateModalOpen(true);
                             }}
-                            className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold hover:bg-primary-dark transition-colors shadow-xs inline-flex items-center gap-1.5 whitespace-nowrap mx-auto"
+                            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white text-xs font-semibold hover:brightness-110 transition-all shadow-xs inline-flex items-center gap-1.5 whitespace-nowrap mx-auto cursor-pointer"
                           >
                             <span className="material-symbols-outlined text-[16px]">receipt</span>
                             <span>Lập hóa đơn</span>
@@ -422,43 +462,43 @@ export default function BillingQueuePage() {
 
                   // Hóa đơn
                   return (
-                    <tr key={rowKey} className="hover:bg-surface-container-low/50 transition-colors">
+                    <tr key={rowKey} className="hover:bg-blue-50/25 transition-colors">
                       <td className="py-3.5 px-4">
                         <Link
                           href={`/staff/billing/${rec.id}`}
-                          className="font-mono font-bold text-primary hover:underline whitespace-nowrap"
+                          className="font-mono font-bold text-[#0050cd] hover:underline whitespace-nowrap"
                         >
                           {rec.invoiceNumber}
                         </Link>
-                        <div className="text-[11px] text-on-surface-variant whitespace-nowrap">
+                        <div className="text-xs font-mono text-slate-600 whitespace-nowrap">
                           {formatDate(rec.issuedAt || rec.createdAt)}
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-on-surface uppercase tracking-wide">
+                        <span className="px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-xs font-bold tracking-wider uppercase">
                           {rec.vehicle?.licensePlate || (rec.vehicle as any)?.license_plate || '-'}
-                        </div>
-                        <div className="text-xs text-on-surface-variant font-mono">
-                          {rec.woNumber}
-                        </div>
+                        </span>
+                        <div className="text-xs text-slate-600 font-mono mt-1">{rec.woNumber}</div>
                       </td>
                       <td className="py-3.5 px-4">
-                        <div className="font-medium text-on-surface">
+                        <div className="font-semibold text-slate-800">
                           {rec.customer?.fullName || (rec.customer as any)?.full_name || '-'}
                         </div>
-                        <div className="text-xs text-on-surface-variant font-mono">{rec.customer?.phone || '-'}</div>
+                        <div className="text-xs text-slate-600 font-mono">
+                          {rec.customer?.phone || '-'}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <InvoiceStatusBadge status={rec.status as any} />
                       </td>
-                      <td className="py-3.5 px-4 text-right font-semibold text-on-surface whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-right font-mono font-semibold tabular-nums text-slate-900 whitespace-nowrap">
                         {formatMoney(rec.totalAmount)}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-bold whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-right font-mono font-bold tabular-nums whitespace-nowrap">
                         {rec.amountDue && rec.amountDue > 0 ? (
                           <span className="text-amber-700">{formatMoney(rec.amountDue)}</span>
                         ) : (
-                          <span className="text-emerald-600">0 đ</span>
+                          <span className="text-emerald-700">0 đ</span>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-center">
@@ -466,7 +506,7 @@ export default function BillingQueuePage() {
                           {rec.status === 'ISSUED' && (
                             <button
                               onClick={() => handleOpenPayment(rec.id!)}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors inline-flex items-center gap-1 shadow-xs whitespace-nowrap shrink-0"
+                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors inline-flex items-center gap-1 shadow-xs whitespace-nowrap shrink-0 cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-[15px]">payments</span>
                               <span>Thu tiền</span>
@@ -475,10 +515,12 @@ export default function BillingQueuePage() {
 
                           <Link
                             href={`/staff/billing/${rec.id}`}
-                            className="px-3 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container-high text-on-surface text-xs font-medium transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+                            className="px-3 py-1.5 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 hover:text-[#0866ff] text-xs font-semibold transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0"
                           >
                             <span>Chi tiết</span>
-                            <span className="material-symbols-outlined text-[15px]">chevron_right</span>
+                            <span className="material-symbols-outlined text-[15px]">
+                              chevron_right
+                            </span>
                           </Link>
                         </div>
                       </td>
@@ -492,17 +534,17 @@ export default function BillingQueuePage() {
 
         {/* 5. Pagination */}
         {pagination.totalPages > 1 && (
-          <div className="flex flex-wrap items-center justify-between pt-3 text-xs text-on-surface-variant gap-2">
+          <div className="flex flex-wrap items-center justify-between px-5 py-3.5 border-t border-slate-200/80 text-xs text-slate-600 gap-2">
             <span>
-              Hiển thị <strong>{(pagination.currentPage - 1) * 5 + 1}</strong> -{' '}
-              <strong>{Math.min(pagination.currentPage * 5, pagination.total)}</strong> trên tổng số{' '}
-              <strong>{pagination.total}</strong> bản ghi (Trang {pagination.currentPage}/{pagination.totalPages})
+              Hiển thị <strong className="font-mono text-slate-700">{(pagination.currentPage - 1) * 5 + 1}</strong> -{' '}
+              <strong className="font-mono text-slate-700">{Math.min(pagination.currentPage * 5, pagination.total)}</strong> trên tổng số{' '}
+              <strong className="font-mono text-slate-700">{pagination.total}</strong> bản ghi (Trang {pagination.currentPage}/{pagination.totalPages})
             </span>
             <div className="flex items-center gap-1.5">
               <button
                 disabled={pagination.currentPage <= 1}
                 onClick={() => dispatch(setPage(pagination.currentPage - 1))}
-                className="px-2.5 py-1 rounded-lg border border-outline-variant hover:bg-surface-container-high disabled:opacity-40 transition-colors inline-flex items-center gap-1 text-xs"
+                className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 transition-colors inline-flex items-center gap-1 text-xs cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[15px]">chevron_left</span>
                 <span>Trước</span>
@@ -513,10 +555,10 @@ export default function BillingQueuePage() {
                     key={num}
                     type="button"
                     onClick={() => dispatch(setPage(num))}
-                    className={`w-7 h-7 rounded-lg text-xs font-semibold transition-colors ${
+                    className={`w-7 h-7 rounded-lg text-xs font-mono font-semibold transition-colors cursor-pointer ${
                       pagination.currentPage === num
-                        ? 'bg-primary text-white shadow-xs'
-                        : 'border border-outline-variant hover:bg-surface-container-high text-on-surface'
+                        ? 'bg-[#0866ff] text-white shadow-xs'
+                        : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
                     }`}
                   >
                     {num}
@@ -526,7 +568,7 @@ export default function BillingQueuePage() {
               <button
                 disabled={pagination.currentPage >= pagination.totalPages}
                 onClick={() => dispatch(setPage(pagination.currentPage + 1))}
-                className="px-2.5 py-1 rounded-lg border border-outline-variant hover:bg-surface-container-high disabled:opacity-40 transition-colors inline-flex items-center gap-1 text-xs"
+                className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 transition-colors inline-flex items-center gap-1 text-xs cursor-pointer"
               >
                 <span>Sau</span>
                 <span className="material-symbols-outlined text-[15px]">chevron_right</span>

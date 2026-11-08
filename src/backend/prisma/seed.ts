@@ -19,10 +19,10 @@ async function main() {
   console.log('✅ Database cleared.');
 
   // 2. CREATE ROLES
-  const rolesData = ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA', 'CUSTOMER'];
+  const rolesData = ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA', 'TECHNICIAN', 'CUSTOMER'];
   const createdRoles = [];
   for (const r of rolesData) createdRoles.push(await prisma.role.create({ data: { name: r } }));
-  const [roleAdmin, roleManager, roleDeskStaff, roleSA, roleCustomer] = createdRoles;
+  const [roleAdmin, roleManager, roleDeskStaff, roleSA, roleTechnician, roleCustomer] = createdRoles;
 
   // 3. CREATE SYSTEM CATALOGS
   const uomCatalog = await prisma.systemCatalog.create({ data: { catalog_type: CatalogType.UOM, name: 'Cái' } });
@@ -48,7 +48,7 @@ async function main() {
 
   const staffs = [];
   const positions = [EmployeePosition.ADVISOR, EmployeePosition.QC_STAFF, EmployeePosition.TECHNICIAN, EmployeePosition.DETAILER, EmployeePosition.OTHER];
-  const staffRoles = [roleAdmin, roleManager, roleDeskStaff, roleSA, roleDeskStaff];
+  const staffRoles = [roleAdmin, roleManager, roleDeskStaff, roleSA, roleTechnician];
   const rolePrefixes = ['admin', 'manager', 'deskstaff', 'sa', 'staff'];
   
   for (let i = 0; i < 10; i++) {

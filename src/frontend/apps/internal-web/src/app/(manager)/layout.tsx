@@ -1,110 +1,100 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import LogoutButton from '@/components/shared/LogoutButton';
+'use client';
+
+import React, { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAppSelector } from '@/store';
 import AuthGuard from '@/components/auth/AuthGuard';
-
-export const metadata: Metadata = {
-  title: 'Quản lý Dịch vụ - Car Service Center',
-  description: 'Hệ thống quản lý trung tâm dịch vụ ô tô',
-};
-
-const NAV_ITEMS = [
-  { href: '/dashboard', icon: 'dashboard', label: 'Bảng điều hành' },
-  {
-    icon: 'inventory_2', label: 'Quản lý vật tư',
-    children: [
-      { href: '/part-categories', label: 'Danh mục phụ tùng' },
-      { href: '/inventory', label: 'Kho phụ tùng' },
-    ]
-  },
-  { href: '/reports', icon: 'bar_chart', label: 'Báo cáo vận hành' },
-];
+import SaaSDashboardShell, {
+  SaaSNavItem,
+  SaaSTelemetryDotItem,
+} from '@/components/layout/SaaSDashboardShell';
 
 export default function ManagerLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const { items: inventoryItems, categories: partCategories } = useAppSelector(
+    (state) => state.inventory
+  );
+
+  const lowStockCount = useMemo(
+    () => inventoryItems.filter((i) => i.onHand < i.reorderLevel).length,
+    [inventoryItems]
+  );
+
+  const navItems: SaaSNavItem[] = useMemo(
+    () => [
+      { label: 'Bảng điều hành', href: '/dashboard', icon: 'grid_view' },
+      {
+        label: 'Quản lý vật tư',
+        icon: 'inventory_2',
+        children: [
+          {
+            label: 'Kho phụ tùng',
+            href: '/inventory',
+            badge: lowStockCount > 0 ? `${lowStockCount}!` : inventoryItems.length || undefined,
+          },
+          {
+            label: 'Danh mục phụ tùng',
+            href: '/part-categories',
+            badge: partCategories.length > 0 ? partCategories.length : undefined,
+          },
+        ],
+      },
+      { label: 'Báo cáo vận hành', href: '/reports', icon: 'monitoring' },
+    ],
+    [lowStockCount, inventoryItems.length, partCategories.length]
+  );
+
+  const telemetryItems: SaaSTelemetryDotItem[] = useMemo(
+    () => [
+      {
+        label: 'Điều hành xưởng',
+        value: 'LIVE',
+        dotColor: '#0866ff',
+        href: '/dashboard',
+      },
+      {
+        label: 'Mã phụ tùng (SKU)',
+        value: inventoryItems.length || '—',
+        dotColor: '#38bdf8',
+        href: '/inventory',
+      },
+      {
+        label: 'Cảnh báo tồn kho',
+        value: lowStockCount,
+        dotColor: '#f59e0b',
+        href: '/inventory',
+      },
+      {
+        label: 'Nhóm vật tư',
+        value: partCategories.length || '—',
+        dotColor: '#818cf8',
+        href: '/part-categories',
+      },
+      {
+        label: 'Báo cáo doanh thu',
+        value: '24/7',
+        dotColor: '#10b981',
+        href: '/reports',
+      },
+    ],
+    [inventoryItems.length, lowStockCount, partCategories.length]
+  );
+
   return (
-    <>
-      <style suppressHydrationWarning>{`
-        @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
-      `}</style>
-      <div style={{ margin: 0, fontFamily: "'Be Vietnam Pro', sans-serif", background: '#f8f9ff', color: '#0b1c30' }}>
-        <div style={{ display: 'flex', minHeight: '100vh' }}>
-          {/* Sidebar */}
-          <aside style={{
-            width: '16rem', background: '#ffffff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-            position: 'fixed', top: 0, left: 0, height: '100vh', zIndex: 40,
-            borderRight: '1px solid rgba(194,198,216,0.3)', boxShadow: '0 1px 8px rgba(0,0,0,0.02)',
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {/* Logo */}
-              <div style={{ height: '3.5rem', padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(194,198,216,0.2)' }}>
-                <div style={{ width: '2rem', height: '2rem', borderRadius: '0.5rem', background: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span className="material-symbols-outlined text-white" style={{ fontSize: '18px' }}>monitoring</span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#0b1c30', lineHeight: 1 }}>Car Service</span>
-                  <span style={{ fontSize: '11px', color: '#727687', fontFamily: 'JetBrains Mono, monospace' }}>Manager Console</span>
-                </div>
-              </div>
-
-              {/* Nav section */}
-              <div style={{ padding: '0.75rem 0' }}>
-                <nav style={{ padding: '0 0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  {NAV_ITEMS.map((item, idx) => {
-                    if (item.children) {
-                      return (
-                        <details key={idx} className="group" open>
-                          <summary className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#424656] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[13px] font-medium transition-colors cursor-pointer list-none select-none">
-                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{item.icon}</span>
-                            <span className="flex-1">{item.label}</span>
-                            <span className="material-symbols-outlined transition-transform group-open:-rotate-180" style={{ fontSize: '18px' }}>expand_more</span>
-                          </summary>
-                          <div className="flex flex-col gap-1 pl-10 mt-1 mb-1">
-                            {item.children.map(child => (
-                              <Link key={child.href} href={child.href} className="px-3 py-1.5 rounded-lg text-[#727687] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[12px] font-medium transition-colors no-underline">
-                                {child.label}
-                              </Link>
-                            ))}
-                          </div>
-                        </details>
-                      );
-                    }
-                    return (
-                      <Link key={item.href || idx} href={item.href!} className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#424656] hover:bg-[#eff4ff] hover:text-[#0b1c30] text-[13px] font-medium transition-colors no-underline">
-                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{item.icon}</span>
-                        <span>{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </nav>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div style={{ padding: '1rem', borderTop: '1px solid rgba(194,198,216,0.2)', background: 'rgba(239,244,255,0.4)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', background: '#059669', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>
-                    <span>MG</span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#0b1c30', lineHeight: 1 }}>Quản lý dịch vụ</span>
-                    <span style={{ fontSize: '11px', color: '#424656' }}>Service Manager</span>
-                  </div>
-                </div>
-                <LogoutButton iconOnly className="w-7 h-7 rounded flex items-center justify-center text-[#424656] hover:bg-[#fef2f2] hover:text-[#ef4444] transition-colors no-underline" />
-              </div>
-            </div>
-          </aside>
-
-          {/* Main */}
-          <main style={{ marginLeft: '16rem', flex: 1, minHeight: '100vh' }}>
-            <AuthGuard>
-              {children}
-            </AuthGuard>
-          </main>
-        </div>
-      </div>
-    </>
+    <SaaSDashboardShell
+      roleTitle="Quản Lý Dịch Vụ"
+      roleBadge="MANAGER"
+      brandSubtitle="Service & Warehouse"
+      navSectionTitle="Điều hướng"
+      navItems={navItems}
+      telemetryTitle="Chỉ số Kho & Xưởng"
+      telemetryItems={telemetryItems}
+      defaultRoleLabel="Quản lý dịch vụ"
+      defaultInitials="MG"
+      searchPlaceholder="Tìm phiếu RO, mã phụ tùng..."
+      onGlobalSearch={(q) => router.push(`/dashboard?search=${encodeURIComponent(q)}`)}
+    >
+      <AuthGuard>{children}</AuthGuard>
+    </SaaSDashboardShell>
   );
 }

@@ -1,16 +1,29 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import api from '@/lib/axios';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
 } from 'recharts';
-
 
 type ReportType = 'revenue' | 'services' | 'inventory';
 
-interface RevenueRow { date: string; totalRevenue: number; count: number; }
-interface ServiceRow  { serviceId: number; serviceName: string; count: number; }
+interface RevenueRow {
+  date: string;
+  totalRevenue: number;
+  count: number;
+}
+interface ServiceRow {
+  serviceId: number;
+  serviceName: string;
+  count: number;
+}
 interface InventoryRow {
   id: number;
   sku: string;
@@ -33,47 +46,65 @@ interface ReportData {
   };
 }
 
-const fmtCurrency = (n: number) => new Intl.NumberFormat('vi-VN').format(Math.round(n));
+const fmtCurrency = (n: number) =>
+  new Intl.NumberFormat('vi-VN').format(Math.round(n));
 
-// ============ Report Type Button ============
+// ============ Report Type Button (Blue SaaS Theme) ============
 function TypeBtn({
-  active, label, icon, onClick
+  active,
+  label,
+  icon,
+  onClick,
 }: {
-  active: boolean; label: string; icon: string; onClick: () => void;
+  active: boolean;
+  label: string;
+  icon: string;
+  onClick: () => void;
 }) {
   return (
-    <button onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: '8px',
-      padding: '0.625rem 1.25rem', borderRadius: '0.625rem', border: '1.5px solid',
-      borderColor: active ? '#059669' : '#e5e7eb',
-      background: active ? '#d1fae5' : '#ffffff',
-      color: active ? '#059669' : '#374151',
-      fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
-    }}>
-      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{icon}</span>
-      {label}
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+        active
+          ? 'bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white border-[#0866ff] shadow-md shadow-[#0866ff]/20'
+          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+      }`}
+    >
+      <span className="material-symbols-outlined text-[18px]">{icon}</span>
+      <span>{label}</span>
     </button>
   );
 }
 
 // ============ Summary Metric Card ============
-function SummaryCard({ label, value, icon, color = '#059669' }: { label: string; value: string; icon: string; color?: string }) {
+function SummaryCard({
+  label,
+  value,
+  icon,
+  variant = 'blue',
+}: {
+  label: string;
+  value: string;
+  icon: string;
+  variant?: 'blue' | 'danger';
+}) {
   return (
-    <div style={{
-      background: '#ffffff', borderRadius: '0.75rem', padding: '1.25rem',
-      border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '1rem',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-    }}>
-      <div style={{
-        width: '3rem', height: '3rem', borderRadius: '0.625rem',
-        background: color === '#059669' ? '#d1fae5' : '#fee2e2',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-      }}>
-        <span className="material-symbols-outlined" style={{ fontSize: '24px', color }}>{icon}</span>
+    <div className="bg-white rounded-2xl p-5 border border-slate-200/80 flex items-center gap-4 shadow-2xs">
+      <div
+        className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+          variant === 'danger'
+            ? 'bg-rose-50 text-rose-600'
+            : 'bg-blue-50 text-[#0050cd]'
+        }`}
+      >
+        <span className="material-symbols-outlined text-[24px]">{icon}</span>
       </div>
       <div>
-        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0b1c30', lineHeight: 1.1 }}>{value}</div>
-        <div style={{ fontSize: '12px', color: '#727687', marginTop: '4px' }}>{label}</div>
+        <div className="font-mono tabular-nums text-2xl font-extrabold text-slate-900 leading-tight">
+          {value}
+        </div>
+        <div className="text-xs text-slate-500 mt-1 font-medium">{label}</div>
       </div>
     </div>
   );
@@ -82,38 +113,31 @@ function SummaryCard({ label, value, icon, color = '#059669' }: { label: string;
 // ============ Empty State Component ============
 function EmptyState({ message }: { message?: string }) {
   return (
-    <div style={{
-      textAlign: 'center', padding: '3.5rem 2rem', background: '#ffffff',
-      borderRadius: '0.75rem', border: '1px dashed #d1d5db', color: '#9ca3af',
-    }}>
-      <span className="material-symbols-outlined" style={{ fontSize: '44px', display: 'block', marginBottom: '0.75rem', color: '#9ca3af' }}>
+    <div className="text-center py-14 px-6 bg-white rounded-2xl border border-dashed border-slate-300">
+      <span className="material-symbols-outlined text-[44px] block mb-3 text-slate-400">
         bar_chart
       </span>
-      <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, color: '#4b5563' }}>
+      <p className="text-sm font-bold text-slate-700">
         {message || 'Không có dữ liệu trong khoảng thời gian đã chọn.'}
       </p>
-      <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#9ca3af' }}>
+      <p className="text-xs text-slate-500 mt-1">
         Vui lòng thử chọn một khoảng thời gian khác.
       </p>
     </div>
   );
 }
 
-// ============ Styles ============
-const thStyle: React.CSSProperties = {
-  padding: '0.75rem 1rem', textAlign: 'left', fontSize: '12px',
-  fontWeight: 600, color: '#4b5563', whiteSpace: 'nowrap',
-};
-const tdStyle: React.CSSProperties = {
-  padding: '0.75rem 1rem', color: '#1f2937', verticalAlign: 'middle', fontSize: '13px',
-};
-
 // ============ Section 1: Revenue Report ============
-function RevenueSection({ data, summary }: { data: RevenueRow[]; summary: ReportData['summary'] }) {
+function RevenueSection({
+  data,
+  summary,
+}: {
+  data: RevenueRow[];
+  summary: ReportData['summary'];
+}) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <SummaryCard
           label="Tổng doanh thu đã thanh toán"
           value={`${fmtCurrency(summary.totalRevenue ?? 0)} ₫`}
@@ -129,8 +153,8 @@ function RevenueSection({ data, summary }: { data: RevenueRow[]; summary: Report
       {data.length === 0 ? (
         <EmptyState message="Không có giao dịch doanh thu nào trong khoảng thời gian này." />
       ) : (
-        <div style={{ background: '#ffffff', borderRadius: '0.75rem', border: '1px solid #e5e7eb', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <h3 style={{ margin: '0 0 1.25rem', fontSize: '14px', fontWeight: 600, color: '#1f2937' }}>
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs">
+          <h3 className="text-sm font-bold text-slate-900 mb-5">
             Biểu đồ biến động doanh thu theo ngày
           </h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -143,28 +167,35 @@ function RevenueSection({ data, summary }: { data: RevenueRow[]; summary: Report
               />
               <Tooltip
                 formatter={(val: any) => [`${fmtCurrency(Number(val || 0))} ₫`, 'Doanh thu']}
-                contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                contentStyle={{
+                  fontSize: '12px',
+                  borderRadius: '10px',
+                  border: '1px solid #e2e8f0',
+                }}
               />
-              <Bar dataKey="totalRevenue" fill="#059669" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="totalRevenue" fill="#0866ff" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
 
-          {/* Detail Table */}
-          <div style={{ marginTop: '1.5rem', overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[480px]">
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <th style={thStyle}>Ngày</th>
-                  <th style={{ ...thStyle, textAlign: 'center' }}>Số hóa đơn</th>
-                  <th style={{ ...thStyle, textAlign: 'right' }}>Tổng doanh thu</th>
+                <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th className="py-3 px-4">Ngày</th>
+                  <th className="py-3 px-4 text-center">Số hóa đơn</th>
+                  <th className="py-3 px-4 text-right">Tổng doanh thu</th>
                 </tr>
               </thead>
-              <tbody>
-                {data.map(row => (
-                  <tr key={row.date} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={tdStyle}>{new Date(row.date).toLocaleDateString('vi-VN')}</td>
-                    <td style={{ ...tdStyle, textAlign: 'center' }}>{row.count}</td>
-                    <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 600, color: '#059669' }}>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {data.map((row) => (
+                  <tr key={row.date} className="hover:bg-blue-50/30 transition-colors">
+                    <td className="py-3 px-4 font-mono tabular-nums text-slate-700">
+                      {new Date(row.date).toLocaleDateString('vi-VN')}
+                    </td>
+                    <td className="py-3 px-4 text-center font-mono tabular-nums font-semibold">
+                      {row.count}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono tabular-nums font-bold text-[#0050cd]">
                       {fmtCurrency(row.totalRevenue)} ₫
                     </td>
                   </tr>
@@ -179,10 +210,16 @@ function RevenueSection({ data, summary }: { data: RevenueRow[]; summary: Report
 }
 
 // ============ Section 2: Services Report ============
-function ServicesSection({ data, summary }: { data: ServiceRow[]; summary: ReportData['summary'] }) {
+function ServicesSection({
+  data,
+  summary,
+}: {
+  data: ServiceRow[];
+  summary: ReportData['summary'];
+}) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', maxWidth: '400px' }}>
+    <div className="space-y-6">
+      <div className="max-w-md">
         <SummaryCard
           label="Tổng lượt dịch vụ thực hiện"
           value={`${summary.totalWorkOrders ?? 0} lượt`}
@@ -193,40 +230,57 @@ function ServicesSection({ data, summary }: { data: ServiceRow[]; summary: Repor
       {data.length === 0 ? (
         <EmptyState message="Không có dịch vụ nào được thực hiện trong khoảng thời gian này." />
       ) : (
-        <div style={{ background: '#ffffff', borderRadius: '0.75rem', border: '1px solid #e5e7eb', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <h3 style={{ margin: '0 0 1.25rem', fontSize: '14px', fontWeight: 600, color: '#1f2937' }}>
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs">
+          <h3 className="text-sm font-bold text-slate-900 mb-5">
             Xếp hạng dịch vụ theo số lượt thực hiện
           </h3>
           <ResponsiveContainer width="100%" height={Math.max(260, data.length * 40)}>
-            <BarChart data={data} layout="vertical" margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
+            <BarChart
+              data={data}
+              layout="vertical"
+              margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
-              <YAxis dataKey="serviceName" type="category" width={180} tick={{ fontSize: 12, fill: '#334155' }} />
+              <YAxis
+                dataKey="serviceName"
+                type="category"
+                width={180}
+                tick={{ fontSize: 12, fill: '#334155' }}
+              />
               <Tooltip
                 formatter={(val: any) => [`${val} lượt`, 'Số lần']}
-                contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
+                contentStyle={{ fontSize: '12px', borderRadius: '10px' }}
               />
-              <Bar dataKey="count" fill="#2563eb" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="count" fill="#0050cd" radius={[0, 6, 6, 0]} />
             </BarChart>
           </ResponsiveContainer>
 
-          <div style={{ marginTop: '1.5rem', overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[480px]">
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <th style={thStyle}>Tên dịch vụ</th>
-                  <th style={{ ...thStyle, textAlign: 'center' }}>Số lượt thực hiện</th>
-                  <th style={{ ...thStyle, textAlign: 'right' }}>Tỷ trọng</th>
+                <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th className="py-3 px-4">Tên dịch vụ</th>
+                  <th className="py-3 px-4 text-center">Số lượt thực hiện</th>
+                  <th className="py-3 px-4 text-right">Tỷ trọng</th>
                 </tr>
               </thead>
-              <tbody>
-                {data.map(row => {
-                  const pct = summary.totalWorkOrders ? ((row.count / summary.totalWorkOrders) * 100).toFixed(1) : '0';
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {data.map((row) => {
+                  const pct = summary.totalWorkOrders
+                    ? ((row.count / summary.totalWorkOrders) * 100).toFixed(1)
+                    : '0';
                   return (
-                    <tr key={row.serviceId} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ ...tdStyle, fontWeight: 500 }}>{row.serviceName}</td>
-                      <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600, color: '#2563eb' }}>{row.count}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right', color: '#64748b' }}>{pct}%</td>
+                    <tr key={row.serviceId} className="hover:bg-blue-50/30 transition-colors">
+                      <td className="py-3 px-4 font-semibold text-slate-800">
+                        {row.serviceName}
+                      </td>
+                      <td className="py-3 px-4 text-center font-mono tabular-nums font-bold text-[#0050cd]">
+                        {row.count}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono tabular-nums text-slate-500">
+                        {pct}%
+                      </td>
                     </tr>
                   );
                 })}
@@ -240,69 +294,76 @@ function ServicesSection({ data, summary }: { data: ServiceRow[]; summary: Repor
 }
 
 // ============ Section 3: Inventory Report ============
-function InventorySection({ data, summary }: { data: InventoryRow[]; summary: ReportData['summary'] }) {
+function InventorySection({
+  data,
+  summary,
+}: {
+  data: InventoryRow[];
+  summary: ReportData['summary'];
+}) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', maxWidth: '400px' }}>
+    <div className="space-y-6">
+      <div className="max-w-md">
         <SummaryCard
           label="Mã phụ tùng dưới mức cảnh báo tồn kho"
           value={`${summary.lowStockCount ?? 0} mã`}
           icon="warning"
-          color={summary.lowStockCount && summary.lowStockCount > 0 ? '#dc2626' : '#059669'}
+          variant={summary.lowStockCount && summary.lowStockCount > 0 ? 'danger' : 'blue'}
         />
       </div>
 
       {data.length === 0 ? (
-        <div style={{
-          textAlign: 'center', padding: '3.5rem 2rem', background: '#f0fdf4',
-          borderRadius: '0.75rem', border: '1px solid #bbf7d0', color: '#166534',
-        }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '48px', display: 'block', marginBottom: '0.75rem', color: '#16a34a' }}>
+        <div className="text-center py-14 px-6 bg-blue-50/60 rounded-2xl border border-blue-200/80 text-[#0050cd]">
+          <span className="material-symbols-outlined text-[48px] block mb-3 text-[#0866ff]">
             check_circle
           </span>
-          <h3 style={{ margin: '0 0 0.25rem', fontSize: '15px', fontWeight: 600 }}>
-            Kho phụ tùng đang đảm bảo
-          </h3>
-          <p style={{ margin: 0, fontSize: '13px' }}>
+          <h3 className="text-base font-bold">Kho phụ tùng đang đảm bảo</h3>
+          <p className="text-xs text-slate-600 mt-1">
             Tất cả các mặt hàng phụ tùng đều đạt hoặc vượt mức tồn kho an toàn quy định.
           </p>
         </div>
       ) : (
-        <div style={{ background: '#ffffff', borderRadius: '0.75rem', border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ padding: '1rem 1.25rem', background: '#fef2f2', borderBottom: '1px solid #fee2e2' }}>
-            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#991b1b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>error</span>
-              Danh sách các mặt hàng phụ tùng cần lên đơn đặt nhập thêm
+        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
+          <div className="p-4 bg-rose-50 border-b border-rose-200/80">
+            <h3 className="text-xs font-bold text-rose-800 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px]">error</span>
+              <span>Danh sách các mặt hàng phụ tùng cần lên đơn đặt nhập thêm</span>
             </h3>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                <th style={thStyle}>Mã SKU</th>
-                <th style={thStyle}>Tên phụ tùng</th>
-                <th style={thStyle}>Danh mục</th>
-                <th style={{ ...thStyle, textAlign: 'center' }}>Tồn kho thực tế</th>
-                <th style={{ ...thStyle, textAlign: 'center' }}>Mức cảnh báo</th>
-                <th style={{ ...thStyle, textAlign: 'center', color: '#dc2626' }}>Số lượng thiếu</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map(row => (
-                <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ ...tdStyle, fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', fontWeight: 600, color: '#334155' }}>
-                    {row.sku}
-                  </td>
-                  <td style={{ ...tdStyle, fontWeight: 500 }}>{row.name}</td>
-                  <td style={{ ...tdStyle, color: '#64748b' }}>{row.categoryName}</td>
-                  <td style={{ ...tdStyle, textAlign: 'center', color: '#dc2626', fontWeight: 700 }}>{row.onHand}</td>
-                  <td style={{ ...tdStyle, textAlign: 'center', color: '#64748b' }}>{row.reorderLevel}</td>
-                  <td style={{ ...tdStyle, textAlign: 'center', color: '#dc2626', fontWeight: 700 }}>
-                    +{row.deficit}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[680px]">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th className="py-3 px-4">Mã SKU</th>
+                  <th className="py-3 px-4">Tên phụ tùng</th>
+                  <th className="py-3 px-4">Danh mục</th>
+                  <th className="py-3 px-4 text-center">Tồn kho thực tế</th>
+                  <th className="py-3 px-4 text-center">Mức cảnh báo</th>
+                  <th className="py-3 px-4 text-center text-rose-600">Số lượng thiếu</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {data.map((row) => (
+                  <tr key={row.id} className="hover:bg-rose-50/20 transition-colors">
+                    <td className="py-3 px-4 font-mono tabular-nums font-bold text-slate-700">
+                      {row.sku}
+                    </td>
+                    <td className="py-3 px-4 font-semibold text-slate-800">{row.name}</td>
+                    <td className="py-3 px-4 text-slate-500">{row.categoryName}</td>
+                    <td className="py-3 px-4 text-center font-mono tabular-nums font-bold text-rose-600">
+                      {row.onHand}
+                    </td>
+                    <td className="py-3 px-4 text-center font-mono tabular-nums text-slate-500">
+                      {row.reorderLevel}
+                    </td>
+                    <td className="py-3 px-4 text-center font-mono tabular-nums font-bold text-rose-600">
+                      +{row.deficit}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -331,7 +392,7 @@ export default function OperationalReportsPage() {
         params.end = endDate;
       }
       const res = await api.get('/api/reports/operational', { params });
-      if (res.data.success) {
+      if (res.data?.success) {
         setReportData(res.data.data);
         setHasLoaded(true);
       }
@@ -356,34 +417,21 @@ export default function OperationalReportsPage() {
   }, [fetchReport]);
 
   return (
-    <div style={{ padding: '1.75rem 2rem', minHeight: '100vh', background: '#f8f9ff', fontFamily: "'Be Vietnam Pro', sans-serif" }}>
-
+    <div className="space-y-6">
       {/* Header */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#0b1c30' }}>
-            Báo cáo vận hành
-          </h1>
-          <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px', background: '#dbeafe', color: '#2563eb' }}>
-            UC-53
-          </span>
-        </div>
-        <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#727687' }}>
-          Tổng hợp kết quả kinh doanh, số lượt dịch vụ và cảnh báo phụ tùng sắp hết
-        </p>
+      <div>
+        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
+          Báo cáo vận hành
+        </h1>
       </div>
 
       {/* Control Panel */}
-      <div style={{
-        background: '#ffffff', borderRadius: '0.875rem', border: '1px solid #e5e7eb',
-        padding: '1.25rem 1.5rem', marginBottom: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-      }}>
-        {/* Type Selector */}
-        <div style={{ marginBottom: reportType !== 'inventory' ? '1.25rem' : 0 }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, color: '#727687', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.625rem' }}>
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
+        <div>
+          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5">
             Chọn loại báo cáo
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div className="flex flex-wrap gap-2.5">
             <TypeBtn
               active={reportType === 'revenue'}
               label="Báo cáo Doanh thu"
@@ -405,45 +453,40 @@ export default function OperationalReportsPage() {
           </div>
         </div>
 
-        {/* Date Filter (Chỉ hiển thị khi không phải kho) */}
         {reportType !== 'inventory' && (
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', flexWrap: 'wrap', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
+          <div className="flex flex-wrap items-end gap-3 pt-4 border-t border-slate-100">
             <div>
-              <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '4px' }}>
+              <label className="text-xs font-semibold text-slate-600 block mb-1">
                 Từ ngày
               </label>
               <input
                 type="date"
                 value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                style={{ padding: '0.5rem 0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', outline: 'none' }}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#0866ff]"
               />
             </div>
             <div>
-              <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '4px' }}>
+              <label className="text-xs font-semibold text-slate-600 block mb-1">
                 Đến ngày
               </label>
               <input
                 type="date"
                 value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                style={{ padding: '0.5rem 0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', outline: 'none' }}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#0866ff]"
               />
             </div>
             <button
+              type="button"
               onClick={fetchReport}
               disabled={loading}
-              style={{
-                padding: '0.55rem 1.25rem', background: '#059669', color: '#fff',
-                border: 'none', borderRadius: '0.5rem', fontSize: '13px', fontWeight: 600,
-                cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
-                display: 'flex', alignItems: 'center', gap: '6px',
-              }}
+              className="h-10 px-5 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#0866ff]/20 disabled:opacity-60 cursor-pointer"
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+              <span className="material-symbols-outlined text-[16px]">
                 {loading ? 'progress_activity' : 'search'}
               </span>
-              {loading ? 'Đang tổng hợp...' : 'Xem báo cáo'}
+              <span>{loading ? 'Đang tổng hợp...' : 'Xem báo cáo'}</span>
             </button>
           </div>
         )}
@@ -451,33 +494,41 @@ export default function OperationalReportsPage() {
 
       {/* Main Content Area */}
       {loading ? (
-        <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#727687' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '36px', animation: 'spin 1s linear infinite' }}>
-            progress_activity
-          </span>
-          <p style={{ margin: '0.5rem 0 0', fontSize: '13px' }}>Đang tổng hợp dữ liệu báo cáo...</p>
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-8 space-y-4">
+          <div className="h-8 w-52 bg-slate-100 rounded-lg animate-pulse" />
+          <div className="h-64 w-full bg-slate-100 rounded-xl animate-pulse" />
         </div>
       ) : !hasLoaded ? (
-        <div style={{
-          textAlign: 'center', padding: '4rem', background: '#ffffff',
-          borderRadius: '0.75rem', border: '1px dashed #d1d5db', color: '#9ca3af',
-        }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '48px', display: 'block', marginBottom: '0.75rem' }}>
+        <div className="text-center py-16 px-6 bg-white rounded-2xl border border-dashed border-slate-300">
+          <span className="material-symbols-outlined text-[48px] block mb-3 text-slate-400">
             bar_chart
           </span>
-          <p style={{ margin: 0, fontSize: '14px' }}>Chọn khoảng thời gian và nhấn <strong>Xem báo cáo</strong></p>
+          <p className="text-sm text-slate-600">
+            Chọn khoảng thời gian và nhấn <strong>Xem báo cáo</strong>
+          </p>
         </div>
       ) : reportData ? (
         <>
-          {reportData.type === 'revenue'   && <RevenueSection   data={reportData.data as RevenueRow[]}   summary={reportData.summary} />}
-          {reportData.type === 'services'  && <ServicesSection  data={reportData.data as ServiceRow[]}  summary={reportData.summary} />}
-          {reportData.type === 'inventory' && <InventorySection data={reportData.data as InventoryRow[]} summary={reportData.summary} />}
+          {reportData.type === 'revenue' && (
+            <RevenueSection
+              data={reportData.data as RevenueRow[]}
+              summary={reportData.summary}
+            />
+          )}
+          {reportData.type === 'services' && (
+            <ServicesSection
+              data={reportData.data as ServiceRow[]}
+              summary={reportData.summary}
+            />
+          )}
+          {reportData.type === 'inventory' && (
+            <InventorySection
+              data={reportData.data as InventoryRow[]}
+              summary={reportData.summary}
+            />
+          )}
         </>
       ) : null}
-
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }

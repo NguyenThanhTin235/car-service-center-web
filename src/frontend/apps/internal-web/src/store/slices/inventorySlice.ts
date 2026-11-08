@@ -303,8 +303,13 @@ const inventorySlice = createSlice({
       })
       .addCase(fetchInventoryItems.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload.data.items;
-        state.pagination = action.payload.data.pagination;
+        state.items = Array.isArray(action.payload?.data?.items)
+          ? action.payload.data.items
+          : Array.isArray(action.payload?.data)
+          ? action.payload.data
+          : [];
+        state.pagination =
+          action.payload?.data?.pagination || action.payload?.pagination || null;
       })
       .addCase(fetchInventoryItems.rejected, (state, action) => {
         state.loading = false;
@@ -367,13 +372,17 @@ const inventorySlice = createSlice({
 
       // Categories / Brands / UOMs
       .addCase(fetchPartCategories.fulfilled, (state, action) => {
-        state.categories = action.payload.data.categories;
+        state.categories = Array.isArray(action.payload?.data?.categories)
+          ? action.payload.data.categories
+          : Array.isArray(action.payload?.data)
+          ? action.payload.data
+          : [];
       })
       .addCase(fetchBrands.fulfilled, (state, action) => {
-        state.brands = action.payload.data;
+        state.brands = Array.isArray(action.payload?.data) ? action.payload.data : [];
       })
       .addCase(fetchUoms.fulfilled, (state, action) => {
-        state.uoms = action.payload.data;
+        state.uoms = Array.isArray(action.payload?.data) ? action.payload.data : [];
       })
       .addMatcher(isAnyOf(createPartCategory.pending, updatePartCategory.pending), (state) => {
         state.actionLoading = true;

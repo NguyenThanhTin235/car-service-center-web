@@ -48,34 +48,36 @@ export default function DailyCalendarGrid({
   };
 
   return (
-    <div className="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-sm overflow-hidden flex flex-col relative">
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col relative">
       <div className="overflow-x-auto">
         <div className="min-w-[400px]">
           {/* Header Row */}
-          <div className="grid grid-cols-[80px_1fr] bg-[#F8FAFC] border-b border-outline-variant divide-x divide-outline-variant">
-            <div className="p-3 text-center text-label-sm font-label-sm font-semibold text-secondary flex items-center justify-center">
+          <div className="grid grid-cols-[80px_1fr] bg-slate-50 border-b border-slate-200 divide-x divide-slate-200">
+            <div className="p-3 text-center text-xs font-bold text-slate-700 flex items-center justify-center">
               Giờ
             </div>
             
-            <div className={`p-3 text-center ${dayData.isToday ? 'bg-blue-50/70 relative' : dayData.isWeekend ? 'bg-slate-50/60' : ''}`}>
-              {dayData.isToday && (
-                <span className="absolute top-1 right-2 bg-primary text-on-primary text-[10px] font-bold px-1.5 py-0.2 rounded">Hôm nay</span>
-              )}
-              <div className={`text-label-sm font-label-sm font-medium uppercase tracking-wider ${dayData.isToday ? 'text-primary font-bold' : 'text-secondary'}`}>
-                {dayData.name}
+            <div className={`p-3 text-center ${dayData.isToday ? 'bg-blue-50/70' : dayData.isWeekend ? 'bg-slate-50/60' : ''}`}>
+              <div className="flex items-center justify-center gap-2">
+                <span className={`text-xs uppercase tracking-wider ${dayData.isToday ? 'text-[#0050cd] font-bold' : 'text-slate-700 font-semibold'}`}>
+                  {dayData.name}
+                </span>
+                {dayData.isToday && (
+                  <span className="bg-[#0050cd] text-white text-xs font-bold px-2 py-0.5 rounded">Hôm nay</span>
+                )}
               </div>
-              <div className={`text-headline-md font-headline-md font-bold ${dayData.isToday ? 'text-primary' : 'text-on-surface'}`}>
+              <div className={`text-lg font-mono font-extrabold mt-0.5 ${dayData.isToday ? 'text-[#0050cd]' : 'text-slate-900'}`}>
                 {dayData.dateStr}
               </div>
             </div>
           </div>
 
           {/* Time Grid Body */}
-          <div className="relative divide-y divide-outline-variant/60">
+          <div className="relative divide-y divide-slate-200/70">
             {hours.map((hour, hIdx) => (
-              <div key={hIdx} className="grid grid-cols-[80px_1fr] min-h-[92px] divide-x divide-outline-variant/50 relative">
+              <div key={hIdx} className="grid grid-cols-[80px_1fr] min-h-[92px] divide-x divide-slate-200/70 relative">
                 {/* Time label */}
-                <div className="flex items-center justify-center font-code-mono text-xs text-secondary font-medium bg-[#FAFAFA]">
+                <div className="flex items-center justify-center font-mono text-xs text-slate-700 font-bold bg-slate-50/60">
                   {hour}
                 </div>
 

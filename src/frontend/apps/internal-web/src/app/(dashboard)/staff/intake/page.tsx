@@ -153,305 +153,508 @@ export default function IntakePage() {
 
 
 
+  const queuedCount = queueRecords.filter((r) => r.status === 'QUEUED').length;
+  const convertedCount = queueRecords.filter((r) => r.status === 'CONVERTED').length;
+  const cancelledCount = queueRecords.filter((r) => r.status === 'CANCELLED').length;
+
   return (
-    <div className="flex flex-col gap-6 max-w-[1600px] mx-auto w-full">
-      {/* HEADER & ACTIONS */}
+    <div className="space-y-6 w-full">
+      {/* 1. SaaS Page Header & Primary Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-headline-lg font-headline-lg font-bold text-on-surface flex items-center gap-2">
-            <span className="material-symbols-outlined text-[28px] text-primary">car_repair</span>
-            Tiếp nhận xe vào xưởng
-          </h1>
-          <p className="text-body-md text-secondary mt-1">
-            Quản lý xe đến có lịch hẹn, khách vãng lai (Walk-in) và xe cứu hộ (Tow-in).
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
+        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
+          Tiếp nhận xe vào xưởng
+        </h1>
+
+        <div className="flex items-center gap-2.5 shrink-0">
           <button
             onClick={() => setTowInModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-tertiary-container text-on-tertiary-container rounded-lg font-semibold hover:bg-tertiary hover:text-on-tertiary transition-colors shadow-sm"
+            className="h-10 px-4 bg-amber-50/90 hover:bg-amber-100/90 text-amber-800 border border-amber-200/90 rounded-xl text-xs font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[20px]">local_shipping</span>
-            <span>Tow-In</span>
+            <span className="material-symbols-outlined text-[18px] text-amber-600">
+              local_shipping
+            </span>
+            <span>Tiếp nhận Cứu hộ (Tow-In)</span>
           </button>
           <button
             onClick={() => setWalkInModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-lg font-semibold hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm"
+            className="h-10 px-4 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-[#0866ff]/20 active:scale-[0.98] transition-all cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[20px]">directions_walk</span>
-            <span>Walk-In</span>
+            <span className="material-symbols-outlined text-[18px]">directions_walk</span>
+            <span>+ Tiếp nhận Walk-In</span>
           </button>
         </div>
       </div>
 
-      <div className="flex flex-col gap-6">
-        
-        {/* LỊCH HẸN HÔM NAY (Top) */}
-        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm">
-          <h2 className="text-headline-md font-bold text-on-surface mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">event_available</span>
-            Lịch hẹn chờ tới
-            <span className="ml-2 bg-primary-container text-on-primary-container text-label-sm px-2 py-0.5 rounded-full">
-              {appointments.length}
-            </span>
-          </h2>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[600px]">
-              <thead>
-                <tr className="border-b border-outline-variant text-label-md text-secondary">
-                  <th className="py-3 px-4 font-semibold">Giờ hẹn</th>
-                  <th className="py-3 px-4 font-semibold">Biển số xe</th>
-                  <th className="py-3 px-4 font-semibold">Khách hàng</th>
-                  <th className="py-3 px-4 font-semibold">Số điện thoại</th>
-                  <th className="py-3 px-4 font-semibold text-right">Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {aptLoading ? (
-                  <tr>
-                    <td colSpan={5} className="text-center text-secondary py-10">Đang tải lịch hẹn...</td>
-                  </tr>
-                ) : appointments.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center text-secondary py-10">Không có lịch hẹn nào đang chờ</td>
-                  </tr>
-                ) : (
-                  appointments.map((apt) => (
-                    <tr key={apt.id} className="border-b border-outline-variant hover:bg-surface-container-low transition-colors">
-                      <td className="py-3 px-4 font-code-mono font-bold text-primary">{apt.scheduled_time_str}</td>
-                      <td className="py-3 px-4 text-label-md font-semibold">{apt.vehicle?.license_plate || 'Không có BS'}</td>
-                      <td className="py-3 px-4 text-body-sm">{apt.customer?.full_name || 'Khách vãng lai'}</td>
-                      <td className="py-3 px-4 text-body-sm">{apt.customer?.phone || 'Chưa cập nhật'}</td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handleArriveAppointment(apt.id)}
-                          className="px-3 py-1.5 bg-surface border border-primary text-primary rounded-md font-semibold text-label-sm hover:bg-primary hover:text-on-primary transition-colors inline-flex items-center gap-1"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                          Đánh dấu đã đến
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* DANH SÁCH TIẾP NHẬN (Bottom) */}
-        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm flex flex-col">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
-            <h2 className="text-headline-md font-bold text-on-surface flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">format_list_bulleted</span>
-              Danh sách tiếp nhận
-            </h2>
-            <div className="relative max-w-sm w-full">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-              <input
-                type="text"
-                placeholder="Tìm biển số, khách hàng, SĐT..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1); // Reset page on search
-                }}
-                className="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-lg text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-              />
+      {/* 2. Asymmetrical Bento Summary (5 + 7 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Hero Intake Card (5 cols) */}
+        <div className="lg:col-span-5 rounded-2xl saas-hero-gradient text-white p-5 relative overflow-hidden flex flex-col justify-between">
+          <div className="absolute inset-0 saas-subtle-grid pointer-events-none" />
+          <div className="relative z-10 flex items-start justify-between">
+            <div>
+              <span className="text-xs font-medium text-blue-100/90">
+                Tổng lượt tiếp nhận &amp; chờ đón
+              </span>
+              <div className="text-3xl font-mono font-extrabold tabular-nums tracking-tight mt-1">
+                {queueRecords.length + appointments.length}{' '}
+                <span className="text-sm font-sans font-medium text-blue-100/80">xe hôm nay</span>
+              </div>
+            </div>
+            <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center backdrop-blur-xs">
+              <span className="material-symbols-outlined text-[22px] text-white">garage_home</span>
             </div>
           </div>
-          
-          {/* Tabs */}
-          <div className="flex items-center gap-2 mb-4 border-b border-outline-variant">
-            {(['QUEUED', 'CONVERTED', 'CANCELLED'] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => {
-                  setActiveTab(tab);
-                  setCurrentPage(1);
-                }}
-                className={`px-4 py-2 font-semibold text-body-md border-b-2 transition-colors ${
-                  activeTab === tab 
-                    ? 'border-primary text-primary' 
-                    : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-t-md'
-                }`}
-              >
-                {tab === 'QUEUED' && 'Chờ xử lý'}
-                {tab === 'CONVERTED' && 'Đã chuyển RO'}
-                {tab === 'CANCELLED' && 'Đã hủy'}
-                <span className="ml-2 bg-surface-container-high text-on-surface px-1.5 py-0.5 rounded-full text-label-sm">
-                  {queueRecords.filter(r => r.status === tab && (!searchQuery || r.vehicle?.license_plate?.toLowerCase().includes(searchQuery.toLowerCase()) || r.customer?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || r.customer?.phone?.includes(searchQuery))).length}
-                </span>
-              </button>
-            ))}
-          </div>
 
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full text-left border-collapse min-w-[800px]">
-              <thead>
-                <tr className="border-b border-outline-variant text-label-md text-secondary">
-                  <th className="py-3 px-4 font-semibold">Loại / TG</th>
-                  <th className="py-3 px-4 font-semibold">Biển số / Xe</th>
-                  <th className="py-3 px-4 font-semibold">Khách hàng</th>
-                  <th className="py-3 px-4 font-semibold">Dịch vụ yêu cầu</th>
-                  <th className="py-3 px-4 font-semibold text-right">Hành động</th>
+          <div className="relative z-10 mt-4 pt-3.5 border-t border-white/15 flex items-center justify-between text-xs text-blue-50">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-sky-300 animate-pulse" />
+              Lịch hẹn chờ check-in: <strong className="font-mono">{appointments.length}</strong>
+            </span>
+            <span className="font-mono font-semibold bg-white/15 px-2.5 py-0.5 rounded-full">
+              {queuedCount} xe đang đợi lập RO
+            </span>
+          </div>
+        </div>
+
+        {/* 3 Queue Status Filter Tiles (7 cols) */}
+        <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('QUEUED');
+              setCurrentPage(1);
+            }}
+            className={`text-left rounded-2xl p-4 border transition-all flex flex-col justify-between cursor-pointer ${
+              activeTab === 'QUEUED'
+                ? 'bg-blue-50/90 border-[#0866ff] shadow-sm'
+                : 'bg-white border-slate-200/80 hover:border-blue-200'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Chờ xử lý</span>
+              <div className="w-8 h-8 rounded-lg bg-blue-100/80 text-[#0866ff] flex items-center justify-center">
+                <span className="material-symbols-outlined text-[18px]">hourglass_top</span>
+              </div>
+            </div>
+            <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-2">
+              {queuedCount}
+            </div>
+            <span className="text-[11px] text-[#0866ff] font-semibold mt-1">
+              Đang chờ cố vấn khám xe
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('CONVERTED');
+              setCurrentPage(1);
+            }}
+            className={`text-left rounded-2xl p-4 border transition-all flex flex-col justify-between cursor-pointer ${
+              activeTab === 'CONVERTED'
+                ? 'bg-emerald-50/90 border-emerald-400 shadow-sm'
+                : 'bg-white border-slate-200/80 hover:border-emerald-200'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Đã chuyển RO</span>
+              <div className="w-8 h-8 rounded-lg bg-emerald-100/80 text-emerald-700 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[18px]">task_alt</span>
+              </div>
+            </div>
+            <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-2">
+              {convertedCount}
+            </div>
+            <span className="text-[11px] text-emerald-700 font-semibold mt-1">
+              Đã tạo lệnh sửa chữa
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('CANCELLED');
+              setCurrentPage(1);
+            }}
+            className={`text-left rounded-2xl p-4 border transition-all flex flex-col justify-between cursor-pointer ${
+              activeTab === 'CANCELLED'
+                ? 'bg-rose-50/90 border-rose-300 shadow-sm'
+                : 'bg-white border-slate-200/80 hover:border-rose-200'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Đã hủy</span>
+              <div className="w-8 h-8 rounded-lg bg-rose-100/80 text-rose-600 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[18px]">cancel</span>
+              </div>
+            </div>
+            <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-2">
+              {cancelledCount}
+            </div>
+            <span className="text-[11px] text-slate-500 font-medium mt-1">
+              Phiếu tiếp nhận đã hủy
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3. LỊCH HẸN CHỜ TỚI HÔM NAY */}
+      <div className="saas-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/50">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200/60 text-[#0866ff] flex items-center justify-center">
+              <span className="material-symbols-outlined text-[18px]">event_available</span>
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <span>Lịch hẹn chờ tới hôm nay</span>
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-blue-50 text-[#0866ff] border border-blue-200/70">
+                  {appointments.length}
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500">
+                Danh sách xe đã xác nhận lịch hẹn trong ngày, nhấn &ldquo;Đánh dấu đã đến&rdquo; khi xe vào cổng.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[640px]">
+            <thead>
+              <tr className="border-b border-slate-200/80 bg-slate-50/60 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                <th className="py-3 px-5">Giờ hẹn</th>
+                <th className="py-3 px-5">Biển số xe</th>
+                <th className="py-3 px-5">Khách hàng</th>
+                <th className="py-3 px-5">Số điện thoại</th>
+                <th className="py-3 px-5 text-right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200/60 text-sm">
+              {aptLoading ? (
+                <tr>
+                  <td colSpan={5} className="text-center text-slate-500 py-10 text-xs">
+                    Đang tải lịch hẹn hôm nay...
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {queueLoading ? (
-                  <tr>
-                    <td colSpan={5} className="text-center text-secondary py-10">Đang tải danh sách...</td>
-                  </tr>
-                ) : queueRecords.filter(r => r.status === activeTab && (!searchQuery || r.vehicle?.license_plate?.toLowerCase().includes(searchQuery.toLowerCase()) || r.customer?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || r.customer?.phone?.includes(searchQuery))).length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center text-secondary py-10">
-                      {searchQuery ? 'Không tìm thấy kết quả phù hợp.' : 'Danh sách trống.'}
+              ) : appointments.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-center text-slate-400 py-8 text-xs">
+                    Không có lịch hẹn nào đang chờ check-in trong ngày hôm nay.
+                  </td>
+                </tr>
+              ) : (
+                appointments.map((apt) => (
+                  <tr key={apt.id} className="hover:bg-blue-50/30 transition-colors">
+                    <td className="py-3.5 px-5">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-[#0866ff] font-mono text-xs font-bold border border-blue-200/60">
+                        <span className="material-symbols-outlined text-[14px]">schedule</span>
+                        {apt.scheduled_time_str}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-5">
+                      <span className="px-2.5 py-1 rounded-md bg-slate-900 text-white font-mono text-xs font-bold tracking-wider">
+                        {apt.vehicle?.license_plate || 'Chưa có BS'}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-5 font-semibold text-slate-800">
+                      {apt.customer?.full_name || 'Khách vãng lai'}
+                    </td>
+                    <td className="py-3.5 px-5 font-mono text-xs text-slate-600">
+                      {apt.customer?.phone || 'Chưa cập nhật'}
+                    </td>
+                    <td className="py-3.5 px-5 text-right">
+                      <button
+                        onClick={() => handleArriveAppointment(apt.id)}
+                        className="px-3.5 py-1.5 bg-blue-50 hover:bg-[#0866ff] text-[#0866ff] hover:text-white border border-blue-200/80 rounded-xl font-semibold text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                        <span>Đánh dấu đã đến</span>
+                      </button>
                     </td>
                   </tr>
-                ) : (
-                  (() => {
-                    const filteredRecords = queueRecords.filter(r => {
-                      if (r.status !== activeTab) return false;
-                      if (!searchQuery) return true;
-                      const q = searchQuery.toLowerCase();
-                      return r.vehicle?.license_plate?.toLowerCase().includes(q) ||
-                             r.customer?.full_name?.toLowerCase().includes(q) ||
-                             r.customer?.phone?.includes(q);
-                    });
-                    const paginatedRecords = filteredRecords.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-                    return paginatedRecords.map((record) => {
-                      const getTypeStyles = (type: string) => {
-                        switch (type) {
-                          case 'WALK_IN':
-                            return 'bg-primary-container text-on-primary-container';
-                          case 'TOW_IN':
-                            return 'bg-tertiary-container text-on-tertiary-container';
-                          case 'APPOINTMENT':
-                            return 'bg-secondary-container text-on-secondary-container';
-                          default:
-                            return 'bg-surface-variant text-on-surface-variant';
-                        }
-                      };
-                      
-                      const getTypeName = (type: string) => {
-                        switch (type) {
-                          case 'WALK_IN': return 'Walk-In';
-                          case 'TOW_IN': return 'Tow-In';
-                          case 'APPOINTMENT': return 'Hẹn trước';
-                          default: return type;
-                        }
-                      };
-
-                      return (
-                        <tr key={record.id} className="border-b border-outline-variant hover:bg-surface-container-low transition-colors">
-                          <td className="py-3 px-4">
-                            <div className="flex flex-col gap-1">
-                              <span className={`w-fit px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${getTypeStyles(record.intake_type)}`}>
-                                {getTypeName(record.intake_type)}
-                              </span>
-                              <span className="text-label-sm font-code-mono text-secondary">
-                                {new Date(record.arrived_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex flex-col">
-                              <span className="text-label-md font-bold text-on-surface">{record.vehicle.license_plate}</span>
-                              <span className="text-body-sm text-secondary">{record.vehicle.make} {record.vehicle.model}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex flex-col">
-                              <span className="text-label-md font-semibold text-on-surface">{record.customer.full_name}</span>
-                              <span className="text-body-sm text-secondary">{record.customer.phone || 'Chưa cập nhật'}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            {record.services && record.services.length > 0 ? (
-                              <div className="flex flex-col items-start gap-1">
-                                {record.services.map(s => (
-                                  <span key={s.id} className="bg-surface-container-high text-on-surface-variant text-[11px] px-2 py-0.5 rounded border border-outline-variant whitespace-nowrap">
-                                    {s.service?.name || 'Dịch vụ'}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-body-sm text-secondary italic">Không có</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => setSelectedRecord(record)}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface hover:bg-surface-container-high text-on-surface-variant transition-colors border border-outline-variant shadow-sm"
-                                title="Xem chi tiết"
-                              >
-                                <span className="material-symbols-outlined text-[18px]">visibility</span>
-                              </button>
-                              {activeTab === 'QUEUED' && (
-                                <button
-                                  onClick={() => handleCancelIntake(record.id)}
-                                  className="px-3 py-1 bg-surface-container border border-outline-variant text-error rounded-md text-label-sm font-semibold hover:bg-error-container transition-colors shadow-sm"
-                                >
-                                  Hủy
-                                </button>
-                              )}
-                              {activeTab === 'CONVERTED' && record.work_order && (
-                                <button
-                                  onClick={() => setViewingROId(record.work_order?.id || null)}
-                                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary border border-primary text-on-primary hover:bg-primary/90 transition-colors shadow-sm"
-                                  title="Xem Phiếu Công Việc (RO)"
-                                >
-                                  <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    });
-                  })()
-                )}
-              </tbody>
-            </table>
-          </div>
-          
-          {/* Pagination Controls */}
-          {(() => {
-            const filteredRecords = queueRecords.filter(r => r.status === activeTab);
-            const totalPages = Math.ceil(filteredRecords.length / itemsPerPage);
-            
-            if (totalPages <= 1) return null;
-            
-            return (
-              <div className="flex items-center justify-between pt-4 mt-4 border-t border-outline-variant">
-                <div className="text-body-sm text-secondary">
-                  Hiển thị {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredRecords.length)} trên tổng số {filteredRecords.length}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button 
-                    disabled={currentPage === 1} 
-                    onClick={() => setCurrentPage(p => p - 1)}
-                    className="p-1 rounded-full hover:bg-surface-container disabled:opacity-50 text-secondary"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">chevron_left</span>
-                  </button>
-                  <span className="text-label-md font-semibold text-on-surface px-2">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <button 
-                    disabled={currentPage === totalPages} 
-                    onClick={() => setCurrentPage(p => p + 1)}
-                    className="p-1 rounded-full hover:bg-surface-container disabled:opacity-50 text-secondary"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">chevron_right</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })()}
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
+      </div>
+
+      {/* 4. DANH SÁCH HÀNG ĐỢI TIẾP NHẬN */}
+      <div className="saas-card overflow-hidden flex flex-col">
+        <div className="p-4 sm:p-5 border-b border-slate-200/80 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Segmented Pill Tabs */}
+            <div className="inline-flex items-center p-1 bg-slate-100/90 rounded-xl border border-slate-200/70">
+              {(['QUEUED', 'CONVERTED', 'CANCELLED'] as const).map((tab) => {
+                const count = queueRecords.filter(
+                  (r) =>
+                    r.status === tab &&
+                    (!searchQuery ||
+                      r.vehicle?.license_plate?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      r.customer?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      r.customer?.phone?.includes(searchQuery))
+                ).length;
+
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => {
+                      setActiveTab(tab);
+                      setCurrentPage(1);
+                    }}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      activeTab === tab
+                        ? 'bg-white text-[#0866ff] shadow-2xs font-bold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>
+                      {tab === 'QUEUED' && 'Chờ xử lý'}
+                      {tab === 'CONVERTED' && 'Đã chuyển RO'}
+                      {tab === 'CANCELLED' && 'Đã hủy'}
+                    </span>
+                    <span
+                      className={`font-mono text-[11px] px-1.5 py-0.2 rounded-full ${
+                        activeTab === tab
+                          ? 'bg-blue-50 text-[#0866ff] font-bold'
+                          : 'bg-slate-200/80 text-slate-600'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="relative max-w-sm w-full">
+            <span className="material-symbols-outlined text-[18px] absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+              search
+            </span>
+            <input
+              type="text"
+              placeholder="Tìm biển số, khách hàng, SĐT..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full h-9 pl-9 pr-4 bg-slate-50/80 border border-slate-200/80 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15 outline-none transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto flex-1">
+          <table className="w-full text-left border-collapse min-w-[800px]">
+            <thead>
+              <tr className="border-b border-slate-200/80 bg-slate-50/60 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                <th className="py-3.5 px-5"> Phân loại &amp; Giờ vào</th>
+                <th className="py-3.5 px-5">Biển số &amp; Dòng xe</th>
+                <th className="py-3.5 px-5">Khách hàng</th>
+                <th className="py-3.5 px-5">Dịch vụ yêu cầu</th>
+                <th className="py-3.5 px-5 text-right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200/60 text-sm">
+              {queueLoading ? (
+                <tr>
+                  <td colSpan={5} className="text-center text-slate-500 py-12 text-xs">
+                    Đang tải danh sách tiếp nhận...
+                  </td>
+                </tr>
+              ) : queueRecords.filter(
+                  (r) =>
+                    r.status === activeTab &&
+                    (!searchQuery ||
+                      r.vehicle?.license_plate?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      r.customer?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      r.customer?.phone?.includes(searchQuery))
+                ).length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-center text-slate-400 py-12 text-xs">
+                    {searchQuery ? 'Không tìm thấy kết quả phù hợp.' : 'Danh sách tiếp nhận trống.'}
+                  </td>
+                </tr>
+              ) : (
+                (() => {
+                  const filteredRecords = queueRecords.filter((r) => {
+                    if (r.status !== activeTab) return false;
+                    if (!searchQuery) return true;
+                    const q = searchQuery.toLowerCase();
+                    return (
+                      r.vehicle?.license_plate?.toLowerCase().includes(q) ||
+                      r.customer?.full_name?.toLowerCase().includes(q) ||
+                      r.customer?.phone?.includes(q)
+                    );
+                  });
+                  const paginatedRecords = filteredRecords.slice(
+                    (currentPage - 1) * itemsPerPage,
+                    currentPage * itemsPerPage
+                  );
+                  return paginatedRecords.map((record) => {
+                    const getTypeStyles = (type: string) => {
+                      switch (type) {
+                        case 'WALK_IN':
+                          return 'bg-blue-50 text-[#0866ff] border border-blue-200/70';
+                        case 'TOW_IN':
+                          return 'bg-amber-50 text-amber-700 border border-amber-200/70';
+                        case 'APPOINTMENT':
+                          return 'bg-emerald-50 text-emerald-700 border border-emerald-200/70';
+                        default:
+                          return 'bg-slate-100 text-slate-600 border border-slate-200';
+                      }
+                    };
+
+                    const getTypeName = (type: string) => {
+                      switch (type) {
+                        case 'WALK_IN':
+                          return 'Walk-In';
+                        case 'TOW_IN':
+                          return 'Tow-In';
+                        case 'APPOINTMENT':
+                          return 'Hẹn trước';
+                        default:
+                          return type;
+                      }
+                    };
+
+                    return (
+                      <tr key={record.id} className="hover:bg-blue-50/25 transition-colors">
+                        <td className="py-3.5 px-5">
+                          <div className="flex flex-col gap-1">
+                            <span
+                              className={`w-fit px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${getTypeStyles(
+                                record.intake_type
+                              )}`}
+                            >
+                              {getTypeName(record.intake_type)}
+                            </span>
+                            <span className="text-xs font-mono text-slate-500">
+                              {new Date(record.arrived_at).toLocaleTimeString('vi-VN', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-5">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="w-fit px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-xs font-bold tracking-wider">
+                              {record.vehicle.license_plate}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {record.vehicle.make} {record.vehicle.model}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-5">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-slate-900">
+                              {record.customer.full_name}
+                            </span>
+                            <span className="text-xs font-mono text-slate-500">
+                              {record.customer.phone || 'Chưa cập nhật'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-5">
+                          {record.services && record.services.length > 0 ? (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {record.services.map((s) => (
+                                <span
+                                  key={s.id}
+                                  className="bg-blue-50/60 text-slate-700 text-xs px-2.5 py-0.5 rounded-lg border border-blue-200/60 whitespace-nowrap"
+                                >
+                                  {s.service?.name || 'Dịch vụ'}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">Chưa chọn dịch vụ</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-5 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setSelectedRecord(record)}
+                              className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-[#0866ff] transition-colors border border-slate-200/80 cursor-pointer"
+                              title="Xem chi tiết"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">
+                                visibility
+                              </span>
+                            </button>
+                            {activeTab === 'QUEUED' && (
+                              <button
+                                onClick={() => handleCancelIntake(record.id)}
+                                className="px-3 py-1.5 bg-rose-50/80 border border-rose-200/80 text-rose-600 rounded-xl text-xs font-semibold hover:bg-rose-100 transition-colors cursor-pointer"
+                              >
+                                Hủy
+                              </button>
+                            )}
+                            {activeTab === 'CONVERTED' && record.work_order && (
+                              <button
+                                onClick={() => setViewingROId(record.work_order?.id || null)}
+                                className="w-8 h-8 flex items-center justify-center rounded-xl bg-[#0866ff] text-white hover:bg-[#0050cd] transition-colors shadow-xs cursor-pointer"
+                                title="Xem Phiếu Công Việc (RO)"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">
+                                  receipt_long
+                                </span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Controls */}
+        {(() => {
+          const filteredRecords = queueRecords.filter((r) => r.status === activeTab);
+          const totalPages = Math.ceil(filteredRecords.length / itemsPerPage);
+
+          if (totalPages <= 1) return null;
+
+          return (
+            <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-200/80 bg-slate-50/40">
+              <div className="text-xs text-slate-500">
+                Hiển thị{' '}
+                <strong className="font-mono text-slate-700">
+                  {(currentPage - 1) * itemsPerPage + 1} -{' '}
+                  {Math.min(currentPage * itemsPerPage, filteredRecords.length)}
+                </strong>{' '}
+                trên tổng số <strong className="font-mono">{filteredRecords.length}</strong>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-600 flex items-center justify-center cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                </button>
+                <span className="text-xs font-mono font-bold text-slate-700 px-2">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-600 flex items-center justify-center cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                </button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Modals */}
@@ -478,10 +681,7 @@ export default function IntakePage() {
         onCancel={() => setConfirmAction(null)}
       />
       {selectedRecord && (
-        <IntakeDetailModal
-          record={selectedRecord}
-          onClose={() => setSelectedRecord(null)}
-        />
+        <IntakeDetailModal record={selectedRecord} onClose={() => setSelectedRecord(null)} />
       )}
 
       {/* READ-ONLY WO MODAL */}

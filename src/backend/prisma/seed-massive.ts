@@ -263,11 +263,11 @@ async function main() {
   console.log('\n📦 [2/10] Tạo Master Data...');
 
   // 2.1 Roles
-  const rolesData = ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA', 'CUSTOMER'];
+  const rolesData = ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA', 'TECHNICIAN', 'CUSTOMER'];
   const createdRoles: any[] = [];
   for (const r of rolesData) createdRoles.push(await prisma.role.create({ data: { name: r } }));
-  const [roleAdmin, roleManager, roleDeskStaff, roleSA, roleCustomer] = createdRoles;
-  console.log('   ✅ 5 Roles');
+  const [roleAdmin, roleManager, roleDeskStaff, roleSA, roleTechnician, roleCustomer] = createdRoles;
+  console.log('   ✅ 6 Roles');
 
   // 2.2 SystemCatalogs
   const catalogs: any = {};
@@ -936,17 +936,17 @@ async function main() {
     { roleObj: roleDeskStaff, position: EmployeePosition.OTHER },
     { roleObj: roleDeskStaff, position: EmployeePosition.OTHER },
     { roleObj: roleDeskStaff, position: EmployeePosition.OTHER },
-    // 4 TECHNICIAN (no system role, just employee)
-    { roleObj: roleDeskStaff, position: EmployeePosition.TECHNICIAN },
-    { roleObj: roleDeskStaff, position: EmployeePosition.TECHNICIAN },
-    { roleObj: roleDeskStaff, position: EmployeePosition.TECHNICIAN },
-    { roleObj: roleDeskStaff, position: EmployeePosition.TECHNICIAN },
-    // 2 QC_STAFF
-    { roleObj: roleDeskStaff, position: EmployeePosition.QC_STAFF },
-    { roleObj: roleDeskStaff, position: EmployeePosition.QC_STAFF },
-    // 2 DETAILER
-    { roleObj: roleDeskStaff, position: EmployeePosition.DETAILER },
-    { roleObj: roleDeskStaff, position: EmployeePosition.DETAILER },
+    // 4 TECHNICIAN
+    { roleObj: roleTechnician, position: EmployeePosition.TECHNICIAN },
+    { roleObj: roleTechnician, position: EmployeePosition.TECHNICIAN },
+    { roleObj: roleTechnician, position: EmployeePosition.TECHNICIAN },
+    { roleObj: roleTechnician, position: EmployeePosition.TECHNICIAN },
+    // 2 QC_STAFF (Technical)
+    { roleObj: roleTechnician, position: EmployeePosition.QC_STAFF },
+    { roleObj: roleTechnician, position: EmployeePosition.QC_STAFF },
+    // 2 DETAILER (Technical)
+    { roleObj: roleTechnician, position: EmployeePosition.DETAILER },
+    { roleObj: roleTechnician, position: EmployeePosition.DETAILER },
   ];
 
   const staffs: any[] = [];

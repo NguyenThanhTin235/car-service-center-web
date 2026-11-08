@@ -22,7 +22,7 @@ export default function InvoiceStatusBadge({ status, className = '' }: Props) {
         <span
           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 ${className}`}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
           Chờ thanh toán
         </span>
       );

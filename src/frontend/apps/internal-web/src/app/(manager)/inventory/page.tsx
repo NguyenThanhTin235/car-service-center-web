@@ -16,6 +16,20 @@ import { GoodsReceiptModal } from './components/GoodsReceiptModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import Toast from '@/components/shared/Toast';
 
+const ITEM_TYPE_LABELS: Record<string, string> = {
+  PART: 'Phụ tùng',
+  CONSUMABLE: 'Vật tư tiêu hao',
+  CHEMICAL: 'Hóa chất',
+  ACCESSORY: 'Phụ kiện',
+};
+
+const ITEM_TYPE_BADGE: Record<string, string> = {
+  PART: 'bg-blue-50 text-[#0050cd] border-blue-200/80',
+  CONSUMABLE: 'bg-emerald-50 text-emerald-800 border-emerald-200/80',
+  CHEMICAL: 'bg-amber-50 text-amber-800 border-amber-200/80',
+  ACCESSORY: 'bg-purple-50 text-purple-800 border-purple-200/80',
+};
+
 export default function InventoryPage() {
   const dispatch = useAppDispatch();
   const { items, pagination, loading, categories, brands, uoms } = useAppSelector(state => state.inventory);
@@ -30,6 +44,9 @@ export default function InventoryPage() {
 
 
   
+  const [currentPage, setCurrentPage] = useState(1);
+  const limit = 10;
+  
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -38,18 +55,20 @@ export default function InventoryPage() {
   const [toast, setToast] = useState<{show: boolean, type: 'success' | 'error', message: string}>({ show: false, type: 'success', message: '' });
 
   useEffect(() => {
-    loadData();
+    loadData(1);
     dispatch(fetchPartCategories());
     dispatch(fetchBrands());
     dispatch(fetchUoms());
   }, []);
 
-  const loadData = () => {
+  const loadData = (page = currentPage) => {
+    setCurrentPage(page);
     dispatch(fetchInventoryItems({
       search: search || undefined,
       itemType: itemType !== 'all' ? itemType : undefined,
       partCategoryId: categoryId !== 'all' ? parseInt(categoryId) : undefined,
-      page: 1, limit: 50
+      page,
+      limit,
     }));
   };
 
@@ -58,8 +77,9 @@ export default function InventoryPage() {
     setItemType('all');
     setCategoryId('all');
     setStockStatus('all');
+    setCurrentPage(1);
     setTimeout(() => {
-      dispatch(fetchInventoryItems({ page: 1, limit: 50 }));
+      dispatch(fetchInventoryItems({ page: 1, limit }));
     }, 0);
   };
 
@@ -101,83 +121,135 @@ export default function InventoryPage() {
 
   return (
     <div className="flex flex-col min-w-0 space-y-6">
-      {/* 1. Header & Quick stats */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-headline-lg font-headline-lg text-on-surface tracking-tight">Quản lý kho phụ tùng</h1>
-          </div>
-        </div>
+      {/* 1. SaaS Header & Primary Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
+          Quản lý kho phụ tùng
+        </h1>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/60 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between text-outline mb-2">
-              <span className="text-label-sm font-label-sm uppercase tracking-wider">Tổng mặt hàng SKU</span>
-              <div className="p-2 rounded-lg bg-surface-container-low text-primary">
-                <span className="material-symbols-outlined text-[20px]">category</span>
-              </div>
-            </div>
-            <div>
-              <div className="text-numeric-metric font-numeric-metric text-on-surface">{pagination?.totalRecords || 0} <span className="text-label-md font-normal text-outline">mã</span></div>
-            </div>
-          </div>
-
-          <div className="bg-surface-container-lowest rounded-xl p-5 border border-[#FCA5A5] shadow-sm flex flex-col justify-between relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-error-container/30 rounded-bl-full pointer-events-none"></div>
-            <div className="flex items-center justify-between text-outline mb-2">
-              <span className="text-label-sm font-label-sm uppercase tracking-wider text-error font-semibold flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">warning</span>
-                Dưới mức an toàn
-              </span>
-              <div className="p-2 rounded-lg bg-[#FEE2E2] text-error">
-                <span className="material-symbols-outlined text-[20px]">inventory</span>
-              </div>
-            </div>
-            <div>
-              <div className="text-numeric-metric font-numeric-metric text-error">{lowStockCount} <span className="text-label-md font-normal text-error/80">mặt hàng</span></div>
-            </div>
-          </div>
-
-          <div className="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/60 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between text-outline mb-2">
-              <span className="text-label-sm font-label-sm uppercase tracking-wider">Tổng giá trị kho</span>
-              <div className="p-2 rounded-lg bg-surface-container-low text-primary-container">
-                <span className="material-symbols-outlined text-[20px]">account_balance_wallet</span>
-              </div>
-            </div>
-            <div>
-              <div className="text-numeric-metric font-numeric-metric text-on-surface">
-                {totalValue.toLocaleString()} ₫
-              </div>
-            </div>
-          </div>
-
-
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <button
+            id="btn-add-part"
+            onClick={handleAddPart}
+            className="h-10 px-4 flex items-center gap-2 bg-white text-slate-700 hover:text-[#0866ff] border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px] text-[#0866ff]">add</span>
+            <span>Thêm Phụ tùng</span>
+          </button>
+          <button
+            onClick={() => setIsReceiptModalOpen(true)}
+            className="h-10 px-4 flex items-center gap-2 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white rounded-xl text-xs font-bold shadow-md shadow-[#0866ff]/20 active:scale-[0.98] transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">add_box</span>
+            <span>+ Nhập Kho</span>
+          </button>
         </div>
       </div>
 
-      {/* 2. Thanh công cụ & Filter */}
-      <div className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/60 shadow-sm space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3 flex-1">
-            <div className="relative min-w-[280px] flex-1 sm:flex-initial">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-outline">
-                <span className="material-symbols-outlined text-[18px]">search</span>
+      {/* 2. Asymmetrical 12-Col Inventory Bento (5 + 4 + 3) */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+        {/* Hero Card: Tổng giá trị kho (5 cols) */}
+        <div className="md:col-span-5 rounded-2xl saas-hero-gradient text-white p-5 relative overflow-hidden flex flex-col justify-between">
+          <div className="absolute inset-0 saas-subtle-grid pointer-events-none" />
+          <div className="relative z-10 flex items-start justify-between">
+            <div>
+              <span className="text-xs font-medium text-blue-100/90">Tổng giá trị vốn tồn kho</span>
+              <div className="text-2xl sm:text-3xl font-mono font-extrabold tabular-nums tracking-tight mt-1">
+                {totalValue.toLocaleString('vi-VN')} ₫
+              </div>
+            </div>
+            <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center backdrop-blur-xs">
+              <span className="material-symbols-outlined text-[22px] text-white">
+                account_balance_wallet
               </span>
-              <input 
+            </div>
+          </div>
+          <div className="relative z-10 mt-4 pt-3.5 border-t border-white/15 flex items-center justify-between text-xs text-blue-50">
+            <span>Tính theo giá vốn bình quân gia quyền</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-white/15 font-mono font-semibold">
+              {pagination ? `${pagination.totalRecords} SKU tồn kho` : `${items.length} SKU`}
+            </span>
+          </div>
+        </div>
+
+        {/* Tile 2: Tổng mặt hàng SKU (4 cols) */}
+        <div className="md:col-span-4 saas-card p-5 flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-xs font-semibold text-slate-500">Tổng mặt hàng SKU</span>
+              <div className="text-2xl sm:text-3xl font-mono font-extrabold tabular-nums text-slate-900 mt-1">
+                {pagination?.totalRecords || 0}{' '}
+                <span className="text-sm font-sans font-medium text-slate-400">mã</span>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200/60 text-[#0866ff] flex items-center justify-center">
+              <span className="material-symbols-outlined text-[20px]">category</span>
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>Nhóm danh mục quản lý</span>
+            <span className="font-mono font-bold text-[#0866ff]">{categories.length} nhóm</span>
+          </div>
+        </div>
+
+        {/* Tile 3: Dưới mức an toàn (3 cols) */}
+        <button
+          type="button"
+          onClick={() => setStockStatus(stockStatus === 'low' ? 'all' : 'low')}
+          className={`md:col-span-3 text-left rounded-2xl p-5 border transition-all flex flex-col justify-between cursor-pointer ${
+            stockStatus === 'low'
+              ? 'bg-rose-50/90 border-rose-400 shadow-sm'
+              : lowStockCount > 0
+              ? 'bg-rose-50/45 border-rose-200/80 hover:border-rose-300'
+              : 'bg-white border-slate-200/80 hover:border-blue-200'
+          }`}
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-xs font-semibold text-rose-600 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[15px]">warning</span>
+                Dưới mức an toàn
+              </span>
+              <div className="text-2xl sm:text-3xl font-mono font-extrabold tabular-nums text-rose-600 mt-1">
+                {lowStockCount}{' '}
+                <span className="text-xs font-sans font-medium text-rose-500">mặt hàng</span>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-rose-100/80 text-rose-600 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[20px]">inventory</span>
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-rose-200/50 flex items-center justify-between text-xs">
+            <span className="text-slate-500">Nhấn để lọc nhanh</span>
+            <span className="text-rose-600 font-semibold">
+              {stockStatus === 'low' ? 'Đang lọc' : 'Cần nhập thêm'}
+            </span>
+          </div>
+        </button>
+      </div>
+
+      {/* 3. Thanh công cụ & Filter */}
+      <div className="saas-card p-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            <div className="flex items-center gap-2 min-w-[260px] flex-1 sm:flex-initial h-9 px-3 rounded-xl bg-slate-50/80 border border-slate-200/80 focus-within:bg-white focus-within:border-[#0866ff] transition-all">
+              <span className="material-symbols-outlined text-slate-500 text-[18px] shrink-0">
+                search
+              </span>
+              <input
                 type="text"
                 value={search}
-                onChange={e => setSearch(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && loadData()}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && loadData(1)}
                 placeholder="Tìm theo SKU, danh mục, thương hiệu..."
-                className="w-full h-9 pl-9 pr-3 text-body-sm bg-surface-container-lowest border border-[#D8DADF] rounded-md focus:border-primary-container focus:ring-1 outline-none"
+                className="flex-1 min-w-0 bg-transparent text-slate-900 placeholder:text-slate-500 text-xs focus:outline-none"
               />
             </div>
-            
-            <select 
+
+            <select
               value={itemType}
-              onChange={e => setItemType(e.target.value)}
-              className="h-9 px-3 text-label-sm bg-surface-container-lowest border border-[#D8DADF] rounded-md outline-none"
+              onChange={(e) => setItemType(e.target.value)}
+              className="h-9 px-3 text-xs font-semibold text-slate-700 bg-slate-50/80 border border-slate-200/80 rounded-xl focus:border-[#0866ff] outline-none cursor-pointer"
             >
               <option value="all">Loại: Tất cả</option>
               <option value="PART">Phụ tùng</option>
@@ -186,133 +258,215 @@ export default function InventoryPage() {
               <option value="ACCESSORY">Phụ kiện</option>
             </select>
 
-            <select 
+            <select
               id="inventory-filter-category"
               value={categoryId}
-              onChange={e => setCategoryId(e.target.value)}
-              className="h-9 px-3 text-label-sm bg-surface-container-lowest border border-[#D8DADF] rounded-md outline-none max-w-[220px]"
+              onChange={(e) => setCategoryId(e.target.value)}
+              className="h-9 px-3 text-xs font-semibold text-slate-700 bg-slate-50/80 border border-slate-200/80 rounded-xl focus:border-[#0866ff] outline-none max-w-[220px] cursor-pointer"
             >
               <option value="all">Danh mục: Tất cả</option>
-              {categories.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
               ))}
             </select>
 
-            <select 
+            <select
               value={stockStatus}
-              onChange={e => setStockStatus(e.target.value)}
-              className="h-9 px-3 text-label-sm bg-surface-container-lowest border border-[#D8DADF] rounded-md outline-none"
+              onChange={(e) => setStockStatus(e.target.value)}
+              className="h-9 px-3 text-xs font-semibold text-slate-700 bg-slate-50/80 border border-slate-200/80 rounded-xl focus:border-[#0866ff] outline-none cursor-pointer"
             >
               <option value="all">Trạng thái: Tất cả</option>
               <option value="low">Sắp hết hàng</option>
               <option value="sufficient">Đủ tồn kho</option>
             </select>
 
-            <button onClick={handleFilterReset} className="h-9 px-3 flex items-center gap-1.5 text-label-sm text-on-surface-variant hover:bg-surface-container-low rounded-md border border-dashed border-[#D8DADF]">
+            <button
+              onClick={handleFilterReset}
+              className="h-9 px-3 flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100/80 rounded-xl border border-dashed border-slate-300 transition-colors cursor-pointer"
+            >
               <span className="material-symbols-outlined text-[16px]">filter_alt_off</span>
-              Đặt lại
+              <span>Đặt lại</span>
             </button>
-            <button onClick={loadData} className="h-9 px-3 flex items-center gap-1.5 text-label-sm text-primary hover:bg-surface-container-low rounded-md border border-[#D8DADF]">
+            <button
+              onClick={() => loadData(1)}
+              className="h-9 px-3.5 flex items-center gap-1.5 text-xs font-bold text-[#0866ff] bg-blue-50/80 hover:bg-blue-100/80 rounded-xl border border-blue-200/80 transition-colors cursor-pointer"
+            >
               <span className="material-symbols-outlined text-[16px]">search</span>
-              Lọc
-            </button>
-          </div>
-          
-          <div className="flex items-center gap-2 self-end lg:self-center">
-
-            <button id="btn-add-part" onClick={handleAddPart} className="h-9 px-3.5 flex items-center gap-2 bg-surface-container-lowest text-on-surface border border-outline-variant hover:bg-surface-container-low rounded-md text-label-md font-medium shadow-sm transition-colors">
-              <span className="material-symbols-outlined text-[18px]">add</span>
-              Thêm Phụ tùng
-            </button>
-            <button onClick={() => setIsReceiptModalOpen(true)} className="h-9 px-4 flex items-center gap-2 bg-primary-container text-on-primary hover:bg-primary rounded-md text-label-md font-medium shadow-sm transition-colors">
-              <span className="material-symbols-outlined text-[18px]">add_box</span>
-              Nhập Kho
+              <span>Lọc</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* 3. Bảng dữ liệu */}
-      <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/60 shadow-sm overflow-hidden">
+      {/* 4. Bảng dữ liệu */}
+      <div className="saas-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[920px]">
             <thead>
-              <tr className="bg-surface-container-low border-b border-[#E4E6EB] text-label-sm text-outline h-10">
-                <th className="py-2.5 px-4 font-semibold uppercase">Mã SKU</th>
-                <th className="py-2.5 px-4 font-semibold uppercase min-w-[240px]">Danh mục / Vật tư</th>
-                <th className="py-2.5 px-4 font-semibold uppercase">Thương hiệu</th>
-                <th className="py-2.5 px-4 font-semibold uppercase">Phân loại</th>
-                <th className="py-2.5 px-4 font-semibold uppercase text-right">Giá vốn TB</th>
-                <th className="py-2.5 px-4 font-semibold uppercase text-right">Giá bán</th>
-                <th className="py-2.5 px-4 font-semibold uppercase text-center">Tồn kho</th>
-                <th className="py-2.5 px-4 font-semibold uppercase text-center min-w-[160px]">Thao tác</th>
+              <tr className="h-11 bg-slate-50/90 border-b border-slate-200/80 text-xs text-slate-600 font-bold uppercase tracking-wider">
+                <th className="py-3 px-5 font-mono">Mã SKU</th>
+                <th className="py-3 px-5 min-w-[240px]">Danh mục / Vật tư</th>
+                <th className="py-3 px-5">Thương hiệu</th>
+                <th className="py-3 px-5">Phân loại</th>
+                <th className="py-3 px-5 text-right">Giá vốn TB</th>
+                <th className="py-3 px-5 text-right">Giá bán</th>
+                <th className="py-3 px-5 text-center">Tồn kho</th>
+                <th className="py-3 px-5 text-center min-w-[140px]">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E4E6EB] text-body-md">
+            <tbody className="divide-y divide-slate-200/60 text-sm">
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-8">Đang tải...</td></tr>
+                <tr>
+                  <td colSpan={8} className="text-center py-12 text-slate-500 text-xs">
+                    Đang tải dữ liệu tồn kho...
+                  </td>
+                </tr>
               ) : filteredItems.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8">Không có dữ liệu</td></tr>
-              ) : filteredItems.map(item => {
-                const isLowStock = item.onHand < item.reorderLevel;
-                return (
-                  <tr key={item.id} className={`hover:bg-[#F0F2F5] transition-colors ${isLowStock ? 'bg-[#FEF2F2] border-l-4 border-l-error' : ''}`}>
-                    <td className="py-3 px-4 font-medium text-on-surface">{item.sku}</td>
-                    <td className="py-3 px-4">
-                      <div className="font-medium text-on-surface">{item.partCategory?.name ?? item.name}</div>
-                      <div className="text-body-sm text-outline">{item.partCategory?.code} · ĐVT: {item.uom?.name}</div>
-                    </td>
-                    <td className="py-3 px-4">
-                      {item.brand ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-label-sm font-medium bg-primary-container/10 text-primary">
-                          {item.brand.name}
-                        </span>
-                      ) : (
-                        <span className="text-outline">—</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-label-sm font-medium bg-surface-container-high text-on-surface-variant">
-                        {item.itemType}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right text-outline">{item.averageCost.toLocaleString()} ₫</td>
-                    <td className="py-3 px-4 text-right font-semibold text-on-surface">{item.sellingPrice.toLocaleString()} ₫</td>
-                    <td className="py-3 px-4 text-center">
-                      {isLowStock ? (
-                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FEE2E2] text-error font-bold border border-[#FECACA]">
-                          <span className="material-symbols-outlined text-[14px]">warning</span>
-                          {item.onHand}
+                <tr>
+                  <td colSpan={8} className="text-center py-12 text-slate-400 text-xs">
+                    Không có mặt hàng phụ tùng nào phù hợp
+                  </td>
+                </tr>
+              ) : (
+                filteredItems.map((item) => {
+                  const isLowStock = item.onHand < item.reorderLevel;
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`transition-colors ${
+                        isLowStock
+                          ? 'bg-rose-50/35 hover:bg-rose-50/60'
+                          : 'hover:bg-blue-50/25'
+                      }`}
+                    >
+                      <td className="py-3.5 px-5 font-mono text-xs font-bold text-[#0866ff]">
+                        {item.sku}
+                      </td>
+                      <td className="py-3.5 px-5">
+                        <div className="font-semibold text-slate-900">
+                          {item.partCategory?.name ?? item.name}
                         </div>
-                      ) : (
-                        <span className="font-semibold text-[15px]">{item.onHand}</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        {isLowStock && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[#FEE2E2] text-[#B91C1C] border border-[#FECACA]">
-                            Sắp hết
+                        <div className="text-xs text-slate-600 font-medium mt-0.5">
+                          <span className="font-mono text-slate-700">{item.partCategory?.code}</span> · ĐVT: {item.uom?.name}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-5">
+                        {item.brand ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-blue-50 text-[#0050cd] border border-blue-200/80">
+                            {item.brand.name}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-medium">—</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-5">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${
+                            ITEM_TYPE_BADGE[item.itemType] || 'bg-slate-100 text-slate-700 border-slate-200/80'
+                          }`}
+                        >
+                          {ITEM_TYPE_LABELS[item.itemType] || item.itemType}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 text-right font-mono tabular-nums text-xs text-slate-700 font-medium">
+                        {item.averageCost.toLocaleString('vi-VN')} ₫
+                      </td>
+                      <td className="py-3.5 px-5 text-right font-mono tabular-nums font-bold text-slate-900">
+                        {item.sellingPrice.toLocaleString('vi-VN')} ₫
+                      </td>
+                      <td className="py-3.5 px-5 text-center">
+                        {isLowStock ? (
+                          <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 font-mono text-xs font-bold border border-rose-200">
+                            <span className="material-symbols-outlined text-[14px]">warning</span>
+                            {item.onHand}
+                          </div>
+                        ) : (
+                          <span className="font-mono tabular-nums font-bold text-slate-800">
+                            {item.onHand}
                           </span>
                         )}
-                        {!item.isActive && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-surface-container-high text-outline">
-                            Ngừng bán
-                          </span>
-                        )}
-                        <button onClick={() => handleEditPart(item)} className="p-1 text-primary hover:bg-surface-container-low rounded" title="Chỉnh sửa">
-                          <span className="material-symbols-outlined text-[18px]">edit</span>
-                        </button>
-                        <button onClick={() => handleToggleClick(item)} className="p-1 text-outline hover:text-error rounded" title={item.isActive ? "Tạm ngưng" : "Kích hoạt lại"}>
-                          <span className="material-symbols-outlined text-[18px]">{item.isActive ? 'block' : 'check_circle'}</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                      <td className="py-3.5 px-5 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {isLowStock && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200/80">
+                              Sắp hết
+                            </span>
+                          )}
+                          {!item.isActive && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-500">
+                              Ngừng bán
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleEditPart(item)}
+                            className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-[#0866ff] flex items-center justify-center transition-colors cursor-pointer"
+                            title="Chỉnh sửa"
+                          >
+                            <span className="material-symbols-outlined text-[17px]">edit</span>
+                          </button>
+                          <button
+                            onClick={() => handleToggleClick(item)}
+                            className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-rose-50 border border-slate-200/80 text-slate-500 hover:text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
+                            title={item.isActive ? 'Tạm ngưng' : 'Kích hoạt lại'}
+                          >
+                            <span className="material-symbols-outlined text-[17px]">
+                              {item.isActive ? 'block' : 'check_circle'}
+                            </span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination footer */}
+        <div className="px-5 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200/80 bg-slate-50/40">
+          <span className="text-xs text-slate-700">
+            Hiển thị <span className="font-mono font-bold text-slate-900">{filteredItems.length}</span>{' '}
+            trong tổng số{' '}
+            <span className="font-mono font-bold text-slate-900">{pagination?.totalRecords || items.length}</span>{' '}
+            phụ tùng
+          </span>
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => loadData(Math.max(1, currentPage - 1))}
+                disabled={currentPage <= 1}
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 flex items-center justify-center transition-colors cursor-pointer"
+                title="Trang trước"
+              >
+                <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+              </button>
+              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => loadData(page)}
+                  className={`w-8 h-8 rounded-lg font-mono text-xs font-semibold transition-colors cursor-pointer ${
+                    page === currentPage
+                      ? 'bg-[#0866ff] text-white shadow-2xs'
+                      : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-800'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => loadData(Math.min(pagination.totalPages, currentPage + 1))}
+                disabled={currentPage >= pagination.totalPages}
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 flex items-center justify-center transition-colors cursor-pointer"
+                title="Trang sau"
+              >
+                <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
