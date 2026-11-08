@@ -10,14 +10,14 @@
 | Nhóm | UC ID | Số lượng |
 |------|-------|----------|
 | **Khách vãng lai (Guest)** | UC-01 → UC-03 | 3 use case |
-| **Khách hàng (Customer)** | UC-04 → UC-16, UC-79 | 14 use case |
+| **Khách hàng (Customer)** | UC-04 → UC-16, UC-80 | 14 use case |
 | **Nhân viên quầy dịch vụ (Front Desk Staff)** | UC-17 → UC-28 | 12 use case |
-| **Cố vấn dịch vụ** | UC-29 → UC-42 | 14 use case |
-| **Quản lý dịch vụ & Kho (Service Manager)** | UC-43 → UC-53 | 11 use case |
-| **Quản trị viên (Administrator)** | UC-54 → UC-77 | 24 use case |
-| **Hệ thống tự động (Background Jobs)** | UC-78 | 1 use case |
-| **Phân hệ quản lý bảo hành** | UC-80 → UC-86 | 7 use case |
-| **Tổng cộng** | **UC-01 → UC-86** | **86 use case** |
+| **Cố vấn dịch vụ** | UC-29 → UC-43 | 15 use case |
+| **Quản lý dịch vụ & Kho (Service Manager)** | UC-44 → UC-54 | 11 use case |
+| **Quản trị viên (Administrator)** | UC-55 → UC-78 | 24 use case |
+| **Hệ thống tự động (Background Jobs)** | UC-79 | 1 use case |
+| **Phân hệ quản lý bảo hành** | UC-81 → UC-87 | 7 use case |
+| **Tổng cộng** | **UC-01 → UC-87** | **87 use case** |
 
 ---
 
@@ -103,7 +103,7 @@
 | **Mã Use case**    | UC-05 |
 | ------------------ | ------ |
 | **Tên Use case**   | Khôi phục mật khẩu |
-| **Mô tả**          | Khách hàng quên mật khẩu có thể yêu cầu đặt lại mật khẩu ngay tại trang đăng nhập. Hệ thống gửi mã xác thực OTP về địa chỉ email đã đăng ký để xác minh danh tính trước khi cho phép đặt mật khẩu mới. Chức năng này chỉ dành riêng cho Khách hàng; tài khoản nhân viên do Quản trị viên cấp và đặt lại mật khẩu thông qua UC-56. |
+| **Mô tả**          | Khách hàng quên mật khẩu có thể yêu cầu đặt lại mật khẩu ngay tại trang đăng nhập. Hệ thống gửi mã xác thực OTP về địa chỉ email đã đăng ký để xác minh danh tính trước khi cho phép đặt mật khẩu mới. Chức năng này chỉ dành riêng cho Khách hàng; tài khoản nhân viên do Quản trị viên cấp và đặt lại mật khẩu thông qua UC-57. |
 | **Đối tượng**      | Khách hàng (Customer) |
 | **Tiền điều kiện** | Khách hàng có tài khoản trong hệ thống và có quyền truy cập vào hộp thư email đã đăng ký. |
 | **Hậu điều kiện**  | Thành công: Mật khẩu mới được cập nhật; khách hàng được chuyển đến trang đăng nhập.<br>Thất bại: Hệ thống thông báo lỗi, mật khẩu không thay đổi. |
@@ -655,44 +655,59 @@
 | **Tiền điều kiện** | Phiếu công việc đã có ít nhất một bản báo giá được tạo (UC-37). |
 | **Hậu điều kiện**  | Thành công: Người dùng xem được đầy đủ chi tiết bảng báo giá, tải file PDF hoặc theo dõi được trạng thái phản hồi của khách hàng.<br>Thất bại: Hệ thống thông báo lỗi nếu không tìm thấy dữ liệu báo giá. |
 | **Luồng cơ bản**   | 1. Người dùng mở tab **Báo giá** trong phiếu công việc (hoặc khách hàng mở liên kết báo giá trực tuyến gửi qua tin nhắn/email).<br>2. Hệ thống hiển thị giao diện báo giá với các thông tin chi tiết:<br>- **Thanh điều hướng phiên bản:** Liệt kê các phiên bản báo giá kèm huy hiệu trạng thái (Bản nháp, Đã gửi khách, Đã duyệt, Bị từ chối).<br>- **Thông tin khách hàng & xe:** Họ tên, số điện thoại, biển số xe, số ODO tiếp nhận.<br>- **Bảng kê chi tiết chi phí:** Phân tách rõ ràng tiền nhân công theo từng đầu việc và tiền phụ tùng/vật tư thay thế.<br>- **Tổng kết tài chính:** Tổng tiền dịch vụ, tổng tiền phụ tùng, số tiền giảm giá chiết khấu, thuế VAT và Tổng thanh toán cuối cùng.<br>3. (Tùy chọn) Người dùng nhấn nút **Tải báo giá (PDF)** để xuất và tải file báo giá dạng tài liệu in ấn chuẩn của xưởng. |
-| **Luồng thay thế** | **[Khách hàng xem báo giá trên cổng thông tin trực tuyến]**<br>1a. Khách hàng nhấp vào đường dẫn nhận được trong tin nhắn hoặc email thông báo báo giá.<br>2a. Hệ thống hiển thị trang xem báo giá trực tuyến dành riêng cho khách hàng với đầy đủ chi tiết các hạng mục và hai nút hành động: **Đồng ý báo giá** hoặc **Từ chối báo giá** (chuyển tiếp sang UC-39). |
+| **Luồng thay thế** | **[Khách hàng xem báo giá trên cổng thông tin trực tuyến]**<br>1a. Khách hàng nhấp vào đường dẫn nhận được trong tin nhắn hoặc email thông báo báo giá.<br>2a. Hệ thống hiển thị trang xem báo giá trực tuyến dành riêng cho khách hàng với đầy đủ chi tiết các hạng mục và hai nút hành động: **Đồng ý báo giá** hoặc **Từ chối báo giá** (chuyển tiếp sang UC-40). |
 | **Luồng ngoại lệ** | Tại bước 1, nếu đường dẫn xem báo giá không tồn tại hoặc đã hết hạn truy cập, hệ thống hiển thị thông báo lỗi: *"Báo giá không tồn tại hoặc phiên làm việc đã hết hạn. Vui lòng liên hệ cố vấn dịch vụ để được hỗ trợ."* |
 
 ---
 
-## UC-39 – Cập nhật và duyệt báo giá
+## UC-39 – Cập nhật báo giá
 
 | **Mã Use case**    | UC-39 |
 | ------------------ | ------ |
-| **Tên Use case**   | Cập nhật và duyệt báo giá |
-| **Mô tả**          | Cố vấn dịch vụ gửi báo giá cho khách hàng, ghi nhận quyết định phê duyệt hoặc từ chối của khách hàng (hoặc khách hàng tự duyệt/từ chối trực tuyến). Khi khách hàng phê duyệt, hệ thống khóa cố định nội dung báo giá, đồng bộ trạng thái phiếu công việc và tự động chuyển trạng thái phụ tùng sang diện giữ chỗ trong kho để phục vụ thi công. |
+| **Tên Use case**   | Cập nhật báo giá |
+| **Mô tả**          | Cố vấn dịch vụ điều chỉnh các thông tin tài chính trên bản báo giá đang ở trạng thái Bản nháp (hoặc Đã gửi khách) trước khi khách hàng chốt duyệt, bao gồm áp dụng chính sách chiết khấu giảm giá (theo số tiền VNĐ hoặc theo tỷ lệ phần trăm %), bổ sung lý do ưu đãi, cập nhật ghi chú báo giá hoặc đồng bộ lại các dòng chiết tính chi phí khi kế hoạch dịch vụ và phụ tùng có sự thay đổi. |
+| **Đối tượng**      | Cố vấn dịch vụ |
+| **Tiền điều kiện** | Phiếu công việc đã có bản báo giá được tạo (UC-37); Báo giá đang ở trạng thái Bản nháp (`DRAFT`) hoặc Đã gửi khách (`SENT`). Tuyệt đối không áp dụng cho báo giá đã ở trạng thái Đã duyệt (`APPROVED` - Đã khóa). |
+| **Hậu điều kiện**  | Thành công: Số tiền chiết khấu, lý do giảm giá, ghi chú và tổng thanh toán cuối cùng của báo giá được cập nhật chính xác vào hệ thống và hiển thị trên giao diện.<br>Thất bại: Hệ thống hiển thị thông báo lỗi, dữ liệu báo giá được giữ nguyên. |
+| **Luồng cơ bản**   | **[Áp dụng chiết khấu / Điều chỉnh giảm giá]**<br>1. Tại tab **Báo giá**, cố vấn mở bản báo giá cần điều chỉnh và nhấn nút **Chỉnh sửa chiết khấu** (hoặc nút **(Sửa)** cạnh dòng *Chiết khấu / Giảm giá* tại khung tóm tắt tài chính Bento Box).<br>2. Hệ thống hiển thị hộp thoại **Áp dụng chiết khấu / Giảm giá**.<br>3. Cố vấn chọn hình thức giảm giá: theo số tiền trực tiếp (**VNĐ**) hoặc theo tỷ lệ phần trăm (**%**).<br>4. Cố vấn nhập giá trị giảm giá và ghi rõ lý do ưu đãi (chương trình khuyến mãi tháng, tri ân khách hàng thân thiết, hỗ trợ sự cố...).<br>5. Hệ thống tự động tính toán lại số tiền giảm và tổng thanh toán sau thuế (Grand Total = Subtotal - DiscountAmount, áp dụng VAT 0%).<br>6. Cố vấn nhấn nút **Lưu chiết khấu** (hoặc **Hủy** để bỏ qua).<br>7. Hệ thống gọi API cập nhật báo giá (`PATCH /api/quotations/:id`), ghi nhận giá trị chiết khấu mới, cập nhật lại bảng chiết tính chi phí trên màn hình và hiển thị thông báo: *"Đã cập nhật chiết khấu thành công"*. |
+| **Luồng thay thế** | **[Cập nhật ghi chú báo giá]**<br>1a. Tại bản báo giá nháp, cố vấn mở khung nhập ghi chú hoặc điều khoản thanh toán bổ sung.<br>2a. Cố vấn nhập các lưu ý kỹ thuật hoặc dặn dò dành riêng cho khách hàng.<br>3a. Cố vấn nhấn **Lưu ghi chú**.<br>4a. Hệ thống cập nhật nội dung ghi chú vào bản ghi báo giá.<br><br>**[Đồng bộ lại số liệu khi kế hoạch dịch vụ thay đổi]**<br>1b. Khi cố vấn bổ sung hoặc xóa bớt hạng mục công việc (UC-34), phụ tùng (UC-36) ở các tab trước trong lúc báo giá vẫn ở trạng thái Bản nháp.<br>2b. Cố vấn mở lại tab Báo giá, hệ thống kiểm tra và cho phép cập nhật lại danh mục các dòng chi phí (`lines`) tương ứng với kế hoạch mới nhất trước khi trình khách duyệt. |
+| **Luồng ngoại lệ** | Nếu báo giá đã ở trạng thái Đã duyệt (`APPROVED`), hệ thống ẩn hoàn toàn nút Chỉnh sửa chiết khấu và các chức năng sửa đổi; nếu phát sinh yêu cầu can thiệp trái phép, hệ thống từ chối và thông báo lỗi: *"Báo giá đã được phê duyệt, không thể chỉnh sửa."*<br><br>Tại bước 4 của luồng chiết khấu, nếu số tiền giảm giá lớn hơn tổng tiền hạng mục ban đầu (Subtotal) hoặc có giá trị âm, hoặc tỷ lệ phần trăm lớn hơn 100%, hệ thống hiển thị cảnh báo: *"Mức chiết khấu không hợp lệ (không được vượt quá 100% hoặc tổng chi phí ban đầu)."* và khóa nút lưu. |
+
+---
+
+## UC-40 – Duyệt báo giá
+
+| **Mã Use case**    | UC-40 |
+| ------------------ | ------ |
+| **Tên Use case**   | Duyệt báo giá |
+| **Mô tả**          | Cố vấn dịch vụ gửi báo giá cho khách hàng, ghi nhận quyết định phê duyệt hoặc từ chối của khách hàng (hoặc khách hàng tự duyệt/từ chối trực tuyến qua liên kết theo dõi). Khi khách hàng phê duyệt, hệ thống khóa cố định (freeze snapshot) toàn bộ nội dung và chi phí báo giá, đồng bộ trạng thái phiếu công việc và tự động chuyển trạng thái phụ tùng sang diện giữ chỗ trong kho (`RESERVED`) để chuẩn bị thi công. |
 | **Đối tượng**      | Cố vấn dịch vụ, Khách hàng |
-| **Tiền điều kiện** | Báo giá đang ở trạng thái Bản nháp hoặc Đã gửi khách, chưa được chốt duyệt trước đó. |
-| **Hậu điều kiện**  | - Khi duyệt: Báo giá chuyển sang trạng thái Đã duyệt, toàn bộ đơn giá và danh mục bị khóa cố định; phiếu công việc chuyển sang trạng thái Đã duyệt; các phụ tùng trong báo giá tự động chuyển sang trạng thái Giữ chỗ trong kho; hệ thống kích hoạt quyền phân công điều phối thợ thi công.<br>- Khi từ chối: Báo giá chuyển sang trạng thái Bị từ chối, ghi nhận lý do từ chối để cố vấn tạo phiên bản báo giá điều chỉnh tiếp theo.<br>- Thất bại: Hệ thống thông báo lỗi, trạng thái dữ liệu giữ nguyên. |
-| **Luồng cơ bản**   | 1. Tại tab **Báo giá**, cố vấn xem lại bản báo giá cần phê duyệt (hoặc khách hàng xem trên trang báo giá trực tuyến).<br>2. (Tùy chọn gửi khách) Cố vấn nhấn nút **Gửi khách hàng** để chuyển trạng thái báo giá sang Đã gửi khách và tự động gửi thông báo qua tin nhắn/email cho khách.<br>3. Khi khách hàng xác nhận đồng ý phương án sửa chữa:<br>- Nếu khách tự duyệt trực tuyến: Khách nhấn nút **Đồng ý báo giá**.<br>- Nếu khách xác nhận trực tiếp hoặc qua điện thoại: Cố vấn nhấn nút **Khách đã đồng ý (Duyệt báo giá)**.<br>4. Hệ thống hiển thị hộp thoại xác nhận phê duyệt báo giá.<br>5. Người dùng nhấn **Xác nhận**.<br>6. Hệ thống thực hiện một chuỗi xử lý tự động đồng bộ:<br>- Cập nhật trạng thái báo giá thành Đã duyệt và khóa toàn bộ nội dung chi phí.<br>- Cập nhật trạng thái phiếu công việc thành Đã duyệt (sẵn sàng chuyển sang Đang thi công khi thợ bắt đầu nhận việc).<br>- Tự động cập nhật trạng thái các phụ tùng trong phiếu từ Kế hoạch sang Giữ chỗ trong kho để đảm bảo đủ vật tư thi công.<br>- Gửi thông báo đến Cố vấn dịch vụ và Tổ điều phối để phân công kỹ thuật viên bắt đầu sửa chữa.<br>7. Màn hình tab Báo giá cập nhật giao diện đã duyệt với huy hiệu màu xanh lá cây. |
-| **Luồng thay thế** | **[Khách hàng từ chối báo giá]**<br>3a. Khách hàng hoặc Cố vấn nhấn nút **Từ chối**.<br>4a. Hệ thống hiển thị hộp thoại nhập lý do từ chối (ví dụ: Chi phí vượt ngân sách, muốn hoãn sửa chữa một số hạng mục...).<br>5a. Người dùng nhập lý do và nhấn **Xác nhận từ chối**.<br>6a. Hệ thống cập nhật trạng thái báo giá thành Bị từ chối và ghi lại lý do phản hồi.<br>7a. Cố vấn trao đổi lại với khách hàng và nhấn **Tạo báo giá mới** để lập phương án điều chỉnh giá hoặc rút gọn hạng mục phù hợp. |
+| **Tiền điều kiện** | Báo giá đang ở trạng thái Bản nháp (`DRAFT`) hoặc Đã gửi khách (`SENT`), chưa được chốt duyệt trước đó. |
+| **Hậu điều kiện**  | - Khi duyệt: Báo giá chuyển sang trạng thái Đã duyệt (`APPROVED`), toàn bộ đơn giá và danh mục bị khóa cố định; phiếu công việc chuyển sang trạng thái Đã duyệt (`APPROVED`); các phụ tùng trong báo giá tự động chuyển sang trạng thái Giữ chỗ trong kho (`RESERVED`); hệ thống kích hoạt quyền phân công điều phối thợ thi công.<br>- Khi từ chối: Báo giá chuyển sang trạng thái Bị từ chối (`REJECTED`), ghi nhận lý do từ chối để cố vấn tạo phiên bản báo giá điều chỉnh tiếp theo (UC-37).<br>- Thất bại: Hệ thống thông báo lỗi, trạng thái dữ liệu giữ nguyên. |
+| **Luồng cơ bản**   | 1. Tại tab **Báo giá**, cố vấn xem lại bản báo giá cần phê duyệt (hoặc khách hàng xem trên trang báo giá trực tuyến).<br>2. (Tùy chọn gửi khách) Cố vấn nhấn nút **Gửi khách hàng** để chuyển trạng thái báo giá sang Đã gửi khách (`SENT`) và tự động gửi thông báo qua tin nhắn/email cho khách.<br>3. Khi khách hàng xác nhận đồng ý phương án sửa chữa:<br>- Nếu khách tự duyệt trực tuyến: Khách nhấn nút **Đồng ý báo giá**.<br>- Nếu khách xác nhận trực tiếp hoặc qua điện thoại: Cố vấn nhấn nút **Khách đã đồng ý (Duyệt báo giá)**.<br>4. Hệ thống hiển thị hộp thoại xác nhận phê duyệt báo giá.<br>5. Người dùng nhấn **Xác nhận**.<br>6. Hệ thống thực hiện một chuỗi xử lý tự động đồng bộ:<br>- Cập nhật trạng thái báo giá thành Đã duyệt (`APPROVED`) và khóa toàn bộ nội dung chi phí (freeze snapshot).<br>- Cập nhật trạng thái phiếu công việc thành Đã duyệt (`APPROVED`) (sẵn sàng chuyển sang Đang thi công khi thợ bắt đầu nhận việc).<br>- Tự động cập nhật trạng thái các phụ tùng trong phiếu từ Kế hoạch (`PLANNED`) sang Giữ chỗ trong kho (`RESERVED`) để đảm bảo đủ vật tư thi công.<br>- Gửi thông báo đến Cố vấn dịch vụ và Tổ điều phối để phân công kỹ thuật viên bắt đầu sửa chữa.<br>7. Màn hình tab Báo giá cập nhật giao diện đã duyệt với huy hiệu màu xanh lá cây (*Đã phê duyệt (Đã khóa)*). |
+| **Luồng thay thế** | **[Khách hàng từ chối báo giá]**<br>3a. Khách hàng hoặc Cố vấn nhấn nút **Từ chối**.<br>4a. Hệ thống hiển thị hộp thoại nhập lý do từ chối (ví dụ: Chi phí vượt ngân sách, muốn hoãn sửa chữa một số hạng mục...).<br>5a. Người dùng nhập lý do và nhấn **Xác nhận từ chối**.<br>6a. Hệ thống cập nhật trạng thái báo giá thành Bị từ chối (`REJECTED`) và ghi lại lý do phản hồi.<br>7a. Cố vấn trao đổi lại với khách hàng:<br>- Nếu khách đồng ý điều chỉnh: Cố vấn nhấn **Tạo báo giá mới** (UC-37) để lập phương án điều chỉnh giá hoặc rút gọn hạng mục phù hợp.<br>- Nếu khách hủy dịch vụ để lấy lại xe: Cố vấn chuyển sang tab Giao xe để thực hiện thủ tục xuất trả xe sớm (UC-43). |
 | **Luồng ngoại lệ** | Tại bước 5, nếu báo giá đã ở trạng thái Đã duyệt, hệ thống khóa các nút duyệt và từ chối, hiển thị dòng thông báo: *"Báo giá này đã được chốt và khóa cố định. Để thay đổi, vui lòng lập Báo giá bổ sung."*<br><br>Nếu phương tiện đã bắt đầu bước thi công sửa chữa trong xưởng, hệ thống ngăn chặn việc từ chối báo giá để bảo vệ chi phí vật tư và công thợ. |
 
 ---
 
-## UC-40 – Hủy báo giá
+## UC-41 – Hủy báo giá
 
-| **Mã Use case**    | UC-40 |
+| **Mã Use case**    | UC-41 |
 | ------------------ | ------ |
 | **Tên Use case**   | Hủy báo giá |
-| **Mô tả**          | Cố vấn dịch vụ áp dụng chính sách chiết khấu giảm giá trực tiếp trên bản báo giá trước khi khách hàng duyệt, hoặc hủy bỏ một bản báo giá bị lập sai sót để giải phóng dữ liệu và quay lại màn hình lập kế hoạch. |
+| **Mô tả**          | Cố vấn dịch vụ hủy bỏ một bản báo giá bị lập sai sót hoặc không còn phù hợp trước khi khách hàng duyệt, nhằm giải phóng dữ liệu và đưa phiếu công việc quay lại màn hình lập kế hoạch dịch vụ. |
 | **Đối tượng**      | Cố vấn dịch vụ |
-| **Tiền điều kiện** | Báo giá đang ở trạng thái Bản nháp hoặc Đã gửi khách. Tuyệt đối không áp dụng cho báo giá đã ở trạng thái Đã duyệt (Đã khóa). |
-| **Hậu điều kiện**  | - Nếu áp dụng chiết khấu: Số tiền giảm giá và tổng thanh toán của báo giá được cập nhật chính xác.<br>- Nếu hủy: Báo giá chuyển sang trạng thái Đã hủy, phiếu công việc quay về trạng thái Đang lập kế hoạch.<br>- Thất bại: Hệ thống thông báo lỗi, dữ liệu được giữ nguyên. |
-| **Luồng cơ bản**   | **[Áp dụng chiết khấu / Điều chỉnh giảm giá]**<br>1. Tại tab **Báo giá**, cố vấn mở bản báo giá đang xử lý và nhấn nút **Chiết khấu**.<br>2. Hệ thống hiển thị hộp thoại **Áp dụng chiết khấu**.<br>3. Cố vấn chọn hình thức giảm giá: theo tỷ lệ phần trăm (%) hoặc theo số tiền trực tiếp (VNĐ).<br>4. Cố vấn nhập giá trị giảm giá và ghi rõ lý do ưu đãi (chương trình khuyến mãi, khách hàng thân thiết...).<br>5. Hệ thống tự động tính lại số tiền giảm và tổng thanh toán sau thuế.<br>6. Cố vấn nhấn nút **Lưu thay đổi** (hoặc **Hủy bỏ**). Hệ thống lưu lại chiết khấu và hiển thị thông báo: *"Đã cập nhật chiết khấu thành công"*. |
-| **Luồng thay thế** | **[Hủy bản báo giá sai sót]**<br>1a. Khi phát hiện bản báo giá bị sai sót, cố vấn nhấn nút **Hủy nháp** (hoặc biểu tượng thùng rác **Hủy báo giá**).<br>2a. Hệ thống hiển thị hộp thoại cảnh báo: **Xác nhận hủy báo giá nháp?** (*"Bản ghi báo giá này sẽ bị xóa khỏi hệ thống. Bạn có thể tạo lại báo giá mới bất cứ lúc nào."*).<br>3a. Cố vấn nhấn **Xác nhận xóa** (hoặc nút **Hủy** để bỏ qua).<br>4a. Hệ thống cập nhật trạng thái báo giá thành **Đã hủy**, hiển thị thông báo *"Đã hủy báo giá nháp thành công"*, đồng thời đưa phiếu công việc quay lại trạng thái **Đang lập kế hoạch**.<br><br>**[Khách hàng yêu cầu nhận lại xe sớm khi hủy dịch vụ]** Nếu khách hàng không đồng ý sửa chữa và muốn nhận lại xe ngay, cố vấn chuyển sang tab Giao xe để thực hiện thủ tục xuất trả xe sớm (UC-42). |
-| **Luồng ngoại lệ** | Nếu báo giá đã ở trạng thái Đã duyệt (Đã khóa), hệ thống ẩn hoàn toàn nút Chiết khấu và nút Hủy nháp; nếu phát sinh yêu cầu can thiệp trái phép, hệ thống từ chối và thông báo lỗi: *"Báo giá đã được phê duyệt, không thể chỉnh sửa hoặc hủy bỏ."*<br><br>Tại bước 4 của luồng chiết khấu, nếu số tiền giảm giá lớn hơn tổng tiền dịch vụ ban đầu hoặc giá trị âm, hệ thống cảnh báo mức chiết khấu không hợp lệ và khóa nút lưu. |
+| **Tiền điều kiện** | Báo giá đang ở trạng thái Bản nháp (`DRAFT`) hoặc Đã gửi khách (`SENT`). Tuyệt đối không áp dụng cho báo giá đã ở trạng thái Đã duyệt (`APPROVED` - Đã khóa). |
+| **Hậu điều kiện**  | Thành công: Báo giá chuyển sang trạng thái Đã hủy (`CANCELLED`), phiếu công việc quay về trạng thái Đang lập kế hoạch (`PLANNING`).<br>Thất bại: Hệ thống thông báo lỗi, dữ liệu được giữ nguyên. |
+| **Luồng cơ bản**   | 1. Tại tab **Báo giá**, khi phát hiện bản báo giá bị sai sót, cố vấn nhấn nút **Hủy báo giá nháp** (hoặc biểu tượng thùng rác **Hủy báo giá**).<br>2. Hệ thống hiển thị hộp thoại cảnh báo: **Xác nhận hủy báo giá nháp?** (*"Bản ghi báo giá này sẽ bị xóa khỏi hệ thống. Bạn có thể tạo lại báo giá mới bất cứ lúc nào."*).<br>3. Cố vấn nhấn **Xác nhận xóa / Hủy báo giá** (hoặc nút **Hủy** để bỏ qua).<br>4. Hệ thống gọi API hủy báo giá (`POST /api/quotations/:id/cancel`), cập nhật trạng thái báo giá thành **Đã hủy** (`CANCELLED`), đồng thời đưa phiếu công việc quay lại trạng thái **Đang lập kế hoạch** (`PLANNING`).<br>5. Hệ thống hiển thị thông báo: *"Đã hủy báo giá nháp thành công"* và làm mới giao diện tab Báo giá, hiển thị lại nút **Tạo Báo giá từ kế hoạch** (UC-37). |
+| **Luồng thay thế** | **[Khách hàng yêu cầu nhận lại xe sớm khi hủy dịch vụ]** Nếu khách hàng không đồng ý sửa chữa và muốn nhận lại xe ngay sau khi hủy báo giá, cố vấn chuyển sang tab Giao xe để thực hiện thủ tục xuất trả xe sớm (UC-43). |
+| **Luồng ngoại lệ** | Nếu báo giá đã ở trạng thái Đã duyệt (`APPROVED` - Đã khóa), hệ thống ẩn hoàn toàn nút Hủy báo giá nháp; nếu phát sinh yêu cầu can thiệp trái phép, hệ thống từ chối và thông báo lỗi: *"Báo giá đã được phê duyệt, không thể chỉnh sửa hoặc hủy bỏ."*<br><br>Nếu phương tiện đang trong quá trình thi công thực tế hoặc đã có phụ tùng xuất kho, hệ thống khóa chức năng hủy báo giá. |
 
 ---
 
-## UC-41 – Kiểm định chất lượng
+## UC-42 – Kiểm định chất lượng
 
-| **Mã Use case**    | UC-41 |
+| **Mã Use case**    | UC-42 |
 | ------------------ | ------ |
 | **Tên Use case**   | Kiểm định chất lượng |
 | **Mô tả**          | Cố vấn dịch vụ hoặc nhân viên kiểm định chất lượng (KCS) thẩm định tình trạng kỹ thuật của xe sau khi thợ thi công xong theo danh mục tiêu chuẩn nghiệm thu. Nếu tất cả hạng mục đạt yêu cầu, hệ thống mở khóa chức năng gửi yêu cầu thanh toán để chuyển sang lập hóa đơn. Nếu phát hiện có hạng mục chưa đạt, hệ thống tự động tạo công việc sửa lại để kỹ thuật viên khắc phục trước khi kiểm định lại. |
@@ -705,9 +720,9 @@
 
 ---
 
-## UC-42 – Bàn giao xe
+## UC-43 – Bàn giao xe
 
-| **Mã Use case**    | UC-42 |
+| **Mã Use case**    | UC-43 |
 | ------------------ | ------ |
 | **Tên Use case**   | Bàn giao xe |
 | **Mô tả**          | Cố vấn dịch vụ hoàn tất thủ tục bàn giao phương tiện cho khách hàng khi xe đã thỏa mãn đầy đủ các điều kiện xuất xưởng: toàn bộ công việc hoàn tất, kiểm định chất lượng đạt chuẩn và tài chính đã quyết toán xong. Cố vấn đối chiếu ODO, nhiên liệu thực tế, thu thập chữ ký điện tử xác nhận của khách hàng, xuất biên bản bàn giao điện tử và thực hiện đóng hồ sơ lưu trữ lịch sử sửa chữa. |
@@ -715,7 +730,7 @@
 | **Tiền điều kiện** | Phiếu công việc đã thỏa mãn đầy đủ các điều kiện xuất xưởng: Tất cả các công việc đã hoàn thành, kiểm định chất lượng đạt 100% và hóa đơn dịch vụ đã được thanh toán đầy đủ (Phiếu công việc ở trạng thái Đã quyết toán tài chính). |
 | **Hậu điều kiện**  | Thành công: Phương tiện được bàn giao chính thức cho khách hàng, phiếu công việc chuyển sang trạng thái ĐÃ XUẤT XƯỞNG, biên bản bàn giao xe điện tử được khởi tạo (có thể xuất file PDF) và gửi thông báo hoàn tất đến khách hàng.<br>Thất bại: Hệ thống từ chối bàn giao nếu vi phạm bất kỳ điều kiện nào của quy định xuất xưởng. |
 | **Luồng cơ bản**   | 1. Cố vấn mở màn hình chi tiết phiếu công việc và chuyển sang tab **Giao xe** (Tab 6).<br>2. Hệ thống kiểm tra trạng thái phiếu xác nhận đã ở mức Đã quyết toán tài chính và hiển thị thông báo sẵn sàng bàn giao.<br>3. Cố vấn nhấn nút **Bàn giao xe cho khách**.<br>4. Hệ thống hiển thị hộp thoại **Biên bản bàn giao xe xuất xưởng**.<br>5. Cố vấn tiến hành kiểm tra thực tế và điền các thông tin xuất xưởng:<br>- **Số ODO lúc giao xe (km):** Nhập số ODO thực tế trên đồng hồ xe khi xuất xưởng (phải lớn hơn hoặc bằng ODO lúc tiếp nhận).<br>- **Mức nhiên liệu lúc giao xe:** Chọn từ danh sách mức xăng (Bình cạn E, 1/4 bình, 1/2 bình, 3/4 bình, Đầy bình F).<br>- **Danh mục kiểm tra bàn giao:** Tích chọn xác nhận các mục `Rửa xe và dọn vệ sinh nội thất hoàn tất` và `Kiểm tra và hoàn trả đầy đủ tài sản để trên xe`.<br>- **Xử lý phụ tùng cũ thay ra:** Chọn 1 trong 2 hình thức: *Bàn giao lại toàn bộ cho khách mang về* hoặc *Khách nhờ xưởng tiêu hủy giúp*.<br>- **Điều khoản bảo hành:** Kiểm tra nội dung cam kết bảo hành dịch vụ và phụ tùng.<br>- **Ghi chú bàn giao:** Ghi nhận thêm các căn dặn hoặc lưu ý vận hành cho khách.<br>- **Chữ ký điện tử của khách hàng:** Khách hàng kiểm tra xe và ký tên trực tiếp lên khung vẽ chữ ký điện tử (có nút **Ký lại** nếu cần xóa vẽ lại).<br>6. Cố vấn nhấn nút **Xác nhận bàn giao & Xuất xưởng**.<br>7. Hệ thống kiểm tra tính hợp lệ của toàn bộ thông tin, lưu biên bản bàn giao, cập nhật trạng thái phiếu công việc thành **ĐÃ XUẤT XƯỞNG**, đồng thời tự động gửi thông báo xác nhận và biên bản bàn giao điện tử cho khách hàng.<br>8. Màn hình tab Giao xe cập nhật giao diện đã xuất xưởng, hiển thị nút **Tải biên bản bàn giao (PDF)** và nút **Đóng hồ sơ**. |
-| **Luồng thay thế** | **[Đóng hồ sơ sửa chữa và lưu trữ lịch sử]** Sau khi xe đã xuất xưởng:<br>1a. Cố vấn nhấn nút **Đóng hồ sơ** trên thanh thông báo trạng thái xuất xưởng.<br>2a. Hệ thống hiển thị hộp thoại **Đóng hồ sơ sửa chữa**.<br>3a. Cố vấn kiểm tra thông tin và nhấn nút **Xác nhận đóng hồ sơ** (hoặc **Hủy**).<br>4a. Hệ thống cập nhật trạng thái phiếu công việc sang **ĐÃ ĐÓNG HỒ SƠ**, chính thức khóa lưu trữ toàn bộ hồ sơ và đồng bộ dữ liệu vào Lịch sử sửa chữa của phương tiện (UC-79).<br><br>**[Xuất trả xe khi khách hủy dịch vụ hoặc từ chối báo giá]**<br>1b. Nếu khách hàng từ chối làm dịch vụ và yêu cầu nhận lại xe sớm, tại tab Giao xe hệ thống hiển thị nút xuất trả xe sớm.<br>2b. Cố vấn mở hộp thoại **Xuất trả xe**, kiểm tra hoàn trả tài sản, đối chiếu phụ tùng kho và nhấn **Xác nhận xuất trả xe** để bàn giao xe về cho khách. |
+| **Luồng thay thế** | **[Đóng hồ sơ sửa chữa và lưu trữ lịch sử]** Sau khi xe đã xuất xưởng:<br>1a. Cố vấn nhấn nút **Đóng hồ sơ** trên thanh thông báo trạng thái xuất xưởng.<br>2a. Hệ thống hiển thị hộp thoại **Đóng hồ sơ sửa chữa**.<br>3a. Cố vấn kiểm tra thông tin và nhấn nút **Xác nhận đóng hồ sơ** (hoặc **Hủy**).<br>4a. Hệ thống cập nhật trạng thái phiếu công việc sang **ĐÃ ĐÓNG HỒ SƠ**, chính thức khóa lưu trữ toàn bộ hồ sơ và đồng bộ dữ liệu vào Lịch sử sửa chữa của phương tiện (UC-80).<br><br>**[Xuất trả xe khi khách hủy dịch vụ hoặc từ chối báo giá]**<br>1b. Nếu khách hàng từ chối làm dịch vụ và yêu cầu nhận lại xe sớm, tại tab Giao xe hệ thống hiển thị nút xuất trả xe sớm.<br>2b. Cố vấn mở hộp thoại **Xuất trả xe**, kiểm tra hoàn trả tài sản, đối chiếu phụ tùng kho và nhấn **Xác nhận xuất trả xe** để bàn giao xe về cho khách. |
 | **Luồng ngoại lệ** | Tại bước 2 hoặc 6, nếu xe chưa hoàn tất quyết toán tài chính, còn công việc chưa hoàn thành, hoặc kiểm định chất lượng chưa đạt, hệ thống từ chối mở hộp thoại hoặc từ chối lưu và thông báo: *"Phương tiện chưa hoàn tất quyết toán tài chính. Vui lòng hoàn tất thanh toán hóa đơn trước khi bàn giao xe."*<br><br>Tại bước 5, nếu số ODO xuất xưởng nhỏ hơn số ODO lúc tiếp nhận xe, hệ thống báo lỗi: *"Số ODO xuất xưởng không được nhỏ hơn ODO tiếp nhận."* và không cho phép xác nhận xuất xưởng. |
 
 ---
@@ -727,9 +742,9 @@
 
 ---
 
-## UC-43 – Theo dõi hoạt động xưởng (Monitor Workshop)
+## UC-44 – Theo dõi hoạt động xưởng (Monitor Workshop)
 
-| **Mã Use case**    | UC-43 |
+| **Mã Use case**    | UC-44 |
 | ------------------ | ------ |
 | **Tên Use case**   | Theo dõi hoạt động xưởng (Monitor Workshop) |
 | **Mô tả**          | Quản lý dịch vụ theo dõi trực quan tình hình hoạt động của xưởng, tiến độ các phiếu dịch vụ đang xử lý và các công việc bị chậm trễ để kịp thời điều phối. |
@@ -742,9 +757,9 @@
 
 ---
 
-## UC-44 – Thêm danh mục phụ tùng (Create Part Category)
+## UC-45 – Thêm danh mục phụ tùng (Create Part Category)
 
-| **Mã Use case**    | UC-44 |
+| **Mã Use case**    | UC-45 |
 | ------------------ | ------ |
 | **Tên Use case**   | Thêm danh mục phụ tùng (Create Part Category) |
 | **Mô tả**          | Quản lý dịch vụ tạo mới dữ liệu danh mục phụ tùng vào hệ thống để lưu trữ và quản lý. |
@@ -759,9 +774,9 @@
 
 ---
 
-## UC-45 – Xem danh mục phụ tùng (View Part Category)
+## UC-46 – Xem danh mục phụ tùng (View Part Category)
 
-| **Mã Use case**    | UC-45 |
+| **Mã Use case**    | UC-46 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem danh mục phụ tùng (View Part Category) |
 | **Mô tả**          | Quản lý dịch vụ tra cứu, tìm kiếm và xem chi tiết thông tin của danh mục phụ tùng đã có trong hệ thống. |
@@ -776,9 +791,9 @@
 
 ---
 
-## UC-46 – Cập nhật danh mục phụ tùng (Update Part Category)
+## UC-47 – Cập nhật danh mục phụ tùng (Update Part Category)
 
-| **Mã Use case**    | UC-46 |
+| **Mã Use case**    | UC-47 |
 | ------------------ | ------ |
 | **Tên Use case**   | Cập nhật danh mục phụ tùng (Update Part Category) |
 | **Mô tả**          | Quản lý dịch vụ chỉnh sửa và cập nhật lại thông tin của danh mục phụ tùng hiện có trong hệ thống để đảm bảo dữ liệu luôn chính xác. |
@@ -793,9 +808,9 @@
 
 ---
 
-## UC-47 – Xóa danh mục phụ tùng (Delete Part Category)
+## UC-48 – Xóa danh mục phụ tùng (Delete Part Category)
 
-| **Mã Use case**    | UC-47 |
+| **Mã Use case**    | UC-48 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xóa danh mục phụ tùng (Delete Part Category) |
 | **Mô tả**          | Quản lý dịch vụ thực hiện xóa hoặc vô hiệu hóa danh mục phụ tùng khỏi hệ thống khi không còn nhu cầu sử dụng hoặc lưu trữ. |
@@ -810,9 +825,9 @@
 
 ---
 
-## UC-48 – Thêm phụ tùng (Create Inventory Item)
+## UC-49 – Thêm phụ tùng (Create Inventory Item)
 
-| **Mã Use case**    | UC-48 |
+| **Mã Use case**    | UC-49 |
 | ------------------ | ------ |
 | **Tên Use case**   | Thêm phụ tùng (Create Inventory Item) |
 | **Mô tả**          | Quản lý dịch vụ tạo mới dữ liệu phụ tùng thực tế (Variant/SKU) theo từng hãng vào hệ thống để theo dõi tồn kho và định giá. |
@@ -827,9 +842,9 @@
 
 ---
 
-## UC-49 – Xem phụ tùng (View Inventory Item)
+## UC-50 – Xem phụ tùng (View Inventory Item)
 
-| **Mã Use case**    | UC-49 |
+| **Mã Use case**    | UC-50 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem phụ tùng (View Inventory Item) |
 | **Mô tả**          | Quản lý dịch vụ tra cứu, tìm kiếm và xem chi tiết thông tin, giá bán, cùng số lượng tồn kho của các mã phụ tùng đã có trong hệ thống. |
@@ -844,9 +859,9 @@
 
 ---
 
-## UC-50 – Cập nhật phụ tùng (Update Inventory Item)
+## UC-51 – Cập nhật phụ tùng (Update Inventory Item)
 
-| **Mã Use case**    | UC-50 |
+| **Mã Use case**    | UC-51 |
 | ------------------ | ------ |
 | **Tên Use case**   | Cập nhật phụ tùng (Update Inventory Item) |
 | **Mô tả**          | Quản lý dịch vụ chỉnh sửa và cập nhật lại thông tin của một mã phụ tùng hiện có trong hệ thống (như giá bán, mức tồn kho cảnh báo) để đảm bảo dữ liệu luôn chính xác. |
@@ -861,9 +876,9 @@
 
 ---
 
-## UC-51 – Ngừng kinh doanh/Xóa phụ tùng (Delete/Deactivate Inventory Item)
+## UC-52 – Ngừng kinh doanh/Xóa phụ tùng (Delete/Deactivate Inventory Item)
 
-| **Mã Use case**    | UC-51 |
+| **Mã Use case**    | UC-52 |
 | ------------------ | ------ |
 | **Tên Use case**   | Ngừng kinh doanh/Xóa phụ tùng (Delete/Deactivate Inventory Item) |
 | **Mô tả**          | Quản lý dịch vụ thực hiện thay đổi trạng thái hoạt động (ngừng kinh doanh hoặc kích hoạt lại) đối với một bản ghi phụ tùng khi không còn nhu cầu kinh doanh mã hàng này. |
@@ -878,9 +893,9 @@
 
 ---
 
-## UC-52 – Nhập kho (Receive Inventory)
+## UC-53 – Nhập kho (Receive Inventory)
 
-| **Mã Use case**    | UC-52 |
+| **Mã Use case**    | UC-53 |
 | ------------------ | ------ |
 | **Tên Use case**   | Nhập kho (Receive Inventory) |
 | **Mô tả**          | Quản lý ghi nhận hàng nhập từ nhà cung cấp hoặc nhập tồn đầu kỳ. Sau mỗi lần nhập, hệ thống tự động tính lại giá vốn bình quân theo phương pháp bình quân gia quyền di động. |
@@ -895,9 +910,9 @@
 
 ---
 
-## UC-53 – Xem báo cáo vận hành (View Operational Report)
+## UC-54 – Xem báo cáo vận hành (View Operational Report)
 
-| **Mã Use case**    | UC-53 |
+| **Mã Use case**    | UC-54 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem báo cáo vận hành (View Operational Report) |
 | **Mô tả**          | Quản lý dịch vụ tra cứu các báo cáo tổng hợp về doanh thu, tần suất dịch vụ và cảnh báo tồn kho phụ tùng để phục vụ quản lý và lập kế hoạch. |
@@ -916,9 +931,9 @@
 
 ---
 
-## UC-54 – Thêm tài khoản (Create Account)
+## UC-55 – Thêm tài khoản (Create Account)
 
-| **Mã Use case**    | UC-54 |
+| **Mã Use case**    | UC-55 |
 | ------------------ | ------ |
 | **Tên Use case**   | Thêm tài khoản (Create Account) |
 | **Mô tả**          | Quản trị viên tạo mới dữ liệu tài khoản vào hệ thống để lưu trữ và quản lý. |
@@ -933,9 +948,9 @@
 
 ---
 
-## UC-55 – Xem tài khoản (View Account)
+## UC-56 – Xem tài khoản (View Account)
 
-| **Mã Use case**    | UC-55 |
+| **Mã Use case**    | UC-56 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem tài khoản (View Account) |
 | **Mô tả**          | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của tài khoản đã có trong hệ thống. |
@@ -950,9 +965,9 @@
 
 ---
 
-## UC-56 – Cập nhật tài khoản (Update Account)
+## UC-57 – Cập nhật tài khoản (Update Account)
 
-| **Mã Use case**    | UC-56 |
+| **Mã Use case**    | UC-57 |
 | ------------------ | ------ |
 | **Tên Use case**   | Cập nhật tài khoản (Update Account) |
 | **Mô tả**          | Quản trị viên chỉnh sửa và cập nhật lại thông tin của tài khoản hiện có trong hệ thống để đảm bảo dữ liệu luôn chính xác. |
@@ -967,9 +982,9 @@
 
 ---
 
-## UC-57 – Xóa tài khoản (Delete Account)
+## UC-58 – Xóa tài khoản (Delete Account)
 
-| **Mã Use case**    | UC-57 |
+| **Mã Use case**    | UC-58 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xóa tài khoản (Delete Account) |
 | **Mô tả**          | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi tài khoản khỏi hệ thống khi không còn nhu cầu sử dụng hoặc lưu trữ. |
@@ -984,9 +999,9 @@
 
 ---
 
-## UC-58 – Thêm nhân viên (Create Employee)
+## UC-59 – Thêm nhân viên (Create Employee)
 
-| **Mã Use case**    | UC-58 |
+| **Mã Use case**    | UC-59 |
 | ------------------ | ------ |
 | **Tên Use case**   | Thêm nhân viên (Create Employee) |
 | **Mô tả**          | Quản trị viên tạo mới dữ liệu nhân viên vào hệ thống để lưu trữ và quản lý. |
@@ -1001,9 +1016,9 @@
 
 ---
 
-## UC-59 – Xem nhân viên (View Employee)
+## UC-60 – Xem nhân viên (View Employee)
 
-| **Mã Use case**    | UC-59 |
+| **Mã Use case**    | UC-60 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem nhân viên (View Employee) |
 | **Mô tả**          | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của nhân viên đã có trong hệ thống. |
@@ -1018,9 +1033,9 @@
 
 ---
 
-## UC-60 – Cập nhật nhân viên (Update Employee)
+## UC-61 – Cập nhật nhân viên (Update Employee)
 
-| **Mã Use case**    | UC-60 |
+| **Mã Use case**    | UC-61 |
 | ------------------ | ------ |
 | **Tên Use case**   | Cập nhật nhân viên (Update Employee) |
 | **Mô tả**          | Quản trị viên chỉnh sửa và cập nhật lại thông tin của nhân viên hiện có trong hệ thống để đảm bảo dữ liệu luôn chính xác. |
@@ -1035,9 +1050,9 @@
 
 ---
 
-## UC-61 – Xóa nhân viên (Delete Employee)
+## UC-62 – Xóa nhân viên (Delete Employee)
 
-| **Mã Use case**    | UC-61 |
+| **Mã Use case**    | UC-62 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xóa nhân viên (Delete Employee) |
 | **Mô tả**          | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi nhân viên khỏi hệ thống khi không còn nhu cầu sử dụng hoặc lưu trữ. |
@@ -1052,9 +1067,9 @@
 
 ---
 
-## UC-62 – Thêm dịch vụ (Create Service)
+## UC-63 – Thêm dịch vụ (Create Service)
 
-| **Mã Use case**    | UC-62 |
+| **Mã Use case**    | UC-63 |
 | ------------------ | ------ |
 | **Tên Use case**   | Thêm dịch vụ (Create Service) |
 | **Mô tả**          | Quản trị viên tạo mới dữ liệu dịch vụ vào hệ thống để lưu trữ và quản lý. |
@@ -1069,9 +1084,9 @@
 
 ---
 
-## UC-63 – Xem dịch vụ (View Service)
+## UC-64 – Xem dịch vụ (View Service)
 
-| **Mã Use case**    | UC-63 |
+| **Mã Use case**    | UC-64 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem dịch vụ (View Service) |
 | **Mô tả**          | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của dịch vụ đã có trong hệ thống. |
@@ -1086,9 +1101,9 @@
 
 ---
 
-## UC-64 – Cập nhật dịch vụ (Update Service)
+## UC-65 – Cập nhật dịch vụ (Update Service)
 
-| **Mã Use case**    | UC-64 |
+| **Mã Use case**    | UC-65 |
 | ------------------ | ------ |
 | **Tên Use case**   | Cập nhật dịch vụ (Update Service) |
 | **Mô tả**          | Quản trị viên chỉnh sửa và cập nhật lại thông tin của dịch vụ hiện có trong hệ thống để đảm bảo dữ liệu luôn chính xác. |
@@ -1103,9 +1118,9 @@
 
 ---
 
-## UC-65 – Xóa dịch vụ (Delete Service)
+## UC-66 – Xóa dịch vụ (Delete Service)
 
-| **Mã Use case**    | UC-65 |
+| **Mã Use case**    | UC-66 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xóa dịch vụ (Delete Service) |
 | **Mô tả**          | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi dịch vụ khỏi hệ thống khi không còn nhu cầu sử dụng hoặc lưu trữ. |
@@ -1120,9 +1135,9 @@
 
 ---
 
-## UC-66 – Thêm danh mục dịch vụ (Create Service Category)
+## UC-67 – Thêm danh mục dịch vụ (Create Service Category)
 
-| **Mã Use case**    | UC-66 |
+| **Mã Use case**    | UC-67 |
 | ------------------ | ------ |
 | **Tên Use case**   | Thêm danh mục dịch vụ (Create Service Category) |
 | **Mô tả**          | Quản trị viên tạo mới nhóm/danh mục dịch vụ vào hệ thống để phân loại các dịch vụ. |
@@ -1135,9 +1150,9 @@
 
 ---
 
-## UC-67 – Xem danh mục dịch vụ (View Service Category)
+## UC-68 – Xem danh mục dịch vụ (View Service Category)
 
-| **Mã Use case**    | UC-67 |
+| **Mã Use case**    | UC-68 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem danh mục dịch vụ (View Service Category) |
 | **Mô tả**          | Quản trị viên xem danh sách và chi tiết các danh mục dịch vụ đã có trong hệ thống. |
@@ -1150,9 +1165,9 @@
 
 ---
 
-## UC-68 – Cập nhật danh mục dịch vụ (Update Service Category)
+## UC-69 – Cập nhật danh mục dịch vụ (Update Service Category)
 
-| **Mã Use case**    | UC-68 |
+| **Mã Use case**    | UC-69 |
 | ------------------ | ------ |
 | **Tên Use case**   | Cập nhật danh mục dịch vụ (Update Service Category) |
 | **Mô tả**          | Quản trị viên chỉnh sửa thông tin của danh mục dịch vụ hiện có. |
@@ -1165,9 +1180,9 @@
 
 ---
 
-## UC-69 – Xóa danh mục dịch vụ (Delete Service Category)
+## UC-70 – Xóa danh mục dịch vụ (Delete Service Category)
 
-| **Mã Use case**    | UC-69 |
+| **Mã Use case**    | UC-70 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xóa danh mục dịch vụ (Delete Service Category) |
 | **Mô tả**          | Quản trị viên xóa danh mục dịch vụ khi không còn nhu cầu sử dụng. Nếu danh mục chưa có dịch vụ nào phụ thuộc, hệ thống sẽ xóa hẳn. Nếu đã có dịch vụ phụ thuộc, hệ thống sẽ vô hiệu hóa danh mục thay vì xóa để bảo toàn dữ liệu liên quan. |
@@ -1180,9 +1195,9 @@
 
 ---
 
-## UC-70 – Thêm loại công việc (Create Job Type)
+## UC-71 – Thêm loại công việc (Create Job Type)
 
-| **Mã Use case**    | UC-70 |
+| **Mã Use case**    | UC-71 |
 | ------------------ | ------ |
 | **Tên Use case**   | Thêm loại công việc (Create Job Type) |
 | **Mô tả**          | Quản trị viên tạo mới dữ liệu loại công việc vào hệ thống để lưu trữ và quản lý. |
@@ -1197,9 +1212,9 @@
 
 ---
 
-## UC-71 – Xem loại công việc (View Job Type)
+## UC-72 – Xem loại công việc (View Job Type)
 
-| **Mã Use case**    | UC-71 |
+| **Mã Use case**    | UC-72 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem loại công việc (View Job Type) |
 | **Mô tả**          | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của loại công việc đã có trong hệ thống. |
@@ -1214,9 +1229,9 @@
 
 ---
 
-## UC-72 – Cập nhật loại công việc (Update Job Type)
+## UC-73 – Cập nhật loại công việc (Update Job Type)
 
-| **Mã Use case**    | UC-72 |
+| **Mã Use case**    | UC-73 |
 | ------------------ | ------ |
 | **Tên Use case**   | Cập nhật loại công việc (Update Job Type) |
 | **Mô tả**          | Quản trị viên chỉnh sửa và cập nhật lại thông tin của loại công việc hiện có trong hệ thống để đảm bảo dữ liệu luôn chính xác. |
@@ -1231,9 +1246,9 @@
 
 ---
 
-## UC-73 – Xóa loại công việc (Delete Job Type)
+## UC-74 – Xóa loại công việc (Delete Job Type)
 
-| **Mã Use case**    | UC-73 |
+| **Mã Use case**    | UC-74 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xóa loại công việc (Delete Job Type) |
 | **Mô tả**          | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi loại công việc khỏi hệ thống khi không còn nhu cầu sử dụng hoặc lưu trữ. |
@@ -1247,9 +1262,9 @@
 ---
 
 ---
-## UC-74 – Thêm danh mục chung (Create System Catalog)
+## UC-75 – Thêm danh mục chung (Create System Catalog)
 
-| **Mã Use case**    | UC-74 |
+| **Mã Use case**    | UC-75 |
 | ------------------ | ------ |
 | **Tên Use case**   | Thêm danh mục chung (Create System Catalog) |
 | **Mô tả**          | Quản trị viên tạo mới dữ liệu danh mục chung vào hệ thống để lưu trữ và quản lý. |
@@ -1264,9 +1279,9 @@
 
 ---
 
-## UC-75 – Xem danh mục chung (View System Catalog)
+## UC-76 – Xem danh mục chung (View System Catalog)
 
-| **Mã Use case**    | UC-75 |
+| **Mã Use case**    | UC-76 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem danh mục chung (View System Catalog) |
 | **Mô tả**          | Quản trị viên tra cứu, tìm kiếm và xem chi tiết thông tin của danh mục chung đã có trong hệ thống. |
@@ -1281,9 +1296,9 @@
 
 ---
 
-## UC-76 – Cập nhật danh mục chung (Update System Catalog)
+## UC-77 – Cập nhật danh mục chung (Update System Catalog)
 
-| **Mã Use case**    | UC-76 |
+| **Mã Use case**    | UC-77 |
 | ------------------ | ------ |
 | **Tên Use case**   | Cập nhật danh mục chung (Update System Catalog) |
 | **Mô tả**          | Quản trị viên chỉnh sửa và cập nhật lại thông tin của danh mục chung hiện có trong hệ thống để đảm bảo dữ liệu luôn chính xác. |
@@ -1298,9 +1313,9 @@
 
 ---
 
-## UC-77 – Xóa danh mục chung (Delete System Catalog)
+## UC-78 – Xóa danh mục chung (Delete System Catalog)
 
-| **Mã Use case**    | UC-77 |
+| **Mã Use case**    | UC-78 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xóa danh mục chung (Delete System Catalog) |
 | **Mô tả**          | Quản trị viên thực hiện xóa hoặc vô hiệu hóa bản ghi danh mục chung khỏi hệ thống khi không còn nhu cầu sử dụng hoặc lưu trữ. |
@@ -1317,9 +1332,9 @@
 
 ---
 
-## UC-78 – Gửi email nhắc hẹn tự động (Auto Reminder)
+## UC-79 – Gửi email nhắc hẹn tự động (Auto Reminder)
 
-| **Mã Use case**    | UC-78 |
+| **Mã Use case**    | UC-79 |
 | ------------------ | ------ |
 | **Tên Use case**   | Gửi email nhắc hẹn tự động (Auto Reminder) |
 | **Mô tả**          | Hệ thống tự động quét các lịch hẹn sắp diễn ra trong vòng 24 giờ tới và gửi email nhắc nhở cho khách hàng. |
@@ -1332,9 +1347,9 @@
 
 ---
 
-## UC-79 – Xem lịch sử sửa chữa (View Repair History)
+## UC-80 – Xem lịch sử sửa chữa (View Repair History)
 
-| **Mã Use case**    | UC-79 |
+| **Mã Use case**    | UC-80 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem lịch sử sửa chữa (View Repair History) |
 | **Mô tả**          | Khách hàng tra cứu sổ bảo dưỡng điện tử và lịch sử sửa chữa của các phương tiện thuộc sở hữu của mình đã hoàn tất chu trình dịch vụ hoặc đã hủy. Khách hàng có thể lọc theo phương tiện, khoảng thời gian, trạng thái hồ sơ, xem chi tiết kết quả sửa chữa, kiểm định chất lượng, chính sách bảo hành và tải xuống Biên bản bàn giao xe hoặc Hóa đơn điện tử dưới dạng PDF. |
@@ -1363,34 +1378,34 @@
 
 | Mã UC | Tên Use Case | Đối tượng thực hiện | Phạm vi & Nghiệp vụ cốt lõi |
 | :---: | :--- | :--- | :--- |
-| **UC-80** | **Tra cứu thông tin bảo hành** | Khách hàng, Nhân viên quầy, Cố vấn | Tra cứu thời hạn và số km bảo hành còn lại của các dịch vụ, phụ tùng đã làm trên xe. |
-| **UC-81** | **Đặt lịch hẹn bảo hành** | Khách hàng | Khách hàng chủ động đặt lịch hẹn mang xe đến xử lý bảo hành trực tuyến kèm ảnh/video mô tả sự cố. |
-| **UC-82** | **Tiếp nhận bảo hành** | Nhân viên quầy dịch vụ | Tiếp nhận xe đến xưởng, ghi nhận ODO hiện tại, kiểm tra điều kiện và liên kết với phiếu dịch vụ gốc. |
-| **UC-83** | **Tạo phiếu công việc bảo hành** | Cố vấn dịch vụ | Lập phiếu công việc bảo hành, đánh dấu các công việc và phụ tùng bảo hành để áp dụng đơn giá 0 đồng. |
-| **UC-84** | **Xử lý hóa đơn bảo hành** | Nhân viên quầy dịch vụ, Thu ngân | Phát hành hóa đơn 0 đồng; hệ thống tự động ghi nhận đã thanh toán và chuyển trạng thái hoàn tất quyết toán tài chính để xuất xưởng. |
-| **UC-85** | **Phê duyệt bảo hành thiện chí** | Quản lý dịch vụ | Quản lý xem xét và phê duyệt hỗ trợ bảo hành ngoại lệ cho các trường hợp khách hàng quá hạn nhẹ hoặc khách hàng thân thiết. |
-| **UC-86** | **Xem báo cáo bảo hành** | Quản lý dịch vụ | Quản lý xem thống kê mật về tỷ lệ xe bảo hành, chi phí vốn phụ tùng bảo hành và các lỗi kỹ thuật lặp lại. |
+| **UC-81** | **Tra cứu thông tin bảo hành** | Khách hàng, Nhân viên quầy, Cố vấn | Tra cứu thời hạn và số km bảo hành còn lại của các dịch vụ, phụ tùng đã làm trên xe. |
+| **UC-82** | **Đặt lịch hẹn bảo hành** | Khách hàng | Khách hàng chủ động đặt lịch hẹn mang xe đến xử lý bảo hành trực tuyến kèm ảnh/video mô tả sự cố. |
+| **UC-83** | **Tiếp nhận bảo hành** | Nhân viên quầy dịch vụ | Tiếp nhận xe đến xưởng, ghi nhận ODO hiện tại, kiểm tra điều kiện và liên kết với phiếu dịch vụ gốc. |
+| **UC-84** | **Tạo phiếu công việc bảo hành** | Cố vấn dịch vụ | Lập phiếu công việc bảo hành, đánh dấu các công việc và phụ tùng bảo hành để áp dụng đơn giá 0 đồng. |
+| **UC-85** | **Xử lý hóa đơn bảo hành** | Nhân viên quầy dịch vụ, Thu ngân | Phát hành hóa đơn 0 đồng; hệ thống tự động ghi nhận đã thanh toán và chuyển trạng thái hoàn tất quyết toán tài chính để xuất xưởng. |
+| **UC-86** | **Phê duyệt bảo hành thiện chí** | Quản lý dịch vụ | Quản lý xem xét và phê duyệt hỗ trợ bảo hành ngoại lệ cho các trường hợp khách hàng quá hạn nhẹ hoặc khách hàng thân thiết. |
+| **UC-87** | **Xem báo cáo bảo hành** | Quản lý dịch vụ | Quản lý xem thống kê mật về tỷ lệ xe bảo hành, chi phí vốn phụ tùng bảo hành và các lỗi kỹ thuật lặp lại. |
 
 ---
 
-## UC-80 – Tra cứu thông tin bảo hành
+## UC-81 – Tra cứu thông tin bảo hành
 
-| **Mã Use case**    | UC-80 |
+| **Mã Use case**    | UC-81 |
 | ------------------ | ------ |
 | **Tên Use case**   | Tra cứu thông tin bảo hành |
 | **Mô tả**          | Khách hàng hoặc nhân viên tra cứu danh sách các dịch vụ và phụ tùng đã sử dụng trên phương tiện để kiểm tra thời hạn và điều kiện bảo hành còn hiệu lực (số ngày còn lại, số km ODO còn lại). |
 | **Đối tượng**      | Khách hàng, Nhân viên quầy dịch vụ, Cố vấn dịch vụ |
 | **Tiền điều kiện** | Người dùng đã đăng nhập vào hệ thống. Phương tiện đã từng hoàn thành chu trình dịch vụ tại trung tâm (phiếu công việc cũ đã xuất xưởng hoặc đã đóng hồ sơ). |
 | **Hậu điều kiện**  | Thành công: Hệ thống hiển thị danh sách các hạng mục dịch vụ, phụ tùng kèm trạng thái còn hạn hoặc hết hạn bảo hành rõ ràng.<br>Thất bại: Hệ thống thông báo không tìm thấy dữ liệu hoặc thông báo lỗi. |
-| **Luồng cơ bản**   | 1. Người dùng truy cập màn hình tra cứu bảo hành (hoặc chọn mục **Bảo hành** trong Sổ bảo dưỡng điện tử).<br>2. Người dùng chọn phương tiện cần tra cứu theo biển số xe hoặc số khung VIN.<br>3. Hệ thống tải toàn bộ lịch sử các dịch vụ đã thi công và phụ tùng đã lắp đặt trên xe từ các phiếu công việc đã hoàn tất trước đây.<br>4. Hệ thống tự động đối chiếu số km ODO và số ngày sử dụng hiện tại với chính sách bảo hành:<br>- **Mục còn hạn bảo hành:** Hiển thị nhãn màu xanh lá *"Còn bảo hành"*, số ngày bảo hành còn lại và số km còn lại.<br>- **Mục đã hết hạn:** Hiển thị nhãn màu xám *"Hết hạn bảo hành"* và thời điểm hết hạn.<br>5. Người dùng xem chi tiết các điều khoản cam kết bảo hành và phạm vi áp dụng cho từng hạng mục.<br>6. (Đối với khách hàng) Nếu phát hiện hạng mục gặp sự cố còn hạn bảo hành, khách hàng có thể nhấn nút **Đặt lịch hẹn bảo hành ngay** để chuyển tiếp sang UC-81. |
+| **Luồng cơ bản**   | 1. Người dùng truy cập màn hình tra cứu bảo hành (hoặc chọn mục **Bảo hành** trong Sổ bảo dưỡng điện tử).<br>2. Người dùng chọn phương tiện cần tra cứu theo biển số xe hoặc số khung VIN.<br>3. Hệ thống tải toàn bộ lịch sử các dịch vụ đã thi công và phụ tùng đã lắp đặt trên xe từ các phiếu công việc đã hoàn tất trước đây.<br>4. Hệ thống tự động đối chiếu số km ODO và số ngày sử dụng hiện tại với chính sách bảo hành:<br>- **Mục còn hạn bảo hành:** Hiển thị nhãn màu xanh lá *"Còn bảo hành"*, số ngày bảo hành còn lại và số km còn lại.<br>- **Mục đã hết hạn:** Hiển thị nhãn màu xám *"Hết hạn bảo hành"* và thời điểm hết hạn.<br>5. Người dùng xem chi tiết các điều khoản cam kết bảo hành và phạm vi áp dụng cho từng hạng mục.<br>6. (Đối với khách hàng) Nếu phát hiện hạng mục gặp sự cố còn hạn bảo hành, khách hàng có thể nhấn nút **Đặt lịch hẹn bảo hành ngay** để chuyển tiếp sang UC-82. |
 | **Luồng thay thế** | Không có. |
 | **Luồng ngoại lệ** | Tại bước 3, nếu phương tiện chưa từng làm dịch vụ tại trung tâm hoặc chưa có phiếu sửa chữa nào hoàn thành, hệ thống hiển thị thông báo: *"Xe chưa có lịch sử dịch vụ hoặc phụ tùng bảo hành tại trung tâm."* |
 
 ---
 
-## UC-81 – Đặt lịch hẹn bảo hành
+## UC-82 – Đặt lịch hẹn bảo hành
 
-| **Mã Use case**    | UC-81 |
+| **Mã Use case**    | UC-82 |
 | ------------------ | ------ |
 | **Tên Use case**   | Đặt lịch hẹn bảo hành |
 | **Mô tả**          | Khách hàng chủ động tạo lịch hẹn trực tuyến mang xe đến trung tâm để kiểm tra và khắc phục sự cố bảo hành đối với các dịch vụ hoặc phụ tùng còn trong thời hạn cam kết. |
@@ -1403,9 +1418,9 @@
 
 ---
 
-## UC-82 – Tiếp nhận bảo hành
+## UC-83 – Tiếp nhận bảo hành
 
-| **Mã Use case**    | UC-82 |
+| **Mã Use case**    | UC-83 |
 | ------------------ | ------ |
 | **Tên Use case**   | Tiếp nhận bảo hành |
 | **Mô tả**          | Nhân viên quầy dịch vụ tiếp nhận phương tiện mang đến xưởng theo diện bảo hành, ghi nhận số km ODO thực tế, đối chiếu điều kiện bảo hành với phiếu dịch vụ gốc và chuyển tiếp hồ sơ sang hàng đợi của Cố vấn dịch vụ. |
@@ -1418,9 +1433,9 @@
 
 ---
 
-## UC-83 – Tạo phiếu công việc bảo hành
+## UC-84 – Tạo phiếu công việc bảo hành
 
-| **Mã Use case**    | UC-83 |
+| **Mã Use case**    | UC-84 |
 | ------------------ | ------ |
 | **Tên Use case**   | Tạo phiếu công việc bảo hành |
 | **Mô tả**          | Cố vấn dịch vụ lập phiếu công việc chuyên biệt cho xe bảo hành; thẩm định tình trạng xe, gắn cờ bảo hành cho các hạng mục công việc và phụ tùng thay thế để áp dụng chính sách miễn phí 100% (đơn giá 0 đồng), tạo báo giá 0 đồng và chuyển sang điều phối thi công. |
@@ -1433,24 +1448,24 @@
 
 ---
 
-## UC-84 – Xử lý hóa đơn bảo hành
+## UC-85 – Xử lý hóa đơn bảo hành
 
-| **Mã Use case**    | UC-84 |
+| **Mã Use case**    | UC-85 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xử lý hóa đơn bảo hành |
 | **Mô tả**          | Nhân viên quầy dịch vụ hoặc thu ngân lập và phát hành hóa đơn 0 đồng cho phiếu công việc bảo hành; hệ thống tự động xác nhận hoàn tất quyết toán tài chính để xe đủ điều kiện làm thủ tục bàn giao xuất xưởng. |
 | **Đối tượng**      | Nhân viên quầy dịch vụ, Thu ngân |
 | **Tiền điều kiện** | Phiếu công việc bảo hành đã hoàn thành thi công 100% và vượt qua kiểm định chất lượng (Phiếu công việc ở trạng thái Chờ thanh toán). |
 | **Hậu điều kiện**  | Thành công: Hóa đơn 0 đồng được phát hành và tự động chuyển trạng thái Đã thanh toán; phiếu công việc tự động chuyển sang trạng thái Đã quyết toán tài chính, sẵn sàng cho thủ tục bàn giao xe xuất xưởng.<br>Thất bại: Hệ thống thông báo lỗi, hóa đơn không được phát hành. |
-| **Luồng cơ bản**   | 1. Nhân viên quầy dịch vụ hoặc thu ngân mở danh sách hàng chờ lập hóa đơn và chọn phiếu công việc bảo hành đang chờ tính tiền.<br>2. Nhân viên nhấn **Tạo hóa đơn**.<br>3. Hệ thống hiển thị bảng xem trước hóa đơn, tự động trích xuất các dòng chi phí từ báo giá bảo hành với đơn giá 0 đồng và tổng tiền thanh toán bằng 0 đồng.<br>4. Nhân viên kiểm tra tính chuẩn xác và nhấn **Phát hành hóa đơn**.<br>5. Hệ thống kiểm tra tổng tiền hóa đơn: Nhận diện tổng tiền bằng 0 đồng, hệ thống tự động chuyển trạng thái hóa đơn sang **Đã thanh toán** mà không yêu cầu mở hộp thoại thu tiền mặt/thẻ/chuyển khoản QR.<br>6. Hệ thống tự động chuyển trạng thái phiếu công việc sang **Đã quyết toán tài chính**, mở khóa điều kiện xuất xưởng.<br>7. Hệ thống tạo hóa đơn điện tử 0 đồng, gửi email biên lai điện tử cho khách hàng và thông báo cho Cố vấn dịch vụ xe đã sẵn sàng làm thủ tục xuất xưởng (UC-42). |
+| **Luồng cơ bản**   | 1. Nhân viên quầy dịch vụ hoặc thu ngân mở danh sách hàng chờ lập hóa đơn và chọn phiếu công việc bảo hành đang chờ tính tiền.<br>2. Nhân viên nhấn **Tạo hóa đơn**.<br>3. Hệ thống hiển thị bảng xem trước hóa đơn, tự động trích xuất các dòng chi phí từ báo giá bảo hành với đơn giá 0 đồng và tổng tiền thanh toán bằng 0 đồng.<br>4. Nhân viên kiểm tra tính chuẩn xác và nhấn **Phát hành hóa đơn**.<br>5. Hệ thống kiểm tra tổng tiền hóa đơn: Nhận diện tổng tiền bằng 0 đồng, hệ thống tự động chuyển trạng thái hóa đơn sang **Đã thanh toán** mà không yêu cầu mở hộp thoại thu tiền mặt/thẻ/chuyển khoản QR.<br>6. Hệ thống tự động chuyển trạng thái phiếu công việc sang **Đã quyết toán tài chính**, mở khóa điều kiện xuất xưởng.<br>7. Hệ thống tạo hóa đơn điện tử 0 đồng, gửi email biên lai điện tử cho khách hàng và thông báo cho Cố vấn dịch vụ xe đã sẵn sàng làm thủ tục xuất xưởng (UC-43). |
 | **Luồng thay thế** | **[Hủy thao tác]** Tại màn hình xem trước hóa đơn, nhân viên chọn **Hủy**:<br>Hệ thống đóng màn hình xem trước và quay lại danh sách chờ lập hóa đơn mà không phát sinh dữ liệu mới. |
 | **Luồng ngoại lệ** | Tại bước 5, nếu phiếu công việc là loại kết hợp có các hạng mục dịch vụ phát sinh ngoài bảo hành dẫn đến tổng thanh toán lớn hơn 0 đồng, hệ thống chuyển sang quy trình thu tiền chuẩn (UC-28) để thu phần tiền phát sinh trước khi kích hoạt trạng thái Đã quyết toán tài chính. |
 
 ---
 
-## UC-85 – Phê duyệt bảo hành thiện chí
+## UC-86 – Phê duyệt bảo hành thiện chí
 
-| **Mã Use case**    | UC-85 |
+| **Mã Use case**    | UC-86 |
 | ------------------ | ------ |
 | **Tên Use case**   | Phê duyệt bảo hành thiện chí |
 | **Mô tả**          | Quản lý dịch vụ xem xét và phê duyệt các yêu cầu bảo hành ngoại lệ đối với trường hợp phương tiện hoặc phụ tùng đã hết hạn bảo hành tiêu chuẩn nhưng được hỗ trợ chi phí theo chính sách chăm sóc khách hàng đặc biệt của trung tâm. |
@@ -1463,9 +1478,9 @@
 
 ---
 
-## UC-86 – Xem báo cáo bảo hành
+## UC-87 – Xem báo cáo bảo hành
 
-| **Mã Use case**    | UC-86 |
+| **Mã Use case**    | UC-87 |
 | ------------------ | ------ |
 | **Tên Use case**   | Xem báo cáo bảo hành |
 | **Mô tả**          | Quản lý dịch vụ theo dõi các chỉ số thống kê tài chính và kỹ thuật mật về hoạt động bảo hành: tỷ lệ xe bảo hành trên tổng lượt phục vụ, tổng chi phí vốn phụ tùng bảo hành xuất kho (tính theo giá vốn bình quân di động), danh sách phụ tùng lỗi lặp lại và nhà cung cấp bồi hoàn. Chức năng này được bảo vệ phân quyền nghiêm ngặt, các vai trò khác không được quyền truy cập. |
