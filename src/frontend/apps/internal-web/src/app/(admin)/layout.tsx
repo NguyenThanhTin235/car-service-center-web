@@ -78,14 +78,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <SaaSDashboardShell
       roleTitle="Quản Trị Viên"
-      roleBadge="ADMIN"
-      brandSubtitle="IAM & Master Catalog"
+      roleBadge="QUẢN TRỊ"
+      brandSubtitle="Phân quyền & Danh mục gốc"
       navSectionTitle="Phân hệ quản trị"
       navItems={ADMIN_NAV_ITEMS}
       telemetryTitle="Trạng thái hạ tầng"
       telemetryItems={ADMIN_TELEMETRY_ITEMS}
       defaultRoleLabel="Quản trị viên"
-      defaultInitials="AD"
+      defaultInitials="QT"
       searchPlaceholder="Tìm chức năng quản trị..."
       onGlobalSearch={(q) => router.push(`/accounts?search=${encodeURIComponent(q)}`)}
     >

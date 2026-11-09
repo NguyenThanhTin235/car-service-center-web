@@ -53,7 +53,7 @@ export default function WeeklyCalendarGrid({
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col relative">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto styled-scrollbar">
         <div className="min-w-[1100px]">
           {/* Header Row */}
           <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-slate-50 border-b border-slate-200 divide-x divide-slate-200">

@@ -101,7 +101,7 @@ export default function PartCategoriesPage() {
           className="h-10 px-4 flex items-center gap-2 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white rounded-xl text-xs font-bold shadow-md shadow-[#0866ff]/20 active:scale-[0.98] transition-all self-start sm:self-auto cursor-pointer"
         >
           <span className="material-symbols-outlined text-[18px]">create_new_folder</span>
-          <span>+ Thêm Danh mục</span>
+          <span>Thêm danh mục</span>
         </button>
       </div>
 

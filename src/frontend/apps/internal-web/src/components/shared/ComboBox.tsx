@@ -48,7 +48,7 @@ export default function ComboBox({ options, value, onChange, placeholder }: Prop
     <div ref={wrapperRef} className="relative w-full">
       <input
         type="text"
-        className="w-full px-3 py-2 border border-outline rounded-lg focus:ring-1 focus:ring-primary focus:border-primary bg-surface-container-lowest"
+        className="w-full h-10 px-3.5 rounded-xl border border-slate-200/90 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff]/20 transition-all"
         placeholder={placeholder}
         value={search}
         onChange={e => {
@@ -57,25 +57,27 @@ export default function ComboBox({ options, value, onChange, placeholder }: Prop
         }}
         onFocus={() => {
           setIsOpen(true);
-          setSearch(''); // Clear to show all options when focused
+          setSearch('');
         }}
       />
       {isOpen && (
-        <ul className="absolute z-10 w-full mt-1 bg-surface-container-lowest border border-outline-variant rounded-md shadow-lg max-h-48 overflow-auto">
-          {filtered.length > 0 ? filtered.map(opt => (
-            <li
-              key={opt.id}
-              className="px-3 py-2 cursor-pointer hover:bg-surface-container text-body-md"
-              onClick={() => {
-                onChange(opt.id);
-                setSearch(opt.label);
-                setIsOpen(false);
-              }}
-            >
-              {opt.label}
-            </li>
-          )) : (
-            <li className="px-3 py-2 text-secondary text-body-sm italic">Không tìm thấy kết quả</li>
+        <ul className="absolute z-20 w-full mt-1.5 bg-white border border-slate-200/90 rounded-xl shadow-lg max-h-52 overflow-auto styled-scrollbar p-1">
+          {filtered.length > 0 ? (
+            filtered.map(opt => (
+              <li
+                key={opt.id}
+                className="px-3 py-2 rounded-lg cursor-pointer text-xs font-medium text-slate-700 hover:bg-blue-50/70 hover:text-[#0866ff] transition-colors"
+                onClick={() => {
+                  onChange(opt.id);
+                  setSearch(opt.label);
+                  setIsOpen(false);
+                }}
+              >
+                {opt.label}
+              </li>
+            ))
+          ) : (
+            <li className="px-3 py-2 text-xs text-slate-400 italic">Không tìm thấy kết quả phù hợp</li>
           )}
         </ul>
       )}

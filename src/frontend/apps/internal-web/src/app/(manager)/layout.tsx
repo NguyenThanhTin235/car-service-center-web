@@ -83,14 +83,14 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
   return (
     <SaaSDashboardShell
       roleTitle="Quản Lý Dịch Vụ"
-      roleBadge="MANAGER"
-      brandSubtitle="Service & Warehouse"
+      roleBadge="QUẢN LÝ"
+      brandSubtitle="Điều hành xưởng & Kho vật tư"
       navSectionTitle="Điều hướng"
       navItems={navItems}
       telemetryTitle="Chỉ số Kho & Xưởng"
       telemetryItems={telemetryItems}
       defaultRoleLabel="Quản lý dịch vụ"
-      defaultInitials="MG"
+      defaultInitials="QL"
       searchPlaceholder="Tìm phiếu RO, mã phụ tùng..."
       onGlobalSearch={(q) => router.push(`/dashboard?search=${encodeURIComponent(q)}`)}
     >

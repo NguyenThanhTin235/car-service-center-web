@@ -109,9 +109,9 @@ export default function InvoiceDetailPage() {
 
   if (loading) {
     return (
-      <div className="py-24 flex flex-col items-center justify-center text-on-surface-variant space-y-3">
-        <span className="material-symbols-outlined text-[40px] animate-spin text-primary">progress_activity</span>
-        <p className="text-sm font-medium">Đang tải thông tin chi tiết hóa đơn...</p>
+      <div className="py-24 flex flex-col items-center justify-center text-slate-500 space-y-3">
+        <span className="material-symbols-outlined text-[40px] animate-spin text-[#0866ff]">progress_activity</span>
+        <p className="text-xs font-semibold text-slate-600">Đang tải thông tin chi tiết hóa đơn...</p>
       </div>
     );
   }
@@ -119,14 +119,14 @@ export default function InvoiceDetailPage() {
   if (error || !invoice) {
     return (
       <div className="max-w-xl mx-auto py-16 text-center space-y-4">
-        <div className="w-16 h-16 rounded-full bg-error-container/30 text-error flex items-center justify-center mx-auto">
+        <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center mx-auto">
           <span className="material-symbols-outlined text-[32px]">error</span>
         </div>
-        <h2 className="text-xl font-bold text-on-surface">Không tìm thấy hóa đơn</h2>
-        <p className="text-sm text-on-surface-variant">{error || 'Hóa đơn không tồn tại hoặc đã bị xóa.'}</p>
+        <h2 className="text-lg font-bold text-slate-900">Không tìm thấy hóa đơn</h2>
+        <p className="text-xs text-slate-500">{error || 'Hóa đơn không tồn tại hoặc đã bị xóa.'}</p>
         <Link
           href="/staff/billing"
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-xl text-xs font-semibold hover:bg-primary-dark transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white rounded-xl text-xs font-bold hover:brightness-110 transition-all shadow-xs"
         >
           <span className="material-symbols-outlined text-[16px]">arrow_back</span>
           <span>Quay lại hàng chờ</span>
@@ -138,27 +138,27 @@ export default function InvoiceDetailPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       {/* 1. Header Toolbar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs">
         <div className="space-y-1.5">
           <div className="flex items-center gap-3">
             <Link
               href="/staff/billing"
-              className="w-9 h-9 rounded-xl border border-outline-variant hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant transition-colors"
+              className="w-10 h-10 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-600 hover:text-slate-900 transition-colors"
               title="Quay lại danh sách"
             >
               <span className="material-symbols-outlined text-[20px]">arrow_back</span>
             </Link>
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-headline-sm font-extrabold text-on-surface font-mono">
+                <h1 className="text-xl font-extrabold text-slate-900 font-mono tracking-wider">
                   {invoice.invoiceNumber}
                 </h1>
                 <InvoiceStatusBadge status={invoice.status} />
               </div>
-              <p className="text-xs text-on-surface-variant mt-0.5">
-                Phiếu công việc:{' '}
-                <span className="font-mono font-bold text-primary">{invoice.woNumber}</span> | Xe:{' '}
-                <strong>{invoice.vehicle.licensePlate}</strong> ({invoice.vehicle.make}{' '}
+              <p className="text-xs text-slate-500 mt-0.5">
+                Lệnh sửa chữa (RO):{' '}
+                <span className="font-mono font-bold text-[#0050cd]">{invoice.woNumber}</span> | Phương tiện:{' '}
+                <strong className="font-mono text-slate-800">{invoice.vehicle.licensePlate}</strong> ({invoice.vehicle.make}{' '}
                 {invoice.vehicle.model})
               </p>
             </div>
@@ -173,9 +173,9 @@ export default function InvoiceDetailPage() {
                 type="button"
                 onClick={() => setIsDiscountModalOpen(true)}
                 disabled={actionLoading}
-                className="px-3.5 py-2 rounded-xl border border-outline-variant hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors flex items-center gap-1.5"
+                className="h-9 px-3.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[18px] text-primary">percent</span>
+                <span className="material-symbols-outlined text-[18px] text-[#0050cd]">percent</span>
                 <span>Chỉnh chiết khấu</span>
               </button>
 
@@ -183,7 +183,7 @@ export default function InvoiceDetailPage() {
                 type="button"
                 onClick={() => setIsIssueConfirmOpen(true)}
                 disabled={actionLoading}
-                className="px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold hover:bg-primary-dark transition-colors shadow-xs flex items-center gap-1.5"
+                className="h-9 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined text-[18px]">send</span>
                 <span>Phát hành hóa đơn</span>
@@ -193,7 +193,7 @@ export default function InvoiceDetailPage() {
                 type="button"
                 onClick={() => setIsCancelModalOpen(true)}
                 disabled={actionLoading}
-                className="px-3 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium transition-colors flex items-center gap-1"
+                className="h-9 px-3.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">cancel</span>
                 <span>Hủy nháp</span>
@@ -207,7 +207,7 @@ export default function InvoiceDetailPage() {
                 type="button"
                 onClick={() => setIsPaymentModalOpen(true)}
                 disabled={actionLoading}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
+                className="h-9 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined text-[18px]">payments</span>
                 <span>Thu tiền ngay</span>
@@ -217,9 +217,9 @@ export default function InvoiceDetailPage() {
                 type="button"
                 onClick={handleDownloadPdf}
                 disabled={actionLoading}
-                className="px-3.5 py-2 rounded-xl border border-outline-variant hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors flex items-center gap-1.5"
+                className="h-9 px-3.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[18px]">download</span>
+                <span className="material-symbols-outlined text-[18px] text-slate-600">download</span>
                 <span>In / Xuất PDF</span>
               </button>
 
@@ -227,7 +227,7 @@ export default function InvoiceDetailPage() {
                 type="button"
                 onClick={() => setIsCancelModalOpen(true)}
                 disabled={actionLoading}
-                className="px-3 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium transition-colors flex items-center gap-1"
+                className="h-9 px-3.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">cancel</span>
                 <span>Hủy hóa đơn</span>
@@ -240,7 +240,7 @@ export default function InvoiceDetailPage() {
               <button
                 type="button"
                 onClick={handleDownloadPdf}
-                className="px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold hover:bg-primary-dark transition-colors shadow-xs flex items-center gap-1.5"
+                className="h-9 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined text-[18px]">download</span>
                 <span>Tải biên lai / In PDF</span>
@@ -249,7 +249,7 @@ export default function InvoiceDetailPage() {
           )}
 
           {invoice.status === 'CANCELLED' && (
-            <div className="px-3 py-1.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs">
+            <div className="px-3 py-1.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium">
               Lý do hủy: {invoice.cancelReason || 'Không có ghi chú'}
             </div>
           )}
@@ -259,97 +259,99 @@ export default function InvoiceDetailPage() {
       {/* 2. Bento Info Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Customer Card */}
-        <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant space-y-2 text-xs">
-          <span className="font-bold text-on-surface-variant uppercase tracking-wider block">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2 text-xs">
+          <span className="font-bold text-slate-500 uppercase tracking-wider block text-[11px]">
             Khách hàng
           </span>
-          <div className="text-base font-bold text-on-surface">{invoice.customer.fullName}</div>
-          <div className="text-on-surface-variant">SĐT: {invoice.customer.phone || '-'}</div>
-          <div className="text-on-surface-variant">Email: {invoice.customer.email || '-'}</div>
+          <div className="text-base font-extrabold text-slate-900">{invoice.customer.fullName}</div>
+          <div className="text-slate-600 font-mono tabular-nums">SĐT: {invoice.customer.phone || '-'}</div>
+          <div className="text-slate-600">Email: {invoice.customer.email || '-'}</div>
         </div>
 
         {/* Vehicle Card */}
-        <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant space-y-2 text-xs">
-          <span className="font-bold text-on-surface-variant uppercase tracking-wider block">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2 text-xs">
+          <span className="font-bold text-slate-500 uppercase tracking-wider block text-[11px]">
             Phương tiện
           </span>
-          <div className="text-base font-bold text-on-surface font-mono">
+          <div className="text-base font-extrabold text-slate-900 font-mono tracking-wider">
             {invoice.vehicle.licensePlate}
           </div>
-          <div className="text-on-surface-variant">
+          <div className="text-slate-600">
             {invoice.vehicle.make} {invoice.vehicle.model} ({invoice.vehicle.year})
           </div>
-          <div className="text-on-surface-variant">Màu: {invoice.vehicle.color || '-'}</div>
+          <div className="text-slate-600">Màu: {invoice.vehicle.color || '-'}</div>
         </div>
 
         {/* Personnel Card */}
-        <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant space-y-2 text-xs">
-          <span className="font-bold text-on-surface-variant uppercase tracking-wider block">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2 text-xs">
+          <span className="font-bold text-slate-500 uppercase tracking-wider block text-[11px]">
             Hồ sơ &amp; Nhân sự
           </span>
-          <div>Cố vấn dịch vụ: <strong>{invoice.advisor.fullName}</strong></div>
-          <div>Người lập hóa đơn: {invoice.createdBy?.full_name || '-'}</div>
-          {invoice.issuedBy && <div>Người phát hành: {invoice.issuedBy.full_name}</div>}
-          <div className="text-on-surface-variant pt-1 border-t border-outline-variant/60">
+          <div>Cố vấn dịch vụ: <strong className="text-slate-800">{invoice.advisor.fullName}</strong></div>
+          <div className="text-slate-600">Người lập hóa đơn: {invoice.createdBy?.full_name || '-'}</div>
+          {invoice.issuedBy && <div className="text-slate-600">Người phát hành: {invoice.issuedBy.full_name}</div>}
+          <div className="text-slate-500 pt-1 border-t border-slate-100 font-mono tabular-nums">
             Ngày tạo: {formatDate(invoice.createdAt)}
           </div>
         </div>
       </div>
 
       {/* 3. Lines Breakdown Table */}
-      <div className="space-y-3 bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant shadow-xs">
+      <div className="space-y-3 bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs">
         <div className="flex items-center justify-between">
-          <h3 className="text-title-sm font-bold text-on-surface flex items-center gap-2">
+          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
             <span>Danh mục chi phí thanh toán ({invoice.lines.length})</span>
           </h3>
-          <span className="text-xs text-on-surface-variant font-medium">Quy chế Không Thuế (VAT 0%)</span>
+          <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+            Quy chế Không Thuế (VAT 0%)
+          </span>
         </div>
 
         <InvoiceLinesTable lines={invoice.lines} />
 
         {/* 4. Cost Totals Summary Box */}
-        <div className="flex flex-col items-end pt-4 space-y-2 text-sm">
-          <div className="w-80 flex justify-between text-on-surface-variant">
-            <span>Tổng tiền dịch vụ (Subtotal):</span>
-            <span className="font-semibold text-on-surface">{formatMoney(invoice.subtotal)}</span>
+        <div className="flex flex-col items-end pt-4 space-y-2 text-xs">
+          <div className="w-80 flex justify-between text-slate-600">
+            <span>Tổng tiền dịch vụ (Chưa giảm trừ):</span>
+            <span className="font-bold text-slate-900 font-mono tabular-nums">{formatMoney(invoice.subtotal)}</span>
           </div>
 
           {invoice.discountAmount > 0 && (
             <div className="w-80 space-y-0.5">
-              <div className="flex justify-between text-error font-semibold">
+              <div className="flex justify-between text-rose-600 font-bold">
                 <span>Chiết khấu / Giảm trừ:</span>
-                <span>- {formatMoney(invoice.discountAmount)}</span>
+                <span className="font-mono tabular-nums">- {formatMoney(invoice.discountAmount)}</span>
               </div>
               {invoice.discountReason && (
-                <div className="text-right text-xs text-on-surface-variant italic">
+                <div className="text-right text-[11px] text-slate-400 italic">
                   (Lý do: {invoice.discountReason})
                 </div>
               )}
             </div>
           )}
 
-          <div className="w-80 flex justify-between text-on-surface-variant text-xs">
-            <span>Thuế GTGT (VAT 0% - Zero-Tax):</span>
-            <span>0 đ</span>
+          <div className="w-80 flex justify-between text-slate-500 text-[11px]">
+            <span>Thuế GTGT (0% Miễn thuế):</span>
+            <span className="font-mono tabular-nums">0 đ</span>
           </div>
 
-          <div className="w-80 flex justify-between text-lg font-bold text-on-surface pt-3 border-t border-outline-variant">
+          <div className="w-80 flex justify-between text-base font-extrabold text-slate-900 pt-3 border-t border-slate-200">
             <span>TỔNG THANH TOÁN:</span>
-            <span className="text-primary">{formatMoney(invoice.totalAmount)}</span>
+            <span className="text-[#0050cd] font-mono tabular-nums">{formatMoney(invoice.totalAmount)}</span>
           </div>
 
-          <div className="w-80 flex justify-between text-sm font-bold pt-1">
+          <div className="w-80 flex justify-between text-xs font-bold pt-1">
             <span>Số tiền còn phải trả:</span>
             {invoice.amountDue > 0 ? (
-              <span className="text-amber-700 text-base">{formatMoney(invoice.amountDue)}</span>
+              <span className="text-amber-700 text-sm font-mono tabular-nums">{formatMoney(invoice.amountDue)}</span>
             ) : (
               <span className="text-emerald-600 font-bold">0 đ (Đã thanh toán đủ)</span>
             )}
           </div>
 
           {invoice.notes && (
-            <div className="w-full mt-3 p-3.5 rounded-xl bg-surface-container-low border border-outline-variant text-xs text-on-surface">
-              <span className="font-bold text-on-surface-variant block mb-0.5">Ghi chú trên hóa đơn:</span>
+            <div className="w-full mt-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700">
+              <span className="font-bold text-slate-900 block mb-0.5">Ghi chú trên hóa đơn:</span>
               <p>{invoice.notes}</p>
             </div>
           )}
@@ -357,14 +359,14 @@ export default function InvoiceDetailPage() {
       </div>
 
       {/* 5. Payment Transaction History */}
-      <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant shadow-xs space-y-4">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-title-sm font-bold text-on-surface flex items-center gap-2">
-            <span className="material-symbols-outlined text-[20px] text-primary">history</span>
+          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[20px] text-[#0050cd]">history</span>
             <span>Lịch sử thanh toán &amp; Đối soát ({invoice.payments.length})</span>
           </h3>
           {invoice.status === 'PAID' && (
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
               <span className="material-symbols-outlined text-[16px]">check_circle</span>
               Đã quyết toán tài chính 100%
             </span>
@@ -372,13 +374,13 @@ export default function InvoiceDetailPage() {
         </div>
 
         {invoice.payments.length === 0 ? (
-          <p className="text-xs text-on-surface-variant py-4 text-center">
+          <p className="text-xs text-slate-500 py-6 text-center">
             Chưa có giao dịch thanh toán nào được ghi nhận.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-surface-container-low text-on-surface-variant font-semibold border-b border-outline-variant">
+              <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                 <tr>
                   <th className="py-2.5 px-3">Thời gian</th>
                   <th className="py-2.5 px-3">Phương thức</th>
@@ -388,130 +390,99 @@ export default function InvoiceDetailPage() {
                   <th className="py-2.5 px-3 text-center">Trạng thái</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-outline-variant">
+              <tbody className="divide-y divide-slate-100">
                 {invoice.payments.slice((paymentPage - 1) * 5, paymentPage * 5).map((p) => (
                   <tr key={p.id}>
-                    <td className="py-2.5 px-3 font-mono">{formatDate(p.paidAt || p.createdAt)}</td>
-                    <td className="py-2.5 px-3 font-medium">
+                    <td className="py-2.5 px-3 font-mono tabular-nums text-slate-600">{formatDate(p.paidAt || p.createdAt)}</td>
+                    <td className="py-2.5 px-3 font-bold text-slate-800">
                       {p.paymentMethod === 'CASH'
                         ? 'Tiền mặt'
                         : p.paymentMethod === 'CARD'
                           ? 'Thẻ (POS)'
-                          : 'Trực tuyến'}
+                          : 'Trực tuyến (SePay)'}
                     </td>
-                    <td className="py-2.5 px-3 font-mono">{p.transactionRef || '-'}</td>
-                    <td className="py-2.5 px-3 text-right font-bold text-on-surface">
+                    <td className="py-2.5 px-3 font-mono text-slate-600">
+                      {p.transactionRef || '-'}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono tabular-nums font-bold text-slate-900">
                       {formatMoney(p.amount)}
                     </td>
-                    <td className="py-2.5 px-3 text-right text-on-surface-variant">
+                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-600">
                       {p.tenderedAmount ? formatMoney(p.tenderedAmount) : '-'}
                     </td>
                     <td className="py-2.5 px-3 text-center">
-                      {p.status === 'SUCCESS' ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                          Thành công
-                        </span>
-                      ) : p.status === 'PENDING' ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                          Đang chờ
-                        </span>
-                      ) : (
-                        <span
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-full"
-                          title={p.failureReason || 'Thất bại'}
-                        >
-                          Thất bại
-                        </span>
-                      )}
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Thành công
+                      </span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
 
-        {invoice.payments.length > 5 && (
-          <div className="flex flex-wrap items-center justify-between pt-2.5 text-xs text-on-surface-variant gap-2">
-            <span>
-              Hiển thị <strong>{(paymentPage - 1) * 5 + 1}</strong> -{' '}
-              <strong>{Math.min(paymentPage * 5, invoice.payments.length)}</strong> /{' '}
-              <strong>{invoice.payments.length}</strong> giao dịch (Trang {paymentPage}/{Math.ceil(invoice.payments.length / 5)})
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                disabled={paymentPage <= 1}
-                onClick={() => setPaymentPage((p) => Math.max(1, p - 1))}
-                className="px-2 py-1 rounded-lg border border-outline-variant hover:bg-surface-container-high disabled:opacity-40 transition-colors inline-flex items-center gap-1"
-              >
-                <span className="material-symbols-outlined text-[14px]">chevron_left</span>
-                <span>Trước</span>
-              </button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.ceil(invoice.payments.length / 5) }, (_, i) => i + 1).map((num) => (
+            {invoice.payments.length > 5 && (
+              <div className="flex items-center justify-between pt-3 text-xs text-slate-500">
+                <span>Tổng {invoice.payments.length} giao dịch</span>
+                <div className="flex items-center gap-1">
                   <button
-                    key={num}
-                    type="button"
-                    onClick={() => setPaymentPage(num)}
-                    className={`w-6 h-6 rounded-lg text-xs font-semibold transition-colors ${paymentPage === num
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'border border-outline-variant hover:bg-surface-container-high text-on-surface'
-                      }`}
+                    disabled={paymentPage <= 1}
+                    onClick={() => setPaymentPage((p) => Math.max(1, p - 1))}
+                    className="px-2 py-1 rounded border border-slate-200 disabled:opacity-40"
                   >
-                    {num}
+                    Trước
                   </button>
-                ))}
+                  <button
+                    disabled={paymentPage * 5 >= invoice.payments.length}
+                    onClick={() => setPaymentPage((p) => p + 1)}
+                    className="px-2 py-1 rounded border border-slate-200 disabled:opacity-40"
+                  >
+                    Sau
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                disabled={paymentPage >= Math.ceil(invoice.payments.length / 5)}
-                onClick={() => setPaymentPage((p) => Math.min(Math.ceil(invoice.payments.length / 5), p + 1))}
-                className="px-2 py-1 rounded-lg border border-outline-variant hover:bg-surface-container-high disabled:opacity-40 transition-colors inline-flex items-center gap-1"
-              >
-                <span>Sau</span>
-                <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-              </button>
-            </div>
+            )}
           </div>
         )}
       </div>
 
       {/* Modals */}
-      <DiscountEditorModal
-        isOpen={isDiscountModalOpen}
-        onClose={() => setIsDiscountModalOpen(false)}
-        invoiceId={invoice.id}
-        subtotal={invoice.subtotal}
-        currentDiscount={invoice.discountAmount}
-        currentReason={invoice.discountReason}
-        onSuccess={loadInvoice}
-      />
+      {invoice && (
+        <>
+          <DiscountEditorModal
+            isOpen={isDiscountModalOpen}
+            onClose={() => setIsDiscountModalOpen(false)}
+            invoiceId={invoice.id}
+            subtotal={invoice.subtotal}
+            currentDiscount={invoice.discountAmount}
+            currentReason={invoice.discountReason}
+            onSuccess={loadInvoice}
+          />
 
-      <PaymentModal
-        isOpen={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
-        invoice={invoice}
-        onSuccess={loadInvoice}
-      />
+          <PaymentModal
+            isOpen={isPaymentModalOpen}
+            onClose={() => setIsPaymentModalOpen(false)}
+            invoice={invoice}
+            onSuccess={loadInvoice}
+          />
 
-      <CancelInvoiceModal
-        isOpen={isCancelModalOpen}
-        onClose={() => setIsCancelModalOpen(false)}
-        onConfirm={handleConfirmCancel}
-        invoiceNumber={invoice.invoiceNumber}
-      />
+          <CancelInvoiceModal
+            isOpen={isCancelModalOpen}
+            onClose={() => setIsCancelModalOpen(false)}
+            onConfirm={handleConfirmCancel}
+            invoiceNumber={invoice.invoiceNumber}
+          />
 
-      <ConfirmModal
-        isOpen={isIssueConfirmOpen}
-        title="Phát hành hóa đơn chính thức"
-        message={`Bạn có chắc chắn muốn phát hành hóa đơn chính thức ${invoice.invoiceNumber} cho khách hàng ${invoice.customer.fullName}? Sau khi phát hành, chi phí sẽ được khóa cứng và gửi email cho khách hàng.`}
-        confirmText="Phát hành ngay"
-        cancelText="Quay lại"
-        onConfirm={handleConfirmIssue}
-        onCancel={() => setIsIssueConfirmOpen(false)}
-      />
+          <ConfirmModal
+            isOpen={isIssueConfirmOpen}
+            title="Xác nhận phát hành hóa đơn"
+            message={`Bạn có chắc muốn phát hành chính thức hóa đơn ${invoice.invoiceNumber}? Sau khi phát hành, khách hàng có thể thanh toán và hóa đơn không thể hoàn trả trạng thái nháp.`}
+            confirmText="Phát hành ngay"
+            cancelText="Kiểm tra lại"
+            onConfirm={handleConfirmIssue}
+            onCancel={() => setIsIssueConfirmOpen(false)}
+          />
+        </>
+      )}
     </div>
   );
 }
-

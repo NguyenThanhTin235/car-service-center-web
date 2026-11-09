@@ -85,9 +85,9 @@ export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-primary text-[24px]">receipt_long</span>
             <h2 className="text-title-lg font-bold text-on-surface">
-              Chi tiết Phiếu Công Việc (RO): <span className="font-mono text-primary">{workOrder.wo_number}</span>
+              Chi tiết Lệnh sửa chữa: <span className="font-mono text-primary">{workOrder.wo_number}</span>
             </h2>
-            <span className="px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant text-label-sm font-semibold ml-2">Read-Only</span>
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold ml-2">Chỉ xem</span>
           </div>
           <button 
             onClick={onClose} 

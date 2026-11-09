@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { employeeApi, EmployeeData } from '@/lib/api/employees';
 import { userApi, UserData } from '@/lib/api/users';
+import ConfirmModal from '@/components/shared/ConfirmModal';
+import toast from 'react-hot-toast';
 
 const POSITIONS: Record<string, string> = {
   MANAGER: 'Quản lý',
@@ -49,6 +51,7 @@ export default function EmployeesPage() {
   const [editingEmp, setEditingEmp] = useState<EmployeeData | null>(null);
   const [formData, setFormData] = useState<FormData>(defaultForm);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmEmp, setConfirmEmp] = useState<{ emp: EmployeeData; action: 'deactivate' | 'reactivate' } | null>(null);
   const [error, setError] = useState('');
 
   const loadEmployees = useCallback(async (page = 1) => {
@@ -100,24 +103,38 @@ export default function EmployeesPage() {
       setShowModal(false); loadEmployees(pagination.currentPage);
     } catch (e: any) { setError(e.response?.data?.message || 'Có lỗi xảy ra'); } finally { setSubmitting(false); }
   };
-  const handleDeactivate = async (emp: EmployeeData) => {
+  const handleDeactivate = (emp: EmployeeData) => {
     if (!emp.isActive) return;
-    if (!confirm(`Vô hiệu hóa nhân viên "${emp.fullName}"?`)) return;
-    try { await employeeApi.deactivate(emp.id); loadEmployees(pagination.currentPage); }
-    catch (e: any) { alert(e.response?.data?.message || 'Có lỗi xảy ra'); }
+    setConfirmEmp({ emp, action: 'deactivate' });
   };
-  const handleReactivate = async (emp: EmployeeData) => {
+  const handleReactivate = (emp: EmployeeData) => {
     if (emp.isActive) return;
-    if (!confirm(`Khôi phục nhân viên "${emp.fullName}"?`)) return;
-    try { await employeeApi.reactivate(emp.id); loadEmployees(pagination.currentPage); }
-    catch (e: any) { alert(e.response?.data?.message || 'Có lỗi xảy ra'); }
+    setConfirmEmp({ emp, action: 'reactivate' });
+  };
+
+  const handleConfirmEmpAction = async () => {
+    if (!confirmEmp) return;
+    try {
+      if (confirmEmp.action === 'deactivate') {
+        await employeeApi.deactivate(confirmEmp.emp.id);
+        toast.success(`Đã vô hiệu hóa nhân viên "${confirmEmp.emp.fullName}"`);
+      } else {
+        await employeeApi.reactivate(confirmEmp.emp.id);
+        toast.success(`Đã khôi phục nhân viên "${confirmEmp.emp.fullName}"`);
+      }
+      loadEmployees(pagination.currentPage);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+      setConfirmEmp(null);
+    }
   };
   const toggleSkill = (id: number) => setFormData(p => ({ ...p, skillIds: p.skillIds.includes(id) ? p.skillIds.filter(s => s !== id) : [...p.skillIds, id] }));
 
   const activeCount = employees.filter(e => e.isActive).length;
 
   return (
-    <div className="space-y-6 font-[Be_Vietnam_Pro,sans-serif] text-slate-900">
+    <div className="space-y-6 text-slate-900">
       {/* 1. SaaS Page Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
@@ -128,7 +145,7 @@ export default function EmployeesPage() {
           className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white flex items-center gap-2 text-xs font-bold transition-all active:scale-[0.98] shadow-md shadow-[#0866ff]/20 self-start lg:self-auto cursor-pointer"
         >
           <span className="material-symbols-outlined text-[18px]">person_add</span>
-          <span>+ Thêm nhân viên</span>
+          <span>Thêm nhân viên</span>
         </button>
       </div>
 
@@ -520,6 +537,15 @@ export default function EmployeesPage() {
           </div>
         </div>
       )}
+          <ConfirmModal
+        isOpen={!!confirmEmp}
+        title={confirmEmp?.action === 'deactivate' ? 'Vô hiệu hóa nhân sự' : 'Khôi phục nhân sự'}
+        message={confirmEmp ? `Bạn có chắc chắn muốn ${confirmEmp.action === 'deactivate' ? 'vô hiệu hóa' : 'khôi phục'} nhân viên "${confirmEmp.emp.fullName}" không?` : ''}
+        confirmText={confirmEmp?.action === 'deactivate' ? 'Vô hiệu hóa' : 'Khôi phục'}
+        isDestructive={confirmEmp?.action === 'deactivate'}
+        onConfirm={handleConfirmEmpAction}
+        onCancel={() => setConfirmEmp(null)}
+      />
     </div>
   );
 }

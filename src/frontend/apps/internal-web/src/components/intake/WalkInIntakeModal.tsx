@@ -88,7 +88,7 @@ export default function WalkInIntakeModal({ isOpen, onClose, onSubmit, loading, 
         <div className="flex items-center justify-between p-5 border-b border-outline-variant bg-surface-container-lowest">
           <h2 className="text-headline-md font-bold text-on-surface flex items-center gap-2">
             <span className="material-symbols-outlined text-primary">directions_walk</span>
-            Tiếp nhận Walk-In
+            Tiếp nhận Khách vãng lai
           </h2>
           <button onClick={onClose} className="p-1 rounded-full hover:bg-surface-container text-secondary">
             <span className="material-symbols-outlined">close</span>

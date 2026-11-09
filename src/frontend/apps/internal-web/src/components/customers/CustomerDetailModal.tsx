@@ -9,94 +9,110 @@ interface CustomerDetailModalProps {
 export default function CustomerDetailModal({ isOpen, onClose, customerData }: CustomerDetailModalProps) {
   if (!isOpen || !customerData) return null;
 
+  // Vietnamese last word initial e.g. "Nguyễn Văn An" -> "A"
+  const getInitial = (name: string) => {
+    if (!name) return 'K';
+    const parts = name.trim().split(/\s+/);
+    return parts[parts.length - 1]?.[0]?.toUpperCase() || 'K';
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 backdrop-blur-sm p-4">
-      <div className="bg-surface-container-lowest w-full max-w-3xl rounded-2xl shadow-lg border border-outline-variant overflow-hidden flex flex-col max-h-[85vh]">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface">
-          <h2 className="text-headline-md font-headline-md font-bold text-on-surface">Hồ sơ chi tiết Khách hàng</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[85vh]">
+        {/* Header (Sticky top) */}
+        <div className="px-6 py-4 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/70">
+          <div className="flex items-center gap-2.5">
+            <span className="w-9 h-9 rounded-xl bg-blue-50 text-[#0050cd] flex items-center justify-center">
+              <span className="material-symbols-outlined text-[20px]">badge</span>
+            </span>
+            <div>
+              <h2 className="text-base font-bold text-slate-900 tracking-tight">Hồ sơ chi tiết Khách hàng</h2>
+              <p className="text-xs text-slate-500">Mã định danh KH #{customerData.id}</p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors"
+            className="w-9 h-9 rounded-xl hover:bg-slate-200/70 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+            title="Đóng cửa sổ"
+            type="button"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto flex flex-col gap-6">
-          {/* Main Info Card */}
-          <div className="flex flex-col md:flex-row gap-6 bg-surface-container-low p-5 rounded-xl border border-outline-variant items-start md:items-center">
-            <div className="w-20 h-20 rounded-full bg-primary-container text-on-primary font-bold flex items-center justify-center text-display-sm shrink-0 shadow-sm border-2 border-surface">
-              {customerData.fullName.split(' ').pop()?.[0]?.toUpperCase() || 'C'}
-            </div>
-            <div className="flex flex-col flex-1">
-              <div className="flex items-center gap-2">
-                <h3 className="text-headline-md font-bold text-on-surface">{customerData.fullName}</h3>
+        <div className="p-6 overflow-y-auto flex flex-col gap-6 styled-scrollbar">
+          {/* Main Info Hero Box */}
+          <div className="flex flex-col md:flex-row gap-5 bg-gradient-to-br from-slate-50 to-blue-50/30 p-5 rounded-2xl border border-slate-200/80 items-start md:items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#0050cd] to-[#0866ff] text-white font-extrabold flex items-center justify-center text-2xl shrink-0 shadow-md shadow-blue-500/20">
+                {getInitial(customerData.fullName)}
               </div>
-              <div className="flex items-center gap-4 mt-2 text-body-md text-on-surface-variant flex-wrap">
-                <div className="flex items-center gap-1.5 font-code-mono font-medium text-on-surface">
-                  <span className="material-symbols-outlined text-[18px] text-secondary">phone_iphone</span>
-                  {customerData.phone}
+              <div className="flex flex-col">
+                <h3 className="text-lg font-extrabold text-slate-900">{customerData.fullName}</h3>
+                <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-600 flex-wrap">
+                  <div className="flex items-center gap-1 font-mono font-bold text-slate-800 bg-white px-2 py-0.5 rounded-md border border-slate-200/70">
+                    <span className="material-symbols-outlined text-[15px] text-[#0050cd]">phone_iphone</span>
+                    <span>{customerData.phone}</span>
+                  </div>
+                  {customerData.email && (
+                    <div className="flex items-center gap-1 text-slate-600">
+                      <span className="material-symbols-outlined text-[15px] text-slate-400">mail</span>
+                      <span>{customerData.email}</span>
+                    </div>
+                  )}
+                  {customerData.address && (
+                    <div className="flex items-center gap-1 text-slate-600">
+                      <span className="material-symbols-outlined text-[15px] text-slate-400">location_on</span>
+                      <span>{customerData.address}</span>
+                    </div>
+                  )}
                 </div>
-                {customerData.email && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[18px] text-secondary">mail</span>
-                    {customerData.email}
-                  </div>
-                )}
-                {customerData.address && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[18px] text-secondary">location_on</span>
-                    {customerData.address}
-                  </div>
-                )}
               </div>
             </div>
-            {/* Quick Stats right */}
-            <div className="flex flex-col gap-3 md:border-l border-outline-variant md:pl-6 w-full md:w-auto">
+
+            {/* Quick Financial Aggregates */}
+            <div className="flex md:flex-col gap-4 md:gap-2.5 md:border-l md:border-slate-200/80 md:pl-6 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-200/60 md:border-t-0">
               <div>
-                <span className="text-label-sm text-secondary">Tổng chi tiêu</span>
-                <div className="text-title-lg font-bold text-primary font-code-mono">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Tổng chi tiêu</span>
+                <div className="text-base font-extrabold text-[#0050cd] font-mono tabular-nums">
                   {(customerData.stats?.totalSpent || 0).toLocaleString('vi-VN')} ₫
                 </div>
               </div>
               <div>
-                <span className="text-label-sm text-secondary">Số lượt dịch vụ</span>
-                <div className="text-title-md font-semibold text-on-surface">
-                  {customerData.stats?.totalVisits || 0} lượt
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Lượt dịch vụ</span>
+                <div className="text-xs font-bold text-slate-900 font-mono tabular-nums">
+                  {customerData.stats?.totalVisits || 0} lượt hoàn tất
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="h-px w-full bg-outline-variant"></div>
-
           {/* Vehicles List */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-title-md font-bold text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">directions_car</span>
-                Danh sách Xe ({(customerData.vehicles || []).length})
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px] text-[#0050cd]">directions_car</span>
+                <span>Phương tiện sở hữu ({(customerData.vehicles || []).length})</span>
               </h4>
             </div>
             
             {customerData.vehicles && customerData.vehicles.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {customerData.vehicles.map((v: any, idx: number) => (
-                  <div key={idx} className="p-4 rounded-xl border border-outline-variant bg-surface flex items-center gap-4 hover:border-primary-container transition-colors shadow-sm">
-                    <div className="w-12 h-12 rounded-lg bg-surface-container-low border border-outline-variant flex items-center justify-center text-secondary">
-                      <span className="material-symbols-outlined text-[24px]">directions_car</span>
+                  <div key={idx} className="p-4 rounded-xl border border-slate-200/80 bg-white flex items-center gap-3.5 hover:border-blue-300 transition-all shadow-2xs">
+                    <div className="w-11 h-11 rounded-xl bg-slate-100/90 border border-slate-200 flex items-center justify-center text-slate-600 shrink-0">
+                      <span className="material-symbols-outlined text-[22px]">directions_car</span>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="px-2 py-0.5 rounded border border-slate-700 bg-slate-100 font-code-mono text-label-md font-bold text-slate-900 w-fit mb-1 shadow-2xs">
+                    <div className="flex flex-col min-w-0">
+                      <span className="px-2 py-0.5 rounded-md border border-slate-300 bg-slate-100 font-mono text-xs font-extrabold text-slate-900 w-fit mb-1 tracking-wider">
                         {v.licensePlate}
                       </span>
-                      <span className="text-body-md font-medium text-on-surface">
+                      <span className="text-xs font-bold text-slate-800 truncate">
                         {v.make} {v.model}
                       </span>
-                      <span className="text-label-sm text-secondary">
-                        Màu: {v.color || 'N/A'} | Kích cỡ: {{
+                      <span className="text-[11px] text-slate-500 mt-0.5">
+                        Màu: {v.color || 'N/A'} • Cỡ xe: {{
                           SMALL: 'Nhỏ',
                           MEDIUM: 'Vừa',
                           LARGE: 'Lớn',
@@ -109,25 +125,35 @@ export default function CustomerDetailModal({ isOpen, onClose, customerData }: C
                 ))}
               </div>
             ) : (
-              <div className="p-4 rounded-lg bg-surface-container-lowest border border-dashed border-outline text-center text-secondary text-body-md">
-                Khách hàng này chưa có phương tiện nào trong hệ thống.
+              <div className="p-6 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center text-slate-500 text-xs">
+                Khách hàng này chưa đăng ký phương tiện nào trong hệ thống.
               </div>
             )}
           </div>
 
-          <div className="h-px w-full bg-outline-variant"></div>
-
-          {/* Service History Mock */}
+          {/* Service History Section */}
           <div>
-            <h4 className="text-title-md font-bold text-on-surface flex items-center gap-2 mb-3">
-              <span className="material-symbols-outlined text-primary">history</span>
-              Lịch sử Dịch vụ
+            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 mb-3">
+              <span className="material-symbols-outlined text-[18px] text-[#0050cd]">history</span>
+              <span>Lịch sử Dịch vụ tại Xưởng</span>
             </h4>
-            <div className="p-4 rounded-lg bg-surface-container-lowest border border-dashed border-outline text-center text-secondary text-body-md flex flex-col items-center">
-              <span className="material-symbols-outlined text-[32px] opacity-40 mb-2">construction</span>
-              Tính năng Lịch sử sửa chữa đang được hoàn thiện (UC-15/UC-17)...
+            <div className="p-6 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
+              <span className="material-symbols-outlined text-[28px] text-slate-400">build_circle</span>
+              <p className="font-medium text-slate-600">Hồ sơ lịch sử dịch vụ sửa chữa và bảo dưỡng</p>
+              <span className="text-[11px] text-slate-500">Đồng bộ tự động từ các Phiếu công việc (Work Orders) của khách hàng.</span>
             </div>
           </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-3.5 border-t border-slate-200/80 bg-slate-50/70 flex items-center justify-end">
+          <button
+            onClick={onClose}
+            type="button"
+            className="h-9 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+          >
+            Đóng hồ sơ
+          </button>
         </div>
       </div>
     </div>

@@ -103,7 +103,7 @@ export default function DiscountEditorModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Subtotal baseline */}
           <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low border border-outline-variant text-sm">
-            <span className="text-on-surface-variant">Tổng tiền dịch vụ gốc (Subtotal):</span>
+            <span className="text-on-surface-variant">Tổng tiền dịch vụ gốc (Chưa giảm trừ):</span>
             <span className="font-bold text-on-surface text-base">{formatMoney(subtotal)}</span>
           </div>
 

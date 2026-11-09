@@ -78,7 +78,7 @@ export default function CancelInvoiceModal({
             <div>
               <p className="font-semibold">Hành động này không thể hoàn tác!</p>
               <p className="text-amber-800 dark:text-amber-300 mt-0.5">
-                Hóa đơn sẽ bị hủy vĩnh viễn (CANCELLED). Phiếu công việc liên quan sẽ được đưa trở lại hàng đợi chờ để có thể lập hóa đơn mới.
+                Hóa đơn sẽ bị hủy vĩnh viễn. Lệnh sửa chữa liên quan sẽ được đưa trở lại hàng đợi để có thể lập hóa đơn mới.
               </p>
             </div>
           </div>

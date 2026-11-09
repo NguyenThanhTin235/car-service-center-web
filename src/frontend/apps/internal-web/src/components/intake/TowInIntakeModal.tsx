@@ -90,7 +90,7 @@ export default function TowInIntakeModal({ isOpen, onClose, onSubmit, loading, s
         <div className="flex items-center justify-between p-5 border-b border-outline-variant bg-surface-container-lowest">
           <h2 className="text-headline-md font-bold text-on-surface flex items-center gap-2">
             <span className="material-symbols-outlined text-tertiary">local_shipping</span>
-            Tiếp nhận Tow-In (Cứu hộ)
+            Tiếp nhận Xe cứu hộ
           </h2>
           <button onClick={onClose} className="p-1 rounded-full hover:bg-surface-container text-secondary">
             <span className="material-symbols-outlined">close</span>
@@ -299,7 +299,7 @@ export default function TowInIntakeModal({ isOpen, onClose, onSubmit, loading, s
             className="px-6 py-2 font-semibold text-on-primary bg-primary rounded-lg hover:bg-primary-container hover:text-on-primary-container disabled:opacity-50 flex items-center gap-2"
           >
             {loading && <span className="material-symbols-outlined animate-spin text-[18px]">sync</span>}
-            Tạo phiếu tiếp nhận Tow-In
+            Tạo phiếu tiếp nhận xe cứu hộ
           </button>
         </div>
       </div>

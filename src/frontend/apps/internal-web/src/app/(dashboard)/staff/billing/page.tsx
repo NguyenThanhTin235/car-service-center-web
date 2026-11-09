@@ -165,7 +165,7 @@ export default function BillingQueuePage() {
               {summary.pendingCount > 0 ? (
                 <span className="text-amber-800 font-bold flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-amber-600" />
-                  Cần lập bill
+                  Cần lập hóa đơn
                 </span>
               ) : (
                 <span className="text-slate-600 font-medium">Trống</span>
@@ -220,7 +220,7 @@ export default function BillingQueuePage() {
               </span>
             </div>
             <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-              <span>Đã gửi bill cho khách</span>
+              <span>Đã gửi hóa đơn cho khách</span>
               <span className="text-indigo-700 font-semibold">Chờ thu tiền</span>
             </div>
           </div>

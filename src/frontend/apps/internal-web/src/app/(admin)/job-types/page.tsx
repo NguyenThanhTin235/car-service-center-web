@@ -160,7 +160,7 @@ export default function JobTypesPage() {
   const confirmProps = getConfirmProps();
 
   return (
-    <div className="space-y-6 font-[Be_Vietnam_Pro,sans-serif] text-slate-900">
+    <div className="space-y-6 text-slate-900">
       {/* 1. SaaS Page Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
@@ -172,7 +172,7 @@ export default function JobTypesPage() {
           className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white flex items-center gap-2 text-xs font-bold transition-all active:scale-[0.98] shadow-md shadow-[#0866ff]/20 self-start lg:self-auto cursor-pointer"
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
-          <span>+ Thêm loại công việc</span>
+          <span>Thêm loại công việc</span>
         </button>
       </div>
 

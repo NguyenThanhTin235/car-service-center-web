@@ -6,8 +6,8 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
 
   const getTypeName = (type: string) => {
     switch (type) {
-      case 'WALK_IN': return 'Khoang sửa chữa';
-      case 'TOW_IN': return 'Khoang cẩu nâng';
+      case 'WALK_IN': return 'Khách vãng lai';
+      case 'TOW_IN': return 'Xe cứu hộ';
       case 'APPOINTMENT': return 'Hẹn trước';
       default: return type;
     }
@@ -16,7 +16,7 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
   const getStatusName = (status: string) => {
     switch(status) {
       case 'QUEUED': return 'Chờ xử lý';
-      case 'CONVERTED': return 'Đã chuyển lệnh (RO)';
+      case 'CONVERTED': return 'Đã lập lệnh sửa chữa';
       case 'CANCELLED': return 'Đã hủy';
       default: return status;
     }

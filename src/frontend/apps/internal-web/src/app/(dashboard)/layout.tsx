@@ -97,14 +97,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <SaaSDashboardShell
       roleTitle="Quầy Dịch Vụ"
-      roleBadge="STAFF"
+      roleBadge="LỄ TÂN"
       brandSubtitle="Lễ tân & Thu ngân"
       navSectionTitle="Điều hướng"
       navItems={navItems}
       telemetryTitle="Trạng thái quầy"
       telemetryItems={telemetryItems}
       defaultRoleLabel="Nhân viên Lễ tân"
-      defaultInitials="ST"
+      defaultInitials="LT"
       searchPlaceholder="Tìm biển số, khách hàng..."
       onGlobalSearch={(q) => router.push(`/staff/intake?search=${encodeURIComponent(q)}`)}
     >

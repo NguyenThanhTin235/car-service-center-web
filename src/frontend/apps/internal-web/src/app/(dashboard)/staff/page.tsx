@@ -259,7 +259,7 @@ export default function StaffDashboardPage() {
                 </div>
               </div>
               <span className="px-2.5 py-1 rounded-full bg-blue-50 text-[#0050cd] font-mono text-xs font-bold">
-                {stats.conversionPct}% đã tạo RO
+                {stats.conversionPct}% đã tạo lệnh sửa chữa
               </span>
             </div>
 
@@ -283,7 +283,7 @@ export default function StaffDashboardPage() {
                   </div>
                 </div>
                 <div className="px-3">
-                  <div className="text-xs font-medium text-slate-600">Đã chuyển SA</div>
+                  <div className="text-xs font-medium text-slate-600">Đã chuyển Cố vấn</div>
                   <div className="font-mono tabular-nums text-lg font-extrabold text-[#0050cd] mt-0.5">
                     {stats.convertedIntake}
                   </div>
@@ -324,7 +324,7 @@ export default function StaffDashboardPage() {
                 peakRatio: 0.74,
               },
               {
-                label: 'Đã lên lệnh (RO)',
+                label: 'Đã tạo lệnh sửa chữa',
                 value: stats.convertedIntake,
                 color: '#10b981',
                 peakRatio: 0.58,
@@ -531,7 +531,7 @@ export default function StaffDashboardPage() {
                                   : 'bg-emerald-500'
                               }`}
                             />
-                            {rec.status === 'QUEUED' ? 'Đang chờ SA' : 'Đã lên lệnh RO'}
+                            {rec.status === 'QUEUED' ? 'Chờ cố vấn kiểm tra' : 'Đã tạo lệnh sửa chữa'}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">

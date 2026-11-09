@@ -200,7 +200,7 @@ export default function CustomersPage() {
       XLSX.writeFile(workbook, `Bao_Cao_Khach_Hang_${fileDateStr}.xlsx`);
     } catch (error) {
       console.error('Lỗi khi xuất báo cáo', error);
-      alert('Có lỗi xảy ra khi xuất báo cáo!');
+      toast.error('Có lỗi xảy ra khi xuất báo cáo!');
     } finally {
       setLoading(false);
     }
@@ -436,7 +436,18 @@ export default function CustomersPage() {
                 <span className="material-symbols-outlined text-[44px] opacity-40 mb-2">
                   group_off
                 </span>
-                <p className="text-xs">Không tìm thấy khách hàng nào</p>
+                <p className="text-xs font-semibold text-slate-600">
+                  {search ? `Không tìm thấy khách hàng nào khớp với "${search}"` : 'Chưa có hồ sơ khách hàng nào trong danh sách'}
+                </p>
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch('')}
+                    className="mt-2 text-xs text-[#0866ff] hover:underline font-semibold cursor-pointer"
+                  >
+                    Xóa bộ lọc tìm kiếm
+                  </button>
+                )}
               </div>
             ) : (
               <table className="w-full text-left border-collapse min-w-[760px]">
@@ -455,7 +466,7 @@ export default function CustomersPage() {
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs">
-                            {c.fullName.split(' ').pop()?.[0]?.toUpperCase() || 'C'}
+                            {c.fullName.split(' ').pop()?.[0]?.toUpperCase() || 'K'}
                           </div>
                           <div className="flex flex-col">
                             <span
@@ -491,7 +502,7 @@ export default function CustomersPage() {
                                     {v.make} {v.model}
                                   </span>
                                   <span className="text-[11px] text-slate-400 truncate">
-                                    Màu {v.color || 'N/A'}
+                                    Màu {v.color || 'Chưa rõ'}
                                   </span>
                                 </div>
                               </div>

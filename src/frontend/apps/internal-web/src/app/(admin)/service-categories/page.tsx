@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { serviceCategoryApi, ServiceCategoryData } from '@/lib/api/serviceCategories';
+import ConfirmModal from '@/components/shared/ConfirmModal';
+import toast from 'react-hot-toast';
 
 interface FormData {
   name: string;
@@ -20,6 +22,7 @@ export default function ServiceCategoriesPage() {
   const [editing, setEditing] = useState<ServiceCategoryData | null>(null);
   const [formData, setFormData] = useState<FormData>(defaultForm);
   const [submitting, setSubmitting] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<ServiceCategoryData | null>(null);
   const [error, setError] = useState('');
 
   const load = useCallback(async (page = 1) => {
@@ -57,20 +60,28 @@ export default function ServiceCategoriesPage() {
     } catch (e: any) { setError(e.response?.data?.message || 'Có lỗi xảy ra'); } finally { setSubmitting(false); }
   };
 
-  const handleDelete = async (c: ServiceCategoryData) => {
-    if (!confirm(c.templatesCount > 0 ? `Nhóm "${c.name}" đang có ${c.templatesCount} dịch vụ. Nếu xóa, nhóm này sẽ bị vô hiệu hóa thay vì xóa hoàn toàn. Bạn có chắc chắn?` : `Xóa nhóm dịch vụ "${c.name}"?`)) return;
-    try { 
-      await serviceCategoryApi.delete(c.id); 
-      load(pagination.currentPage); 
+  const handleDelete = (c: ServiceCategoryData) => {
+    setItemToDelete(c);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    try {
+      await serviceCategoryApi.delete(itemToDelete.id);
+      toast.success(`Đã xử lý xóa/vô hiệu hóa nhóm "${itemToDelete.name}" thành công`);
+      load(pagination.currentPage);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+      setItemToDelete(null);
     }
-    catch (e: any) { alert(e.response?.data?.message || 'Có lỗi xảy ra'); }
   };
 
   const activeCount = categories.filter(c => c.isActive).length;
   const totalServicesLinked = categories.reduce((acc, c) => acc + (c.templatesCount || 0), 0);
 
   return (
-    <div className="space-y-6 font-[Be_Vietnam_Pro,sans-serif] text-slate-900">
+    <div className="space-y-6 text-slate-900">
       {/* 1. SaaS Page Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
@@ -81,7 +92,7 @@ export default function ServiceCategoriesPage() {
           className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white flex items-center gap-2 text-xs font-bold transition-all active:scale-[0.98] shadow-md shadow-[#0866ff]/20 self-start lg:self-auto cursor-pointer"
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
-          <span>+ Thêm danh mục</span>
+          <span>Thêm danh mục</span>
         </button>
       </div>
 
@@ -346,6 +357,15 @@ export default function ServiceCategoriesPage() {
           </div>
         </div>
       )}
+          <ConfirmModal
+        isOpen={!!itemToDelete}
+        title="Xác nhận xóa danh mục dịch vụ"
+        message={itemToDelete ? (itemToDelete.templatesCount > 0 ? `Nhóm "${itemToDelete.name}" đang có ${itemToDelete.templatesCount} dịch vụ. Nếu xóa, nhóm này sẽ được chuyển sang vô hiệu hóa để bảo vệ tính toàn vẹn dữ liệu.` : `Bạn có chắc chắn muốn xóa nhóm dịch vụ "${itemToDelete.name}" không?`) : ''}
+        confirmText="Xác nhận xóa"
+        isDestructive={true}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setItemToDelete(null)}
+      />
     </div>
   );
 }

@@ -30,8 +30,8 @@ export interface SaaSTelemetryDotItem {
 
 export interface SaaSDashboardShellProps {
   roleTitle: string;
-  roleBadge: string;
-  brandSubtitle: string;
+  roleBadge?: string;
+  brandSubtitle?: string;
   navSectionTitle?: string;
   navItems: SaaSNavItem[];
   telemetryTitle?: string;
@@ -219,24 +219,13 @@ export default function SaaSDashboardShell({
                 <span className="material-symbols-outlined text-[18px]">directions_car</span>
               </div>
               {!isMini && (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span
-                    className={`text-[15px] font-bold tracking-tight truncate ${
-                      isLight ? 'text-slate-900' : 'text-white'
-                    }`}
-                  >
-                    AutoCare
-                  </span>
-                  <span
-                    className={`px-1.5 py-0.5 rounded-md font-mono text-xs font-bold uppercase tracking-wider border ${
-                      isLight
-                        ? 'bg-blue-50 border-blue-200 text-[#0050cd]'
-                        : 'bg-[#0866ff]/25 border-[#60a5fa]/40 text-white'
-                    }`}
-                  >
-                    {roleBadge}
-                  </span>
-                </div>
+                <span
+                  className={`text-[15px] font-bold tracking-tight truncate ${
+                    isLight ? 'text-slate-900' : 'text-white'
+                  }`}
+                >
+                  AutoCare
+                </span>
               )}
             </Link>
 
@@ -633,7 +622,7 @@ export default function SaaSDashboardShell({
                       isLight ? 'text-slate-600' : 'text-slate-300'
                     }`}
                   >
-                    {brandSubtitle}
+                    {displayRole}
                   </div>
                 </div>
               </div>
@@ -735,7 +724,7 @@ export default function SaaSDashboardShell({
                 {isLight ? 'dark_mode' : 'light_mode'}
               </span>
               <span className="hidden xl:inline">
-                {isLight ? 'Sidebar Sáng' : 'Sidebar Sapphire'}
+                {isLight ? 'Giao diện Sáng' : 'Giao diện Sapphire'}
               </span>
             </button>
 

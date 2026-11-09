@@ -2,9 +2,15 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { serviceTemplateApi, ServiceTemplateData, CategoryData } from '@/lib/api/serviceTemplates';
+import ConfirmModal from '@/components/shared/ConfirmModal';
+import toast from 'react-hot-toast';
 
 const PRICING_TYPE_LABELS: Record<string, string> = { FIXED: 'Giá cố định', VEHICLE_SIZE: 'Theo cỡ xe', LABOUR_PARTS: 'Công + Vật tư' };
-const PRICING_COLORS: Record<string, string> = { FIXED: 'bg-[#eff6ff] text-[#1d4ed8]', VEHICLE_SIZE: 'bg-[#fffbeb] text-[#92400e]', LABOUR_PARTS: 'bg-[#ecfdf5] text-[#065f46]' };
+const PRICING_COLORS: Record<string, string> = {
+  FIXED: 'bg-blue-50 text-[#0050cd] border border-blue-200/80',
+  VEHICLE_SIZE: 'bg-amber-50 text-amber-800 border border-amber-200/80',
+  LABOUR_PARTS: 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
+};
 const VEHICLE_SIZES = ['SMALL', 'MEDIUM', 'LARGE', 'SUV', 'TRUCK'];
 const SIZE_LABELS: Record<string, string> = { SMALL: 'Nhỏ', MEDIUM: 'Vừa', LARGE: 'Lớn', SUV: 'SUV', TRUCK: 'Tải' };
 
@@ -30,6 +36,7 @@ export default function ServicesPage() {
   const [editing, setEditing] = useState<ServiceTemplateData | null>(null);
   const [formData, setFormData] = useState<FormData>(defaultForm);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmItem, setConfirmItem] = useState<ServiceTemplateData | null>(null);
   const [error, setError] = useState('');
 
   const load = useCallback(async (page = 1) => {
@@ -70,16 +77,27 @@ export default function ServicesPage() {
     } catch (e: any) { setError(e.response?.data?.message || 'Có lỗi xảy ra'); } finally { setSubmitting(false); }
   };
 
-  const handleToggle = async (t: ServiceTemplateData) => {
-    if (!confirm(`${t.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'} dịch vụ "${t.name}"?`)) return;
-    try { await serviceTemplateApi.toggle(t.id); load(pagination.currentPage); }
-    catch (e: any) { alert(e.response?.data?.message || 'Có lỗi xảy ra'); }
+  const handleToggle = (t: ServiceTemplateData) => {
+    setConfirmItem(t);
+  };
+
+  const handleConfirmToggle = async () => {
+    if (!confirmItem) return;
+    try {
+      await serviceTemplateApi.toggle(confirmItem.id);
+      toast.success(confirmItem.isActive ? `Đã vô hiệu hóa dịch vụ "${confirmItem.name}"` : `Đã kích hoạt dịch vụ "${confirmItem.name}"`);
+      load(pagination.currentPage);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+      setConfirmItem(null);
+    }
   };
 
   const activeCount = templates.filter(t => t.isActive).length;
 
   return (
-    <div className="space-y-6 font-[Be_Vietnam_Pro,sans-serif] text-slate-900">
+    <div className="space-y-6 text-slate-900">
       {/* 1. SaaS Page Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
@@ -90,7 +108,7 @@ export default function ServicesPage() {
           className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white flex items-center gap-2 text-xs font-bold transition-all active:scale-[0.98] shadow-md shadow-[#0866ff]/20 self-start lg:self-auto cursor-pointer"
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
-          <span>+ Thêm dịch vụ</span>
+          <span>Thêm dịch vụ</span>
         </button>
       </div>
 
@@ -497,6 +515,15 @@ export default function ServicesPage() {
           </div>
         </div>
       )}
+          <ConfirmModal
+        isOpen={!!confirmItem}
+        title={confirmItem?.isActive ? 'Vô hiệu hóa dịch vụ' : 'Kích hoạt dịch vụ'}
+        message={confirmItem ? `Bạn có chắc chắn muốn ${confirmItem.isActive ? 'vô hiệu hóa' : 'kích hoạt'} dịch vụ "${confirmItem.name}" không?` : ''}
+        confirmText={confirmItem?.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
+        isDestructive={confirmItem?.isActive}
+        onConfirm={handleConfirmToggle}
+        onCancel={() => setConfirmItem(null)}
+      />
     </div>
   );
 }

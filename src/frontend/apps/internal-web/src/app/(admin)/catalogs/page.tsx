@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { catalogApi, CatalogData } from '@/lib/api/catalogs';
+import ConfirmModal from '@/components/shared/ConfirmModal';
+import toast from 'react-hot-toast';
 
 const CATALOG_TYPES: Record<string, string> = {
   UOM: 'Đơn vị đo lường',
@@ -52,6 +54,7 @@ export default function CatalogsPage() {
   const [editing, setEditing] = useState<CatalogData | null>(null);
   const [formData, setFormData] = useState<FormData>(defaultForm);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmCat, setConfirmCat] = useState<CatalogData | null>(null);
   const [error, setError] = useState('');
 
   const load = useCallback(
@@ -126,20 +129,27 @@ export default function CatalogsPage() {
     }
   };
 
-  const handleToggle = async (c: CatalogData) => {
-    if (!confirm(`${c.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'} danh mục "${c.name}"?`)) return;
+  const handleToggle = (c: CatalogData) => {
+    setConfirmCat(c);
+  };
+
+  const handleConfirmToggle = async () => {
+    if (!confirmCat) return;
     try {
-      await catalogApi.toggle(c.id);
+      await catalogApi.toggle(confirmCat.id);
+      toast.success(confirmCat.isActive ? `Đã vô hiệu hóa danh mục "${confirmCat.name}"` : `Đã kích hoạt danh mục "${confirmCat.name}"`);
       load(pagination.currentPage);
     } catch (e: any) {
-      alert(e.response?.data?.message || 'Có lỗi xảy ra');
+      toast.error(e.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+      setConfirmCat(null);
     }
   };
 
   const activeCount = catalogs.filter((c) => c.isActive).length;
 
   return (
-    <div className="space-y-6 font-[Be_Vietnam_Pro,sans-serif] text-slate-900">
+    <div className="space-y-6 text-slate-900">
       {/* 1. SaaS Page Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
@@ -150,7 +160,7 @@ export default function CatalogsPage() {
           className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white flex items-center gap-2 text-xs font-bold transition-all active:scale-[0.98] shadow-md shadow-[#0866ff]/20 self-start lg:self-auto cursor-pointer"
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
-          <span>+ Thêm danh mục</span>
+          <span>Thêm danh mục</span>
         </button>
       </div>
 
@@ -476,6 +486,15 @@ export default function CatalogsPage() {
           </div>
         </div>
       )}
+          <ConfirmModal
+        isOpen={!!confirmCat}
+        title={confirmCat?.isActive ? 'Vô hiệu hóa danh mục' : 'Kích hoạt danh mục'}
+        message={confirmCat ? `Bạn có chắc chắn muốn ${confirmCat.isActive ? 'vô hiệu hóa' : 'kích hoạt'} danh mục "${confirmCat.name}" không?` : ''}
+        confirmText={confirmCat?.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
+        isDestructive={confirmCat?.isActive}
+        onConfirm={handleConfirmToggle}
+        onCancel={() => setConfirmCat(null)}
+      />
     </div>
   );
 }

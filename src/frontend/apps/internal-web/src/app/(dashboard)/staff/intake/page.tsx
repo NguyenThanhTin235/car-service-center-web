@@ -113,7 +113,7 @@ export default function IntakePage() {
     try {
       await dispatch(createIntakeRecord(data)).unwrap();
       setWalkInModalOpen(false);
-      toast.success('Tạo phiếu tiếp nhận Walk-In thành công!');
+      toast.success('Tạo phiếu tiếp nhận khách vãng lai thành công!');
       dispatch(fetchIntakeQueue({}));
     } catch (err: any) {
       toast.error(err || 'Có lỗi xảy ra');
@@ -124,7 +124,7 @@ export default function IntakePage() {
     try {
       await dispatch(createIntakeRecord(data)).unwrap();
       setTowInModalOpen(false);
-      toast.success('Tạo phiếu tiếp nhận Tow-In thành công!');
+      toast.success('Tạo phiếu tiếp nhận xe cứu hộ thành công!');
       dispatch(fetchIntakeQueue({}));
     } catch (err: any) {
       toast.error(err || 'Có lỗi xảy ra');
@@ -173,14 +173,14 @@ export default function IntakePage() {
             <span className="material-symbols-outlined text-[18px] text-amber-600">
               local_shipping
             </span>
-            <span>Tiếp nhận Cứu hộ (Tow-In)</span>
+            <span>Tiếp nhận xe cứu hộ</span>
           </button>
           <button
             onClick={() => setWalkInModalOpen(true)}
             className="h-10 px-4 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-[#0866ff]/20 active:scale-[0.98] transition-all cursor-pointer"
           >
             <span className="material-symbols-outlined text-[18px]">directions_walk</span>
-            <span>+ Tiếp nhận Walk-In</span>
+            <span>+ Tiếp nhận khách vãng lai</span>
           </button>
         </div>
       </div>
@@ -208,10 +208,10 @@ export default function IntakePage() {
           <div className="relative z-10 mt-4 pt-3.5 border-t border-white/15 flex items-center justify-between text-xs text-blue-50">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-sky-300 animate-pulse" />
-              Lịch hẹn chờ check-in: <strong className="font-mono">{appointments.length}</strong>
+              Lịch hẹn chờ tiếp nhận: <strong className="font-mono">{appointments.length}</strong>
             </span>
             <span className="font-mono font-semibold bg-white/15 px-2.5 py-0.5 rounded-full">
-              {queuedCount} xe đang đợi lập RO
+              {queuedCount} xe đang đợi lập lệnh
             </span>
           </div>
         </div>
@@ -240,7 +240,7 @@ export default function IntakePage() {
               {queuedCount}
             </div>
             <span className="text-[11px] text-[#0866ff] font-semibold mt-1">
-              Đang chờ cố vấn khám xe
+              Đang chờ cố vấn kiểm tra
             </span>
           </button>
 
@@ -257,7 +257,7 @@ export default function IntakePage() {
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Đã chuyển RO</span>
+              <span className="text-xs font-semibold text-slate-500">Đã lập lệnh</span>
               <div className="w-8 h-8 rounded-lg bg-emerald-100/80 text-emerald-700 flex items-center justify-center">
                 <span className="material-symbols-outlined text-[18px]">task_alt</span>
               </div>
@@ -510,9 +510,9 @@ export default function IntakePage() {
                     const getTypeName = (type: string) => {
                       switch (type) {
                         case 'WALK_IN':
-                          return 'Walk-In';
+                          return 'Khách vãng lai';
                         case 'TOW_IN':
-                          return 'Tow-In';
+                          return 'Xe cứu hộ';
                         case 'APPOINTMENT':
                           return 'Hẹn trước';
                         default:
@@ -598,7 +598,7 @@ export default function IntakePage() {
                               <button
                                 onClick={() => setViewingROId(record.work_order?.id || null)}
                                 className="w-8 h-8 flex items-center justify-center rounded-xl bg-[#0866ff] text-white hover:bg-[#0050cd] transition-colors shadow-xs cursor-pointer"
-                                title="Xem Phiếu Công Việc (RO)"
+                                title="Xem Lệnh sửa chữa"
                               >
                                 <span className="material-symbols-outlined text-[18px]">
                                   receipt_long

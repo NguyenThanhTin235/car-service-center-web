@@ -309,14 +309,14 @@ export default function InventoryPage() {
             className="h-10 px-4 flex items-center gap-2 bg-white text-slate-700 hover:text-[#0866ff] border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer"
           >
             <span className="material-symbols-outlined text-[18px] text-[#0866ff]">add</span>
-            <span>Thêm Phụ tùng</span>
+            <span>Thêm phụ tùng</span>
           </button>
           <button
             onClick={() => handleOpenNewReceipt(false)}
             className="h-10 px-4 flex items-center gap-2 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white rounded-xl text-xs font-bold shadow-md shadow-[#0866ff]/20 active:scale-[0.98] transition-all cursor-pointer"
           >
             <span className="material-symbols-outlined text-[18px]">add_box</span>
-            <span>+ Nhập Kho</span>
+            <span>Nhập kho</span>
           </button>
         </div>
       </div>

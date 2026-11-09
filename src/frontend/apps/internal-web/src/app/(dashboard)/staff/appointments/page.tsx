@@ -271,7 +271,7 @@ export default function AppointmentsPage() {
 
   const handleDownloadExcel = () => {
     if (appointmentsToDisplay.length === 0) {
-      alert('Không có dữ liệu để tải xuống');
+      toast.error('Không có dữ liệu lịch hẹn để tải xuống');
       return;
     }
 
