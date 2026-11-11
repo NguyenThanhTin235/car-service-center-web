@@ -9,6 +9,76 @@ import { DashboardStageBars } from '@/components/dashboard/DashboardStageBars';
 import { DashboardTelemetryMiniBars } from '@/components/dashboard/DashboardTelemetryMiniBars';
 import { DashboardActionTable, TableColumn } from '@/components/dashboard/DashboardActionTable';
 
+const PERIOD_DATA_MAP: Record<
+  string,
+  {
+    sparklinePoints: number[];
+    waveLabels: string[];
+    sparklineCallout: string;
+    activeSplit: number;
+    activeUsersCount: number;
+    techCallout: string;
+    heatmapCol: number;
+    slaPercentage: number;
+    slaBadge: string;
+    stageDeltas: Record<string, number>;
+    telemetryMultiplier: number;
+  }
+> = {
+  today: {
+    sparklinePoints: [38, 44, 46, 50, 51],
+    waveLabels: ['08:00', '11:00', '14:00', '17:00', '20:00'],
+    sparklineCallout: '+1 hôm nay',
+    activeSplit: 96,
+    activeUsersCount: 49,
+    techCallout: '18/20 trực ca',
+    heatmapCol: 2, // T4 (Hôm nay thứ 4)
+    slaPercentage: 100,
+    slaBadge: '100% SLA',
+    stageDeltas: { ADMIN: 2, MANAGER: 2, DESK_STAFF: 3, SA: 4, TECHNICIAN: 18, CUSTOMER: 20 },
+    telemetryMultiplier: 0.65,
+  },
+  '7days': {
+    sparklinePoints: [42, 45, 41, 48, 51],
+    waveLabels: ['T2', 'T3', 'T4', 'T5', 'T6'],
+    sparklineCallout: '+3 tuần này',
+    activeSplit: 88,
+    activeUsersCount: 45,
+    techCallout: '20 nhân viên',
+    heatmapCol: 4, // T6
+    slaPercentage: 96,
+    slaBadge: '96.5% SLA',
+    stageDeltas: { ADMIN: 2, MANAGER: 2, DESK_STAFF: 4, SA: 4, TECHNICIAN: 20, CUSTOMER: 30 },
+    telemetryMultiplier: 1.0,
+  },
+  '30days': {
+    sparklinePoints: [25, 33, 40, 47, 51],
+    waveLabels: ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4', 'Tuần 5'],
+    sparklineCallout: '+12 tháng này',
+    activeSplit: 82,
+    activeUsersCount: 42,
+    techCallout: '100% định mức',
+    heatmapCol: 1, // T3
+    slaPercentage: 92,
+    slaBadge: '92.4% SLA',
+    stageDeltas: { ADMIN: 2, MANAGER: 2, DESK_STAFF: 4, SA: 4, TECHNICIAN: 20, CUSTOMER: 48 },
+    telemetryMultiplier: 1.7,
+  },
+  this_month: {
+    sparklinePoints: [30, 36, 43, 49, 51],
+    waveLabels: ['Đầu T', 'Tuần 2', 'Giữa T', 'Tuần 4', 'Cuối T'],
+    sparklineCallout: '+8 tháng này',
+    activeSplit: 90,
+    activeUsersCount: 46,
+    techCallout: '2 ca/ngày',
+    heatmapCol: 3, // T5
+    slaPercentage: 95,
+    slaBadge: '95.8% SLA',
+    stageDeltas: { ADMIN: 2, MANAGER: 2, DESK_STAFF: 4, SA: 4, TECHNICIAN: 20, CUSTOMER: 38 },
+    telemetryMultiplier: 1.35,
+  },
+};
+
 export default function AdminDashboardPage() {
   const {
     period,

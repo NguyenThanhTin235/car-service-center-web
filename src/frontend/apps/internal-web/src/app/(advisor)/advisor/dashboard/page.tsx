@@ -22,6 +22,56 @@ const SA_STATUS_MAP: Record<string, { label: string; badgeCls: string; dotColor:
   CLOSED: { label: 'Đã đóng lệnh', badgeCls: 'bg-slate-200 text-slate-800', dotColor: '#475569' },
 };
 
+const SA_PERIOD_MAP: Record<
+  string,
+  {
+    sparklinePoints: number[];
+    waveLabels: string[];
+    splitPercentage: number;
+    heatmapCol: number;
+    slaPercentage: number;
+    stageMultiplier: number;
+    telemetryMultiplier: number;
+  }
+> = {
+  today: {
+    sparklinePoints: [3, 7, 6, 12, 16],
+    waveLabels: ['08:00', '11:00', '14:00', '17:00', '20:00'],
+    splitPercentage: 75,
+    heatmapCol: 2,
+    slaPercentage: 100,
+    stageMultiplier: 0.6,
+    telemetryMultiplier: 0.65,
+  },
+  '7days': {
+    sparklinePoints: [8, 14, 11, 18, 24],
+    waveLabels: ['T2', 'T3', 'T4', 'T5', 'T6'],
+    splitPercentage: 65,
+    heatmapCol: 4,
+    slaPercentage: 96,
+    stageMultiplier: 1.0,
+    telemetryMultiplier: 1.0,
+  },
+  '30days': {
+    sparklinePoints: [10, 20, 18, 30, 42],
+    waveLabels: ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4', 'Tuần 5'],
+    splitPercentage: 80,
+    heatmapCol: 1,
+    slaPercentage: 92,
+    stageMultiplier: 1.6,
+    telemetryMultiplier: 1.7,
+  },
+  this_month: {
+    sparklinePoints: [8, 16, 25, 34, 45],
+    waveLabels: ['Đầu T', 'Tuần 2', 'Giữa T', 'Tuần 4', 'Cuối T'],
+    splitPercentage: 70,
+    heatmapCol: 3,
+    slaPercentage: 95,
+    stageMultiplier: 1.3,
+    telemetryMultiplier: 1.35,
+  },
+};
+
 export default function SADashboardAnalyticsPage() {
   const {
     period,

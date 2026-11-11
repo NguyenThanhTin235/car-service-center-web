@@ -24,6 +24,9 @@ export interface KPICardProps {
   splitLeftLabel?: string;
   splitRightLabel?: string;
   waveLabels?: string[];
+  sparklinePoints?: number[];
+  heatmapHighlightCol?: number;
+  slaPercentage?: number;
 }
 
 export const KPICard: React.FC<KPICardProps> = ({
@@ -45,6 +48,9 @@ export const KPICard: React.FC<KPICardProps> = ({
   splitLeftLabel,
   splitRightLabel,
   waveLabels = ['Tiếp nhận', 'Kế hoạch', 'Thi công', 'KCS', 'Giao xe'],
+  sparklinePoints,
+  heatmapHighlightCol,
+  slaPercentage,
 }) => {
   if (isLoading) {
     return (
@@ -87,6 +93,42 @@ export const KPICard: React.FC<KPICardProps> = ({
         ? 'north_east'
         : 'south_east'
       : 'trending_up');
+
+  // Dynamic SVG curve generation from sparklinePoints or fallback
+  const points =
+    sparklinePoints && sparklinePoints.length >= 2
+      ? sparklinePoints
+      : [22, 34, 26, 46, 32];
+
+  const minP = Math.min(...points);
+  const maxP = Math.max(...points);
+  const rangeP = maxP === minP ? 1 : maxP - minP;
+
+  // 5 standard x coordinates across 240 width
+  const xCoords = [15, 65, 115, 165, 215];
+  const yCoords = points.slice(0, 5).map((p: number) => {
+    return Math.round(40 - ((p - minP) / rangeP) * 28);
+  });
+  while (yCoords.length < 5) {
+    yCoords.push(26);
+  }
+
+  // Peak point for callout & indicator
+  const peakIdx = points.indexOf(maxP);
+  const safePeakIdx = Math.min(Math.max(0, peakIdx), 4);
+  const peakX = xCoords[safePeakIdx] ?? 165;
+  const peakY = yCoords[safePeakIdx] ?? 14;
+
+  // Build cubic bezier curve string
+  let pathD = `M ${xCoords[0]} ${yCoords[0]}`;
+  for (let i = 0; i < xCoords.length - 1; i++) {
+    const x0 = xCoords[i];
+    const y0 = yCoords[i];
+    const x1 = xCoords[i + 1];
+    const y1 = yCoords[i + 1];
+    const midX = (x0 + x1) / 2;
+    pathD += ` C ${midX} ${y0}, ${midX} ${y1}, ${x1} ${y1}`;
+  }
 
   // ================= VARIANT 1: DARK NAVY (#0c2340) =================
   if (variant === 'navy') {

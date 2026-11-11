@@ -21,6 +21,51 @@ const WO_STATUS_CONFIG: Record<string, { label: string; badgeCls: string; dotCol
   FINANCIAL_CLEARED: { label: 'Đã thanh toán', badgeCls: 'bg-emerald-50 text-emerald-700 border-emerald-200/80', dotColor: '#10b981' },
 };
 
+const MANAGER_PERIOD_MAP: Record<
+  string,
+  {
+    sparklinePoints: number[];
+    waveLabels: string[];
+    splitPercentage: number;
+    heatmapCol: number;
+    stageMultiplier: number;
+    telemetryMultiplier: number;
+  }
+> = {
+  today: {
+    sparklinePoints: [18, 32, 28, 48, 62],
+    waveLabels: ['08:00', '11:00', '14:00', '17:00', '20:00'],
+    splitPercentage: 78,
+    heatmapCol: 2,
+    stageMultiplier: 0.6,
+    telemetryMultiplier: 0.65,
+  },
+  '7days': {
+    sparklinePoints: [28, 42, 36, 52, 68],
+    waveLabels: ['T2', 'T3', 'T4', 'T5', 'T6'],
+    splitPercentage: 68,
+    heatmapCol: 4,
+    stageMultiplier: 1.0,
+    telemetryMultiplier: 1.0,
+  },
+  '30days': {
+    sparklinePoints: [32, 50, 44, 66, 85],
+    waveLabels: ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4', 'Tuần 5'],
+    splitPercentage: 82,
+    heatmapCol: 1,
+    stageMultiplier: 1.6,
+    telemetryMultiplier: 1.7,
+  },
+  this_month: {
+    sparklinePoints: [24, 38, 52, 68, 88],
+    waveLabels: ['Đầu T', 'Tuần 2', 'Giữa T', 'Tuần 4', 'Cuối T'],
+    splitPercentage: 72,
+    heatmapCol: 3,
+    stageMultiplier: 1.3,
+    telemetryMultiplier: 1.35,
+  },
+};
+
 export default function ManagerDashboardPage() {
   const {
     period,

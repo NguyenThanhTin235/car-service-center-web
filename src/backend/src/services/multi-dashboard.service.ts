@@ -64,11 +64,12 @@ export class MultiDashboardService {
    * 1. Dashboard Quản Trị Viên (Admin)
    */
   async getAdminDashboard(periodKey: DashboardPeriodKey = '7days', start?: string, end?: string): Promise<DashboardResponseData> {
-    const { startDate, endDate } = this.resolvePeriodDates(periodKey, start, end);
+    const { startDate, endDate, prevStartDate, prevEndDate } = this.resolvePeriodDates(periodKey, start, end);
 
     const [
       totalUsers,
       activeUsers,
+      usersCreatedInPeriod,
       totalEmployees,
       totalServices,
       totalCategories,
@@ -79,6 +80,7 @@ export class MultiDashboardService {
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { is_active: true } }),
+      prisma.user.count({ where: { created_at: { gte: startDate, lte: endDate } } }),
       prisma.employee.count({ where: { is_active: true } }),
       prisma.service.count(),
       prisma.serviceCategory.count(),
