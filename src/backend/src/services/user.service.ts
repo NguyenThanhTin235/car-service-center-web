@@ -1,3 +1,4 @@
+import { setCache, deleteCache } from '../utils/redis.util';
 import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
@@ -24,8 +25,22 @@ export class UserService {
   /**
    * UC-51: Lấy danh sách tài khoản với tìm kiếm và phân trang
    */
-  async getUsers(searchQuery?: string, role?: string, page: number = 1, limit: number = 10) {
+  async getUsers(
+    searchQuery?: string,
+    role?: string,
+    page: number = 1,
+    limit: number = 10,
+    status?: string
+  ) {
     let whereClause: Prisma.UserWhereInput = {};
+
+    if (status !== undefined && status !== null && status !== '') {
+      if (status === 'active' || status === 'true') {
+        whereClause.is_active = true;
+      } else if (status === 'inactive' || status === 'false') {
+        whereClause.is_active = false;
+      }
+    }
 
     if (role) {
       const normalizedRoles = [role];
@@ -299,14 +314,22 @@ export class UserService {
    * UC-53: Vô hiệu hóa tài khoản (soft delete)
    */
   async deactivateUser(id: number) {
-    const user = await prisma.user.findUnique({ where: { id } });
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: { roles: { include: { role: true } } },
+    });
     if (!user) throw new Error('Không tìm thấy tài khoản.');
+    const isAdmin = user.roles?.some((ur) => ur.role?.name?.toUpperCase() === 'ADMIN');
+    if (isAdmin) throw new Error('Không thể vô hiệu hóa tài khoản Quản trị viên hệ thống.');
     if (!user.is_active) throw new Error('Tài khoản đã bị vô hiệu hóa trước đó.');
 
     await prisma.user.update({
       where: { id },
       data: { is_active: false },
     });
+
+    // Thu hồi token lập tức qua Redis / In-memory blacklist
+    await setCache(`revoked_user:${id}`, 'true', 86400 * 7);
   }
 
   /**
@@ -320,6 +343,9 @@ export class UserService {
       where: { id },
       data: { is_active: true },
     });
+
+    // Xóa cờ thu hồi token trong Redis khi kích hoạt lại
+    await deleteCache(`revoked_user:${id}`);
   }
 
   /**

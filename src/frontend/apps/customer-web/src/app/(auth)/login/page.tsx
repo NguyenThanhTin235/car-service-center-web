@@ -147,7 +147,7 @@ export default function LoginPage() {
             )}
 
             {/* Form Fields */}
-            <form className="space-y-4" onSubmit={handleLogin}>
+            <form suppressHydrationWarning className="space-y-4" onSubmit={handleLogin}>
               {/* Input 1: Email */}
               <div className="space-y-1.5">
                 <label className="text-label-md font-medium text-on-surface block" htmlFor="email">
@@ -158,6 +158,7 @@ export default function LoginPage() {
                     <span className="material-symbols-outlined text-xl">mail</span>
                   </div>
                   <input
+                    suppressHydrationWarning
                     className="block w-full rounded-xl border border-outline-variant bg-surface-container-lowest pl-11 pr-4 py-3 text-body-md text-on-surface placeholder:text-outline focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:outline-none transition-all"
                     id="email"
                     name="email"
@@ -180,6 +181,7 @@ export default function LoginPage() {
                     <span className="material-symbols-outlined text-xl">lock</span>
                   </div>
                   <input
+                    suppressHydrationWarning
                     className="block w-full rounded-xl border border-outline-variant bg-surface-container-lowest pl-11 pr-11 py-3 text-body-md text-on-surface placeholder:text-outline focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:outline-none transition-all"
                     id="password"
                     name="password"
@@ -190,6 +192,7 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                   <button
+                    suppressHydrationWarning
                     type="button"
                     className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
                     onClick={() => setShowPassword(!showPassword)}
@@ -205,7 +208,7 @@ export default function LoginPage() {
               {/* Extras Row */}
               <div className="flex items-center justify-between pt-1 pb-1">
                 <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                  <input className="h-4 w-4 rounded border-outline-variant text-primary-container focus:ring-primary-container/30 cursor-pointer" type="checkbox" />
+                  <input suppressHydrationWarning className="h-4 w-4 rounded border-outline-variant text-primary-container focus:ring-primary-container/30 cursor-pointer" type="checkbox" />
                   <span className="text-body-md text-on-surface-variant">Ghi nhớ đăng nhập</span>
                 </label>
                 <Link className="text-label-md text-primary-container hover:underline transition-colors" href="/forgot-password">
@@ -216,6 +219,7 @@ export default function LoginPage() {
               {/* Primary Submit Action */}
               <div className="pt-2">
                 <button
+                  suppressHydrationWarning
                   type="submit"
                   disabled={loading}
                   className="w-full h-12 bg-primary-container hover:bg-primary active:scale-[0.99] text-on-primary font-bold rounded-xl shadow-md shadow-primary-container/25 transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"

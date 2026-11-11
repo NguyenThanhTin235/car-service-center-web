@@ -30,7 +30,7 @@ export interface UpdateUserPayload {
 }
 
 export const userApi = {
-  getAll: (params?: { search?: string; role?: string; page?: number; limit?: number }) =>
+  getAll: (params?: { search?: string; role?: string; status?: string; page?: number; limit?: number }) =>
     api.get('/api/users', { params }),
 
   getById: (id: number) =>

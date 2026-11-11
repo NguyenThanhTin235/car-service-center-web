@@ -138,10 +138,14 @@ export default function AccountsPage() {
   });
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [toggleTargetUser, setToggleTargetUser] = useState<UserData | null>(null);
+  const [showToggleConfirmModal, setShowToggleConfirmModal] = useState(false);
+  const [togglingStatus, setTogglingStatus] = useState(false);
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
   const [formData, setFormData] = useState<FormData>(defaultForm);
   const [newPassword, setNewPassword] = useState('');
@@ -160,6 +164,7 @@ export default function AccountsPage() {
         const res = await userApi.getAll({
           search,
           role: filterRole || undefined,
+          status: filterStatus || undefined,
           page,
           limit: 10,
         });
@@ -173,7 +178,7 @@ export default function AccountsPage() {
         setLoading(false);
       }
     },
-    [search, filterRole]
+    [search, filterRole, filterStatus]
   );
 
   useEffect(() => {
@@ -189,6 +194,10 @@ export default function AccountsPage() {
   };
 
   const openEdit = (u: UserData) => {
+    if (u.roles?.some((r: string) => normalizeRoleKey(r) === 'ADMIN')) {
+      toast.error('Tài khoản Quản trị viên được bảo vệ, không thể chỉnh sửa.');
+      return;
+    }
     setEditingUser(u);
     setFormData({
       email: u.email,
@@ -260,23 +269,49 @@ export default function AccountsPage() {
     }
   };
 
-  const handleToggle = async (u: UserData) => {
+  const handleToggle = (u: UserData) => {
+    if (u.roles?.some((r: string) => normalizeRoleKey(r) === 'ADMIN')) {
+      toast.error('Tài khoản Quản trị viên được bảo vệ, không thể thay đổi trạng thái.');
+      return;
+    }
+    setToggleTargetUser(u);
+    setShowToggleConfirmModal(true);
+  };
+
+  const confirmToggleStatus = async () => {
+    if (!toggleTargetUser) return;
+    setTogglingStatus(true);
     try {
-      if (u.isActive) {
-        await userApi.deactivate(u.id);
-        toast.success(`Đã tạm khóa tài khoản ${u.fullName}`);
+      if (toggleTargetUser.isActive) {
+        await userApi.deactivate(toggleTargetUser.id);
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          try {
+            const channel = new BroadcastChannel('csc_session_channel');
+            channel.postMessage({ type: 'ACCOUNT_DEACTIVATED', userId: toggleTargetUser.id });
+            channel.close();
+          } catch {}
+        }
+        toast.success(`Đã tạm khóa tài khoản ${toggleTargetUser.fullName} và thu hồi phiên đăng nhập.`);
       } else {
-        await userApi.reactivate(u.id);
-        toast.success(`Đã kích hoạt lại tài khoản ${u.fullName}`);
+        await userApi.reactivate(toggleTargetUser.id);
+        toast.success(`Đã kích hoạt lại tài khoản ${toggleTargetUser.fullName}.`);
       }
+      setShowToggleConfirmModal(false);
+      setToggleTargetUser(null);
       loadUsers(pagination.currentPage);
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Không thể thay đổi trạng thái tài khoản');
+    } finally {
+      setTogglingStatus(false);
     }
   };
 
   const handleResetPassword = async () => {
     if (!selectedUserId) return;
+    if (selectedUser?.roles?.some((r: string) => normalizeRoleKey(r) === 'ADMIN')) {
+      setResetError('Tài khoản Quản trị viên được bảo vệ, không thể đặt lại mật khẩu tại đây.');
+      return;
+    }
     const passErr = validatePassword(newPassword, 6);
     if (passErr) {
       setResetError(passErr);
@@ -493,6 +528,17 @@ export default function AccountsPage() {
                   ))}
                 </select>
               </div>
+              <div className="w-full sm:w-44">
+                <select
+                  className="w-full h-10 px-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0866ff] cursor-pointer"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                >
+                  <option value="">Tất cả trạng thái</option>
+                  <option value="active">Hoạt động</option>
+                  <option value="inactive">Tạm khóa</option>
+                </select>
+              </div>
             </div>
 
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -554,94 +600,118 @@ export default function AccountsPage() {
                     </td>
                   </tr>
                 ) : (
-                  users.map((user) => (
-                    <tr
-                      key={user.id}
-                      className={`h-14 hover:bg-blue-50/30 transition-colors ${!user.isActive ? 'opacity-65' : ''
-                        }`}
-                    >
-                      <td className="px-4 font-mono tabular-nums text-xs font-bold text-[#0050cd]">
-                        USR-{String(user.id).padStart(4, '0')}
-                      </td>
-                      <td className="px-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
-                            {user.fullName
-                              .split(' ')
-                              .map((n: string) => n[0])
-                              .slice(-2)
-                              .join('')
-                              .toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-slate-900">
-                              {user.fullName}
+                  users.map((user) => {
+                    const isAdminUser = user.roles?.some((r: string) => normalizeRoleKey(r) === 'ADMIN');
+                    return (
+                      <tr
+                        key={user.id}
+                        className={`h-14 hover:bg-blue-50/30 transition-colors ${!user.isActive ? 'opacity-65' : ''
+                          }`}
+                      >
+                        <td className="px-4 font-mono tabular-nums text-xs font-bold text-[#0050cd]">
+                          USR-{String(user.id).padStart(4, '0')}
+                        </td>
+                        <td className="px-4">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                              {user.fullName
+                                .split(' ')
+                                .map((n: string) => n[0])
+                                .slice(-2)
+                                .join('')
+                                .toUpperCase()}
                             </div>
-                            <div className="text-xs text-slate-600">
-                              {getPositionLabel(user.employee?.position, user.roles)}
+                            <div>
+                              <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                {user.fullName}
+                                {isAdminUser && (
+                                  <span className="material-symbols-outlined text-purple-600 text-[14px]" title="Tài khoản Quản trị viên hệ thống (Được bảo vệ)">
+                                    shield_person
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-slate-600">
+                                {getPositionLabel(user.employee?.position, user.roles)}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 font-mono text-xs text-slate-600">{user.email}</td>
-                      <td className="px-4 font-mono tabular-nums text-xs text-slate-600">
-                        {user.phone || '—'}
-                      </td>
-                      <td className="px-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleToggle(user)}
-                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
-                              user.isActive ? 'bg-[#0866ff]' : 'bg-slate-300'
-                            } focus:outline-none`}
-                            role="switch"
-                            aria-checked={user.isActive}
-                            title="Đổi trạng thái hoạt động"
-                          >
+                        </td>
+                        <td className="px-4 font-mono text-xs text-slate-600">{user.email}</td>
+                        <td className="px-4 font-mono tabular-nums text-xs text-slate-600">
+                          {user.phone || '—'}
+                        </td>
+                        <td className="px-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={isAdminUser}
+                              onClick={() => !isAdminUser && handleToggle(user)}
+                              className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${
+                                isAdminUser
+                                  ? 'opacity-40 cursor-not-allowed bg-[#0866ff]'
+                                  : user.isActive
+                                  ? 'bg-[#0866ff] cursor-pointer'
+                                  : 'bg-slate-300 cursor-pointer'
+                              } focus:outline-none`}
+                              role="switch"
+                              aria-checked={user.isActive}
+                              title={isAdminUser ? 'Tài khoản Quản trị viên được bảo vệ' : 'Đổi trạng thái hoạt động'}
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5 ${
+                                  user.isActive ? 'translate-x-4' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
                             <span
-                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5 ${
-                                user.isActive ? 'translate-x-4' : 'translate-x-0'
+                              className={`text-xs font-semibold ${
+                                user.isActive ? 'text-emerald-700' : 'text-slate-500'
                               }`}
-                            />
-                          </button>
-                          <span
-                            className={`text-xs font-semibold ${
-                              user.isActive ? 'text-emerald-700' : 'text-slate-500'
-                            }`}
-                          >
-                            {user.isActive ? 'Hoạt động' : 'Tạm khóa'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 pr-6">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(user)}
-                            className="w-8 h-8 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] flex items-center justify-center transition-colors cursor-pointer"
-                            title="Chỉnh sửa"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">edit</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedUserId(user.id);
-                              setSelectedUser(user);
-                              setNewPassword('');
-                              setResetError('');
-                              setShowResetModal(true);
-                            }}
-                            className="w-8 h-8 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] flex items-center justify-center transition-colors cursor-pointer"
-                            title="Đặt lại mật khẩu"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">key</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                            >
+                              {user.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 pr-6">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              disabled={isAdminUser}
+                              onClick={() => !isAdminUser && openEdit(user)}
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                                isAdminUser
+                                  ? 'text-slate-300 cursor-not-allowed'
+                                  : 'hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] cursor-pointer'
+                              }`}
+                              title={isAdminUser ? 'Tài khoản Quản trị viên được bảo vệ' : 'Chỉnh sửa'}
+                            >
+                              <span className="material-symbols-outlined text-[18px]">edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isAdminUser}
+                              onClick={() => {
+                                if (isAdminUser) return;
+                                setSelectedUserId(user.id);
+                                setSelectedUser(user);
+                                setNewPassword('');
+                                setResetError('');
+                                setShowResetModal(true);
+                              }}
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                                isAdminUser
+                                  ? 'text-slate-300 cursor-not-allowed'
+                                  : 'hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] cursor-pointer'
+                              }`}
+                              title={isAdminUser ? 'Tài khoản Quản trị viên được bảo vệ' : 'Đặt lại mật khẩu'}
+                            >
+                              <span className="material-symbols-outlined text-[18px]">key</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -956,6 +1026,112 @@ export default function AccountsPage() {
             </div>
           </div>
         )}
+
+        {/* Toggle Status Confirmation Modal */}
+        {showToggleConfirmModal && toggleTargetUser && (
+          <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden">
+              <div className="p-6">
+                <div className="flex items-start gap-4">
+                  <div
+                    className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+                      toggleTargetUser.isActive
+                        ? 'bg-rose-50 text-rose-600 border border-rose-200/80'
+                        : 'bg-emerald-50 text-emerald-600 border border-emerald-200/80'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-2xl">
+                      {toggleTargetUser.isActive ? 'lock' : 'lock_open'}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-bold text-slate-900">
+                      {toggleTargetUser.isActive
+                        ? 'Xác nhận tạm khóa tài khoản'
+                        : 'Kích hoạt lại tài khoản'}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {toggleTargetUser.isActive
+                        ? 'Hành động này sẽ ngắt phiên làm việc của người dùng'
+                        : 'Cho phép người dùng tiếp tục đăng nhập hệ thống'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Target User Info Card */}
+                <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                    {toggleTargetUser.fullName?.charAt(0) || 'U'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-900 truncate">
+                      {toggleTargetUser.fullName}
+                    </p>
+                    <p className="text-[11px] text-slate-500 font-mono truncate">
+                      {toggleTargetUser.email}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-[#0050cd] border border-blue-200/60 shrink-0">
+                    {toggleTargetUser.roles?.[0]
+                      ? getRoleLabel(toggleTargetUser.roles[0])
+                      : 'Tài khoản'}
+                  </span>
+                </div>
+
+                {/* Warning message block */}
+                {toggleTargetUser.isActive ? (
+                  <div className="mt-4 p-3 rounded-xl bg-rose-50/70 border border-rose-200/70 flex items-start gap-2.5">
+                    <span className="material-symbols-outlined text-rose-600 text-base shrink-0 mt-0.5">
+                      warning
+                    </span>
+                    <p className="text-xs text-rose-800 leading-relaxed">
+                      <strong>Lưu ý:</strong> Khi tạm khóa, toàn bộ token đăng nhập hiện tại sẽ bị{' '}
+                      <strong>thu hồi ngay lập tức</strong>. Người dùng sẽ bị đăng xuất khỏi hệ thống
+                      và không thể thao tác tiếp cho đến khi được mở khóa.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-xs text-slate-600 leading-relaxed">
+                    Sau khi kích hoạt lại, tài khoản sẽ có thể đăng nhập bình thường vào hệ thống với
+                    đầy đủ quyền hạn đã được phân bổ.
+                  </p>
+                )}
+
+                {/* Action Buttons */}
+                <div className="mt-6 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    disabled={togglingStatus}
+                    onClick={() => {
+                      setShowToggleConfirmModal(false);
+                      setToggleTargetUser(null);
+                    }}
+                    className="h-10 px-4 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    Hủy bỏ
+                  </button>
+                  <button
+                    type="button"
+                    disabled={togglingStatus}
+                    onClick={confirmToggleStatus}
+                    className={`h-10 px-5 rounded-xl text-white text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-60 ${
+                      toggleTargetUser.isActive
+                        ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
+                        : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                    }`}
+                  >
+                    {togglingStatus
+                      ? 'Đang xử lý...'
+                      : toggleTargetUser.isActive
+                      ? 'Xác nhận tạm khóa'
+                      : 'Kích hoạt tài khoản'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
       );
 }
