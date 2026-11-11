@@ -107,6 +107,7 @@ export default function AccountsPage() {
   const [formData, setFormData] = useState<FormData>(defaultForm);
   const [newPassword, setNewPassword] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -427,6 +428,11 @@ export default function AccountsPage() {
                   search
                 </span>
                 <input
+                  type="search"
+                  name="accounts_table_search_query"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   className="flex-1 min-w-0 bg-transparent text-slate-900 placeholder:text-slate-500 text-xs focus:outline-none"
                   placeholder="Tìm theo Họ tên, Email, SĐT..."
                   value={search}
@@ -583,6 +589,7 @@ export default function AccountsPage() {
                             type="button"
                             onClick={() => {
                               setSelectedUserId(user.id);
+                              setSelectedUser(user);
                               setNewPassword('');
                               setResetError('');
                               setShowResetModal(true);
@@ -705,6 +712,8 @@ export default function AccountsPage() {
                       <input
                         required
                         type="password"
+                        name="account_new_password"
+                        autoComplete="new-password"
                         value={formData.password}
                         minLength={6}
                         onChange={(e) => {
@@ -807,9 +816,17 @@ export default function AccountsPage() {
         {/* Reset password modal */}
         {showResetModal && (
           <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-slate-200">
+            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-slate-200 overflow-hidden">
               <div className="flex items-center justify-between p-5 border-b border-slate-100">
-                <h2 className="text-base font-bold text-slate-900">Đặt lại mật khẩu</h2>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#0050cd] flex items-center justify-center">
+                    <span className="material-symbols-outlined text-lg">key</span>
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">Đặt lại mật khẩu</h2>
+                    <p className="text-[11px] text-slate-500">Cấp lại mật khẩu đăng nhập tài khoản</p>
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowResetModal(false)}
@@ -818,11 +835,50 @@ export default function AccountsPage() {
                   <span className="material-symbols-outlined text-base">close</span>
                 </button>
               </div>
-              <div className="p-5 space-y-4">
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleResetPassword();
+                }}
+                autoComplete="off"
+                className="p-5 space-y-4"
+              >
+                {/* User info summary badge */}
+                {selectedUser && (
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[#0866ff]/10 text-[#0866ff] flex items-center justify-center font-bold text-xs uppercase">
+                      {selectedUser.fullName?.charAt(0) || 'U'}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-slate-900 truncate">{selectedUser.fullName}</p>
+                      <p className="text-[11px] text-slate-500 font-mono truncate">{selectedUser.email}</p>
+                    </div>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-[#0050cd] border border-blue-200/60 shrink-0">
+                      {selectedUser.roles?.[0] ? getRoleLabel(selectedUser.roles[0]) : 'Tài khoản'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Hidden dummy username field so browser password managers don't hijack the page search bar */}
+                <input
+                  type="text"
+                  name="username"
+                  value={selectedUser?.email || ''}
+                  readOnly
+                  tabIndex={-1}
+                  autoComplete="username"
+                  className="sr-only hidden"
+                  aria-hidden="true"
+                />
+
                 <label className="flex flex-col gap-1">
                   <span className="text-xs font-semibold text-slate-700">Mật khẩu mới *</span>
                   <input
                     type="password"
+                    name="new-password"
+                    id="reset-account-new-password"
+                    autoComplete="new-password"
                     value={newPassword}
                     onChange={(e) => {
                       setNewPassword(e.target.value);
@@ -834,12 +890,14 @@ export default function AccountsPage() {
                         : 'border-slate-200 focus:border-[#0866ff]'
                     }`}
                     placeholder="Tối thiểu 6 ký tự"
+                    autoFocus
                   />
                   {resetError && (
                     <p className="text-[11px] text-rose-500 font-medium mt-0.5">{resetError}</p>
                   )}
                 </label>
-                <div className="flex gap-2 justify-end">
+
+                <div className="flex gap-2 justify-end pt-1">
                   <button
                     type="button"
                     onClick={() => setShowResetModal(false)}
@@ -848,15 +906,14 @@ export default function AccountsPage() {
                     Hủy
                   </button>
                   <button
-                    type="button"
-                    onClick={handleResetPassword}
+                    type="submit"
                     disabled={submitting || newPassword.length < 6}
-                    className="h-10 px-5 rounded-xl bg-[#0866ff] text-white text-xs font-bold disabled:opacity-60 cursor-pointer"
+                    className="h-10 px-5 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white text-xs font-bold disabled:opacity-60 cursor-pointer shadow-xs"
                   >
                     {submitting ? 'Đang lưu...' : 'Xác nhận đổi mật khẩu'}
                   </button>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
         )}
