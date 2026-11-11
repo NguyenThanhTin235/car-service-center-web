@@ -4,6 +4,13 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { userApi, UserData } from '@/lib/api/users';
 import SaaSWaveChart from '@/components/shared/SaaSWaveChart';
 import toast from 'react-hot-toast';
+import {
+  validateEmail,
+  validatePhone,
+  validateName,
+  validatePassword,
+  validateRequired,
+} from '@/lib/utils/validators';
 
 const ROLES = ['ADMIN', 'MANAGER', 'ADVISOR', 'FRONT_DESK', 'TECHNICIAN', 'CUSTOMER'];
 
@@ -102,6 +109,8 @@ export default function AccountsPage() {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [resetError, setResetError] = useState('');
 
   const loadUsers = useCallback(
     async (page = 1) => {
@@ -135,6 +144,7 @@ export default function AccountsPage() {
     setEditingUser(null);
     setFormData(defaultForm);
     setError('');
+    setFieldErrors({});
     setShowModal(true);
   };
 
@@ -149,29 +159,54 @@ export default function AccountsPage() {
       role: u.roles.find((r: string) => r !== 'CUSTOMER') || u.roles[0] || 'ADVISOR',
     });
     setError('');
+    setFieldErrors({});
     setShowModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errors: Record<string, string> = {};
+    const nameErr = validateName(formData.fullName, 'Họ và tên', 2, 100);
+    if (nameErr) errors.fullName = nameErr;
+
+    if (!editingUser) {
+      const emailErr = validateEmail(formData.email);
+      if (emailErr) errors.email = emailErr;
+
+      const passErr = validatePassword(formData.password, 6);
+      if (passErr) errors.password = passErr;
+    }
+
+    const phoneErr = validatePhone(formData.phone, false);
+    if (phoneErr) errors.phone = phoneErr;
+
+    const roleErr = validateRequired(formData.role, 'Vai trò');
+    if (roleErr) errors.role = roleErr;
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
     setSubmitting(true);
     setError('');
+    setFieldErrors({});
     try {
       if (editingUser) {
         await userApi.update(editingUser.id, {
-          fullName: formData.fullName,
-          phone: formData.phone || undefined,
-          address: formData.address || undefined,
+          fullName: formData.fullName.trim(),
+          phone: formData.phone.trim() || undefined,
+          address: formData.address.trim() || undefined,
           role: formData.role,
         });
         toast.success('Đã cập nhật thông tin tài khoản');
       } else {
         await userApi.create({
-          email: formData.email,
+          email: formData.email.trim(),
           password: formData.password,
-          fullName: formData.fullName,
-          phone: formData.phone || undefined,
-          address: formData.address || undefined,
+          fullName: formData.fullName.trim(),
+          phone: formData.phone.trim() || undefined,
+          address: formData.address.trim() || undefined,
           role: formData.role,
         });
         toast.success('Đã cấp tài khoản mới thành công');
@@ -201,14 +236,21 @@ export default function AccountsPage() {
   };
 
   const handleResetPassword = async () => {
-    if (!selectedUserId || !newPassword) return;
+    if (!selectedUserId) return;
+    const passErr = validatePassword(newPassword, 6);
+    if (passErr) {
+      setResetError(passErr);
+      return;
+    }
+    setResetError('');
     setSubmitting(true);
     try {
       await userApi.resetPassword(selectedUserId, newPassword);
       setShowResetModal(false);
+      setNewPassword('');
       toast.success('Đặt lại mật khẩu thành công');
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Không thể đặt lại mật khẩu');
+      setResetError(e.response?.data?.message || 'Không thể đặt lại mật khẩu');
     } finally {
       setSubmitting(false);
     }
@@ -542,6 +584,7 @@ export default function AccountsPage() {
                             onClick={() => {
                               setSelectedUserId(user.id);
                               setNewPassword('');
+                              setResetError('');
                               setShowResetModal(true);
                             }}
                             className="w-8 h-8 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] flex items-center justify-center transition-colors cursor-pointer"
@@ -617,12 +660,20 @@ export default function AccountsPage() {
                     <input
                       required
                       value={formData.fullName}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, fullName: e.target.value }))
-                      }
-                      className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-[#0866ff]"
+                      onChange={(e) => {
+                        setFormData((p) => ({ ...p, fullName: e.target.value }));
+                        if (fieldErrors.fullName) setFieldErrors((p) => ({ ...p, fullName: '' }));
+                      }}
+                      className={`h-10 px-3 border rounded-xl text-sm bg-white focus:outline-none transition-colors ${
+                        fieldErrors.fullName
+                          ? 'border-rose-400 focus:border-rose-500 ring-1 ring-rose-400/20'
+                          : 'border-slate-200 focus:border-[#0866ff]'
+                      }`}
                       placeholder="Nguyễn Văn A"
                     />
+                    {fieldErrors.fullName && (
+                      <p className="text-[11px] text-rose-500 font-medium mt-0.5">{fieldErrors.fullName}</p>
+                    )}
                   </label>
                   <label className="flex flex-col gap-1">
                     <span className="text-xs font-semibold text-slate-700">Email *</span>
@@ -631,13 +682,22 @@ export default function AccountsPage() {
                       type="email"
                       value={formData.email}
                       disabled={!!editingUser}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, email: e.target.value }))
-                      }
-                      className={`h-10 px-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#0866ff] ${editingUser ? 'bg-slate-100 text-slate-500' : 'bg-white'
-                        }`}
+                      onChange={(e) => {
+                        setFormData((p) => ({ ...p, email: e.target.value }));
+                        if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: '' }));
+                      }}
+                      className={`h-10 px-3 border rounded-xl text-sm focus:outline-none transition-colors ${
+                        editingUser
+                          ? 'bg-slate-100 text-slate-500 border-slate-200'
+                          : fieldErrors.email
+                          ? 'bg-white border-rose-400 focus:border-rose-500 ring-1 ring-rose-400/20'
+                          : 'bg-white border-slate-200 focus:border-[#0866ff]'
+                      }`}
                       placeholder="email@company.com"
                     />
+                    {fieldErrors.email && (
+                      <p className="text-[11px] text-rose-500 font-medium mt-0.5">{fieldErrors.email}</p>
+                    )}
                   </label>
                   {!editingUser && (
                     <label className="flex flex-col gap-1">
@@ -647,34 +707,55 @@ export default function AccountsPage() {
                         type="password"
                         value={formData.password}
                         minLength={6}
-                        onChange={(e) =>
-                          setFormData((p) => ({ ...p, password: e.target.value }))
-                        }
-                        className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-[#0866ff]"
+                        onChange={(e) => {
+                          setFormData((p) => ({ ...p, password: e.target.value }));
+                          if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: '' }));
+                        }}
+                        className={`h-10 px-3 border rounded-xl text-sm bg-white focus:outline-none transition-colors ${
+                          fieldErrors.password
+                            ? 'border-rose-400 focus:border-rose-500 ring-1 ring-rose-400/20'
+                            : 'border-slate-200 focus:border-[#0866ff]'
+                        }`}
                         placeholder="Tối thiểu 6 ký tự"
                       />
+                      {fieldErrors.password && (
+                        <p className="text-[11px] text-rose-500 font-medium mt-0.5">{fieldErrors.password}</p>
+                      )}
                     </label>
                   )}
                   <label className="flex flex-col gap-1">
                     <span className="text-xs font-semibold text-slate-700">Số điện thoại</span>
                     <input
                       value={formData.phone}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, phone: e.target.value }))
-                      }
-                      className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-[#0866ff]"
+                      onChange={(e) => {
+                        setFormData((p) => ({ ...p, phone: e.target.value }));
+                        if (fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: '' }));
+                      }}
+                      className={`h-10 px-3 border rounded-xl text-sm bg-white focus:outline-none transition-colors ${
+                        fieldErrors.phone
+                          ? 'border-rose-400 focus:border-rose-500 ring-1 ring-rose-400/20'
+                          : 'border-slate-200 focus:border-[#0866ff]'
+                      }`}
                       placeholder="0901234567"
                     />
+                    {fieldErrors.phone && (
+                      <p className="text-[11px] text-rose-500 font-medium mt-0.5">{fieldErrors.phone}</p>
+                    )}
                   </label>
                   <label className="flex flex-col gap-1">
                     <span className="text-xs font-semibold text-slate-700">Vai trò *</span>
                     <select
                       required
                       value={formData.role}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, role: e.target.value }))
-                      }
-                      className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-[#0866ff] cursor-pointer"
+                      onChange={(e) => {
+                        setFormData((p) => ({ ...p, role: e.target.value }));
+                        if (fieldErrors.role) setFieldErrors((p) => ({ ...p, role: '' }));
+                      }}
+                      className={`w-full h-10 px-3 border rounded-xl text-sm bg-white focus:outline-none cursor-pointer transition-colors ${
+                        fieldErrors.role
+                          ? 'border-rose-400 focus:border-rose-500 ring-1 ring-rose-400/20'
+                          : 'border-slate-200 focus:border-[#0866ff]'
+                      }`}
                     >
                       {ROLES.map((r: string) => (
                         <option key={r} value={r}>
@@ -682,6 +763,9 @@ export default function AccountsPage() {
                         </option>
                       ))}
                     </select>
+                    {fieldErrors.role && (
+                      <p className="text-[11px] text-rose-500 font-medium mt-0.5">{fieldErrors.role}</p>
+                    )}
                   </label>
                   <label className="flex flex-col gap-1 sm:col-span-2">
                     <span className="text-xs font-semibold text-slate-700">Địa chỉ</span>
@@ -740,10 +824,20 @@ export default function AccountsPage() {
                   <input
                     type="password"
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-[#0866ff]"
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      if (resetError) setResetError('');
+                    }}
+                    className={`h-10 px-3 border rounded-xl text-sm bg-white focus:outline-none transition-colors ${
+                      resetError
+                        ? 'border-rose-400 focus:border-rose-500 ring-1 ring-rose-400/20'
+                        : 'border-slate-200 focus:border-[#0866ff]'
+                    }`}
                     placeholder="Tối thiểu 6 ký tự"
                   />
+                  {resetError && (
+                    <p className="text-[11px] text-rose-500 font-medium mt-0.5">{resetError}</p>
+                  )}
                 </label>
                 <div className="flex gap-2 justify-end">
                   <button

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { serviceTemplateApi, ServiceTemplateData, CategoryData } from '@/lib/api/serviceTemplates';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import toast from 'react-hot-toast';
+import { validateName, validateRequired, validatePrice } from '@/lib/utils/validators';
 
 const PRICING_TYPE_LABELS: Record<string, string> = { FIXED: 'Giá cố định', VEHICLE_SIZE: 'Theo cỡ xe', LABOUR_PARTS: 'Công + Vật tư' };
 const PRICING_COLORS: Record<string, string> = {
@@ -38,6 +39,7 @@ export default function ServicesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmItem, setConfirmItem] = useState<ServiceTemplateData | null>(null);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(async (page = 1) => {
     setLoading(true);
@@ -50,22 +52,54 @@ export default function ServicesPage() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { serviceTemplateApi.getCategories().then(r => setCategories(r.data.data)).catch(() => {}); }, []);
 
-  const openCreate = () => { setEditing(null); setFormData(defaultForm); setError(''); setShowModal(true); };
+  const openCreate = () => { setEditing(null); setFormData(defaultForm); setError(''); setFieldErrors({}); setShowModal(true); };
   const openEdit = (t: ServiceTemplateData) => {
     const sp: Record<string, string> = {};
     t.sizePrices.forEach(s => { sp[s.vehicleSize] = String(s.price); });
     setEditing(t);
     setFormData({ categoryId: String(t.category.id), name: t.name, description: t.description || '', pricingType: t.pricingType, fixedPrice: t.fixedPrice ? String(t.fixedPrice) : '', sizePrices: sp });
-    setError(''); setShowModal(true);
+    setError(''); setFieldErrors({}); setShowModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setSubmitting(true); setError('');
+    e.preventDefault();
+    const errors: Record<string, string> = {};
+    const nameErr = validateName(formData.name, 'Tên dịch vụ', 2, 150);
+    if (nameErr) errors.name = nameErr;
+
+    const catErr = validateRequired(formData.categoryId, 'Danh mục dịch vụ');
+    if (catErr) errors.categoryId = catErr;
+
+    if (formData.pricingType === 'FIXED') {
+      const pErr = validatePrice(formData.fixedPrice, 'Giá cố định', true);
+      if (pErr) errors.fixedPrice = pErr;
+    } else if (formData.pricingType === 'VEHICLE_SIZE') {
+      const enteredSizes = VEHICLE_SIZES.filter(
+        (s) => formData.sizePrices[s] !== undefined && formData.sizePrices[s].trim() !== ''
+      );
+      if (enteredSizes.length === 0) {
+        errors.sizePrices = 'Vui lòng nhập đơn giá cho ít nhất một cỡ xe';
+      } else {
+        for (const s of enteredSizes) {
+          const sErr = validatePrice(formData.sizePrices[s], `Giá cỡ xe ${SIZE_LABELS[s] || s}`, true);
+          if (sErr) errors[`size_${s}`] = sErr;
+        }
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setSubmitting(true);
+    setError('');
+    setFieldErrors({});
     try {
       const payload: any = {
         categoryId: parseInt(formData.categoryId),
-        name: formData.name,
-        description: formData.description || undefined,
+        name: formData.name.trim(),
+        description: formData.description?.trim() || undefined,
         pricingType: formData.pricingType,
         fixedPrice: formData.pricingType === 'FIXED' && formData.fixedPrice ? parseFloat(formData.fixedPrice) : undefined,
         sizePrices: formData.pricingType === 'VEHICLE_SIZE'
@@ -73,8 +107,13 @@ export default function ServicesPage() {
           : undefined,
       };
       editing ? await serviceTemplateApi.update(editing.id, payload) : await serviceTemplateApi.create(payload);
-      setShowModal(false); load(pagination.currentPage);
-    } catch (e: any) { setError(e.response?.data?.message || 'Có lỗi xảy ra'); } finally { setSubmitting(false); }
+      setShowModal(false);
+      load(pagination.currentPage);
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleToggle = (t: ServiceTemplateData) => {

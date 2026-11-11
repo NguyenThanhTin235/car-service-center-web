@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { catalogApi, CatalogData } from '@/lib/api/catalogs';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import toast from 'react-hot-toast';
+import { validateName, validateRequired, validateInteger } from '@/lib/utils/validators';
 
 const CATALOG_TYPES: Record<string, string> = {
   UOM: 'Đơn vị đo lường',
@@ -56,6 +57,7 @@ export default function CatalogsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmCat, setConfirmCat] = useState<CatalogData | null>(null);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(
     async (page = 1) => {
@@ -89,6 +91,7 @@ export default function CatalogsPage() {
     setEditing(null);
     setFormData(defaultForm);
     setError('');
+    setFieldErrors({});
     setShowModal(true);
   };
 
@@ -101,18 +104,35 @@ export default function CatalogsPage() {
       sortOrder: String(c.sortOrder),
     });
     setError('');
+    setFieldErrors({});
     setShowModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errors: Record<string, string> = {};
+    const nameErr = validateName(formData.name, 'Tên danh mục', 2, 100);
+    if (nameErr) errors.name = nameErr;
+
+    const typeErr = validateRequired(formData.catalogType, 'Loại danh mục');
+    if (typeErr) errors.catalogType = typeErr;
+
+    const sortErr = validateInteger(formData.sortOrder, 'Thứ tự hiển thị', 0);
+    if (sortErr) errors.sortOrder = sortErr;
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
     setSubmitting(true);
     setError('');
+    setFieldErrors({});
     try {
       const payload = {
         catalogType: formData.catalogType,
-        name: formData.name,
-        description: formData.description || undefined,
+        name: formData.name.trim(),
+        description: formData.description?.trim() || undefined,
         sortOrder: parseInt(formData.sortOrder) || 0,
       };
       if (editing) {
@@ -424,9 +444,16 @@ export default function CatalogsPage() {
                   <select
                     required
                     value={formData.catalogType}
-                    onChange={(e) => setFormData((p) => ({ ...p, catalogType: e.target.value }))}
+                    onChange={(e) => {
+                      setFormData((p) => ({ ...p, catalogType: e.target.value }));
+                      if (fieldErrors.catalogType) setFieldErrors((p) => ({ ...p, catalogType: '' }));
+                    }}
                     disabled={!!editing}
-                    className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff] disabled:bg-slate-100 cursor-pointer"
+                    className={`w-full h-10 px-3 border rounded-xl text-sm disabled:bg-slate-100 cursor-pointer transition-colors ${
+                      fieldErrors.catalogType
+                        ? 'bg-white border-rose-400 focus:border-rose-500 ring-2 ring-rose-400/20'
+                        : 'bg-slate-50/50 focus:bg-white border-slate-200 focus:border-[#0866ff]'
+                    }`}
                   >
                     {Object.entries(CATALOG_TYPES).map(([v, l]) => (
                       <option key={v} value={v}>
@@ -434,6 +461,9 @@ export default function CatalogsPage() {
                       </option>
                     ))}
                   </select>
+                  {fieldErrors.catalogType && (
+                    <p className="text-[11px] text-rose-500 font-medium">{fieldErrors.catalogType}</p>
+                  )}
                 </label>
                 <label className="flex flex-col gap-1.5">
                   <span className="text-xs font-semibold text-slate-600">Thứ tự hiển thị</span>
@@ -441,9 +471,19 @@ export default function CatalogsPage() {
                     type="number"
                     min="0"
                     value={formData.sortOrder}
-                    onChange={(e) => setFormData((p) => ({ ...p, sortOrder: e.target.value }))}
-                    className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff]"
+                    onChange={(e) => {
+                      setFormData((p) => ({ ...p, sortOrder: e.target.value }));
+                      if (fieldErrors.sortOrder) setFieldErrors((p) => ({ ...p, sortOrder: '' }));
+                    }}
+                    className={`h-10 px-3 border rounded-xl text-sm transition-colors ${
+                      fieldErrors.sortOrder
+                        ? 'bg-white border-rose-400 focus:border-rose-500 ring-2 ring-rose-400/20'
+                        : 'bg-slate-50/50 focus:bg-white border-slate-200 focus:border-[#0866ff]'
+                    }`}
                   />
+                  {fieldErrors.sortOrder && (
+                    <p className="text-[11px] text-rose-500 font-medium">{fieldErrors.sortOrder}</p>
+                  )}
                 </label>
               </div>
               <label className="flex flex-col gap-1.5">
@@ -451,10 +491,20 @@ export default function CatalogsPage() {
                 <input
                   required
                   value={formData.name}
-                  onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-                  className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff]"
+                  onChange={(e) => {
+                    setFormData((p) => ({ ...p, name: e.target.value }));
+                    if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: '' }));
+                  }}
+                  className={`h-10 px-3 border rounded-xl text-sm transition-colors ${
+                    fieldErrors.name
+                      ? 'bg-white border-rose-400 focus:border-rose-500 ring-2 ring-rose-400/20'
+                      : 'bg-slate-50/50 focus:bg-white border-slate-200 focus:border-[#0866ff]'
+                  }`}
                   placeholder="VD: Cái, Bộ, Mét, ..."
                 />
+                {fieldErrors.name && (
+                  <p className="text-[11px] text-rose-500 font-medium">{fieldErrors.name}</p>
+                )}
               </label>
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-semibold text-slate-600">Mô tả</span>

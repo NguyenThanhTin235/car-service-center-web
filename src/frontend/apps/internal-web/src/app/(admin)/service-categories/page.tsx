@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { serviceCategoryApi, ServiceCategoryData } from '@/lib/api/serviceCategories';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import toast from 'react-hot-toast';
+import { validateName } from '@/lib/utils/validators';
 
 interface FormData {
   name: string;
@@ -24,6 +25,7 @@ export default function ServiceCategoriesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<ServiceCategoryData | null>(null);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(async (page = 1) => {
     setLoading(true);
@@ -40,24 +42,41 @@ export default function ServiceCategoriesPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const openCreate = () => { setEditing(null); setFormData(defaultForm); setError(''); setShowModal(true); };
+  const openCreate = () => { setEditing(null); setFormData(defaultForm); setError(''); setFieldErrors({}); setShowModal(true); };
   const openEdit = (c: ServiceCategoryData) => {
     setEditing(c);
     setFormData({ name: c.name, description: c.description || '', isActive: c.isActive });
-    setError(''); setShowModal(true);
+    setError(''); setFieldErrors({}); setShowModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setSubmitting(true); setError('');
+    e.preventDefault();
+    const errors: Record<string, string> = {};
+    const nameErr = validateName(formData.name, 'Tên danh mục', 2, 100);
+    if (nameErr) errors.name = nameErr;
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setSubmitting(true);
+    setError('');
+    setFieldErrors({});
     try {
       const payload = {
-        name: formData.name,
-        description: formData.description || undefined,
+        name: formData.name.trim(),
+        description: formData.description?.trim() || undefined,
         isActive: formData.isActive,
       };
       editing ? await serviceCategoryApi.update(editing.id, payload) : await serviceCategoryApi.create(payload);
-      setShowModal(false); load(pagination.currentPage);
-    } catch (e: any) { setError(e.response?.data?.message || 'Có lỗi xảy ra'); } finally { setSubmitting(false); }
+      setShowModal(false);
+      load(pagination.currentPage);
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDelete = (c: ServiceCategoryData) => {
@@ -310,10 +329,20 @@ export default function ServiceCategoriesPage() {
                 <input
                   required
                   value={formData.name}
-                  onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-                  className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff]"
+                  onChange={(e) => {
+                    setFormData((p) => ({ ...p, name: e.target.value }));
+                    if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: '' }));
+                  }}
+                  className={`h-10 px-3 border rounded-xl text-sm transition-colors ${
+                    fieldErrors.name
+                      ? 'bg-white border-rose-400 focus:border-rose-500 ring-2 ring-rose-400/20'
+                      : 'bg-slate-50/50 focus:bg-white border-slate-200 focus:border-[#0866ff]'
+                  }`}
                   placeholder="Ví dụ: Vệ sinh xe, Bảo dưỡng..."
                 />
+                {fieldErrors.name && (
+                  <p className="text-[11px] text-rose-500 font-medium">{fieldErrors.name}</p>
+                )}
               </label>
 
               <label className="flex flex-col gap-1.5">

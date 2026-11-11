@@ -5,6 +5,7 @@ import { employeeApi, EmployeeData } from '@/lib/api/employees';
 import { userApi, UserData } from '@/lib/api/users';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import toast from 'react-hot-toast';
+import { validateName, validateRequired } from '@/lib/utils/validators';
 
 const POSITIONS: Record<string, string> = {
   MANAGER: 'Quản lý',
@@ -53,6 +54,7 @@ export default function EmployeesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmEmp, setConfirmEmp] = useState<{ emp: EmployeeData; action: 'deactivate' | 'reactivate' } | null>(null);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const loadEmployees = useCallback(async (page = 1) => {
     setLoading(true);
@@ -66,7 +68,7 @@ export default function EmployeesPage() {
   useEffect(() => { employeeApi.getSkills().then(res => setSkills(res.data.data)).catch(() => {}); }, []);
 
   const openCreate = () => { 
-    setEditingEmp(null); setFormData(defaultForm); setError(''); 
+    setEditingEmp(null); setFormData(defaultForm); setError(''); setFieldErrors({}); 
     loadAvailableUsers();
     setShowModal(true); 
   };
@@ -80,6 +82,7 @@ export default function EmployeesPage() {
       skillIds: e.skills.map((s) => s.id),
     });
     setError('');
+    setFieldErrors({});
     loadAvailableUsers(e.id);
     setShowModal(true);
   };
@@ -96,12 +99,37 @@ export default function EmployeesPage() {
     }
   };
   const handleSubmit = async (ev: React.FormEvent) => {
-    ev.preventDefault(); setSubmitting(true); setError('');
+    ev.preventDefault();
+    const errors: Record<string, string> = {};
+    const nameErr = validateName(formData.fullName, 'Họ và tên', 2, 100);
+    if (nameErr) errors.fullName = nameErr;
+
+    const posErr = validateRequired(formData.position, 'Chức vụ');
+    if (posErr) errors.position = posErr;
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setSubmitting(true);
+    setError('');
+    setFieldErrors({});
     try {
-      const payload = { fullName: formData.fullName, position: formData.position, userId: formData.userId ? parseInt(formData.userId) : undefined, skillIds: formData.skillIds };
+      const payload = {
+        fullName: formData.fullName.trim(),
+        position: formData.position,
+        userId: formData.userId ? parseInt(formData.userId) : undefined,
+        skillIds: formData.skillIds,
+      };
       editingEmp ? await employeeApi.update(editingEmp.id, payload) : await employeeApi.create(payload);
-      setShowModal(false); loadEmployees(pagination.currentPage);
-    } catch (e: any) { setError(e.response?.data?.message || 'Có lỗi xảy ra'); } finally { setSubmitting(false); }
+      setShowModal(false);
+      loadEmployees(pagination.currentPage);
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+      setSubmitting(false);
+    }
   };
   const handleDeactivate = (emp: EmployeeData) => {
     if (!emp.isActive) return;
@@ -459,18 +487,35 @@ export default function EmployeesPage() {
                   <input
                     required
                     value={formData.fullName}
-                    onChange={(e) => setFormData((p) => ({ ...p, fullName: e.target.value }))}
-                    className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15"
+                    onChange={(e) => {
+                      setFormData((p) => ({ ...p, fullName: e.target.value }));
+                      if (fieldErrors.fullName) setFieldErrors((p) => ({ ...p, fullName: '' }));
+                    }}
+                    className={`h-10 px-3 border rounded-xl text-sm transition-colors ${
+                      fieldErrors.fullName
+                        ? 'bg-white border-rose-400 focus:border-rose-500 ring-2 ring-rose-400/20'
+                        : 'bg-slate-50/50 focus:bg-white border-slate-200 focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15'
+                    }`}
                     placeholder="Nguyễn Văn A"
                   />
+                  {fieldErrors.fullName && (
+                    <p className="text-[11px] text-rose-500 font-medium">{fieldErrors.fullName}</p>
+                  )}
                 </label>
                 <label className="flex flex-col gap-1.5">
                   <span className="text-xs font-semibold text-slate-600">Chức vụ *</span>
                   <select
                     required
                     value={formData.position}
-                    onChange={(e) => setFormData((p) => ({ ...p, position: e.target.value }))}
-                    className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff] cursor-pointer"
+                    onChange={(e) => {
+                      setFormData((p) => ({ ...p, position: e.target.value }));
+                      if (fieldErrors.position) setFieldErrors((p) => ({ ...p, position: '' }));
+                    }}
+                    className={`w-full h-10 px-3 border rounded-xl text-sm cursor-pointer transition-colors ${
+                      fieldErrors.position
+                        ? 'bg-white border-rose-400 focus:border-rose-500 ring-2 ring-rose-400/20'
+                        : 'bg-slate-50/50 focus:bg-white border-slate-200 focus:border-[#0866ff]'
+                    }`}
                   >
                     {Object.entries(POSITIONS).map(([v, l]) => (
                       <option key={v} value={v}>
@@ -478,6 +523,9 @@ export default function EmployeesPage() {
                       </option>
                     ))}
                   </select>
+                  {fieldErrors.position && (
+                    <p className="text-[11px] text-rose-500 font-medium">{fieldErrors.position}</p>
+                  )}
                 </label>
                 <label className="flex flex-col gap-1.5 col-span-2">
                   <span className="text-xs font-semibold text-slate-600">Tài khoản liên kết</span>

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { jobTypeApi, JobTypeData } from '@/lib/api/jobTypes';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import Toast from '@/components/shared/Toast';
+import { validateName } from '@/lib/utils/validators';
 
 interface FormData {
   name: string;
@@ -26,6 +27,7 @@ export default function JobTypesPage() {
   const [editing, setEditing] = useState<JobTypeData | null>(null);
   const [formData, setFormData] = useState<FormData>(defaultForm);
   const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   // Confirm modal
@@ -58,6 +60,7 @@ export default function JobTypesPage() {
     setEditing(null);
     setFormData(defaultForm);
     setFormError('');
+    setFieldErrors({});
     setShowModal(true);
   };
 
@@ -65,13 +68,24 @@ export default function JobTypesPage() {
     setEditing(j);
     setFormData({ name: j.name, description: j.description || '' });
     setFormError('');
+    setFieldErrors({});
     setShowModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errors: Record<string, string> = {};
+    const nameErr = validateName(formData.name, 'Tên loại công việc', 2, 100);
+    if (nameErr) errors.name = nameErr;
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
     setSubmitting(true);
     setFormError('');
+    setFieldErrors({});
     try {
       const payload = {
         name: formData.name.trim(),
@@ -426,10 +440,20 @@ export default function JobTypesPage() {
                   id="input-jt-name"
                   required
                   value={formData.name}
-                  onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-                  className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15 transition-all"
+                  onChange={(e) => {
+                    setFormData((p) => ({ ...p, name: e.target.value }));
+                    if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: '' }));
+                  }}
+                  className={`h-10 px-3 border rounded-xl text-sm transition-all ${
+                    fieldErrors.name
+                      ? 'bg-white border-rose-400 focus:border-rose-500 ring-2 ring-rose-400/20'
+                      : 'bg-slate-50/50 focus:bg-white border-slate-200 focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15'
+                  }`}
                   placeholder="VD: Thay dầu động cơ, Kiểm tra phanh..."
                 />
+                {fieldErrors.name && (
+                  <p className="text-[11px] text-rose-500 font-medium">{fieldErrors.name}</p>
+                )}
               </label>
 
               <label className="flex flex-col gap-1.5">
