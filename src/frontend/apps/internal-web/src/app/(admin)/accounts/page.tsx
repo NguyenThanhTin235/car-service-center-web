@@ -15,14 +15,53 @@ import {
 const ROLES = ['ADMIN', 'MANAGER', 'ADVISOR', 'FRONT_DESK', 'TECHNICIAN', 'CUSTOMER'];
 
 const normalizeRoleKey = (role: string): string => {
-  const r = (role || '').toUpperCase().trim().replace(/[\s-]+/g, '_');
-  if (r === 'SA' || r === 'SERVICE_ADVISOR' || r === 'CO_VAN') return 'ADVISOR';
-  if (r === 'DESK_STAFF' || r === 'DESKSTAFF' || r === 'LE_TAN') return 'FRONT_DESK';
-  if (r === 'QUAN_TRI' || r === 'ADMINISTRATOR') return 'ADMIN';
-  if (r === 'QUAN_LY') return 'MANAGER';
-  if (r === 'KY_THUAT_VIEN' || r === 'TECH') return 'TECHNICIAN';
-  if (r === 'KHACH_HANG') return 'CUSTOMER';
+  const r = (role || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .trim()
+    .replace(/[\s-]+/g, '_');
+
+  if (r.includes('CO_VAN') || r.includes('ADVISOR') || r === 'SA') return 'ADVISOR';
+  if (r.includes('LE_TAN') || r.includes('DESK') || r.includes('FRONT')) return 'FRONT_DESK';
+  if (r.includes('QUAN_TRI') || r.includes('ADMIN')) return 'ADMIN';
+  if (r.includes('QUAN_LY') || r.includes('MANAGER')) return 'MANAGER';
+  if (r.includes('KY_THUAT') || r.includes('TECH')) return 'TECHNICIAN';
+  if (r.includes('KHACH') || r.includes('CUSTOMER')) return 'CUSTOMER';
   return r;
+};
+
+const resolveUserRole = (u: UserData): string => {
+  if (!u) return 'ADVISOR';
+
+  // 1. Tìm vai trò nội bộ ưu tiên (khác CUSTOMER) trong mảng roles
+  if (Array.isArray(u.roles) && u.roles.length > 0) {
+    const internalRole = u.roles.find((r: string) => normalizeRoleKey(r) !== 'CUSTOMER');
+    if (internalRole) {
+      const normalized = normalizeRoleKey(internalRole);
+      if (ROLES.includes(normalized)) return normalized;
+    }
+    const firstNormalized = normalizeRoleKey(u.roles[0]);
+    if (ROLES.includes(firstNormalized)) return firstNormalized;
+  }
+
+  // 2. Tra cứu theo chức vụ nhân viên nếu có
+  if (u.employee?.position) {
+    const posKey = normalizeRoleKey(u.employee.position);
+    if (ROLES.includes(posKey)) return posKey;
+  }
+
+  // 3. Heuristics dự phòng theo email
+  if (u.email) {
+    const emailLower = u.email.toLowerCase();
+    if (emailLower.includes('advisor') || emailLower.includes('sa.')) return 'ADVISOR';
+    if (emailLower.includes('manager')) return 'MANAGER';
+    if (emailLower.includes('admin')) return 'ADMIN';
+    if (emailLower.includes('tech') || emailLower.includes('staff')) return 'TECHNICIAN';
+    if (emailLower.includes('desk')) return 'FRONT_DESK';
+  }
+
+  return 'ADVISOR';
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -157,7 +196,7 @@ export default function AccountsPage() {
       fullName: u.fullName,
       phone: u.phone || '',
       address: u.address || '',
-      role: u.roles.find((r: string) => r !== 'CUSTOMER') || u.roles[0] || 'ADVISOR',
+      role: resolveUserRole(u),
     });
     setError('');
     setFieldErrors({});
