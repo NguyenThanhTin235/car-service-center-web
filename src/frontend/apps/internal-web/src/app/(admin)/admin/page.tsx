@@ -12,68 +12,63 @@ import { DashboardActionTable, TableColumn } from '@/components/dashboard/Dashbo
 const PERIOD_DATA_MAP: Record<
   string,
   {
+    kpis: {
+      totalUsers: { value: number; prevValue: number; badgeText: string; callout: string };
+      activeUsers: { value: number; prevValue: number; badgeText: string; splitLeft: number; splitRight: number };
+      totalEmployees: { value: number; prevValue: number; badgeText: string; callout: string; heatmapCol: number };
+      totalServices: { value: number; prevValue: number; badgeText: string; sla: number; subtitle: string };
+    };
     sparklinePoints: number[];
     waveLabels: string[];
-    sparklineCallout: string;
-    activeSplit: number;
-    activeUsersCount: number;
-    techCallout: string;
-    heatmapCol: number;
-    slaPercentage: number;
-    slaBadge: string;
     stageDeltas: Record<string, number>;
     telemetryMultiplier: number;
   }
 > = {
   today: {
-    sparklinePoints: [38, 44, 46, 50, 51],
+    kpis: {
+      totalUsers: { value: 52, prevValue: 50, badgeText: '+4.0%', callout: '+2 mới hôm nay' },
+      activeUsers: { value: 48, prevValue: 45, badgeText: '+6.7%', splitLeft: 92, splitRight: 8 },
+      totalEmployees: { value: 18, prevValue: 16, badgeText: '18/20 trực ca', callout: '90% quân số', heatmapCol: 2 },
+      totalServices: { value: 14, prevValue: 12, badgeText: '100% SLA', sla: 100, subtitle: '14 lượt dịch vụ tiếp nhận hôm nay' },
+    },
+    sparklinePoints: [32, 40, 44, 49, 52],
     waveLabels: ['08:00', '11:00', '14:00', '17:00', '20:00'],
-    sparklineCallout: '+1 hôm nay',
-    activeSplit: 96,
-    activeUsersCount: 49,
-    techCallout: '18/20 trực ca',
-    heatmapCol: 2, // T4 (Hôm nay thứ 4)
-    slaPercentage: 100,
-    slaBadge: '100% SLA',
-    stageDeltas: { ADMIN: 2, MANAGER: 2, DESK_STAFF: 3, SA: 4, TECHNICIAN: 18, CUSTOMER: 20 },
+    stageDeltas: { ADMIN: 2, MANAGER: 2, DESK_STAFF: 3, SA: 4, TECHNICIAN: 18, CUSTOMER: 22 },
     telemetryMultiplier: 0.65,
   },
   '7days': {
-    sparklinePoints: [42, 45, 41, 48, 51],
+    kpis: {
+      totalUsers: { value: 52, prevValue: 46, badgeText: '+13.0%', callout: '+6 tuần này' },
+      activeUsers: { value: 50, prevValue: 44, badgeText: '+13.6%', splitLeft: 88, splitRight: 12 },
+      totalEmployees: { value: 20, prevValue: 19, badgeText: '20 nhân viên', callout: '100% quân số', heatmapCol: 4 },
+      totalServices: { value: 48, prevValue: 42, badgeText: '96.5% SLA', sla: 96, subtitle: '48 lượt dịch vụ trong 7 ngày qua' },
+    },
+    sparklinePoints: [42, 46, 41, 48, 52],
     waveLabels: ['T2', 'T3', 'T4', 'T5', 'T6'],
-    sparklineCallout: '+3 tuần này',
-    activeSplit: 88,
-    activeUsersCount: 45,
-    techCallout: '20 nhân viên',
-    heatmapCol: 4, // T6
-    slaPercentage: 96,
-    slaBadge: '96.5% SLA',
     stageDeltas: { ADMIN: 2, MANAGER: 2, DESK_STAFF: 4, SA: 4, TECHNICIAN: 20, CUSTOMER: 30 },
     telemetryMultiplier: 1.0,
   },
   '30days': {
-    sparklinePoints: [25, 33, 40, 47, 51],
+    kpis: {
+      totalUsers: { value: 52, prevValue: 38, badgeText: '+36.8%', callout: '+14 tháng này' },
+      activeUsers: { value: 46, prevValue: 35, badgeText: '+31.4%', splitLeft: 82, splitRight: 18 },
+      totalEmployees: { value: 20, prevValue: 18, badgeText: '100% định mức', callout: 'Đầy đủ ca', heatmapCol: 1 },
+      totalServices: { value: 186, prevValue: 160, badgeText: '92.4% SLA', sla: 92, subtitle: '186 lượt dịch vụ trong 30 ngày qua' },
+    },
+    sparklinePoints: [22, 30, 38, 46, 52],
     waveLabels: ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4', 'Tuần 5'],
-    sparklineCallout: '+12 tháng này',
-    activeSplit: 82,
-    activeUsersCount: 42,
-    techCallout: '100% định mức',
-    heatmapCol: 1, // T3
-    slaPercentage: 92,
-    slaBadge: '92.4% SLA',
     stageDeltas: { ADMIN: 2, MANAGER: 2, DESK_STAFF: 4, SA: 4, TECHNICIAN: 20, CUSTOMER: 48 },
-    telemetryMultiplier: 1.7,
+    telemetryMultiplier: 1.8,
   },
   this_month: {
-    sparklinePoints: [30, 36, 43, 49, 51],
+    kpis: {
+      totalUsers: { value: 52, prevValue: 43, badgeText: '+20.9%', callout: '+9 trong tháng' },
+      activeUsers: { value: 49, prevValue: 40, badgeText: '+22.5%', splitLeft: 90, splitRight: 10 },
+      totalEmployees: { value: 20, prevValue: 19, badgeText: '2 ca/ngày', callout: '95% quân số', heatmapCol: 3 },
+      totalServices: { value: 142, prevValue: 125, badgeText: '95.8% SLA', sla: 95, subtitle: '142 lượt dịch vụ trong tháng này' },
+    },
+    sparklinePoints: [28, 35, 42, 48, 52],
     waveLabels: ['Đầu T', 'Tuần 2', 'Giữa T', 'Tuần 4', 'Cuối T'],
-    sparklineCallout: '+8 tháng này',
-    activeSplit: 90,
-    activeUsersCount: 46,
-    techCallout: '2 ca/ngày',
-    heatmapCol: 3, // T5
-    slaPercentage: 95,
-    slaBadge: '95.8% SLA',
     stageDeltas: { ADMIN: 2, MANAGER: 2, DESK_STAFF: 4, SA: 4, TECHNICIAN: 20, CUSTOMER: 38 },
     telemetryMultiplier: 1.35,
   },
@@ -222,44 +217,73 @@ export default function AdminDashboardPage() {
         {(data?.kpis || []).map((kpi, index) => {
           const variants: KPICardVariant[] = ['navy', 'royal', 'slate', 'midnight'];
           const cardVariant = variants[index % variants.length];
+          const periodConf = PERIOD_DATA_MAP[period] || PERIOD_DATA_MAP['7days'];
 
+          let displayVal = kpi.value;
+          let prevVal = kpi.prevValue;
+          let badgeText: string | undefined;
           let sparklineCallout: string | undefined;
           let splitPercentage = 85;
           let splitLeftLabel: string | undefined;
           let splitRightLabel: string | undefined;
           let subtitle: string | undefined;
-          let waveLabels = ['Khởi tạo', 'Xác thực', 'Phân quyền', 'Hoạt động', 'Khóa'];
+          let waveLabels = periodConf.waveLabels;
+          let sparklinePoints = periodConf.sparklinePoints;
+          let heatmapHighlightCol: number | undefined;
+          let slaPercentage: number | undefined;
 
           if (index === 0) {
-            sparklineCallout = `${kpi.value} tài khoản`;
+            const conf = periodConf.kpis.totalUsers;
+            displayVal = conf.value;
+            prevVal = conf.prevValue;
+            badgeText = conf.badgeText;
+            sparklineCallout = conf.callout;
             subtitle = 'Phân quyền RBAC & an ninh người dùng';
           } else if (index === 1) {
-            splitPercentage = 100;
+            const conf = periodConf.kpis.activeUsers;
+            displayVal = conf.value;
+            prevVal = conf.prevValue;
+            badgeText = conf.badgeText;
+            splitPercentage = conf.splitLeft;
             splitLeftLabel = 'Khả dụng';
             splitRightLabel = 'Tạm dừng';
             subtitle = 'Tài khoản hoạt động trong hệ thống';
           } else if (index === 2) {
-            sparklineCallout = `${kpi.value} nhân viên`;
+            const conf = periodConf.kpis.totalEmployees;
+            displayVal = conf.value;
+            prevVal = conf.prevValue;
+            badgeText = conf.badgeText;
+            sparklineCallout = conf.callout;
+            heatmapHighlightCol = conf.heatmapCol;
             subtitle = 'Đội ngũ kỹ thuật & điều phối xưởng';
           } else if (index === 3) {
-            subtitle = 'Danh mục dịch vụ & định mức kỹ thuật';
+            const conf = periodConf.kpis.totalServices;
+            displayVal = conf.value;
+            prevVal = conf.prevValue;
+            badgeText = conf.badgeText;
+            slaPercentage = conf.sla;
+            subtitle = conf.subtitle;
           }
 
           return (
             <KPICard
               key={kpi.key}
               label={kpi.label}
-              value={kpi.value}
-              prevValue={kpi.prevValue}
+              value={displayVal}
+              prevValue={prevVal}
               format={kpi.format}
               unit={kpi.unit}
               trendInverted={kpi.trendInverted}
               isLoading={isLoading}
               variant={cardVariant}
               sparklineCallout={sparklineCallout}
+              sparklinePoints={sparklinePoints}
+              heatmapHighlightCol={heatmapHighlightCol}
+              slaPercentage={slaPercentage}
               splitPercentage={splitPercentage}
               splitLeftLabel={splitLeftLabel}
               splitRightLabel={splitRightLabel}
+              badgeText={badgeText}
               subtitle={subtitle}
               waveLabels={waveLabels}
               icon={

@@ -165,7 +165,13 @@ export const KPICard: React.FC<KPICardProps> = ({
 
         {/* Wave Sparkline & Callout Pill */}
         <div className="mt-3 relative pt-4">
-          <div className="absolute right-8 top-0 bg-white text-zinc-900 px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-extrabold shadow-md pointer-events-none">
+          <div
+            style={{
+              left: `${Math.max(10, Math.min(150, peakX - 25))}px`,
+              transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+            className="absolute top-0 bg-white text-zinc-900 px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-extrabold shadow-md pointer-events-none"
+          >
             {sparklineCallout || `${formattedValue} ${unit || ''}`.trim()}
           </div>
 
@@ -181,20 +187,39 @@ export const KPICard: React.FC<KPICardProps> = ({
                 strokeDasharray="2 2"
               />
             ))}
-            <line x1="165" y1="2" x2="165" y2="45" stroke="#ffffff" strokeWidth="1.5" />
+            <line
+              x1={peakX}
+              y1="2"
+              x2={peakX}
+              y2="45"
+              stroke="#ffffff"
+              strokeWidth="1.5"
+              className="transition-all duration-500 ease-in-out"
+            />
             <path
-              d="M 5 34 C 40 22, 65 42, 110 32 C 140 24, 155 36, 165 14 C 185 8, 205 18, 235 24"
+              d={pathD}
               fill="none"
               stroke="#ffffff"
               strokeWidth="2"
               strokeLinecap="round"
+              className="transition-all duration-500 ease-in-out"
             />
-            <circle cx="165" cy="14" r="3.5" fill="#0050cd" stroke="#ffffff" strokeWidth="2" />
+            <circle
+              cx={peakX}
+              cy={peakY}
+              r="3.5"
+              fill="#0050cd"
+              stroke="#ffffff"
+              strokeWidth="2"
+              className="transition-all duration-500 ease-in-out"
+            />
           </svg>
 
           <div className="flex items-center justify-between text-[10px] text-zinc-400 font-medium mt-0.5 px-0.5">
             {waveLabels.map((lbl, idx) => (
-              <span key={idx} className="truncate">{lbl}</span>
+              <span key={idx} className="truncate transition-all duration-300">
+                {lbl}
+              </span>
             ))}
           </div>
         </div>
@@ -204,7 +229,7 @@ export const KPICard: React.FC<KPICardProps> = ({
 
   // ================= VARIANT 2: VIBRANT ROYAL BLUE (#0050cd) =================
   if (variant === 'royal') {
-    const splitLeft = Math.max(15, Math.min(85, Math.round(splitPercentage)));
+    const splitLeft = Math.max(10, Math.min(96, Math.round(splitPercentage)));
     const splitRight = 100 - splitLeft;
 
     return (
