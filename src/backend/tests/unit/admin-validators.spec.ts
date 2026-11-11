@@ -5,9 +5,9 @@ export const EMAIL_REGEX =
 
 export const VN_PHONE_REGEX = /^(0|\+84)(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-9])[0-9]{7}$/;
 
-export function validateEmail(email?: string): string | null {
+export function validateEmail(email?: string, fieldName = 'Email'): string | null {
   if (!email || !email.trim()) {
-    return 'Vui lòng nhập địa chỉ email';
+    return `${fieldName} không được để trống`;
   }
   if (!EMAIL_REGEX.test(email.trim())) {
     return 'Địa chỉ email không đúng định dạng (VD: nhanvien@carservice.vn)';
@@ -15,9 +15,9 @@ export function validateEmail(email?: string): string | null {
   return null;
 }
 
-export function validatePhone(phone?: string, required = false): string | null {
+export function validatePhone(phone?: string, required = false, fieldName = 'Số điện thoại'): string | null {
   if (!phone || !phone.trim()) {
-    if (required) return 'Vui lòng nhập số điện thoại';
+    if (required) return `${fieldName} không được để trống`;
     return null;
   }
   const cleanPhone = phone.trim().replace(/[\s.-]/g, '');
@@ -46,15 +46,15 @@ export function validateName(
   return null;
 }
 
-export function validatePassword(password?: string, min = 6): string | null {
+export function validatePassword(password?: string, min = 6, fieldName = 'Mật khẩu'): string | null {
   if (!password) {
-    return 'Vui lòng nhập mật khẩu';
-  }
-  if (password.length < min) {
-    return `Mật khẩu phải có tối thiểu ${min} ký tự`;
+    return `${fieldName} không được để trống`;
   }
   if (password.trim().length === 0) {
-    return 'Mật khẩu không được chỉ chứa ký tự khoảng trắng';
+    return `${fieldName} không được chỉ chứa ký tự khoảng trắng`;
+  }
+  if (password.length < min) {
+    return `${fieldName} phải có tối thiểu ${min} ký tự`;
   }
   return null;
 }
@@ -107,8 +107,8 @@ describe('Unit Test - Portal Admin Input Validation Suite', () => {
     });
 
     it('Từ chối email rỗng hoặc sai cú pháp', () => {
-      expect(validateEmail('')).toContain('Vui lòng nhập địa chỉ email');
-      expect(validateEmail('   ')).toContain('Vui lòng nhập địa chỉ email');
+      expect(validateEmail('')).toContain('không được để trống');
+      expect(validateEmail('   ')).toContain('không được để trống');
       expect(validateEmail('admin')).toContain('không đúng định dạng');
       expect(validateEmail('admin@')).toContain('không đúng định dạng');
       expect(validateEmail('admin@vn')).toContain('không đúng định dạng');
@@ -130,7 +130,7 @@ describe('Unit Test - Portal Admin Input Validation Suite', () => {
     });
 
     it('Bắt buộc nhập khi required = true', () => {
-      expect(validatePhone('', true)).toContain('Vui lòng nhập số điện thoại');
+      expect(validatePhone('', true)).toContain('không được để trống');
     });
 
     it('Từ chối số điện thoại sai độ dài hoặc chứa chữ cái', () => {
@@ -160,7 +160,7 @@ describe('Unit Test - Portal Admin Input Validation Suite', () => {
     });
 
     it('Từ chối mật khẩu < 6 ký tự hoặc toàn khoảng trắng', () => {
-      expect(validatePassword('')).toContain('Vui lòng nhập mật khẩu');
+      expect(validatePassword('')).toContain('không được để trống');
       expect(validatePassword('12345')).toContain('tối thiểu 6 ký tự');
       expect(validatePassword('      ')).toContain('không được chỉ chứa ký tự khoảng trắng');
     });

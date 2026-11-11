@@ -424,7 +424,7 @@ export default function JobTypesPage() {
             </div>
 
             {/* Form */}
-            <form id="form-job-type" onSubmit={handleSubmit} className="p-5 space-y-4">
+            <form id="form-job-type" onSubmit={handleSubmit} noValidate className="p-5 space-y-4">
               {formError && (
                 <div className="p-3 rounded-xl bg-rose-50 text-rose-600 text-xs border border-rose-200 flex items-center gap-2">
                   <span className="material-symbols-outlined text-base shrink-0">error</span>

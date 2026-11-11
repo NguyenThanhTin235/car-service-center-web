@@ -14,9 +14,9 @@ export const VN_PHONE_REGEX = /^(0|\+84)(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-9])[0
 /**
  * Validate địa chỉ email
  */
-export function validateEmail(email?: string): string | null {
+export function validateEmail(email?: string, fieldName = 'Email'): string | null {
   if (!email || !email.trim()) {
-    return 'Vui lòng nhập địa chỉ email';
+    return `${fieldName} không được để trống`;
   }
   if (!EMAIL_REGEX.test(email.trim())) {
     return 'Địa chỉ email không đúng định dạng (VD: nhanvien@carservice.vn)';
@@ -27,9 +27,9 @@ export function validateEmail(email?: string): string | null {
 /**
  * Validate số điện thoại Việt Nam (hỗ trợ tùy chọn bắt buộc hoặc không bắt buộc)
  */
-export function validatePhone(phone?: string, required = false): string | null {
+export function validatePhone(phone?: string, required = false, fieldName = 'Số điện thoại'): string | null {
   if (!phone || !phone.trim()) {
-    if (required) return 'Vui lòng nhập số điện thoại';
+    if (required) return `${fieldName} không được để trống`;
     return null;
   }
   const cleanPhone = phone.trim().replace(/[\s.-]/g, '');
@@ -64,15 +64,15 @@ export function validateName(
 /**
  * Validate mật khẩu khởi tạo / đặt lại
  */
-export function validatePassword(password?: string, min = 6): string | null {
+export function validatePassword(password?: string, min = 6, fieldName = 'Mật khẩu'): string | null {
   if (!password) {
-    return 'Vui lòng nhập mật khẩu';
-  }
-  if (password.length < min) {
-    return `Mật khẩu phải có tối thiểu ${min} ký tự`;
+    return `${fieldName} không được để trống`;
   }
   if (password.trim().length === 0) {
-    return 'Mật khẩu không được chỉ chứa ký tự khoảng trắng';
+    return `${fieldName} không được chỉ chứa ký tự khoảng trắng`;
+  }
+  if (password.length < min) {
+    return `${fieldName} phải có tối thiểu ${min} ký tự`;
   }
   return null;
 }

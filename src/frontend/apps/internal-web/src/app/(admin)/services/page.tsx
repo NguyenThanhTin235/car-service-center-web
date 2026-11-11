@@ -410,7 +410,7 @@ export default function ServicesPage() {
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="p-5 space-y-4">
               {error && (
                 <div className="p-3 rounded-xl bg-rose-50 text-rose-600 text-xs border border-rose-200">
                   {error}
