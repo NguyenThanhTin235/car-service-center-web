@@ -607,10 +607,13 @@ export class WorkOrderService {
     if (data.technician_id) {
       const tech = await prisma.employee.findUnique({
         where: { id: data.technician_id },
-        select: { id: true, position: true, is_active: true },
+        select: { id: true, position: true, is_active: true, full_name: true },
       });
       if (!tech || tech.position !== 'TECHNICIAN') {
         throw new Error('Nhân viên được phân công phải là kỹ thuật viên (TECHNICIAN).');
+      }
+      if (!tech.is_active) {
+        throw new Error(`Kỹ thuật viên "${tech.full_name}" đang ở trạng thái ngừng hoạt động, không thể phân công công việc.`);
       }
     }
 
@@ -843,10 +846,13 @@ export class WorkOrderService {
     if (data.technician_id) {
       const tech = await prisma.employee.findUnique({
         where: { id: data.technician_id },
-        select: { id: true, position: true, is_active: true },
+        select: { id: true, position: true, is_active: true, full_name: true },
       });
       if (!tech || tech.position !== 'TECHNICIAN') {
         throw new Error('Nhân viên được phân công phải là kỹ thuật viên (TECHNICIAN).');
+      }
+      if (!tech.is_active) {
+        throw new Error(`Kỹ thuật viên "${tech.full_name}" đang ở trạng thái ngừng hoạt động, không thể phân công công việc.`);
       }
     }
 

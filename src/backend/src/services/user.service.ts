@@ -1,8 +1,7 @@
 import { setCache, deleteCache } from '../utils/redis.util';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
-
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
 
 export interface CreateUserDto {
   email: string;

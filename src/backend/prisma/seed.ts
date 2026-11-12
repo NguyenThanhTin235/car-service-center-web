@@ -65,15 +65,22 @@ async function main() {
     }));
   }
 
-  // 5. CREATE SKILLS & EMPLOYEE SKILLS
+  // 5. CREATE SKILLS & EMPLOYEE SKILLS (Chỉ gán kỹ năng cho Kỹ thuật viên)
   const skills = [];
   for (let i = 1; i <= 5; i++) skills.push(await prisma.skill.create({ data: { name: `Kỹ năng ${i}` } }));
   
-  for (let i = 0; i < 5; i++) {
-    const empId = staffs[i].employee?.id;
+  const techPositions: EmployeePosition[] = [EmployeePosition.TECHNICIAN, EmployeePosition.DETAILER, EmployeePosition.QC_STAFF];
+  const techStaffs = staffs.filter(
+    (s) =>
+      s.employee &&
+      techPositions.includes(s.employee.position)
+  );
+
+  for (let i = 0; i < techStaffs.length; i++) {
+    const empId = techStaffs[i].employee?.id;
     if (empId) {
-      await prisma.employeeSkill.create({ data: { employee_id: empId, skill_id: skills[i].id } });
-      await prisma.employeeSkill.create({ data: { employee_id: empId, skill_id: skills[(i+1)%5].id } });
+      await prisma.employeeSkill.create({ data: { employee_id: empId, skill_id: skills[i % 5].id } });
+      await prisma.employeeSkill.create({ data: { employee_id: empId, skill_id: skills[(i + 1) % 5].id } });
     }
   }
 

@@ -45,16 +45,18 @@ export const DashboardStageBars: React.FC<DashboardStageBarsProps> = ({
   const totalCount = stages.reduce((acc, curr) => acc + curr.count, 0);
   const maxCount = Math.max(1, ...stages.map((s) => s.count));
 
-  // Tính chiều cao cột
+  // Tính chiều cao cột cân đối để hiển thị số lượng rõ ràng trên đỉnh mỗi cột
   const computedBars = stages.map((s, idx) => {
-    const solidHeightPct =
+    const totalHeightPct =
       totalCount > 0
-        ? Math.max(18, Math.round((s.count / maxCount) * 72))
-        : [45, 68, 38, 55, 65, 32, 50, 40][idx % 8];
-    const hatchHeightPct = Math.min(26, 95 - solidHeightPct);
+        ? Math.max(22, Math.min(68, Math.round((s.count / maxCount) * 60) + 8))
+        : [35, 55, 30, 45, 60, 28][idx % 6];
+    const hatchHeightPct = 25;
+    const solidHeightPct = 75;
 
     return {
       ...s,
+      totalHeightPct,
       solidHeightPct,
       hatchHeightPct,
     };
@@ -95,7 +97,7 @@ export const DashboardStageBars: React.FC<DashboardStageBarsProps> = ({
 
       {/* Bar Chart Area */}
       <div
-        className="grid gap-2 sm:gap-4 items-end h-44 pt-6 px-1 sm:px-3 border-b border-slate-100 dark:border-slate-800 pb-3 relative"
+        className="grid gap-2 sm:gap-4 items-end h-52 pt-10 sm:pt-12 px-1 sm:px-3 border-b border-slate-100 dark:border-slate-800 pb-3 relative"
         style={{ gridTemplateColumns: `repeat(${stages.length > 0 ? stages.length : 8}, minmax(0, 1fr))` }}
       >
         {computedBars.map((bar) => {
@@ -107,33 +109,37 @@ export const DashboardStageBars: React.FC<DashboardStageBarsProps> = ({
                 className="flex flex-col items-center h-full justify-end relative cursor-pointer group"
               >
                 {/* Floating Dark Callout Tooltip */}
-                <div className="absolute -top-7 sm:-top-8 left-1/2 -translate-x-1/2 z-10 bg-[#0c2340] text-white rounded-2xl px-3 py-2 text-[11px] shadow-lg pointer-events-none whitespace-nowrap">
-                  <div className="font-bold text-zinc-200">
+                <div className="absolute -top-8 sm:-top-9 left-1/2 -translate-x-1/2 z-10 bg-[#0c2340] text-white rounded-2xl px-3 py-1.5 text-[11px] shadow-lg pointer-events-none whitespace-nowrap">
+                  <div className="font-bold text-zinc-200 text-center">
                     {highlightTooltipTitle || bar.label}
                   </div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="flex items-center gap-1.5 mt-0.5 justify-center">
                     <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
                     <span>
-                      {highlightTooltipPrimaryText || `Thực tế: ${bar.count}`}
+                      {highlightTooltipPrimaryText || `Thực tế: ${bar.count} ${bar.label.toLowerCase()}`}
                     </span>
                   </div>
                   {highlightTooltipSecondaryText && (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 justify-center">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#60a5fa] shrink-0" />
                       <span>{highlightTooltipSecondaryText}</span>
                     </div>
                   )}
                 </div>
 
-                <div className="w-full max-w-[80px] flex flex-col rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 shadow-xs h-[85%]">
-                  <div className="bg-white dark:bg-slate-800 flex-1 p-1.5 flex items-start text-[11px] font-mono font-bold text-slate-800 dark:text-slate-100">
-                    {bar.count}
-                  </div>
-                  <div className="bg-[#0050cd] text-white h-[42%] p-1.5 flex items-start text-[10px] sm:text-[11px] font-mono font-bold">
+                {/* Số lượng duy nhất hiển thị trên đỉnh cột */}
+                <span className="font-mono text-xs sm:text-sm font-extrabold text-[#0050cd] dark:text-blue-400 mb-1.5 tabular-nums">
+                  {bar.count}
+                </span>
+
+                <div className="w-full max-w-[70px] sm:max-w-[78px] h-[78%] flex flex-col rounded-xl overflow-hidden border border-[#0050cd]/40 dark:border-blue-500/40 shadow-xs">
+                  <div className="w-full bg-diagonal-stripes flex-1 opacity-80 min-h-[22px]" />
+                  <div className="bg-[#0050cd] text-white h-7 flex items-center justify-center text-[10px] sm:text-[11px] font-bold tracking-tight">
                     Ưu tiên
                   </div>
                 </div>
-                <span className="text-[10px] sm:text-[11px] font-bold text-[#0050cd] dark:text-blue-400 mt-2 truncate max-w-full">
+
+                <span className="text-[10px] sm:text-[11px] font-bold text-[#0050cd] dark:text-blue-400 mt-2 truncate max-w-full text-center">
                   {bar.label}
                 </span>
               </div>
@@ -147,7 +153,15 @@ export const DashboardStageBars: React.FC<DashboardStageBarsProps> = ({
               className="flex flex-col items-center h-full justify-end cursor-pointer group"
               title={`${bar.label}: ${bar.count}`}
             >
-              <div className="w-3.5 sm:w-4 flex flex-col items-center justify-end h-full gap-0.5">
+              {/* Số lượng hiển thị trên đỉnh cột */}
+              <span className="font-mono text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-[#0050cd] group-hover:scale-110 transition-all mb-1.5 tabular-nums">
+                {bar.count}
+              </span>
+
+              <div
+                style={{ height: `${bar.totalHeightPct}%` }}
+                className="w-4 sm:w-5 flex flex-col items-center justify-end gap-0.5"
+              >
                 <div
                   style={{ height: `${bar.hatchHeightPct}%` }}
                   className="w-full bg-diagonal-stripes rounded-t-xs opacity-75 group-hover:opacity-100 transition-opacity"
@@ -157,7 +171,7 @@ export const DashboardStageBars: React.FC<DashboardStageBarsProps> = ({
                   className="w-full bg-[#0c2340] group-hover:bg-[#0050cd] rounded-b-xs transition-colors"
                 />
               </div>
-              <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-2 truncate max-w-full text-center">
+              <span className="text-[10px] sm:text-[11px] text-slate-600 dark:text-slate-400 font-medium mt-2 truncate max-w-full text-center">
                 {bar.label}
               </span>
             </div>

@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { serviceTemplateApi, ServiceTemplateData, CategoryData } from '@/lib/api/serviceTemplates';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import Modal from '@/components/shared/Modal';
+import TablePagination from '@/components/shared/TablePagination';
 import toast from 'react-hot-toast';
 import { validateName, validateRequired, validatePrice } from '@/lib/utils/validators';
 
@@ -13,7 +15,13 @@ const PRICING_COLORS: Record<string, string> = {
   LABOUR_PARTS: 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
 };
 const VEHICLE_SIZES = ['SMALL', 'MEDIUM', 'LARGE', 'SUV', 'TRUCK'];
-const SIZE_LABELS: Record<string, string> = { SMALL: 'Nhỏ', MEDIUM: 'Vừa', LARGE: 'Lớn', SUV: 'SUV', TRUCK: 'Tải' };
+const SIZE_LABELS: Record<string, string> = {
+  SMALL: 'Xe nhỏ (S)',
+  MEDIUM: 'Xe vừa (M)',
+  LARGE: 'Xe lớn (L)',
+  SUV: 'Xe rất lớn / SUV (XL)',
+  TRUCK: 'Xe tải (Truck)',
+};
 
 interface FormData {
   categoryId: string;
@@ -38,6 +46,7 @@ export default function ServicesPage() {
   const [formData, setFormData] = useState<FormData>(defaultForm);
   const [submitting, setSubmitting] = useState(false);
   const [confirmItem, setConfirmItem] = useState<ServiceTemplateData | null>(null);
+  const [deleteItem, setDeleteItem] = useState<ServiceTemplateData | null>(null);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -55,7 +64,7 @@ export default function ServicesPage() {
   const openCreate = () => { setEditing(null); setFormData(defaultForm); setError(''); setFieldErrors({}); setShowModal(true); };
   const openEdit = (t: ServiceTemplateData) => {
     const sp: Record<string, string> = {};
-    t.sizePrices.forEach(s => { sp[s.vehicleSize] = String(s.price); });
+    (t.sizePrices || []).forEach(s => { sp[s.vehicleSize] = String(s.price); });
     setEditing(t);
     setFormData({ categoryId: String(t.category.id), name: t.name, description: t.description || '', pricingType: t.pricingType, fixedPrice: t.fixedPrice ? String(t.fixedPrice) : '', sizePrices: sp });
     setError(''); setFieldErrors({}); setShowModal(true);
@@ -71,8 +80,14 @@ export default function ServicesPage() {
     if (catErr) errors.categoryId = catErr;
 
     if (formData.pricingType === 'FIXED') {
-      const pErr = validatePrice(formData.fixedPrice, 'Giá cố định', true);
-      if (pErr) errors.fixedPrice = pErr;
+      const pVal = formData.fixedPrice !== undefined && formData.fixedPrice !== null ? String(formData.fixedPrice).trim() : '';
+      const pNum = Number(pVal);
+      if (!pVal || isNaN(pNum) || pNum <= 0) {
+        errors.fixedPrice = 'Đơn giá cố định phải là số lớn hơn 0.';
+      } else {
+        const pErr = validatePrice(pVal, 'Đơn giá cố định', false);
+        if (pErr) errors.fixedPrice = pErr;
+      }
     } else if (formData.pricingType === 'VEHICLE_SIZE') {
       const enteredSizes = VEHICLE_SIZES.filter(
         (s) => formData.sizePrices[s] !== undefined && formData.sizePrices[s].trim() !== ''
@@ -81,7 +96,7 @@ export default function ServicesPage() {
         errors.sizePrices = 'Vui lòng nhập đơn giá cho ít nhất một cỡ xe';
       } else {
         for (const s of enteredSizes) {
-          const sErr = validatePrice(formData.sizePrices[s], `Giá cỡ xe ${SIZE_LABELS[s] || s}`, true);
+          const sErr = validatePrice(formData.sizePrices[s], `Giá ${SIZE_LABELS[s] || s}`, false);
           if (sErr) errors[`size_${s}`] = sErr;
         }
       }
@@ -106,11 +121,19 @@ export default function ServicesPage() {
           ? VEHICLE_SIZES.filter(s => formData.sizePrices[s]).map(s => ({ vehicleSize: s, price: parseFloat(formData.sizePrices[s]) }))
           : undefined,
       };
-      editing ? await serviceTemplateApi.update(editing.id, payload) : await serviceTemplateApi.create(payload);
+      if (editing) {
+        await serviceTemplateApi.update(editing.id, payload);
+        toast.success('Cập nhật dịch vụ thành công.');
+      } else {
+        await serviceTemplateApi.create(payload);
+        toast.success('Thêm dịch vụ mới thành công.');
+      }
       setShowModal(false);
       load(pagination.currentPage);
     } catch (e: any) {
-      setError(e.response?.data?.message || 'Có lỗi xảy ra');
+      const errMsg = e.response?.data?.message || 'Có lỗi xảy ra';
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -133,44 +156,56 @@ export default function ServicesPage() {
     }
   };
 
+  const handleDelete = (t: ServiceTemplateData) => {
+    setDeleteItem(t);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteItem) return;
+    try {
+      const res = await serviceTemplateApi.delete(deleteItem.id);
+      const data = res.data;
+      if (data?.deleted) {
+        toast.success(data?.message || 'Đã xóa dịch vụ thành công');
+      } else {
+        toast.error(
+          data?.message ||
+            'Không thể xóa dịch vụ này vì đã có lịch sử sửa chữa của khách hàng tham chiếu. Hệ thống sẽ chuyển dịch vụ sang trạng thái Ngừng cung cấp để bảo toàn lịch sử.',
+          { duration: 6000 }
+        );
+      }
+      load(pagination.currentPage);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Có lỗi xảy ra khi xóa dịch vụ');
+    } finally {
+      setDeleteItem(null);
+    }
+  };
+
   const activeCount = templates.filter(t => t.isActive).length;
 
   return (
     <div className="space-y-6 text-slate-900">
-      {/* 1. SaaS Page Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
-          Danh sách Dịch vụ
-        </h1>
-        <button
-          onClick={openCreate}
-          className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white flex items-center gap-2 text-xs font-bold transition-all active:scale-[0.98] shadow-md shadow-[#0866ff]/20 self-start lg:self-auto cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[18px]">add</span>
-          <span>Thêm dịch vụ</span>
-        </button>
-      </div>
-
-      {/* 2. Asymmetrical 12-Col Bento Summary (5 + 7 cols) */}
+      {/* 1. Asymmetrical 12-Col Bento Summary (5 + 7 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Hero Card (5 cols) */}
-        <div className="lg:col-span-5 rounded-2xl saas-hero-gradient text-white p-5 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute inset-0 saas-subtle-grid pointer-events-none" />
+        {/* Card 1: Navy (#0c2340) - Tổng gói dịch vụ */}
+        <div className="lg:col-span-5 rounded-[24px] bg-[#0c2340] text-white p-5 sm:p-6 relative overflow-hidden flex flex-col justify-between min-h-[170px] shadow-md hover:shadow-lg transition-all group">
+          <div className="absolute inset-0 saas-subtle-grid pointer-events-none opacity-40" />
           <div className="relative z-10 flex items-start justify-between">
             <div>
-              <span className="text-xs font-medium text-blue-100/90">Tổng gói dịch vụ hệ thống</span>
-              <div className="text-3xl font-mono font-extrabold tabular-nums tracking-tight mt-1">
+              <span className="text-xs font-semibold text-zinc-300 tracking-wide">Tổng gói dịch vụ hệ thống</span>
+              <div className="text-3xl sm:text-4xl font-mono font-extrabold tabular-nums tracking-tight text-white mt-1.5">
                 {pagination.totalRecords}{' '}
-                <span className="text-sm font-sans font-medium text-blue-100/80">dịch vụ</span>
+                <span className="text-sm font-sans font-medium text-zinc-300">dịch vụ</span>
               </div>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center backdrop-blur-xs">
-              <span className="material-symbols-outlined text-[22px] text-white">build_circle</span>
+            <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center backdrop-blur-xs text-zinc-300 group-hover:text-white transition-colors">
+              <span className="material-symbols-outlined text-[22px]">build_circle</span>
             </div>
           </div>
-          <div className="relative z-10 mt-4 pt-3.5 border-t border-white/15 flex items-center justify-between text-xs text-blue-50">
+          <div className="relative z-10 mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-zinc-300">
             <span>Nhóm danh mục dịch vụ</span>
-            <span className="px-2.5 py-0.5 rounded-full bg-white/15 font-mono font-semibold">
+            <span className="px-2.5 py-0.5 rounded-full bg-white/10 font-mono font-bold text-white">
               {categories.length} nhóm
             </span>
           </div>
@@ -178,43 +213,55 @@ export default function ServicesPage() {
 
         {/* 3 Status Tiles (7 cols) */}
         <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="saas-card p-4 flex flex-col justify-between">
+          {/* Card 2: Royal Blue (#0050cd) - Đang cung cấp */}
+          <div className="rounded-[24px] bg-[#0050cd] text-white p-5 flex flex-col justify-between shadow-md shadow-[#0050cd]/20 hover:shadow-lg transition-all group">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Đang hoạt động</span>
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200/60 text-emerald-600 flex items-center justify-center">
+              <span className="text-xs font-semibold text-blue-100 tracking-wide">Đang cung cấp</span>
+              <div className="w-8 h-8 rounded-xl bg-white/15 border border-white/20 text-white flex items-center justify-center">
                 <span className="material-symbols-outlined text-[18px]">check_circle</span>
               </div>
             </div>
-            <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-2">
+            <div className="text-2xl sm:text-3xl font-mono font-extrabold tabular-nums text-white mt-2">
               {activeCount}
             </div>
-            <span className="text-[11px] text-emerald-700 font-medium mt-1">Đang mở báo giá</span>
+            <div className="flex items-center justify-between text-[11px] text-blue-100 mt-2 pt-2 border-t border-white/15">
+              <span>Đang mở báo giá</span>
+              <span className="font-mono font-bold">100% SLA</span>
+            </div>
           </div>
 
-          <div className="saas-card p-4 flex flex-col justify-between">
+          {/* Card 3: Soft Cool Slate (#e4e7ec) - Ngừng cung cấp */}
+          <div className="rounded-[24px] bg-[#e4e7ec] text-zinc-900 p-5 flex flex-col justify-between shadow-xs hover:shadow-md transition-all group">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Vô hiệu hóa</span>
-              <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200/60 text-rose-600 flex items-center justify-center">
+              <span className="text-xs font-semibold text-slate-700 tracking-wide">Ngừng cung cấp</span>
+              <div className="w-8 h-8 rounded-xl bg-white border border-slate-300 text-rose-600 flex items-center justify-center shadow-xs">
                 <span className="material-symbols-outlined text-[18px]">cancel</span>
               </div>
             </div>
-            <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-2">
-              {Math.max(0, pagination.totalRecords - activeCount)}
+            <div className="text-2xl sm:text-3xl font-mono font-extrabold tabular-nums text-zinc-900 mt-2">
+              {templates.length - activeCount}
             </div>
-            <span className="text-[11px] text-slate-400 font-medium mt-1">Ngừng cung cấp</span>
+            <div className="flex items-center justify-between text-[11px] text-slate-600 mt-2 pt-2 border-t border-slate-300/80">
+              <span>Ngừng áp dụng</span>
+              <span className="font-mono font-semibold text-rose-700">Tạm dừng</span>
+            </div>
           </div>
 
-          <div className="saas-card p-4 flex flex-col justify-between">
+          {/* Card 4: Midnight Indigo (#111827) - Danh mục dịch vụ */}
+          <div className="rounded-[24px] bg-[#111827] text-white p-5 flex flex-col justify-between shadow-md hover:shadow-lg transition-all group">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Danh mục dịch vụ</span>
-              <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200/60 text-amber-600 flex items-center justify-center">
+              <span className="text-xs font-semibold text-slate-300 tracking-wide">Danh mục dịch vụ</span>
+              <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/15 text-cyan-400 flex items-center justify-center">
                 <span className="material-symbols-outlined text-[18px]">category</span>
               </div>
             </div>
-            <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-2">
+            <div className="text-2xl sm:text-3xl font-mono font-extrabold tabular-nums text-white mt-2">
               {categories.length}
             </div>
-            <span className="text-[11px] text-amber-700 font-medium mt-1">Nhóm phân loại</span>
+            <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 pt-2 border-t border-white/10">
+              <span>Nhóm phân loại</span>
+              <span className="font-mono font-bold text-cyan-400">Trực thuộc</span>
+            </div>
           </div>
         </div>
       </div>
@@ -253,15 +300,25 @@ export default function ServicesPage() {
               </span>
             </div>
           </div>
-          <button
-            onClick={() => load(1)}
-            className="h-9 px-3.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-[#0866ff] transition-colors cursor-pointer"
-          >
-            <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin text-[#0866ff]' : ''}`}>
-              sync
-            </span>
-            <span>Làm mới</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => load(1)}
+              className="h-9 px-3.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-[#0866ff] transition-colors cursor-pointer"
+            >
+              <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin text-[#0866ff]' : ''}`}>
+                sync
+              </span>
+              <span>Làm mới</span>
+            </button>
+
+            <button
+              onClick={openCreate}
+              className="h-9 px-3.5 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white flex items-center gap-1.5 text-xs font-bold transition-all active:scale-[0.98] shadow-sm shadow-[#0866ff]/20 cursor-pointer shrink-0"
+            >
+              <span className="material-symbols-outlined text-[17px]">add</span>
+              <span>Thêm dịch vụ mới</span>
+            </button>
+          </div>
         </div>
 
         <div className="w-full overflow-x-auto">
@@ -273,7 +330,7 @@ export default function ServicesPage() {
                 <th className="py-3.5 px-5">Danh mục dịch vụ</th>
                 <th className="py-3.5 px-5">Loại giá</th>
                 <th className="py-3.5 px-5">Đơn giá</th>
-                <th className="py-3.5 px-5 text-right pr-6">Trạng thái &amp; Thao tác</th>
+                <th className="py-3.5 px-5 text-right pr-6">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/60">
@@ -302,6 +359,15 @@ export default function ServicesPage() {
                     </td>
                     <td className="py-3.5 px-5">
                       <div className="text-sm font-semibold text-slate-900">{t.name}</div>
+                      <span
+                        className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                          t.isActive
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                            : 'bg-rose-50 text-rose-700 border-rose-200/80'
+                        }`}
+                      >
+                        {t.isActive ? 'Đang cung cấp' : 'Ngừng cung cấp'}
+                      </span>
                       {t.description && (
                         <div className="text-xs text-slate-400 truncate max-w-[240px]">
                           {t.description}
@@ -331,15 +397,6 @@ export default function ServicesPage() {
                     </td>
                     <td className="py-3.5 px-5 pr-6">
                       <div className="flex items-center justify-end gap-2">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-                            t.isActive
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                              : 'bg-rose-50 text-rose-700 border-rose-200/80'
-                          }`}
-                        >
-                          {t.isActive ? 'Hoạt động' : 'Vô hiệu'}
-                        </span>
                         <button
                           onClick={() => openEdit(t)}
                           className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-[#0866ff] flex items-center justify-center transition-colors cursor-pointer"
@@ -360,6 +417,13 @@ export default function ServicesPage() {
                             {t.isActive ? 'toggle_off' : 'toggle_on'}
                           </span>
                         </button>
+                        <button
+                          onClick={() => handleDelete(t)}
+                          className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-rose-500 hover:text-white border border-slate-200/80 hover:border-rose-500 text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
+                          title="Xóa dịch vụ"
+                        >
+                          <span className="material-symbols-outlined text-[17px]">delete</span>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -369,48 +433,24 @@ export default function ServicesPage() {
           </table>
         </div>
 
-        <div className="px-5 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200/80 bg-slate-50/40">
-          <span className="text-xs text-slate-500">
-            Hiển thị <span className="font-mono font-bold text-slate-700">{templates.length}</span>{' '}
-            trong <span className="font-mono font-bold text-slate-700">{pagination.totalRecords}</span>{' '}
-            dịch vụ
-          </span>
-          {pagination.totalPages > 1 && (
-            <div className="flex items-center gap-1">
-              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => load(p)}
-                  className={`w-8 h-8 rounded-lg font-mono text-xs font-semibold transition-colors cursor-pointer ${
-                    p === pagination.currentPage
-                      ? 'bg-[#0866ff] text-white'
-                      : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <TablePagination
+          totalRecords={pagination.totalRecords}
+          totalPages={pagination.totalPages}
+          currentPage={pagination.currentPage}
+          onPageChange={load}
+          currentCount={templates.length}
+          recordLabel="dịch vụ"
+        />
       </div>
 
       {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-slate-950/45 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl border border-slate-200/80 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between p-5 border-b border-slate-200/80">
-              <h2 className="text-base font-bold text-slate-900">
-                {editing ? 'Cập nhật dịch vụ' : 'Thêm dịch vụ mới'}
-              </h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="w-8 h-8 rounded-xl hover:bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[18px]">close</span>
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} noValidate className="p-5 space-y-4">
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editing ? 'Cập nhật dịch vụ' : 'Thêm dịch vụ mới'}
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
               {error && (
                 <div className="p-3 rounded-xl bg-rose-50 text-rose-600 text-xs border border-rose-200">
                   {error}
@@ -422,10 +462,23 @@ export default function ServicesPage() {
                 <input
                   required
                   value={formData.name}
-                  onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-                  className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff]"
+                  onChange={(e) => {
+                    setFormData((p) => ({ ...p, name: e.target.value }));
+                    if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: '' }));
+                  }}
+                  className={`h-10 px-3 border rounded-xl text-sm transition-colors ${
+                    fieldErrors.name
+                      ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:border-rose-500 ring-2 ring-rose-400/20'
+                      : 'border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff]'
+                  }`}
                   placeholder="Tên dịch vụ"
                 />
+                {fieldErrors.name && (
+                  <p className="text-[11px] text-rose-500 font-medium flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">error</span>
+                    <span>{fieldErrors.name}</span>
+                  </p>
+                )}
               </label>
 
               <div className="grid grid-cols-2 gap-4">
@@ -435,8 +488,15 @@ export default function ServicesPage() {
                     <select
                       required
                       value={formData.categoryId}
-                      onChange={(e) => setFormData((p) => ({ ...p, categoryId: e.target.value }))}
-                      className="w-full h-10 pl-3 pr-8 border border-slate-200 rounded-xl text-sm bg-slate-50/50 appearance-none focus:bg-white focus:outline-none focus:border-[#0866ff]"
+                      onChange={(e) => {
+                        setFormData((p) => ({ ...p, categoryId: e.target.value }));
+                        if (fieldErrors.categoryId) setFieldErrors((p) => ({ ...p, categoryId: '' }));
+                      }}
+                      className={`w-full h-10 pl-3 pr-8 border rounded-xl text-sm appearance-none transition-colors ${
+                        fieldErrors.categoryId
+                          ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:border-rose-500 ring-2 ring-rose-400/20'
+                          : 'border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff]'
+                      }`}
                     >
                       <option value="">Chọn danh mục</option>
                       {categories.map((c) => (
@@ -449,6 +509,12 @@ export default function ServicesPage() {
                       unfold_more
                     </span>
                   </div>
+                  {fieldErrors.categoryId && (
+                    <p className="text-[11px] text-rose-500 font-medium flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">error</span>
+                      <span>{fieldErrors.categoryId}</span>
+                    </p>
+                  )}
                 </label>
 
                 <label className="flex flex-col gap-1.5">
@@ -482,43 +548,102 @@ export default function ServicesPage() {
 
               {formData.pricingType === 'FIXED' && (
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-semibold text-slate-600">Giá cố định (VNĐ) *</span>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={formData.fixedPrice}
-                    onChange={(e) => setFormData((p) => ({ ...p, fixedPrice: e.target.value }))}
-                    className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff]"
-                    placeholder="0"
-                  />
+                  <span className="text-xs font-semibold text-slate-600">Đơn giá cố định (VNĐ) *</span>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="1000"
+                      value={formData.fixedPrice}
+                      onChange={(e) => {
+                        setFormData((p) => ({ ...p, fixedPrice: e.target.value }));
+                        if (fieldErrors.fixedPrice) {
+                          setFieldErrors((p) => ({ ...p, fixedPrice: '' }));
+                        }
+                      }}
+                      className={`w-full h-10 pl-3 pr-8 border rounded-xl text-sm transition-colors ${
+                        fieldErrors.fixedPrice
+                          ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:border-rose-500 focus:bg-white ring-2 ring-rose-400/20'
+                          : 'border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff]'
+                      }`}
+                      placeholder="VD: 500000"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none">
+                      ₫
+                    </span>
+                  </div>
+                  {fieldErrors.fixedPrice && (
+                    <p className="text-[11px] text-rose-500 font-medium flex items-center gap-1 mt-0.5 animate-in fade-in duration-150">
+                      <span className="material-symbols-outlined text-[14px]">error</span>
+                      <span>{fieldErrors.fixedPrice}</span>
+                    </p>
+                  )}
                 </label>
               )}
 
               {formData.pricingType === 'VEHICLE_SIZE' && (
-                <div>
-                  <span className="text-xs font-semibold text-slate-600">Giá theo cỡ xe</span>
-                  <div className="mt-2 grid grid-cols-2 gap-2.5">
-                    {VEHICLE_SIZES.map((size) => (
-                      <label key={size} className="flex flex-col gap-1">
-                        <span className="text-[11px] font-medium text-slate-500">
-                          {SIZE_LABELS[size]}
-                        </span>
-                        <input
-                          type="number"
-                          min="0"
-                          value={formData.sizePrices[size] || ''}
-                          onChange={(e) =>
-                            setFormData((p) => ({
-                              ...p,
-                              sizePrices: { ...p.sizePrices, [size]: e.target.value },
-                            }))
-                          }
-                          className="h-9 px-3 border border-slate-200 rounded-xl text-xs bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff]"
-                          placeholder="0 ₫"
-                        />
-                      </label>
-                    ))}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-600">Giá theo cỡ xe (VNĐ) *</span>
+                    <span className="text-[11px] text-slate-400">Tối thiểu 1 cỡ xe</span>
+                  </div>
+                  {fieldErrors.sizePrices && (
+                    <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-medium flex items-center gap-1.5 animate-in fade-in duration-150">
+                      <span className="material-symbols-outlined text-[16px] text-rose-500 shrink-0">error</span>
+                      <span>{fieldErrors.sizePrices}</span>
+                    </div>
+                  )}
+                  <div className="mt-1 grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {VEHICLE_SIZES.map((size) => {
+                      const hasErr = Boolean(fieldErrors[`size_${size}`]);
+                      return (
+                        <label key={size} className="flex flex-col gap-1">
+                          <span className="text-[11px] font-medium text-slate-600">
+                            {SIZE_LABELS[size]}
+                          </span>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              step="1000"
+                              min="1000"
+                              value={formData.sizePrices[size] || ''}
+                              onKeyDown={(e) => {
+                                if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onChange={(e) => {
+                                setFormData((p) => ({
+                                  ...p,
+                                  sizePrices: { ...p.sizePrices, [size]: e.target.value },
+                                }));
+                                if (fieldErrors.sizePrices || fieldErrors[`size_${size}`]) {
+                                  setFieldErrors((p) => {
+                                    const n = { ...p };
+                                    delete n.sizePrices;
+                                    delete n[`size_${size}`];
+                                    return n;
+                                  });
+                                }
+                              }}
+                              className={`w-full h-9 pl-3 pr-6 border rounded-xl text-xs transition-colors ${
+                                hasErr
+                                  ? 'border-rose-400 bg-rose-50/20 text-rose-900 focus:border-rose-500 focus:bg-white ring-2 ring-rose-400/20'
+                                  : 'border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:border-[#0866ff]'
+                              }`}
+                              placeholder="0"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-slate-400 pointer-events-none">
+                              ₫
+                            </span>
+                          </div>
+                          {hasErr && (
+                            <p className="text-[10px] text-rose-500 font-medium leading-tight mt-0.5">
+                              {fieldErrors[`size_${size}`]}
+                            </p>
+                          )}
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -547,21 +672,36 @@ export default function ServicesPage() {
                   disabled={submitting}
                   className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white text-xs font-bold disabled:opacity-60 cursor-pointer"
                 >
-                  {submitting ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Tạo dịch vụ'}
+                  {submitting ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Lưu lại'}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-          <ConfirmModal
+      </Modal>
+      <ConfirmModal
         isOpen={!!confirmItem}
         title={confirmItem?.isActive ? 'Vô hiệu hóa dịch vụ' : 'Kích hoạt dịch vụ'}
-        message={confirmItem ? `Bạn có chắc chắn muốn ${confirmItem.isActive ? 'vô hiệu hóa' : 'kích hoạt'} dịch vụ "${confirmItem.name}" không?` : ''}
+        message={
+          confirmItem
+            ? `Bạn có chắc chắn muốn ${confirmItem.isActive ? 'ngừng cung cấp' : 'kích hoạt lại'} dịch vụ "${confirmItem.name}" không?`
+            : ''
+        }
         confirmText={confirmItem?.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
         isDestructive={confirmItem?.isActive}
         onConfirm={handleConfirmToggle}
         onCancel={() => setConfirmItem(null)}
+      />
+      <ConfirmModal
+        isOpen={!!deleteItem}
+        title="Xóa dịch vụ"
+        message={
+          deleteItem
+            ? `Bạn có chắc chắn muốn xóa dịch vụ "${deleteItem.name}" không?`
+            : ''
+        }
+        confirmText="Xác nhận xóa"
+        isDestructive={true}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteItem(null)}
       />
     </div>
   );

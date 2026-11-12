@@ -35,7 +35,7 @@ export default function CreateAppointmentModal({ onClose, onSuccess, selectedDat
       try {
         const [customersRes, servicesRes] = await Promise.all([
           api.get('/api/customers', { params: { limit: 100 } }),
-          api.get('/api/services')
+          api.get('/api/services', { params: { isActive: 'true' } })
         ]);
         setCustomers(customersRes.data.data);
         setServices(servicesRes.data.data);

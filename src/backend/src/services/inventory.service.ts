@@ -1,5 +1,5 @@
-import { PrismaClient, Prisma, ItemType, MovementType, ReferenceType, CatalogType, GoodsReceiptStatus, ReceiptType } from '@prisma/client';
-const prisma = new PrismaClient();
+import { Prisma, ItemType, MovementType, ReferenceType, CatalogType, GoodsReceiptStatus, ReceiptType } from '@prisma/client';
+import prisma from '../utils/prisma';
 
 const ITEM_INCLUDE = {
   part_category: { include: { uom: true } },

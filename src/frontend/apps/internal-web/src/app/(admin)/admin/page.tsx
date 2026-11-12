@@ -1,13 +1,19 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { KPICard, KPICardVariant } from '@/components/dashboard/KPICard';
 import { DashboardFilterBar } from '@/components/dashboard/DashboardFilterBar';
 import { DashboardStageBars } from '@/components/dashboard/DashboardStageBars';
 import { DashboardTelemetryMiniBars } from '@/components/dashboard/DashboardTelemetryMiniBars';
 import { DashboardActionTable, TableColumn } from '@/components/dashboard/DashboardActionTable';
+
+const UserDetailModal = dynamic(
+  () => import('@/components/admin/UserDetailModal'),
+  { ssr: false }
+);
 
 const PERIOD_DATA_MAP: Record<
   string,
@@ -88,6 +94,9 @@ export default function AdminDashboardPage() {
     initialPeriod: '7days',
   });
 
+  const [selectedUserDetail, setSelectedUserDetail] = useState<any | null>(null);
+  const [showUserModal, setShowUserModal] = useState<boolean>(false);
+
   const recentUserColumns: TableColumn<any>[] = [
     {
       key: 'title',
@@ -135,12 +144,17 @@ export default function AdminDashboardPage() {
       key: 'action',
       label: 'Thao tác',
       render: (row) => (
-        <Link
-          href={`/accounts?search=${encodeURIComponent(row.subtitle)}`}
-          className="text-xs font-semibold text-[#0050cd] hover:underline"
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedUserDetail(row);
+            setShowUserModal(true);
+          }}
+          className="text-xs font-semibold text-[#0050cd] hover:underline cursor-pointer inline-flex items-center gap-1"
         >
-          Chi tiết →
-        </Link>
+          <span>Chi tiết</span>
+          <span className="material-symbols-outlined text-[14px]">visibility</span>
+        </button>
       ),
     },
   ];
@@ -234,15 +248,15 @@ export default function AdminDashboardPage() {
 
           if (index === 0) {
             const conf = periodConf.kpis.totalUsers;
-            displayVal = conf.value;
-            prevVal = conf.prevValue;
+            displayVal = kpi.value !== undefined && kpi.value !== null ? kpi.value : conf.value;
+            prevVal = kpi.prevValue !== undefined && kpi.prevValue !== null ? kpi.prevValue : conf.prevValue;
             badgeText = conf.badgeText;
             sparklineCallout = conf.callout;
             subtitle = 'Phân quyền RBAC & an ninh người dùng';
           } else if (index === 1) {
             const conf = periodConf.kpis.activeUsers;
-            displayVal = conf.value;
-            prevVal = conf.prevValue;
+            displayVal = kpi.value !== undefined && kpi.value !== null ? kpi.value : conf.value;
+            prevVal = kpi.prevValue !== undefined && kpi.prevValue !== null ? kpi.prevValue : conf.prevValue;
             badgeText = conf.badgeText;
             splitPercentage = conf.splitLeft;
             splitLeftLabel = 'Khả dụng';
@@ -250,16 +264,16 @@ export default function AdminDashboardPage() {
             subtitle = 'Tài khoản hoạt động trong hệ thống';
           } else if (index === 2) {
             const conf = periodConf.kpis.totalEmployees;
-            displayVal = conf.value;
-            prevVal = conf.prevValue;
+            displayVal = kpi.value !== undefined && kpi.value !== null ? kpi.value : conf.value;
+            prevVal = kpi.prevValue !== undefined && kpi.prevValue !== null ? kpi.prevValue : conf.prevValue;
             badgeText = conf.badgeText;
             sparklineCallout = conf.callout;
             heatmapHighlightCol = conf.heatmapCol;
             subtitle = 'Đội ngũ kỹ thuật & điều phối xưởng';
           } else if (index === 3) {
             const conf = periodConf.kpis.totalServices;
-            displayVal = conf.value;
-            prevVal = conf.prevValue;
+            displayVal = kpi.value !== undefined && kpi.value !== null ? kpi.value : conf.value;
+            prevVal = kpi.prevValue !== undefined && kpi.prevValue !== null ? kpi.prevValue : conf.prevValue;
             badgeText = conf.badgeText;
             slaPercentage = conf.sla;
             subtitle = conf.subtitle;
@@ -339,6 +353,17 @@ export default function AdminDashboardPage() {
         pageSize={5}
         isLoading={isLoading}
         emptyMessage="Không có tài khoản nào được tạo trong thời gian này"
+      />
+
+      {/* User Detail Modal */}
+      <UserDetailModal
+        isOpen={showUserModal}
+        onClose={() => {
+          setShowUserModal(false);
+          setSelectedUserDetail(null);
+        }}
+        userId={selectedUserDetail?.id || null}
+        fallbackData={selectedUserDetail}
       />
     </div>
   );

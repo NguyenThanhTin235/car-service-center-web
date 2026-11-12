@@ -6,11 +6,16 @@ const svc = new JobTypeService();
 // UC-63: Lấy danh sách loại công việc
 export const getJobTypes = async (req: Request, res: Response) => {
   try {
-    const { search, page, limit } = req.query;
+    const { search, page, limit, all, isActive } = req.query;
+    const isAll = all === 'true' || limit === 'all' || limit === '0';
+    const limitNum = isAll ? undefined : (limit ? parseInt(limit as string) : 10);
+    const isActiveFilter = isActive !== undefined ? isActive === 'true' : undefined;
     const result = await svc.getJobTypes(
       search as string,
       page ? parseInt(page as string) : 1,
-      limit ? parseInt(limit as string) : 10
+      limitNum,
+      isAll,
+      isActiveFilter
     );
     res.json({ status: 'success', ...result });
   } catch (error: any) {

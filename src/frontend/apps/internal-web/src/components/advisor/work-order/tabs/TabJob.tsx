@@ -229,12 +229,12 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
   useEffect(() => {
     let mounted = true;
     employeeApi
-      .getAll({ limit: 100, position: 'TECHNICIAN' })
+      .getAll({ limit: 100, position: 'TECHNICIAN', status: 'active' })
       .then((res) => {
         if (!mounted) return;
         const list: EmployeeData[] = res.data?.data || res.data || [];
         setTechnicians(
-          list.filter((e) => e.isActive !== false && e.position === 'TECHNICIAN')
+          list.filter((e) => Boolean(e.isActive) && e.position === 'TECHNICIAN')
         );
       })
       .catch((err) => {

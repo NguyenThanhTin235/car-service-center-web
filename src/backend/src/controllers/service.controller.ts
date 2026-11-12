@@ -6,15 +6,17 @@ const svc = new ServiceService();
 // UC-59: Lấy danh sách + UC-59 categories dropdown
 export const getServices = async (req: Request, res: Response) => {
   try {
-    const { search, categoryId, page, limit, all } = req.query;
+    const { search, categoryId, page, limit, all, isActive } = req.query;
     const isAll = all === 'true' || limit === 'all' || limit === '0';
     const limitNum = isAll ? undefined : (limit ? parseInt(limit as string) : 10);
+    const isActiveFilter = isActive !== undefined ? isActive === 'true' : undefined;
     const result = await svc.getServices(
       search as string,
       categoryId ? parseInt(categoryId as string) : undefined,
       page ? parseInt(page as string) : 1,
       limitNum,
-      isAll
+      isAll,
+      isActiveFilter
     );
     res.json({ status: 'success', ...result });
   } catch (error: any) {
@@ -62,5 +64,29 @@ export const toggleService = async (req: Request, res: Response) => {
   } catch (error: any) {
     const statusCode = error.message.includes('Không tìm thấy') ? 404 : 400;
     res.status(statusCode).json({ status: 'error', message: error.message });
+  }
+};
+
+// UC-61b: Xóa dịch vụ
+export const deleteService = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const result = await svc.deleteService(parseInt(id as string));
+    res.json({
+      success: true,
+      status: 'success',
+      message: result.message,
+      data: result.data,
+      deleted: result.deleted,
+      isDeactivated: result.isDeactivated,
+    });
+  } catch (error: any) {
+    const statusCode = error.message.includes('Không tìm thấy') ? 404 : 400;
+    res.status(statusCode).json({
+      success: false,
+      status: 'error',
+      message: error.message,
+      error: { code: 'DELETE_SERVICE_ERROR', details: error.message },
+    });
   }
 };

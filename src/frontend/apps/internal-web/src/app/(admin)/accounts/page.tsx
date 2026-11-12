@@ -1,10 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import { userApi, UserData } from '@/lib/api/users';
 import SaaSWaveChart from '@/components/shared/SaaSWaveChart';
 import toast from 'react-hot-toast';
 import {
+  EMAIL_REGEX,
   validateEmail,
   validatePhone,
   validateName,
@@ -66,9 +70,9 @@ const resolveUserRole = (u: UserData): string => {
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Quản trị viên',
-  MANAGER: 'Quản lý',
-  ADVISOR: 'Cố vấn',
-  FRONT_DESK: 'Lễ tân',
+  MANAGER: 'Quản lý dịch vụ',
+  ADVISOR: 'Cố vấn dịch vụ',
+  FRONT_DESK: 'Nhân viên quầy',
   TECHNICIAN: 'Kỹ thuật viên',
   CUSTOMER: 'Khách hàng',
 };
@@ -94,19 +98,19 @@ const getRoleBg = (role: string): string => {
 
 const getPositionLabel = (pos?: string, roles?: string[]): string => {
   const roleName = roles?.[0] ? normalizeRoleKey(roles[0]) : '';
-  if (roleName === 'MANAGER') return 'Quản lý';
-  if (roleName === 'FRONT_DESK') return 'Lễ tân';
-  if (roleName === 'ADVISOR') return 'Cố vấn';
+  if (roleName === 'MANAGER') return 'Quản lý dịch vụ';
+  if (roleName === 'FRONT_DESK') return 'Nhân viên quầy';
+  if (roleName === 'ADVISOR') return 'Cố vấn dịch vụ';
   if (roleName === 'TECHNICIAN') return 'Kỹ thuật viên';
   if (roleName === 'ADMIN') return 'Quản trị viên';
   if (roleName === 'CUSTOMER') return 'Khách hàng';
 
   if (pos) {
     const p = pos.toUpperCase();
-    if (p === 'ADVISOR') return 'Cố vấn';
+    if (p === 'ADVISOR') return 'Cố vấn dịch vụ';
     if (p === 'TECHNICIAN' || p === 'DETAILER' || p === 'QC_STAFF') return 'Kỹ thuật viên';
-    if (p === 'MANAGER') return 'Quản lý';
-    if (p === 'FRONT_DESK' || p === 'OTHER') return 'Lễ tân';
+    if (p === 'MANAGER') return 'Quản lý dịch vụ';
+    if (p === 'FRONT_DESK' || p === 'OTHER') return 'Nhân viên quầy';
   }
   return 'Nhân viên';
 };
@@ -128,7 +132,10 @@ const defaultForm: FormData = {
   role: 'ADVISOR',
 };
 
-export default function AccountsPage() {
+function AccountsContent() {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get('search') || '';
+  const currentUser = useSelector((state: RootState) => state.auth?.user);
   const [users, setUsers] = useState<UserData[]>([]);
   const [pagination, setPagination] = useState({
     totalRecords: 0,
@@ -136,7 +143,13 @@ export default function AccountsPage() {
     currentPage: 1,
     limit: 10,
   });
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(initialSearch);
+
+  useEffect(() => {
+    if (initialSearch) {
+      setSearch(initialSearch);
+    }
+  }, [initialSearch]);
   const [filterRole, setFilterRole] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [loading, setLoading] = useState(true);
@@ -155,6 +168,16 @@ export default function AccountsPage() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [resetError, setResetError] = useState('');
+
+  const isCurrentUser = useCallback(
+    (u: UserData | null) => {
+      if (!u || !currentUser) return false;
+      if (currentUser.id && u.id === currentUser.id) return true;
+      if (currentUser.email && u.email && currentUser.email.toLowerCase() === u.email.toLowerCase()) return true;
+      return false;
+    },
+    [currentUser]
+  );
 
   const loadUsers = useCallback(
     async (page = 1) => {
@@ -194,10 +217,6 @@ export default function AccountsPage() {
   };
 
   const openEdit = (u: UserData) => {
-    if (u.roles?.some((r: string) => normalizeRoleKey(r) === 'ADMIN')) {
-      toast.error('Tài khoản Quản trị viên được bảo vệ, không thể chỉnh sửa.');
-      return;
-    }
     setEditingUser(u);
     setFormData({
       email: u.email,
@@ -215,15 +234,26 @@ export default function AccountsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors: Record<string, string> = {};
-    const nameErr = validateName(formData.fullName, 'Họ và tên', 2, 100);
-    if (nameErr) errors.fullName = nameErr;
+
+    if (!formData.fullName || !formData.fullName.trim()) {
+      errors.fullName = 'Họ và tên không được để trống';
+    } else {
+      const nameErr = validateName(formData.fullName, 'Họ và tên', 2, 100);
+      if (nameErr) errors.fullName = nameErr;
+    }
 
     if (!editingUser) {
-      const emailErr = validateEmail(formData.email);
-      if (emailErr) errors.email = emailErr;
+      if (!formData.email || !formData.email.trim()) {
+        errors.email = 'Email không được để trống';
+      } else if (!EMAIL_REGEX.test(formData.email.trim())) {
+        errors.email = 'Định dạng email không hợp lệ.';
+      }
 
-      const passErr = validatePassword(formData.password, 6);
-      if (passErr) errors.password = passErr;
+      if (!formData.password) {
+        errors.password = 'Mật khẩu không được để trống';
+      } else if (formData.password.length < 6) {
+        errors.password = 'Mật khẩu mới phải có ít nhất 6 ký tự.';
+      }
     }
 
     const phoneErr = validatePhone(formData.phone, false);
@@ -248,7 +278,7 @@ export default function AccountsPage() {
           address: formData.address.trim() || undefined,
           role: formData.role,
         });
-        toast.success('Đã cập nhật thông tin tài khoản');
+        toast.success('Cập nhật thành công.');
       } else {
         await userApi.create({
           email: formData.email.trim(),
@@ -258,20 +288,40 @@ export default function AccountsPage() {
           address: formData.address.trim() || undefined,
           role: formData.role,
         });
-        toast.success('Đã cấp tài khoản mới thành công');
+        toast.success('Tạo tài khoản thành công.');
       }
       setShowModal(false);
       loadUsers(pagination.currentPage);
     } catch (e: any) {
-      setError(e.response?.data?.message || 'Có lỗi xảy ra khi lưu tài khoản');
+      const msg = e.response?.data?.message || 'Có lỗi xảy ra khi lưu tài khoản';
+      if (
+        msg.toLowerCase().includes('email đã tồn tại') ||
+        msg.toLowerCase().includes('email exists') ||
+        msg.toLowerCase().includes('trùng email')
+      ) {
+        const dupEmailMsg = 'Email đã tồn tại trong hệ thống.';
+        setFieldErrors((prev) => ({ ...prev, email: dupEmailMsg }));
+        setError(dupEmailMsg);
+      } else if (
+        msg.toLowerCase().includes('số điện thoại đã tồn tại') ||
+        msg.toLowerCase().includes('phone exists') ||
+        msg.toLowerCase().includes('trùng số điện thoại') ||
+        msg.toLowerCase().includes('sđt đã tồn tại')
+      ) {
+        const dupPhoneMsg = 'Số điện thoại đã tồn tại trong hệ thống.';
+        setFieldErrors((prev) => ({ ...prev, phone: dupPhoneMsg }));
+        setError(dupPhoneMsg);
+      } else {
+        setError(msg);
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleToggle = (u: UserData) => {
-    if (u.roles?.some((r: string) => normalizeRoleKey(r) === 'ADMIN')) {
-      toast.error('Tài khoản Quản trị viên được bảo vệ, không thể thay đổi trạng thái.');
+    if (isCurrentUser(u)) {
+      toast.error('Bạn không thể tự vô hiệu hóa tài khoản của chính mình để đảm bảo quyền quản trị hệ thống.');
       return;
     }
     setToggleTargetUser(u);
@@ -280,6 +330,12 @@ export default function AccountsPage() {
 
   const confirmToggleStatus = async () => {
     if (!toggleTargetUser) return;
+    if (isCurrentUser(toggleTargetUser)) {
+      toast.error('Bạn không thể tự vô hiệu hóa tài khoản của chính mình để đảm bảo quyền quản trị hệ thống.');
+      setShowToggleConfirmModal(false);
+      setToggleTargetUser(null);
+      return;
+    }
     setTogglingStatus(true);
     try {
       if (toggleTargetUser.isActive) {
@@ -291,10 +347,10 @@ export default function AccountsPage() {
             channel.close();
           } catch {}
         }
-        toast.success(`Đã tạm khóa tài khoản ${toggleTargetUser.fullName} và thu hồi phiên đăng nhập.`);
+        toast.success(`Đã khóa tài khoản ${toggleTargetUser.fullName} thành công.`);
       } else {
         await userApi.reactivate(toggleTargetUser.id);
-        toast.success(`Đã kích hoạt lại tài khoản ${toggleTargetUser.fullName}.`);
+        toast.success(`Đã mở khóa tài khoản ${toggleTargetUser.fullName} thành công.`);
       }
       setShowToggleConfirmModal(false);
       setToggleTargetUser(null);
@@ -308,13 +364,8 @@ export default function AccountsPage() {
 
   const handleResetPassword = async () => {
     if (!selectedUserId) return;
-    if (selectedUser?.roles?.some((r: string) => normalizeRoleKey(r) === 'ADMIN')) {
-      setResetError('Tài khoản Quản trị viên được bảo vệ, không thể đặt lại mật khẩu tại đây.');
-      return;
-    }
-    const passErr = validatePassword(newPassword, 6);
-    if (passErr) {
-      setResetError(passErr);
+    if (!newPassword || newPassword.length < 6) {
+      setResetError('Mật khẩu mới phải có ít nhất 6 ký tự.');
       return;
     }
     setResetError('');
@@ -323,7 +374,7 @@ export default function AccountsPage() {
       await userApi.resetPassword(selectedUserId, newPassword);
       setShowResetModal(false);
       setNewPassword('');
-      toast.success('Đặt lại mật khẩu thành công');
+      toast.success('Đặt lại mật khẩu thành công.');
     } catch (e: any) {
       setResetError(e.response?.data?.message || 'Không thể đặt lại mật khẩu');
     } finally {
@@ -340,31 +391,25 @@ export default function AccountsPage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. SAAS HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-          Tài khoản & Phân quyền
-        </h1>
+      {/* 1. SAAS HEADER (Actions) */}
+      <div className="flex items-center justify-end gap-2.5">
+        <button
+          type="button"
+          onClick={() => loadUsers(pagination.currentPage)}
+          className="h-10 px-3.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-[18px]">sync</span>
+          <span>Làm mới</span>
+        </button>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => loadUsers(pagination.currentPage)}
-            className="h-10 px-3.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px]">sync</span>
-            <span>Làm mới</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={openCreate}
-            className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px]">person_add</span>
-            <span>Cấp tài khoản mới</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={openCreate}
+          className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-[18px]">person_add</span>
+          <span>Thêm tài khoản mới</span>
+        </button>
       </div>
 
       {/* 2. ASYMMETRICAL BENTO GRID (Matches Ember Reference Layout) */}
@@ -374,82 +419,83 @@ export default function AccountsPage() {
       >
         {/* LEFT COLUMN (5/12): Hero IAM Card + Security Posture Card */}
         <div className="lg:col-span-5 flex flex-col gap-5 justify-between">
-          {/* HERO CARD 1: Deep Sapphire IAM Card with Pure SVG Security Badge Graphic */}
-            <div className="relative rounded-2xl bg-gradient-to-br from-[#091528] via-[#0c1f3d] to-[#0050cd] text-white p-6 border border-blue-900/60 shadow-sm flex items-center justify-between gap-4 min-h-[176px]">
-              <div className="relative z-10 flex flex-col justify-between">
-                <span className="text-xs font-medium text-slate-200">
-                  Tổng định danh đã cấp phát (IAM)
-                </span>
-                <div className="mt-2 font-mono tabular-nums text-4xl font-extrabold tracking-tight">
-                  {pagination.totalRecords || users.length}
-                  <span className="text-base font-semibold text-slate-200 ml-2">tài khoản</span>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-mono">
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/25 text-emerald-200 font-bold">
-                    {activeCount} đang hoạt động
-                  </span>
-                  <span className="text-slate-200">• {staffCount} nhân sự nội bộ</span>
-                </div>
+          {/* HERO CARD 1: Dark Navy (#0c2340) IAM Card */}
+          <div className="relative rounded-[24px] bg-[#0c2340] text-white p-6 shadow-md hover:shadow-lg transition-all flex items-center justify-between gap-4 min-h-[176px] overflow-hidden group">
+            <div className="absolute inset-0 saas-subtle-grid pointer-events-none opacity-40" />
+            <div className="relative z-10 flex flex-col justify-between">
+              <span className="text-xs font-semibold text-zinc-300 tracking-wide">
+                Tổng định danh đã cấp phát (IAM)
+              </span>
+              <div className="mt-2 font-mono tabular-nums text-4xl font-extrabold tracking-tight text-white">
+                {pagination.totalRecords || users.length}
+                <span className="text-base font-semibold text-zinc-300 ml-2">tài khoản</span>
               </div>
-
-              {/* Pure SVG Stylized IAM Keycard Illustration */}
-              <svg
-                width="140"
-                height="92"
-                viewBox="0 0 140 92"
-                fill="none"
-                aria-hidden="true"
-                className="relative z-10 hidden sm:block shrink-0 -rotate-6"
-              >
-                <defs>
-                  <linearGradient id="admCardGrad" x1="0" y1="92" x2="140" y2="0" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#0050cd" />
-                    <stop offset="55%" stopColor="#0866ff" />
-                    <stop offset="100%" stopColor="#60a5fa" />
-                  </linearGradient>
-                </defs>
-                <rect x="2" y="2" width="136" height="88" rx="14" fill="url(#admCardGrad)" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" />
-                <rect x="14" y="16" width="24" height="16" rx="4" fill="#fcd34d" />
-                <circle cx="114" cy="24" r="7" fill="rgba(255,255,255,0.35)" />
-                <circle cx="122" cy="24" r="7" fill="rgba(255,255,255,0.6)" />
-                <rect x="14" y="54" width="54" height="6" rx="3" fill="rgba(255,255,255,0.45)" />
-                <rect x="14" y="66" width="84" height="8" rx="4" fill="rgba(255,255,255,0.85)" />
-              </svg>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-mono">
+                <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                  {activeCount} đang hoạt động
+                </span>
+                <span className="text-zinc-300">• {staffCount} nhân sự nội bộ</span>
+              </div>
             </div>
 
-            {/* HERO CARD 2: Quick Role & Status Breakdown */}
-            <div className="rounded-2xl bg-white border border-slate-200/80 p-5 sm:p-6 shadow-xs flex flex-col justify-between flex-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-600">
-                  Trạng thái Kiểm soát Truy cập
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#0050cd] font-mono text-xs font-bold">
-                  Trang {pagination.currentPage}/{pagination.totalPages}
-                </span>
-              </div>
+            {/* Pure SVG Stylized IAM Keycard Illustration */}
+            <svg
+              width="140"
+              height="92"
+              viewBox="0 0 140 92"
+              fill="none"
+              aria-hidden="true"
+              className="relative z-10 hidden sm:block shrink-0 -rotate-6"
+            >
+              <defs>
+                <linearGradient id="admCardGrad" x1="0" y1="92" x2="140" y2="0" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#0050cd" />
+                  <stop offset="55%" stopColor="#0866ff" />
+                  <stop offset="100%" stopColor="#60a5fa" />
+                </linearGradient>
+              </defs>
+              <rect x="2" y="2" width="136" height="88" rx="14" fill="url(#admCardGrad)" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" />
+              <rect x="14" y="16" width="24" height="16" rx="4" fill="#fcd34d" />
+              <circle cx="114" cy="24" r="7" fill="rgba(255,255,255,0.35)" />
+              <circle cx="122" cy="24" r="7" fill="rgba(255,255,255,0.6)" />
+              <rect x="14" y="54" width="54" height="6" rx="3" fill="rgba(255,255,255,0.45)" />
+              <rect x="14" y="66" width="84" height="8" rx="4" fill="rgba(255,255,255,0.85)" />
+            </svg>
+          </div>
 
-              <div className="grid grid-cols-3 divide-x divide-slate-200 pt-4 mt-4 border-t border-slate-100">
-                <div className="pr-3">
-                  <div className="text-xs font-medium text-slate-600">Tổng số</div>
-                  <div className="font-mono tabular-nums text-2xl font-extrabold text-[#0050cd] mt-1">
-                    {pagination.totalRecords}
-                  </div>
+          {/* HERO CARD 2: Royal Blue (#0050cd) Breakdown */}
+          <div className="rounded-[24px] bg-[#0050cd] text-white p-5 sm:p-6 shadow-md shadow-[#0050cd]/20 hover:shadow-lg transition-all flex flex-col justify-between flex-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-blue-100 tracking-wide">
+                Trạng thái Kiểm soát Truy cập
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-white/15 text-white font-mono text-xs font-bold border border-white/20">
+                Trang {pagination.currentPage}/{pagination.totalPages}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 divide-x divide-white/20 pt-4 mt-4 border-t border-white/15">
+              <div className="pr-3">
+                <div className="text-xs font-medium text-blue-100">Tổng số</div>
+                <div className="font-mono tabular-nums text-2xl font-extrabold text-white mt-1">
+                  {pagination.totalRecords}
                 </div>
-                <div className="px-3">
-                  <div className="text-xs font-medium text-slate-600">Hoạt động</div>
-                  <div className="font-mono tabular-nums text-2xl font-extrabold text-emerald-700 mt-1">
-                    {activeCount}
-                  </div>
+              </div>
+              <div className="px-3">
+                <div className="text-xs font-medium text-blue-100">Hoạt động</div>
+                <div className="font-mono tabular-nums text-2xl font-extrabold text-emerald-300 mt-1">
+                  {activeCount}
                 </div>
-                <div className="pl-3">
-                  <div className="text-xs font-medium text-slate-600">Tạm khóa</div>
-                  <div className="font-mono tabular-nums text-2xl font-extrabold text-rose-700 mt-1">
-                    {inactiveCount}
-                  </div>
+              </div>
+              <div className="pl-3">
+                <div className="text-xs font-medium text-blue-100">Tạm khóa</div>
+                <div className="font-mono tabular-nums text-2xl font-extrabold text-rose-300 mt-1">
+                  {inactiveCount}
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
           {/* RIGHT COLUMN (7/12): SaaS Multi-Curve Wave Chart */}
           <div className="lg:col-span-7 flex flex-col">
@@ -498,9 +544,15 @@ export default function AccountsPage() {
           <div className="p-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 border-b border-slate-200/80">
             <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
               <div className="flex items-center gap-2 flex-1 max-w-lg h-10 px-3.5 rounded-xl bg-slate-50 border border-slate-200 focus-within:bg-white focus-within:border-[#0866ff] transition-all">
-                <span className="material-symbols-outlined text-slate-500 text-[18px] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => loadUsers(1)}
+                  className="material-symbols-outlined text-slate-500 hover:text-[#0866ff] text-[18px] shrink-0 cursor-pointer"
+                  title="Tìm kiếm"
+                  aria-label="Tìm kiếm"
+                >
                   search
-                </span>
+                </button>
                 <input
                   type="search"
                   name="accounts_table_search_query"
@@ -535,14 +587,14 @@ export default function AccountsPage() {
                   onChange={(e) => setFilterStatus(e.target.value)}
                 >
                   <option value="">Tất cả trạng thái</option>
-                  <option value="active">Hoạt động</option>
-                  <option value="inactive">Tạm khóa</option>
+                  <option value="active">Đang hoạt động</option>
+                  <option value="inactive">Ngừng hoạt động</option>
                 </select>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5 flex-wrap">
-              {['', 'ADMIN', 'MANAGER', 'ADVISOR', 'FRONT_DESK', 'CUSTOMER'].map((r) => (
+              {['', 'ADMIN', 'MANAGER', 'ADVISOR', 'FRONT_DESK', 'TECHNICIAN', 'CUSTOMER'].map((r) => (
                 <button
                   key={r || 'ALL'}
                   type="button"
@@ -579,6 +631,7 @@ export default function AccountsPage() {
                   <th className="px-4 font-mono">User ID</th>
                   <th className="px-4">Họ và tên</th>
                   <th className="px-4">Email</th>
+                  <th className="px-4">Vai trò (RBAC)</th>
                   <th className="px-4">Số điện thoại</th>
                   <th className="px-4">Trạng thái</th>
                   <th className="px-4 text-right pr-6">Thao tác</th>
@@ -588,19 +641,20 @@ export default function AccountsPage() {
                 {loading ? (
                   [1, 2, 3, 4].map((row) => (
                     <tr key={row} className="h-14 animate-pulse">
-                      <td colSpan={6} className="px-4">
+                      <td colSpan={7} className="px-4">
                         <div className="h-8 bg-slate-100 rounded-lg w-full" />
                       </td>
                     </tr>
                   ))
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-14 text-center text-xs text-slate-600">
-                      Không tìm thấy tài khoản nào phù hợp với bộ lọc hiện tại.
+                    <td colSpan={7} className="py-14 text-center text-xs text-slate-600">
+                      Không tìm thấy tài khoản nào phù hợp với từ khóa tìm kiếm của bạn.
                     </td>
                   </tr>
                 ) : (
                   users.map((user) => {
+                    const isSelf = isCurrentUser(user);
                     const isAdminUser = user.roles?.some((r: string) => normalizeRoleKey(r) === 'ADMIN');
                     return (
                       <tr
@@ -624,6 +678,11 @@ export default function AccountsPage() {
                             <div>
                               <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                                 {user.fullName}
+                                {isSelf && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-[#0050cd]">
+                                    (Bạn)
+                                  </span>
+                                )}
                                 {isAdminUser && (
                                   <span className="material-symbols-outlined text-purple-600 text-[14px]" title="Tài khoản Quản trị viên hệ thống (Được bảo vệ)">
                                     shield_person
@@ -637,6 +696,25 @@ export default function AccountsPage() {
                           </div>
                         </td>
                         <td className="px-4 font-mono text-xs text-slate-600">{user.email}</td>
+                        <td className="px-4">
+                          <div className="flex flex-wrap gap-1">
+                            {user.roles && user.roles.length > 0 ? (
+                              user.roles.map((r: string) => {
+                                const norm = normalizeRoleKey(r);
+                                return (
+                                  <span
+                                    key={r}
+                                    className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${getRoleBg(norm)}`}
+                                  >
+                                    {getRoleLabel(norm)}
+                                  </span>
+                                );
+                              })
+                            ) : (
+                              <span className="text-xs text-slate-400 italic">—</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 font-mono tabular-nums text-xs text-slate-600">
                           {user.phone || '—'}
                         </td>
@@ -644,18 +722,24 @@ export default function AccountsPage() {
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              disabled={isAdminUser}
-                              onClick={() => !isAdminUser && handleToggle(user)}
+                              onClick={() => handleToggle(user)}
                               className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${
-                                isAdminUser
-                                  ? 'opacity-40 cursor-not-allowed bg-[#0866ff]'
+                                isSelf
+                                  ? 'opacity-50 cursor-pointer bg-slate-400'
                                   : user.isActive
                                   ? 'bg-[#0866ff] cursor-pointer'
                                   : 'bg-slate-300 cursor-pointer'
                               } focus:outline-none`}
                               role="switch"
                               aria-checked={user.isActive}
-                              title={isAdminUser ? 'Tài khoản Quản trị viên được bảo vệ' : 'Đổi trạng thái hoạt động'}
+                              title={
+                                isSelf
+                                  ? 'Bạn không thể tự vô hiệu hóa tài khoản của chính mình để đảm bảo quyền quản trị hệ thống.'
+                                  : user.isActive
+                                  ? 'Khóa tài khoản'
+                                  : 'Mở khóa tài khoản'
+                              }
+                              aria-label={user.isActive ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
                             >
                               <span
                                 className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5 ${
@@ -668,7 +752,7 @@ export default function AccountsPage() {
                                 user.isActive ? 'text-emerald-700' : 'text-slate-500'
                               }`}
                             >
-                              {user.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                              {user.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
                             </span>
                           </div>
                         </td>
@@ -676,34 +760,25 @@ export default function AccountsPage() {
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
-                              disabled={isAdminUser}
-                              onClick={() => !isAdminUser && openEdit(user)}
-                              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                                isAdminUser
-                                  ? 'text-slate-300 cursor-not-allowed'
-                                  : 'hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] cursor-pointer'
-                              }`}
-                              title={isAdminUser ? 'Tài khoản Quản trị viên được bảo vệ' : 'Chỉnh sửa'}
+                              onClick={() => openEdit(user)}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] cursor-pointer"
+                              title="Chỉnh sửa"
+                              aria-label="Chỉnh sửa"
                             >
                               <span className="material-symbols-outlined text-[18px]">edit</span>
                             </button>
                             <button
                               type="button"
-                              disabled={isAdminUser}
                               onClick={() => {
-                                if (isAdminUser) return;
                                 setSelectedUserId(user.id);
                                 setSelectedUser(user);
                                 setNewPassword('');
                                 setResetError('');
                                 setShowResetModal(true);
                               }}
-                              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                                isAdminUser
-                                  ? 'text-slate-300 cursor-not-allowed'
-                                  : 'hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] cursor-pointer'
-                              }`}
-                              title={isAdminUser ? 'Tài khoản Quản trị viên được bảo vệ' : 'Đặt lại mật khẩu'}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] cursor-pointer"
+                              title="Đặt lại mật khẩu"
+                              aria-label="Đặt lại mật khẩu"
                             >
                               <span className="material-symbols-outlined text-[18px]">key</span>
                             </button>
@@ -754,7 +829,7 @@ export default function AccountsPage() {
             <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
               <div className="flex items-center justify-between p-5 border-b border-slate-100">
                 <h2 className="text-base font-bold text-slate-900">
-                  {editingUser ? 'Cập nhật tài khoản' : 'Cấp tài khoản mới'}
+                  {editingUser ? 'Cập nhật tài khoản' : 'Thêm tài khoản mới'}
                 </h2>
                 <button
                   type="button"
@@ -913,8 +988,8 @@ export default function AccountsPage() {
                     {submitting
                       ? 'Đang lưu...'
                       : editingUser
-                        ? 'Lưu cập nhật tài khoản'
-                        : 'Xác nhận cấp tài khoản'}
+                        ? 'Lưu thay đổi'
+                        : 'Xác nhận tạo'}
                   </button>
                 </div>
               </form>
@@ -1016,10 +1091,10 @@ export default function AccountsPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={submitting || newPassword.length < 6}
+                    disabled={submitting}
                     className="h-10 px-5 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white text-xs font-bold disabled:opacity-60 cursor-pointer shadow-xs"
                   >
-                    {submitting ? 'Đang lưu...' : 'Xác nhận đổi mật khẩu'}
+                    {submitting ? 'Đang lưu...' : 'Xác nhận đổi'}
                   </button>
                 </div>
               </form>
@@ -1047,8 +1122,8 @@ export default function AccountsPage() {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-base font-bold text-slate-900">
                       {toggleTargetUser.isActive
-                        ? 'Xác nhận tạm khóa tài khoản'
-                        : 'Kích hoạt lại tài khoản'}
+                        ? 'Khóa tài khoản'
+                        : 'Mở khóa tài khoản'}
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
                       {toggleTargetUser.isActive
@@ -1123,8 +1198,8 @@ export default function AccountsPage() {
                     {togglingStatus
                       ? 'Đang xử lý...'
                       : toggleTargetUser.isActive
-                      ? 'Xác nhận tạm khóa'
-                      : 'Kích hoạt tài khoản'}
+                      ? 'Xác nhận khóa'
+                      : 'Xác nhận mở khóa'}
                   </button>
                 </div>
               </div>
@@ -1133,5 +1208,22 @@ export default function AccountsPage() {
         )}
 
       </div>
-      );
+  );
+}
+
+export default function AccountsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-8 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+          <span className="material-symbols-outlined text-[18px] animate-spin text-[#0050cd]">
+            progress_activity
+          </span>
+          <span>Đang tải danh sách tài khoản...</span>
+        </div>
+      }
+    >
+      <AccountsContent />
+    </Suspense>
+  );
 }

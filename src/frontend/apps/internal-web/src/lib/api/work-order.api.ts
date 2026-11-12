@@ -364,12 +364,14 @@ export async function removeServiceFromWO(
 /**
  * Lấy danh mục dịch vụ (ServiceTemplate) để chọn khi thêm
  */
-export async function getServiceCatalog(params?: { search?: string; all?: boolean }): Promise<ServiceTemplateOption[]> {
+export async function getServiceCatalog(params?: { search?: string; all?: boolean; isActive?: boolean }): Promise<ServiceTemplateOption[]> {
   const response = await api.get('/api/services', {
-    params: { all: 'true', limit: 1000, ...(params?.search ? { search: params.search } : {}) },
+    params: { all: 'true', limit: 1000, isActive: 'true', ...(params?.search ? { search: params.search } : {}) },
   });
-  return response.data?.data || response.data;
+  const rawList: any[] = response.data?.data || response.data || [];
+  return rawList.filter((item) => item.isActive !== false);
 }
+
 
 /**
  * Tạo nhanh Hạng mục sửa chữa & Công việc con từ 1 vết lỗi (Finding)

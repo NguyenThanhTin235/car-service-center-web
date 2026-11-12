@@ -248,8 +248,9 @@ export default function LoginPage() {
               {/* Quick Login Role Shortcuts */}
               <div className="pt-3 border-t border-outline-variant/40">
                 <p className="text-[12px] font-semibold text-on-surface-variant mb-2 text-center">Tài khoản demo nội bộ (Mật khẩu: password123):</p>
-                <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="grid grid-cols-2 gap-2 text-xs" suppressHydrationWarning>
                   <button
+                    suppressHydrationWarning
                     type="button"
                     onClick={() => { setEmail('manager3@carservice.com'); setPassword('password123'); }}
                     className="p-2 text-left rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors"
@@ -260,6 +261,7 @@ export default function LoginPage() {
                     <div className="text-[10px] text-emerald-700 truncate">manager3@carservice.com</div>
                   </button>
                   <button
+                    suppressHydrationWarning
                     type="button"
                     onClick={() => { setEmail('admin1@carservice.com'); setPassword('password123'); }}
                     className="p-2 text-left rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 transition-colors"
@@ -270,6 +272,7 @@ export default function LoginPage() {
                     <div className="text-[10px] text-blue-700 truncate">admin1@carservice.com</div>
                   </button>
                   <button
+                    suppressHydrationWarning
                     type="button"
                     onClick={() => { setEmail('advisor5@carservice.com'); setPassword('password123'); }}
                     className="p-2 text-left rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors"
@@ -280,6 +283,7 @@ export default function LoginPage() {
                     <div className="text-[10px] text-amber-700 truncate">advisor5@carservice.com</div>
                   </button>
                   <button
+                    suppressHydrationWarning
                     type="button"
                     onClick={() => { setEmail('desk9@carservice.com'); setPassword('password123'); }}
                     className="p-2 text-left rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition-colors"

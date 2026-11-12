@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { authService } from '../services/auth.service';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import {
   loginSchema,
   sendOtpRegisterSchema,
@@ -212,7 +212,6 @@ export class AuthController {
   // ========================
   async getMe(req: Request, res: Response): Promise<void> {
     try {
-      const prisma = new PrismaClient();
       const userId = req.user!.id;
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -254,7 +253,6 @@ export class AuthController {
   // ========================
   async updateMe(req: Request, res: Response): Promise<void> {
     try {
-      const prisma = new PrismaClient();
       const userId = req.user!.id;
       const { fullName, phone, email, address } = req.body;
 

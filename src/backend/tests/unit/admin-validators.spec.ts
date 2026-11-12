@@ -62,21 +62,53 @@ export function validatePassword(password?: string, min = 6, fieldName = 'Mật 
 export function validatePrice(
   price: string | number,
   fieldName = 'Đơn giá',
-  allowZero = true
+  allowZero = true,
+  allowDecimal = false,
+  requireThousands = true
 ): string | null {
   if (price === '' || price === undefined || price === null) {
     return `${fieldName} không được để trống`;
   }
-  const num = typeof price === 'number' ? price : Number(price);
+
+  const strPrice = String(price).trim();
+  if (strPrice === '') {
+    return `${fieldName} không được để trống`;
+  }
+
+  if (/[a-zA-ZÀ-ỹ]/.test(strPrice)) {
+    return `${fieldName} phải là chữ số hợp lệ, không được chứa ký tự chữ`;
+  }
+
+  if (!allowDecimal && (strPrice.includes('.') || strPrice.includes(','))) {
+    return `${fieldName} phải là số nguyên (VNĐ), không được là số thập phân`;
+  }
+
+  const num = Number(strPrice);
   if (isNaN(num)) {
     return `${fieldName} phải là chữ số hợp lệ`;
   }
+
+  if (!allowDecimal && !Number.isInteger(num)) {
+    return `${fieldName} phải là số nguyên (VNĐ), không được là số thập phân`;
+  }
+
   if (num < 0) {
     return `${fieldName} không được là số âm`;
   }
+
   if (!allowZero && num === 0) {
     return `${fieldName} phải lớn hơn 0 ₫`;
   }
+
+  if (requireThousands && num > 0) {
+    if (num < 1000) {
+      return `${fieldName} tối thiểu phải từ 1.000 ₫ trở lên`;
+    }
+    if (num % 1000 !== 0) {
+      return `${fieldName} phải tròn theo đơn vị nghìn đồng (VD: 1.000.000 ₫, không được lẻ như 1.000.232 ₫)`;
+    }
+  }
+
   return null;
 }
 
@@ -167,16 +199,38 @@ describe('Unit Test - Portal Admin Input Validation Suite', () => {
   });
 
   describe('VAL-05: Kiểm tra Đơn giá & Số nguyên', () => {
-    it('Chấp nhận giá tiền >= 0', () => {
-      expect(validatePrice(0)).toBeNull();
-      expect(validatePrice('250000')).toBeNull();
-      expect(validatePrice(1500000)).toBeNull();
+    it('Chấp nhận giá tiền nguyên dương tròn nghìn hợp lệ (bội số 1.000 ₫)', () => {
+      expect(validatePrice(0, 'Đơn giá', true)).toBeNull();
+      expect(validatePrice('250000', 'Đơn giá', false)).toBeNull();
+      expect(validatePrice(1500000, 'Đơn giá', false)).toBeNull();
+      expect(validatePrice('1000000', 'Đơn giá', false)).toBeNull();
     });
 
-    it('Từ chối giá âm hoặc ký tự chữ', () => {
-      expect(validatePrice(-1000)).toContain('không được là số âm');
-      expect(validatePrice('abc')).toContain('phải là chữ số hợp lệ');
+    it('Từ chối chữ cái và ký tự không phải số', () => {
+      expect(validatePrice('abc', 'Đơn giá')).toContain('không được chứa ký tự chữ');
+      expect(validatePrice('150k', 'Đơn giá')).toContain('không được chứa ký tự chữ');
+      expect(validatePrice('200triệu', 'Đơn giá')).toContain('không được chứa ký tự chữ');
       expect(validatePrice('', 'Giá cố định')).toContain('không được để trống');
+    });
+
+    it('Từ chối số thập phân (tiền tệ VNĐ phải là số nguyên)', () => {
+      expect(validatePrice('250000.5', 'Đơn giá', false, false)).toContain('không được là số thập phân');
+      expect(validatePrice('150.75', 'Đơn giá', false, false)).toContain('không được là số thập phân');
+      expect(validatePrice('200,5', 'Đơn giá', false, false)).toContain('không được là số thập phân');
+      expect(validatePrice(250.5, 'Đơn giá', false, false)).toContain('không được là số thập phân');
+    });
+
+    it('Từ chối số lẻ nhỏ hơn nghìn đồng (ví dụ 1000232 hoặc 25500 hoặc 500)', () => {
+      expect(validatePrice('1000232', 'Đơn giá', false, false, true)).toContain('phải tròn theo đơn vị nghìn đồng');
+      expect(validatePrice(1000232, 'Đơn giá', false, false, true)).toContain('phải tròn theo đơn vị nghìn đồng');
+      expect(validatePrice('25500', 'Đơn giá', false, false, true)).toContain('phải tròn theo đơn vị nghìn đồng');
+      expect(validatePrice('500', 'Đơn giá', false, false, true)).toContain('tối thiểu phải từ 1.000 ₫ trở lên');
+    });
+
+    it('Từ chối số âm hoặc bằng 0 khi allowZero=false', () => {
+      expect(validatePrice(-1000, 'Đơn giá')).toContain('không được là số âm');
+      expect(validatePrice(0, 'Đơn giá', false)).toContain('phải lớn hơn 0 ₫');
+      expect(validatePrice('0', 'Đơn giá', false)).toContain('phải lớn hơn 0 ₫');
     });
 
     it('Kiểm tra số nguyên thứ tự hiển thị', () => {

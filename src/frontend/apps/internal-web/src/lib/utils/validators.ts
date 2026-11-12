@@ -19,7 +19,7 @@ export function validateEmail(email?: string, fieldName = 'Email'): string | nul
     return `${fieldName} không được để trống`;
   }
   if (!EMAIL_REGEX.test(email.trim())) {
-    return 'Địa chỉ email không đúng định dạng (VD: nhanvien@carservice.vn)';
+    return 'Định dạng email không hợp lệ.';
   }
   return null;
 }
@@ -79,25 +79,67 @@ export function validatePassword(password?: string, min = 6, fieldName = 'Mật 
 
 /**
  * Validate đơn giá (VNĐ)
+ * @param price Giá trị cần kiểm tra (string hoặc number)
+ * @param fieldName Tên trường hiển thị lỗi
+ * @param allowZero Cho phép giá = 0 hay không (mặc định false)
+ * @param allowDecimal Cho phép số thập phân hay không (mặc định false vì tiền VNĐ là số nguyên)
+ * @param requireThousands Bắt buộc tròn theo đơn vị nghìn đồng (bội số của 1.000 ₫, mặc định true)
  */
 export function validatePrice(
   price: string | number,
   fieldName = 'Đơn giá',
-  allowZero = true
+  allowZero = false,
+  allowDecimal = false,
+  requireThousands = true
 ): string | null {
   if (price === '' || price === undefined || price === null) {
     return `${fieldName} không được để trống`;
   }
-  const num = typeof price === 'number' ? price : Number(price);
+
+  const strPrice = String(price).trim();
+  if (strPrice === '') {
+    return `${fieldName} không được để trống`;
+  }
+
+  // 1. Kiểm tra không được chứa ký tự chữ cái
+  if (/[a-zA-ZÀ-ỹ]/.test(strPrice)) {
+    return `${fieldName} phải là chữ số, không được chứa ký tự chữ`;
+  }
+
+  // 2. Kiểm tra không được là số thập phân
+  if (!allowDecimal && (strPrice.includes('.') || strPrice.includes(','))) {
+    return `${fieldName} phải là số nguyên (VNĐ), không được là số thập phân`;
+  }
+
+  const num = Number(strPrice);
   if (isNaN(num)) {
     return `${fieldName} phải là chữ số hợp lệ`;
   }
+
+  if (!allowDecimal && !Number.isInteger(num)) {
+    return `${fieldName} phải là số nguyên (VNĐ), không được là số thập phân`;
+  }
+
+  // 3. Kiểm tra không được là số âm
   if (num < 0) {
     return `${fieldName} không được là số âm`;
   }
+
+  // 4. Kiểm tra lớn hơn 0 nếu không cho phép số 0
   if (!allowZero && num === 0) {
     return `${fieldName} phải lớn hơn 0 ₫`;
   }
+
+  // 5. Kiểm tra theo đơn vị VNĐ là nghìn (bội số của 1.000 ₫, ví dụ: 1.000.000 ₫, không được lẻ như 1.000.232 ₫)
+  if (requireThousands && num > 0) {
+    if (num < 1000) {
+      return `${fieldName} tối thiểu phải từ 1.000 ₫ trở lên`;
+    }
+    if (num % 1000 !== 0) {
+      return `${fieldName} phải tròn theo đơn vị nghìn đồng (VD: 1.000.000 ₫, không được lẻ như 1.000.232 ₫)`;
+    }
+  }
+
   return null;
 }
 
