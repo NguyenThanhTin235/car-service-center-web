@@ -3,8 +3,8 @@ import {
   cleanJobName,
   RagValidatorService,
   RawAIPlanResponse,
-} from '../../src/services/ai-rag/rag-validator.service';
-import { RetrievedTechnician } from '../../src/services/ai-rag/rag-retriever.service';
+} from '../../../src/services/ai-rag/rag-validator.service';
+import { RetrievedTechnician } from '../../../src/services/ai-rag/rag-retriever.service';
 
 describe('AI RAG Validator & Anti-Duplication Guardrail (SPEC-AI-01)', () => {
   const validator = new RagValidatorService();

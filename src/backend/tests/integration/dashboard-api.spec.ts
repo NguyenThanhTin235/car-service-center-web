@@ -138,6 +138,126 @@ describe('Integration API - Multi-Portal Dashboard Engine (/api/dashboard/:porta
       expect(res.body.data.charts.rbacDistribution).toBeDefined();
       expect(res.body.data.actionableList).toBeDefined();
     });
+
+    it.each(['today', '30days', 'this_month'] as const)(
+      'ADM-DASH-API-01: Admin lấy dữ liệu dashboard với period=%s trả 200 OK cùng KPIs, rbacDistribution và actionableList',
+      async (period) => {
+        (prisma.user.findUnique as any).mockResolvedValue({
+          id: 1,
+          is_active: true,
+          roles: [{ role: { name: 'ADMIN' } }],
+        });
+
+        (prisma.user.count as any).mockResolvedValue(40);
+        (prisma.employee.count as any).mockResolvedValue(15);
+        (prisma.service.count as any).mockResolvedValue(28);
+        (prisma.serviceCategory.count as any).mockResolvedValue(6);
+        (prisma.jobType.count as any).mockResolvedValue(10);
+
+        (prisma.userRole.groupBy as any).mockResolvedValue([
+          { role_id: 1, _count: { user_id: 2 } },
+          { role_id: 2, _count: { user_id: 12 } },
+        ]);
+        (prisma.role.findMany as any).mockResolvedValue([
+          { id: 1, name: 'ADMIN' },
+          { id: 2, name: 'TECHNICIAN' },
+        ]);
+        (prisma.user.findMany as any).mockResolvedValue([
+          {
+            id: 21,
+            full_name: 'Trần Bảo An',
+            email: 'an.tran@carservice.vn',
+            is_active: true,
+            created_at: new Date('2026-11-12T08:00:00Z'),
+          },
+        ]);
+
+        const res = await request(app)
+          .get(`/api/dashboard/admin?period=${period}`)
+          .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.portal).toBe('admin');
+        expect(res.body.data.period.key).toBe(period);
+        expect(res.body.data.kpis).toHaveLength(4);
+        expect(res.body.data.charts.rbacDistribution).toEqual([
+          { role: 'ADMIN', label: 'Quản trị viên', count: 2 },
+          { role: 'TECHNICIAN', label: 'Kỹ thuật viên', count: 12 },
+        ]);
+        expect(res.body.data.actionableList).toHaveLength(1);
+        expect(res.body.data.actionableList[0]).toMatchObject({
+          id: 21,
+          title: 'Trần Bảo An',
+          subtitle: 'an.tran@carservice.vn',
+          status: 'ACTIVE',
+        });
+      }
+    );
+  });
+
+  describe('GET /api/dashboard/workshop', () => {
+    it('ADM-DASH-API-02: Admin có quyền truy cập chéo GET /api/dashboard/workshop trả 200 OK', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue({
+        id: 1,
+        is_active: true,
+        roles: [{ role: { name: 'ADMIN' } }],
+      });
+
+      (prisma.workOrder.findMany as any).mockResolvedValue([
+        {
+          id: 501,
+          wo_number: 'WO-2026-501',
+          status: 'IN_PROGRESS',
+          created_at: new Date('2026-11-12T09:00:00Z'),
+          customer: { id: 10, full_name: 'Nguyễn Minh Quân' },
+          vehicle: { license_plate: '51G-777.66', make: 'Hyundai', model: 'SantaFe', year: 2023 },
+          advisor: { id: 3, full_name: 'Trần Cố Vấn' },
+          services: [
+            {
+              id: 1,
+              name: 'Bảo dưỡng phanh',
+              status: 'IN_PROGRESS',
+              service: { name: 'Bảo dưỡng phanh' },
+              jobs: [
+                {
+                  id: 11,
+                  name: 'Thay má phanh trước',
+                  status: 'IN_PROGRESS',
+                  started_at: new Date(),
+                  estimated_hours: 1.5,
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+      (prisma.workOrder.count as any)
+        .mockResolvedValueOnce(6)
+        .mockResolvedValueOnce(2)
+        .mockResolvedValueOnce(1);
+      (prisma.job.count as any).mockResolvedValue(0);
+
+      const res = await request(app)
+        .get('/api/dashboard/workshop')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.kpis).toEqual({
+        totalActive: 6,
+        pendingApproval: 2,
+        billingRequested: 1,
+        overdueJobs: 0,
+      });
+      expect(res.body.data.workOrders).toHaveLength(1);
+      expect(res.body.data.workOrders[0]).toMatchObject({
+        id: 501,
+        woNumber: 'WO-2026-501',
+        customerName: 'Nguyễn Minh Quân',
+        vehiclePlate: '51G-777.66',
+      });
+    });
   });
 
   describe('GET /api/dashboard/manager', () => {

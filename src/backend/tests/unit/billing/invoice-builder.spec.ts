@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildInvoiceLinesFromQuotations } from '../../src/utils/invoice-builder.util';
+import { buildInvoiceLinesFromQuotations } from '../../../src/utils/invoice-builder.util';
 
 describe('Unit Test - Invoice Builder & Quotation Reconciliation (SPEC-INV / UC-27)', () => {
   it('INV-BLD-01: Lấy chính xác các dòng từ báo giá cuối cùng khách đã duyệt (tránh bị chồng báo giá / duplicate lines)', () => {

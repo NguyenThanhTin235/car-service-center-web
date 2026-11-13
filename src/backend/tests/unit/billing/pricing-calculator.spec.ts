@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   calculatePricingTotals,
   PricingLineItemInput,
-} from '../../src/utils/pricing-calculator.util';
+} from '../../../src/utils/pricing-calculator.util';
 
 describe('Pricing Calculator (Zero-Tax Policy & Fixed Labour Price)', () => {
   it('TH-01: Tính giá cơ bản không chiết khấu, không thuế', () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { invoiceService } from '../../src/services/invoice.service';
-import prisma from '../../src/utils/prisma';
+import { invoiceService } from '../../../src/services/invoice.service';
+import prisma from '../../../src/utils/prisma';
 import { WorkOrderStatus, InvoiceStatus, QcResult, JobStatus } from '@prisma/client';
 
 describe('Unit Test - Invoice Guards & Validation (SPEC-INV / UC-27)', () => {

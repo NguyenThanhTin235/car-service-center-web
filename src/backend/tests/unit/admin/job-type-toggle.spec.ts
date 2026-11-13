@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { JobTypeService } from '../../src/services/job-type.service';
-import prisma from '../../src/utils/prisma';
+import { JobTypeService } from '../../../src/services/job-type.service';
+import prisma from '../../../src/utils/prisma';
 
 describe('UC-65: Toggle JobType & Filter Inactive From Selection', () => {
   const service = new JobTypeService();

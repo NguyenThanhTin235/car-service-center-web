@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { EmployeeService } from '../../src/services/employee.service';
+import { EmployeeService } from '../../../src/services/employee.service';
 
 describe('Employee Deactivation & Work Constraints Guardrail (SPEC-EMP-DEACTIVATE)', () => {
   it('EMP-DEACT-01: Chặn vô hiệu hóa nếu Kỹ thuật viên đang có công việc chưa hoàn thành', async () => {

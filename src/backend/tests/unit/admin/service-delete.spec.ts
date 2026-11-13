@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ServiceService } from '../../src/services/service.service';
-import prisma from '../../src/utils/prisma';
+import { ServiceService } from '../../../src/services/service.service';
+import prisma from '../../../src/utils/prisma';
 
 describe('UC-61b: Service Deletion & History Guardrails (Xóa dịch vụ)', () => {
   const service = new ServiceService();

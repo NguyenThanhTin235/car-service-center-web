@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ServiceCategoryService } from '../../src/services/service-category.service';
-import prisma from '../../src/utils/prisma';
+import { ServiceCategoryService } from '../../../src/services/service-category.service';
+import prisma from '../../../src/utils/prisma';
 
 describe('UC-65: Service Category Deletion & Deactivation Guards', () => {
   const service = new ServiceCategoryService();
