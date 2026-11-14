@@ -2,9 +2,35 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Multi-Portal Interactive Dashboard & Taste Audit (SPEC-MULTI-PORTAL-DASHBOARD)', () => {
   test.beforeEach(async ({ page }) => {
-    // Inject mock user token for authentication
+    // Inject mock user & token for authentication (AuthGuard reads state.auth.isAuthenticated from localStorage 'user')
     await page.addInitScript(() => {
+      localStorage.setItem(
+        'user',
+        JSON.stringify({
+          id: 1,
+          email: 'admin@autocare.vn',
+          fullName: 'Quản Trị Hệ Thống',
+          roles: ['ADMIN', 'MANAGER', 'DESK STAFF', 'ADVISOR'],
+        })
+      );
       localStorage.setItem('token', 'mock_jwt_token_for_e2e_testing');
+    });
+
+    // Mock /api/auth/me so SessionWatcher heartbeat does not 401
+    await page.route('**/api/auth/me**', async (route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            id: 1,
+            email: 'admin@autocare.vn',
+            fullName: 'Quản Trị Hệ Thống',
+            roles: ['ADMIN', 'MANAGER', 'DESK STAFF', 'ADVISOR'],
+          },
+        }),
+      });
     });
 
     // Mock API for /api/dashboard/:portal
@@ -166,13 +192,14 @@ test.describe('Multi-Portal Interactive Dashboard & Taste Audit (SPEC-MULTI-PORT
     await expect(page.locator('button', { hasText: '7 ngày qua' })).toBeVisible();
 
     // 3. Kiểm tra 4 thẻ KPI Cards
-    await expect(page.locator('text=Tổng tài khoản IAM')).toBeVisible();
-    await expect(page.locator('text=Tài khoản hoạt động')).toBeVisible();
-    await expect(page.locator('text=Nhân sự kỹ thuật')).toBeVisible();
-    await expect(page.locator('text=Dịch vụ niêm yết')).toBeVisible();
+    const main = page.getByRole('main');
+    await expect(main.getByText('Tổng tài khoản IAM', { exact: true })).toBeVisible();
+    await expect(main.getByText('Tài khoản hoạt động', { exact: true })).toBeVisible();
+    await expect(main.getByText('Nhân sự kỹ thuật', { exact: true })).toBeVisible();
+    await expect(main.getByText('Dịch vụ niêm yết', { exact: true })).toBeVisible();
 
     // 4. Kiểm tra Biểu đồ phân bổ RBAC
-    await expect(page.locator('text=Cơ cấu phân quyền tài khoản (RBAC)')).toBeVisible();
+    await expect(page.locator('text=Phân bổ người dùng theo vai trò & quyền hạn (IAM Stages)')).toBeVisible();
 
     // 5. Kiểm tra bảng danh sách người dùng
     await expect(page.locator('text=Nhật ký tài khoản người dùng mới nhất')).toBeVisible();
@@ -186,7 +213,7 @@ test.describe('Multi-Portal Interactive Dashboard & Taste Audit (SPEC-MULTI-PORT
     await expect(page.locator('h1')).toContainText('Trung Tâm Điều Hành & Giám Sát');
 
     // 2. Kiểm tra KPI doanh thu hiển thị tiền VNĐ
-    await expect(page.locator('text=Doanh thu quyết toán')).toBeVisible();
+    await expect(page.getByText('Doanh thu quyết toán', { exact: true })).toBeVisible();
 
     // 3. Kiểm tra bảng Work Order
     await expect(page.locator('text=Hàng Đợi Lệnh Sửa Chữa Đang Xử Lý')).toBeVisible();
@@ -223,7 +250,7 @@ test.describe('Multi-Portal Interactive Dashboard & Taste Audit (SPEC-MULTI-PORT
     await expect(page.locator('h1')).toContainText('Bảng Điều Phối Kỹ Thuật Viên & Tiếp Nhận');
 
     // 2. Kiểm tra 4 thẻ KPI
-    await expect(page.locator('text=Công việc đang đảm nhiệm')).toBeVisible();
+    await expect(page.getByText('Công việc đang đảm nhiệm', { exact: true })).toBeVisible();
     await expect(page.locator('text=Hoàn thành trong kỳ')).toBeVisible();
 
     // 3. Kiểm tra bảng nhiệm vụ

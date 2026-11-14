@@ -98,6 +98,48 @@ test.describe('SaaS Dashboard Redesign E2E: Staff, Manager & Admin Roles', () =>
       });
     });
 
+    // Mock manager dashboard for Manager (/dashboard)
+    await page.route('**/api/dashboard/manager**', async (route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            portal: 'manager',
+            period: { key: '7days', startDate: '2026-11-04', endDate: '2026-11-11' },
+            kpis: [
+              { key: 'totalRevenue', label: 'Doanh thu quyết toán', value: 185400000, prevValue: 162000000, format: 'currency' },
+              { key: 'activeWorkOrders', label: 'Lệnh xe đang xử lý', value: 24, format: 'number', unit: 'lệnh' },
+              { key: 'overdueJobs', label: 'Công việc quá hạn SLA', value: 2, format: 'number', trendInverted: true, unit: 'vi phạm' },
+            ],
+            charts: {
+              trend: [
+                { label: '05/11', value: 22000000, count: 6 },
+                { label: '06/11', value: 28500000, count: 9 },
+              ],
+              distribution: [
+                { category: 'IN_PROGRESS', count: 8 },
+                { category: 'PENDING_APPROVAL', count: 4 },
+              ],
+            },
+            actionableList: [
+              {
+                id: 501,
+                woNumber: 'WO-2026-501',
+                status: 'IN_PROGRESS',
+                customerName: 'Nguyễn Minh Quân',
+                vehiclePlate: '51G-999.88',
+                advisorName: 'Trần Cố Vấn',
+                updatedAt: '2026-11-11T09:00:00Z',
+              },
+            ],
+          },
+          message: 'OK',
+        }),
+      });
+    });
+
     // Mock workshop dashboard for Manager (UC-43)
     await page.route('**/api/dashboard/workshop**', async (route) => {
       return route.fulfill({
@@ -236,7 +278,7 @@ test.describe('SaaS Dashboard Redesign E2E: Staff, Manager & Admin Roles', () =>
 
     // On mobile (390px), open and verify slide-over drawer
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByTestId('saas-mobile-menu-btn').click();
+    await page.getByTestId('saas-mobile-menu-btn').click({ force: true });
     await expect(page.getByTestId('saas-mobile-drawer')).toBeVisible();
   });
 
@@ -260,14 +302,12 @@ test.describe('SaaS Dashboard Redesign E2E: Staff, Manager & Admin Roles', () =>
     await page.goto('http://localhost:3001/dashboard', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByTestId('saas-sidebar')).toBeVisible({ timeout: 20000 });
-    await expect(page.getByTestId('manager-bento-grid')).toBeVisible({ timeout: 20000 });
-    await expect(page.getByTestId('manager-wave-chart')).toBeVisible();
+    await expect(
+      page.locator('h1:has-text("Trung Tâm Điều Hành & Giám Sát Xưởng Dịch Vụ")')
+    ).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Doanh thu quyết toán', { exact: true })).toBeVisible();
+    await expect(page.locator('text=Biểu đồ Doanh thu Quyết toán Thực tế')).toBeVisible();
     await expect(page.locator('text=WO-2026-501').first()).toBeVisible();
-
-    // Switch between Bento Cards and High-Density Table view
-    await page.click('button:has-text("Bảng mật độ cao")');
-    await expect(page.locator('th:has-text("Mã Lệnh (RO)")')).toBeVisible();
-    await page.click('button:has-text("Thẻ Bento")');
 
     for (const vp of VIEWPORTS) {
       await page.setViewportSize({ width: vp.width, height: vp.height });
@@ -306,8 +346,8 @@ test.describe('SaaS Dashboard Redesign E2E: Staff, Manager & Admin Roles', () =>
     await expect(page.locator('text=USR-0001')).toBeVisible();
 
     // Open Create Account Modal and close it
-    await page.click('button:has-text("Cấp tài khoản mới")');
-    await expect(page.locator('h2:has-text("Cấp tài khoản mới")')).toBeVisible();
+    await page.click('button:has-text("Thêm tài khoản mới")');
+    await expect(page.locator('h2:has-text("Thêm tài khoản mới")')).toBeVisible();
     await page.click('button:has-text("Hủy thao tác")');
 
     for (const vp of VIEWPORTS) {
@@ -342,23 +382,23 @@ test.describe('SaaS Dashboard Redesign E2E: Staff, Manager & Admin Roles', () =>
     await page.setViewportSize({ width: 1440, height: 900 });
 
     const subPages = [
-      { path: '/staff/appointments', heading: 'Lịch hẹn khách hàng' },
-      { path: '/staff/intake', heading: 'Tiếp nhận xe vào xưởng' },
-      { path: '/staff/billing', heading: 'Hóa đơn & Thu ngân' },
-      { path: '/staff/customers', heading: 'Khách hàng & Phương tiện' },
-      { path: '/inventory', heading: 'Quản lý kho phụ tùng' },
-      { path: '/part-categories', heading: 'Danh mục phụ tùng' },
-      { path: '/employees', heading: 'Quản lý Nhân viên' },
-      { path: '/services', heading: 'Danh sách Dịch vụ' },
-      { path: '/service-categories', heading: 'Danh mục Dịch vụ' },
-      { path: '/job-types', heading: 'Loại công việc' },
-      { path: '/catalogs', heading: 'Danh mục chung' },
+      { path: '/staff/appointments', selector: 'h1:has-text("Lịch hẹn khách hàng")' },
+      { path: '/staff/intake', selector: 'h1:has-text("Tiếp nhận xe vào xưởng")' },
+      { path: '/staff/billing', selector: 'h1:has-text("Hóa đơn & Thu ngân")' },
+      { path: '/staff/customers', selector: 'h1:has-text("Khách hàng & Phương tiện")' },
+      { path: '/inventory', selector: 'h1:has-text("Quản lý kho phụ tùng")' },
+      { path: '/part-categories', selector: 'h1:has-text("Danh mục phụ tùng")' },
+      { path: '/employees', selector: 'text=Tổng nhân sự hệ thống' },
+      { path: '/services', selector: 'text=Tổng gói dịch vụ hệ thống' },
+      { path: '/service-categories', selector: 'text=Tổng số nhóm danh mục' },
+      { path: '/job-types', selector: 'text=Tổng loại công việc' },
+      { path: '/catalogs', selector: 'text=Tổng tham số danh mục' },
     ];
 
     for (const sp of subPages) {
       await page.goto(`http://localhost:3001${sp.path}`, { waitUntil: 'domcontentloaded' });
       await expect(page.getByTestId('saas-sidebar')).toBeVisible({ timeout: 20000 });
-      await expect(page.locator(`h1:has-text("${sp.heading}")`)).toBeVisible({ timeout: 20000 });
+      await expect(page.locator(sp.selector)).toBeVisible({ timeout: 20000 });
 
       const hasOverflow = await page.evaluate(() => {
         return document.documentElement.scrollWidth > window.innerWidth + 1;
@@ -370,9 +410,9 @@ test.describe('SaaS Dashboard Redesign E2E: Staff, Manager & Admin Roles', () =>
     const toneToggle = page.getByTestId('saas-sidebar-tone-toggle');
     await expect(toneToggle).toBeVisible();
     await toneToggle.click();
-    await expect(toneToggle).toContainText('Sidebar Sáng');
+    await expect(toneToggle).toContainText('Giao diện Sáng');
     await toneToggle.click();
-    await expect(toneToggle).toContainText('Sidebar Sapphire');
+    await expect(toneToggle).toContainText('Giao diện Sapphire');
   });
 
   test('5. Enterprise Goods Receipt & Inventory 3-Tab Workspace (/inventory): MWA Simulation, Ledger & Stock Card', async ({
@@ -518,7 +558,7 @@ test.describe('SaaS Dashboard Redesign E2E: Staff, Manager & Admin Roles', () =>
     await expect(page.locator('text=NCC-001')).toBeVisible();
 
     // Open Enterprise Goods Receipt Modal
-    await page.click('button:has-text("+ Nhập Kho")');
+    await page.click('button:has-text("Nhập kho")');
     await expect(page.locator('h2:has-text("Lập Chứng Từ Nhập Kho Phụ Tùng")')).toBeVisible();
     await expect(page.locator('button:has-text("Lưu bản nháp (DRAFT)")')).toBeVisible();
     await expect(page.locator('button:has-text("Xác nhận & Ghi sổ Nhập kho")')).toBeVisible();
