@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardPeriod, DashboardScope } from '@/hooks/useDashboardData';
 
 export interface DashboardFilterBarProps {
@@ -31,6 +31,12 @@ export const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
   isRefreshing = false,
   lastUpdated,
 }) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const formatTime = (d?: Date) => {
     if (!d) return '';
     return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -84,8 +90,8 @@ export const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
       </div>
 
       <div className="flex items-center justify-between sm:justify-end gap-3 text-xs text-slate-500">
-        {lastUpdated && (
-          <span className="text-[11px] text-slate-400 hidden md:inline">
+        {mounted && lastUpdated && (
+          <span suppressHydrationWarning className="text-[11px] text-slate-400 hidden md:inline">
             Đồng bộ lúc: {formatTime(lastUpdated)}
           </span>
         )}

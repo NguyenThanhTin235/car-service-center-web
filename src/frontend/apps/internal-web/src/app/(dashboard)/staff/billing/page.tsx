@@ -8,6 +8,8 @@ import InvoiceStatusBadge from '@/components/billing/InvoiceStatusBadge';
 import CreateInvoiceDraftModal from '@/components/billing/CreateInvoiceDraftModal';
 import PaymentModal from '@/components/billing/PaymentModal';
 import { InvoiceDetail, getInvoiceById } from '@/lib/api/invoice.api';
+import TablePagination from '@/components/shared/TablePagination';
+import { formatVND } from '@/lib/utils/formatters';
 import toast from 'react-hot-toast';
 
 export default function BillingQueuePage() {
@@ -41,9 +43,6 @@ export default function BillingQueuePage() {
     e.preventDefault();
     dispatch(setSearch(searchInput.trim()));
   };
-
-  const formatMoney = (val: number | undefined) =>
-    (Number(val) || 0).toLocaleString('vi-VN') + ' đ';
 
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return '-';
@@ -97,7 +96,7 @@ export default function BillingQueuePage() {
             <div>
               <span className="text-xs font-semibold text-white">Doanh thu đã thu hôm nay</span>
               <div className="text-2xl sm:text-3xl font-mono font-extrabold tabular-nums tracking-tight mt-1 text-white">
-                {formatMoney(summary.paidTodayRevenue)}
+                {formatVND(summary.paidTodayRevenue)}
               </div>
             </div>
 
@@ -442,7 +441,7 @@ export default function BillingQueuePage() {
                           {rec.advisor?.fullName || (rec.advisor as any)?.full_name || '-'}
                         </td>
                         <td className="py-3.5 px-4 text-right font-mono font-bold tabular-nums text-slate-900 whitespace-nowrap">
-                          {formatMoney(rec.estimatedTotal)}
+                          {formatVND(rec.estimatedTotal ?? 0)}
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           <button
@@ -492,13 +491,13 @@ export default function BillingQueuePage() {
                         <InvoiceStatusBadge status={rec.status as any} />
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono font-semibold tabular-nums text-slate-900 whitespace-nowrap">
-                        {formatMoney(rec.totalAmount)}
+                        {formatVND(rec.totalAmount ?? 0)}
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono font-bold tabular-nums whitespace-nowrap">
                         {rec.amountDue && rec.amountDue > 0 ? (
-                          <span className="text-amber-700">{formatMoney(rec.amountDue)}</span>
+                          <span className="text-amber-700">{formatVND(rec.amountDue)}</span>
                         ) : (
-                          <span className="text-emerald-700">0 đ</span>
+                          <span className="text-emerald-700">{formatVND(0)}</span>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-center">
@@ -533,48 +532,15 @@ export default function BillingQueuePage() {
         </div>
 
         {/* 5. Pagination */}
-        {pagination.totalPages > 1 && (
-          <div className="flex flex-wrap items-center justify-between px-5 py-3.5 border-t border-slate-200/80 text-xs text-slate-600 gap-2">
-            <span>
-              Hiển thị <strong className="font-mono text-slate-700">{(pagination.currentPage - 1) * 5 + 1}</strong> -{' '}
-              <strong className="font-mono text-slate-700">{Math.min(pagination.currentPage * 5, pagination.total)}</strong> trên tổng số{' '}
-              <strong className="font-mono text-slate-700">{pagination.total}</strong> bản ghi (Trang {pagination.currentPage}/{pagination.totalPages})
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                disabled={pagination.currentPage <= 1}
-                onClick={() => dispatch(setPage(pagination.currentPage - 1))}
-                className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 transition-colors inline-flex items-center gap-1 text-xs cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[15px]">chevron_left</span>
-                <span>Trước</span>
-              </button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => dispatch(setPage(num))}
-                    className={`w-7 h-7 rounded-lg text-xs font-mono font-semibold transition-colors cursor-pointer ${
-                      pagination.currentPage === num
-                        ? 'bg-[#0866ff] text-white shadow-xs'
-                        : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    {num}
-                  </button>
-                ))}
-              </div>
-              <button
-                disabled={pagination.currentPage >= pagination.totalPages}
-                onClick={() => dispatch(setPage(pagination.currentPage + 1))}
-                className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 transition-colors inline-flex items-center gap-1 text-xs cursor-pointer"
-              >
-                <span>Sau</span>
-                <span className="material-symbols-outlined text-[15px]">chevron_right</span>
-              </button>
-            </div>
-          </div>
+        {pagination.total > 0 && (
+          <TablePagination
+            totalRecords={pagination.total}
+            totalPages={Math.max(1, pagination.totalPages)}
+            currentPage={pagination.currentPage}
+            onPageChange={(p) => dispatch(setPage(p))}
+            currentCount={records.length}
+            recordLabel={tab === 'PENDING' ? 'lệnh sửa chữa' : 'hóa đơn'}
+          />
         )}
       </div>
 

@@ -17,6 +17,7 @@ import DiscountEditorModal from '@/components/billing/DiscountEditorModal';
 import PaymentModal from '@/components/billing/PaymentModal';
 import CancelInvoiceModal from '@/components/billing/CancelInvoiceModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import { formatVND } from '@/lib/utils/formatters';
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -97,9 +98,6 @@ export default function InvoiceDetailPage() {
       toast.error('Không thể xuất file PDF: ' + err.message, { id: 'pdf-toast' });
     }
   };
-
-  const formatMoney = (val: number | undefined) =>
-    (Number(val) || 0).toLocaleString('vi-VN') + ' đ';
 
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return '-';
@@ -313,14 +311,14 @@ export default function InvoiceDetailPage() {
         <div className="flex flex-col items-end pt-4 space-y-2 text-xs">
           <div className="w-80 flex justify-between text-slate-600">
             <span>Tổng tiền dịch vụ (Chưa giảm trừ):</span>
-            <span className="font-bold text-slate-900 font-mono tabular-nums">{formatMoney(invoice.subtotal)}</span>
+            <span className="font-bold text-slate-900 font-mono tabular-nums">{formatVND(invoice.subtotal)}</span>
           </div>
 
           {invoice.discountAmount > 0 && (
             <div className="w-80 space-y-0.5">
               <div className="flex justify-between text-rose-600 font-bold">
                 <span>Chiết khấu / Giảm trừ:</span>
-                <span className="font-mono tabular-nums">- {formatMoney(invoice.discountAmount)}</span>
+                <span className="font-mono tabular-nums">- {formatVND(invoice.discountAmount)}</span>
               </div>
               {invoice.discountReason && (
                 <div className="text-right text-[11px] text-slate-400 italic">
@@ -332,20 +330,20 @@ export default function InvoiceDetailPage() {
 
           <div className="w-80 flex justify-between text-slate-500 text-[11px]">
             <span>Thuế GTGT (0% Miễn thuế):</span>
-            <span className="font-mono tabular-nums">0 đ</span>
+            <span className="font-mono tabular-nums">{formatVND(0)}</span>
           </div>
 
           <div className="w-80 flex justify-between text-base font-extrabold text-slate-900 pt-3 border-t border-slate-200">
             <span>TỔNG THANH TOÁN:</span>
-            <span className="text-[#0050cd] font-mono tabular-nums">{formatMoney(invoice.totalAmount)}</span>
+            <span className="text-[#0050cd] font-mono tabular-nums">{formatVND(invoice.totalAmount)}</span>
           </div>
 
           <div className="w-80 flex justify-between text-xs font-bold pt-1">
             <span>Số tiền còn phải trả:</span>
             {invoice.amountDue > 0 ? (
-              <span className="text-amber-700 text-sm font-mono tabular-nums">{formatMoney(invoice.amountDue)}</span>
+              <span className="text-amber-700 text-sm font-mono tabular-nums">{formatVND(invoice.amountDue)}</span>
             ) : (
-              <span className="text-emerald-600 font-bold">0 đ (Đã thanh toán đủ)</span>
+              <span className="text-emerald-600 font-bold">0 ₫ (Đã thanh toán đủ)</span>
             )}
           </div>
 
@@ -405,10 +403,10 @@ export default function InvoiceDetailPage() {
                       {p.transactionRef || '-'}
                     </td>
                     <td className="py-2.5 px-3 text-right font-mono tabular-nums font-bold text-slate-900">
-                      {formatMoney(p.amount)}
+                      {formatVND(p.amount)}
                     </td>
                     <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-600">
-                      {p.tenderedAmount ? formatMoney(p.tenderedAmount) : '-'}
+                      {p.tenderedAmount ? formatVND(p.tenderedAmount) : '-'}
                     </td>
                     <td className="py-2.5 px-3 text-center">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">

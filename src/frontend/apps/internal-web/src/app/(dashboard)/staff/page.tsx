@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useDeferredValue } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -8,6 +8,7 @@ import { fetchIntakeQueue } from '@/store/slices/intakeSlice';
 import { fetchAppointments } from '@/store/slices/appointmentSlice';
 import { fetchBillingQueue } from '@/store/slices/billingSlice';
 import SaaSWaveChart from '@/components/shared/SaaSWaveChart';
+import { formatVND } from '@/lib/utils/formatters';
 
 type QueueTab = 'INTAKE' | 'APPOINTMENTS' | 'BILLING';
 
@@ -116,15 +117,14 @@ export default function StaffDashboardPage() {
     };
   }, []);
 
-  const formatMoney = (amount: number) =>
-    `${new Intl.NumberFormat('vi-VN').format(Math.round(amount))} ₫`;
+  const deferredSearch = useDeferredValue(searchFilter);
 
   const isLoading = intakeLoading || aptLoading || billingLoading;
   const hasError = intakeError || aptError;
 
   // Filtered table items
   const filteredIntake = useMemo(() => {
-    const q = searchFilter.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     return intakeRecords
       .filter((r) => {
         if (!q) return true;
@@ -135,10 +135,10 @@ export default function StaffDashboardPage() {
         );
       })
       .slice(0, 8);
-  }, [intakeRecords, searchFilter]);
+  }, [intakeRecords, deferredSearch]);
 
   const filteredAppointments = useMemo(() => {
-    const q = searchFilter.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     return appointments
       .filter((a) => {
         if (!q) return true;
@@ -149,7 +149,20 @@ export default function StaffDashboardPage() {
         );
       })
       .slice(0, 8);
-  }, [appointments, searchFilter]);
+  }, [appointments, deferredSearch]);
+
+  const filteredBilling = useMemo(() => {
+    const q = deferredSearch.trim().toLowerCase();
+    return billingRecords
+      .filter((b: any) => {
+        if (!q) return true;
+        const plate = (b.vehicle?.licensePlate || b.licensePlate || '').toLowerCase();
+        const name = (b.customer?.fullName || b.customerName || '').toLowerCase();
+        const wo = (b.woNumber || b.invoiceNumber || '').toLowerCase();
+        return plate.includes(q) || name.includes(q) || wo.includes(q);
+      })
+      .slice(0, 6);
+  }, [billingRecords, deferredSearch]);
 
   return (
     <div className="space-y-6">
@@ -205,7 +218,7 @@ export default function StaffDashboardPage() {
                 Thực thu trong ngày (Hóa đơn)
               </span>
               <div className="mt-2 font-mono tabular-nums text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                {formatMoney(stats.paidRevenue)}
+                {formatVND(stats.paidRevenue)}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-mono">
                 <span className="px-2 py-0.5 rounded-md bg-emerald-500/25 text-emerald-200 font-bold">
@@ -632,7 +645,7 @@ export default function StaffDashboardPage() {
               </table>
             </div>
           )
-        ) : billingRecords.length === 0 ? (
+        ) : filteredBilling.length === 0 ? (
           <div className="py-14 px-6 text-center">
             <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#0050cd] flex items-center justify-center mx-auto mb-3">
               <span className="material-symbols-outlined text-[26px]">receipt_long</span>
@@ -662,7 +675,7 @@ export default function StaffDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {billingRecords.slice(0, 6).map((b: any) => (
+                {filteredBilling.map((b: any) => (
                   <tr key={b.workOrderId || b.id} className="hover:bg-blue-50/30 transition-colors">
                     <td className="py-3 px-4 font-mono tabular-nums font-bold text-[#0050cd]">
                       {b.woNumber || b.invoiceNumber || `#${b.id}`}
@@ -676,7 +689,7 @@ export default function StaffDashboardPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4 text-right font-mono tabular-nums font-bold text-slate-900">
-                      {formatMoney(b.grandTotal || b.estimatedTotal || 0)}
+                      {formatVND(b.grandTotal || b.estimatedTotal || 0)}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <Link

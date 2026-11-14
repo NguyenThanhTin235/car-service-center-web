@@ -25,6 +25,19 @@ export default function AppointmentsPage() {
   // Helper to format date without timezone shift
   const toApiDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+  // Single-pass status counts for Bento filter tiles
+  const statusCounts = useMemo(() => {
+    let confirmed = 0;
+    let requested = 0;
+    let arrived = 0;
+    for (const a of appointments) {
+      if (a.status === 'CONFIRMED' || a.status === 'RESCHEDULED') confirmed += 1;
+      else if (a.status === 'REQUESTED') requested += 1;
+      else if (a.status === 'ARRIVED') arrived += 1;
+    }
+    return { confirmed, requested, arrived };
+  }, [appointments]);
+
   // Calculate date boundaries based on viewMode
   const dateBoundaries = useMemo(() => {
     const start = new Date(currentDate);
@@ -463,7 +476,7 @@ export default function AppointmentsPage() {
                 <span className="w-2.5 h-2.5 rounded-full bg-[#0866ff]" />
               </div>
               <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
-                {appointments.filter((a) => a.status === 'CONFIRMED' || a.status === 'RESCHEDULED').length}
+                {statusCounts.confirmed}
               </div>
               <span className="text-xs text-[#0050cd] font-medium">Sẵn sàng đón xe</span>
             </button>
@@ -482,7 +495,7 @@ export default function AppointmentsPage() {
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
               </div>
               <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
-                {appointments.filter((a) => a.status === 'REQUESTED').length}
+                {statusCounts.requested}
               </div>
               <span className="text-xs text-amber-800 font-medium">Cần gọi xác nhận</span>
             </button>
@@ -501,7 +514,7 @@ export default function AppointmentsPage() {
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
               </div>
               <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
-                {appointments.filter((a) => a.status === 'ARRIVED').length}
+                {statusCounts.arrived}
               </div>
               <span className="text-xs text-emerald-800 font-medium">Đã vào xưởng</span>
             </button>
@@ -599,8 +612,8 @@ export default function AppointmentsPage() {
           onSuccess={() => {
             dispatch(
               fetchAppointments({
-                startDate: startOfWeek.toISOString(),
-                endDate: endOfWeek.toISOString(),
+                startDate: toApiDateStr(startOfWeek),
+                endDate: toApiDateStr(endOfWeek),
                 search: searchQuery,
               })
             );

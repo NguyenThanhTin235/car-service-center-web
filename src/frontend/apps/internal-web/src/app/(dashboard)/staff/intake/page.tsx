@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useDeferredValue } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
   fetchIntakeQueue,
@@ -10,12 +10,11 @@ import {
 } from '@/store/slices/intakeSlice';
 import { fetchAppointments } from '@/store/slices/appointmentSlice';
 import api from '@/lib/axios';
-import IntakeQueueCard from '@/components/intake/IntakeQueueCard';
 import WalkInIntakeModal from '@/components/intake/WalkInIntakeModal';
 import TowInIntakeModal from '@/components/intake/TowInIntakeModal';
 import IntakeDetailModal from '@/components/intake/IntakeDetailModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
-import StaffWorkOrderDetailModal from '@/components/work-order/StaffWorkOrderDetailModal';
+import TablePagination from '@/components/shared/TablePagination';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import ReadOnlyROModal from '@/components/intake/ReadOnlyROModal';
@@ -34,7 +33,6 @@ export default function IntakePage() {
   const [activeTab, setActiveTab] = useState<'QUEUED' | 'CONVERTED' | 'CANCELLED'>('QUEUED');
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
   const [viewingROId, setViewingROId] = useState<number | null>(null);
-  const [selectedWorkOrderId, setSelectedWorkOrderId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const [searchQuery, setSearchQuery] = useState('');
@@ -153,9 +151,51 @@ export default function IntakePage() {
 
 
 
-  const queuedCount = queueRecords.filter((r) => r.status === 'QUEUED').length;
-  const convertedCount = queueRecords.filter((r) => r.status === 'CONVERTED').length;
-  const cancelledCount = queueRecords.filter((r) => r.status === 'CANCELLED').length;
+  const deferredSearch = useDeferredValue(searchQuery);
+
+  const { queuedCount, convertedCount, cancelledCount } = useMemo(() => {
+    let queued = 0;
+    let converted = 0;
+    let cancelled = 0;
+    for (const r of queueRecords) {
+      if (r.status === 'QUEUED') queued += 1;
+      else if (r.status === 'CONVERTED') converted += 1;
+      else if (r.status === 'CANCELLED') cancelled += 1;
+    }
+    return { queuedCount: queued, convertedCount: converted, cancelledCount: cancelled };
+  }, [queueRecords]);
+
+  const { filteredTabCounts, filteredRecords, totalPages, paginatedRecords } = useMemo(() => {
+    const rawSearch = deferredSearch.trim();
+    const q = rawSearch.toLowerCase();
+    const counts = { QUEUED: 0, CONVERTED: 0, CANCELLED: 0 };
+    const matched: typeof queueRecords = [];
+
+    for (const r of queueRecords) {
+      const matchesSearch =
+        !q ||
+        r.vehicle?.license_plate?.toLowerCase().includes(q) ||
+        r.customer?.full_name?.toLowerCase().includes(q) ||
+        r.customer?.phone?.includes(rawSearch);
+      if (!matchesSearch) continue;
+      if (r.status === 'QUEUED' || r.status === 'CONVERTED' || r.status === 'CANCELLED') {
+        counts[r.status] += 1;
+      }
+      if (r.status === activeTab) {
+        matched.push(r);
+      }
+    }
+
+    const pages = Math.max(1, Math.ceil(matched.length / itemsPerPage));
+    const safePage = Math.min(currentPage, pages);
+    const startIdx = (safePage - 1) * itemsPerPage;
+    return {
+      filteredTabCounts: counts,
+      filteredRecords: matched,
+      totalPages: pages,
+      paginatedRecords: matched.slice(startIdx, startIdx + itemsPerPage),
+    };
+  }, [queueRecords, deferredSearch, activeTab, currentPage, itemsPerPage]);
 
   return (
     <div className="space-y-6 w-full">
@@ -387,14 +427,7 @@ export default function IntakePage() {
             {/* Segmented Pill Tabs */}
             <div className="inline-flex items-center p-1 bg-slate-100/90 rounded-xl border border-slate-200/70">
               {(['QUEUED', 'CONVERTED', 'CANCELLED'] as const).map((tab) => {
-                const count = queueRecords.filter(
-                  (r) =>
-                    r.status === tab &&
-                    (!searchQuery ||
-                      r.vehicle?.license_plate?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      r.customer?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      r.customer?.phone?.includes(searchQuery))
-                ).length;
+                const count = filteredTabCounts[tab];
 
                 return (
                   <button
@@ -464,36 +497,14 @@ export default function IntakePage() {
                     Đang tải danh sách tiếp nhận...
                   </td>
                 </tr>
-              ) : queueRecords.filter(
-                  (r) =>
-                    r.status === activeTab &&
-                    (!searchQuery ||
-                      r.vehicle?.license_plate?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      r.customer?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      r.customer?.phone?.includes(searchQuery))
-                ).length === 0 ? (
+              ) : filteredRecords.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center text-slate-400 py-12 text-xs">
                     {searchQuery ? 'Không tìm thấy kết quả phù hợp.' : 'Danh sách tiếp nhận trống.'}
                   </td>
                 </tr>
               ) : (
-                (() => {
-                  const filteredRecords = queueRecords.filter((r) => {
-                    if (r.status !== activeTab) return false;
-                    if (!searchQuery) return true;
-                    const q = searchQuery.toLowerCase();
-                    return (
-                      r.vehicle?.license_plate?.toLowerCase().includes(q) ||
-                      r.customer?.full_name?.toLowerCase().includes(q) ||
-                      r.customer?.phone?.includes(q)
-                    );
-                  });
-                  const paginatedRecords = filteredRecords.slice(
-                    (currentPage - 1) * itemsPerPage,
-                    currentPage * itemsPerPage
-                  );
-                  return paginatedRecords.map((record) => {
+                paginatedRecords.map((record) => {
                     const getTypeStyles = (type: string) => {
                       switch (type) {
                         case 'WALK_IN':
@@ -609,52 +620,23 @@ export default function IntakePage() {
                         </td>
                       </tr>
                     );
-                  });
-                })()
+                  })
               )}
             </tbody>
           </table>
         </div>
 
         {/* Pagination Controls */}
-        {(() => {
-          const filteredRecords = queueRecords.filter((r) => r.status === activeTab);
-          const totalPages = Math.ceil(filteredRecords.length / itemsPerPage);
-
-          if (totalPages <= 1) return null;
-
-          return (
-            <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-200/80 bg-slate-50/40">
-              <div className="text-xs text-slate-500">
-                Hiển thị{' '}
-                <strong className="font-mono text-slate-700">
-                  {(currentPage - 1) * itemsPerPage + 1} -{' '}
-                  {Math.min(currentPage * itemsPerPage, filteredRecords.length)}
-                </strong>{' '}
-                trên tổng số <strong className="font-mono">{filteredRecords.length}</strong>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                  className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-600 flex items-center justify-center cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-                </button>
-                <span className="text-xs font-mono font-bold text-slate-700 px-2">
-                  {currentPage} / {totalPages}
-                </span>
-                <button
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                  className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-600 flex items-center justify-center cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                </button>
-              </div>
-            </div>
-          );
-        })()}
+        {filteredRecords.length > 0 && (
+          <TablePagination
+            totalRecords={filteredRecords.length}
+            totalPages={totalPages}
+            currentPage={Math.min(currentPage, totalPages)}
+            onPageChange={setCurrentPage}
+            currentCount={paginatedRecords.length}
+            recordLabel="phiếu tiếp nhận"
+          />
+        )}
       </div>
 
       {/* Modals */}

@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react';
 import CustomerFormModal from '@/components/customers/CustomerFormModal';
 import CustomerDetailModal from '@/components/customers/CustomerDetailModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import TablePagination from '@/components/shared/TablePagination';
+import { formatVND } from '@/lib/utils/formatters';
 import { toast } from 'react-hot-toast';
 import api from '@/lib/axios';
-import * as XLSX from 'xlsx';
 import { useSelector } from 'react-redux';
 
 export default function CustomersPage() {
@@ -167,7 +168,8 @@ export default function CustomersPage() {
         [] // Dòng trống trước bảng
       ];
 
-      // Khởi tạo worksheet từ AoA (Array of Arrays) cho Header
+      // Khởi tạo worksheet từ AoA (Array of Arrays) cho Header (Dynamic import để giảm bundle ban đầu)
+      const XLSX = await import('xlsx');
       const worksheet = XLSX.utils.aoa_to_sheet(reportHeader);
 
       // Thêm data dạng JSON vào worksheet, bắt đầu từ dòng thứ 7 (A7)
@@ -347,7 +349,7 @@ export default function CustomersPage() {
               <div>
                 <span className="text-xs font-semibold text-slate-500">Chi tiêu tích lũy</span>
                 <div className="text-xl sm:text-2xl font-mono font-extrabold tabular-nums text-emerald-600 mt-1 truncate">
-                  {pageTotalSpent.toLocaleString('vi-VN')} đ
+                  {formatVND(pageTotalSpent)}
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200/60 text-emerald-600 flex items-center justify-center">
@@ -514,7 +516,7 @@ export default function CustomersPage() {
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <span className="font-bold font-mono tabular-nums text-sm text-[#0866ff]">
-                          {(c.stats?.totalSpent || 0).toLocaleString('vi-VN')} đ
+                          {formatVND(c.stats?.totalSpent || 0)}
                         </span>
                         <span className="block text-[11px] text-slate-400">
                           {c.stats?.totalVisits || 0} lượt dịch vụ
@@ -580,44 +582,15 @@ export default function CustomersPage() {
           </div>
 
           {/* Pagination UI */}
-          {totalPages > 1 && (
-            <div className="px-5 py-3.5 border-t border-slate-200/80 flex items-center justify-between bg-slate-50/40">
-              <span className="text-xs text-slate-500">
-                Hiển thị trang <strong className="font-mono text-slate-700">{currentPage}</strong> /{' '}
-                <strong className="font-mono text-slate-700">{totalPages}</strong> ({totalRecords} bản ghi)
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => fetchCustomers(search, currentPage - 1, activeTab)}
-                  className="h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                >
-                  Trước
-                </button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }).map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => fetchCustomers(search, idx + 1, activeTab)}
-                      className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-mono font-semibold transition-colors cursor-pointer ${
-                        currentPage === idx + 1
-                          ? 'border-[#0866ff] bg-[#0866ff] text-white'
-                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      {idx + 1}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  disabled={currentPage === totalPages}
-                  onClick={() => fetchCustomers(search, currentPage + 1, activeTab)}
-                  className="h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                >
-                  Sau
-                </button>
-              </div>
-            </div>
+          {totalRecords > 0 && (
+            <TablePagination
+              totalRecords={totalRecords}
+              totalPages={Math.max(1, totalPages)}
+              currentPage={currentPage}
+              onPageChange={(page) => fetchCustomers(search, page, activeTab)}
+              currentCount={customers.length}
+              recordLabel="khách hàng"
+            />
           )}
         </div>
       </div>
