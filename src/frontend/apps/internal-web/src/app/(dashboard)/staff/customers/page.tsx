@@ -13,6 +13,7 @@ import { useSelector } from 'react-redux';
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   
   const user = useSelector((state: any) => state.auth?.user);
@@ -34,6 +35,7 @@ export default function CustomersPage() {
   const fetchCustomers = async (searchQuery = '', page = 1, tabStatus = activeTab) => {
     try {
       setLoading(true);
+      setError(null);
       const res = await api.get('/api/customers', {
         params: { search: searchQuery, page, limit: 5, status: tabStatus },
         withCredentials: true,
@@ -44,8 +46,9 @@ export default function CustomersPage() {
         setTotalPages(res.data.pagination.totalPages);
         setTotalRecords(res.data.pagination.totalRecords);
       }
-    } catch (error) {
-      console.error('Lỗi khi tải dữ liệu khách hàng', error);
+    } catch (err: any) {
+      console.error('Lỗi khi tải dữ liệu khách hàng', err);
+      setError(err?.response?.data?.message || 'Không thể tải danh sách khách hàng. Vui lòng kiểm tra kết nối.');
     } finally {
       setLoading(false);
     }
@@ -279,7 +282,7 @@ export default function CustomersPage() {
             Khách hàng &amp; Phương tiện
           </h1>
 
-          <div className="flex items-center gap-2.5 self-start md:self-auto">
+          <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
             <button
               onClick={() => fetchCustomers(search, currentPage, activeTab)}
               className="h-10 px-3.5 rounded-xl border border-slate-200/90 bg-white hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 hover:text-[#0866ff] text-xs font-semibold flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
@@ -368,7 +371,7 @@ export default function CustomersPage() {
           {/* Tabs & Filter Toolbar */}
           <div className="p-4 sm:p-5 border-b border-slate-200/80 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white">
             {/* Segmented Pill Tabs */}
-            <div className="inline-flex items-center p-1 bg-slate-100/90 border border-slate-200/70 rounded-xl self-start">
+            <div className="inline-flex flex-wrap items-center gap-1 p-1 bg-slate-100/90 border border-slate-200/70 rounded-xl self-start max-w-full">
               <button
                 onClick={() => {
                   setActiveTab('active');
@@ -400,21 +403,21 @@ export default function CustomersPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 flex-1 lg:justify-end">
-              <div className="relative min-w-[260px] max-w-sm flex-1">
+              <div className="relative min-w-0 sm:min-w-[260px] max-w-sm w-full flex-1">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
                   search
                 </span>
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full h-9 pl-9 pr-3 rounded-xl border border-slate-200/80 bg-slate-50/80 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15 transition-all"
+                  className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200/80 bg-slate-50/80 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15 transition-all"
                   placeholder="Tìm theo Tên, SĐT, Biển số..."
                   type="text"
                 />
               </div>
               <button
                 onClick={handleExportExcel}
-                className="h-9 px-3.5 rounded-xl border border-emerald-200/90 bg-emerald-50/80 text-emerald-700 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-100/80 transition-colors cursor-pointer"
+                className="h-10 px-3.5 rounded-xl border border-emerald-200/90 bg-emerald-50/80 text-emerald-700 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-100/80 transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px] text-emerald-600">
                   description
@@ -433,6 +436,21 @@ export default function CustomersPage() {
                 </span>
                 <span className="text-xs">Đang tải danh sách khách hàng...</span>
               </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center p-12 gap-3 text-center">
+                <div className="w-11 h-11 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[24px]">error</span>
+                </div>
+                <p className="text-xs font-semibold text-rose-800 max-w-md">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => fetchCustomers(search, currentPage, activeTab)}
+                  className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">refresh</span>
+                  <span>Thử lại</span>
+                </button>
+              </div>
             ) : customers.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-12 text-slate-400">
                 <span className="material-symbols-outlined text-[44px] opacity-40 mb-2">
@@ -441,7 +459,7 @@ export default function CustomersPage() {
                 <p className="text-xs font-semibold text-slate-600">
                   {search ? `Không tìm thấy khách hàng nào khớp với "${search}"` : 'Chưa có hồ sơ khách hàng nào trong danh sách'}
                 </p>
-                {search && (
+                {search ? (
                   <button
                     type="button"
                     onClick={() => setSearch('')}
@@ -449,7 +467,16 @@ export default function CustomersPage() {
                   >
                     Xóa bộ lọc tìm kiếm
                   </button>
-                )}
+                ) : activeTab === 'active' ? (
+                  <button
+                    type="button"
+                    onClick={openAddModal}
+                    className="mt-3 h-10 px-4 rounded-xl bg-[#0866ff] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">person_add</span>
+                    <span>+ Thêm mới</span>
+                  </button>
+                ) : null}
               </div>
             ) : (
               <table className="w-full text-left border-collapse min-w-[760px]">

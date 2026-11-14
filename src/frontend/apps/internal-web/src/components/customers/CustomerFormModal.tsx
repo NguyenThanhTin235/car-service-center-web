@@ -1,4 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import {
+  validateName,
+  validatePhone,
+  validateEmail,
+  validateLicensePlate,
+} from '@/lib/utils/validators';
 
 interface VehicleData {
   id?: number;
@@ -89,26 +95,22 @@ export default function CustomerFormModal({ isOpen, onClose, onSave, initialData
     e.preventDefault();
     setErrors({});
     
-    // Validation
+    // Validation reusing shared validators
     const newErrors: Record<string, string> = {};
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Vui lòng nhập họ và tên khách hàng';
-    }
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Vui lòng nhập số điện thoại';
-    } else if (!/^(0|\+84)[3|5|7|8|9][0-9]{8}$/.test(formData.phone)) {
-      newErrors.phone = 'Số điện thoại không đúng định dạng (VD: 0912345678)';
-    }
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email không hợp lệ';
-    }
+    const nameErr = validateName(formData.fullName, 'Họ và tên khách hàng');
+    if (nameErr) newErrors.fullName = nameErr;
+    const phoneErr = validatePhone(formData.phone, true, 'Số điện thoại');
+    if (phoneErr) newErrors.phone = phoneErr;
+    const emailErr = validateEmail(formData.email, 'Email', false);
+    if (emailErr) newErrors.email = emailErr;
 
     const validVehicles = [];
     for (let i = 0; i < vehicles.length; i++) {
       const v = vehicles[i];
       const hasAnyField = v.licensePlate || v.make || v.model || v.color;
-      if (hasAnyField && !v.licensePlate.trim()) {
-        newErrors[`vehicle_${i}`] = 'Vui lòng nhập biển số xe nếu bạn điền thông tin khác';
+      if (hasAnyField) {
+        const plateErr = validateLicensePlate(v.licensePlate, true, 'Biển số xe');
+        if (plateErr) newErrors[`vehicle_${i}`] = plateErr;
       }
       if (v.licensePlate.trim()) {
         validVehicles.push(v);
@@ -148,10 +150,10 @@ export default function CustomerFormModal({ isOpen, onClose, onSave, initialData
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header (Sticky top) */}
-        <div className="px-6 py-4 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/70 shrink-0">
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/70 shrink-0">
           <div className="flex items-center gap-2.5">
             <span className="w-9 h-9 rounded-xl bg-blue-50 text-[#0050cd] flex items-center justify-center">
               <span className="material-symbols-outlined text-[20px]">
@@ -178,7 +180,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSave, initialData
         </div>
 
         {/* Body (Scrollable with styled scrollbar) */}
-        <div className="p-6 overflow-y-auto styled-scrollbar flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto styled-scrollbar flex-1">
           {errors.api && (
             <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl flex items-center gap-2 text-xs font-semibold">
               <span className="material-symbols-outlined text-[20px] text-rose-600">error</span>
@@ -186,7 +188,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSave, initialData
             </div>
           )}
           
-          <form id="customer-form" onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <form id="customer-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-5 sm:gap-6">
             {/* Customer Section */}
             <div className="bg-slate-50/60 p-5 rounded-2xl border border-slate-200/80">
               <div className="flex items-center gap-2 mb-4">
@@ -254,8 +256,8 @@ export default function CustomerFormModal({ isOpen, onClose, onSave, initialData
             </div>
 
             {/* Vehicles Section */}
-            <div className="bg-slate-50/60 p-5 rounded-2xl border border-slate-200/80">
-              <div className="flex items-center justify-between mb-4">
+            <div className="bg-slate-50/60 p-4 sm:p-5 rounded-2xl border border-slate-200/80">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-[#0050cd] text-white text-xs font-bold flex items-center justify-center font-mono">2</span>
                   <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
@@ -362,7 +364,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSave, initialData
         </div>
 
         {/* Footer Actions (Sticky bottom) */}
-        <div className="px-6 py-4 border-t border-slate-200/80 bg-slate-50/80 backdrop-blur-xs flex items-center justify-end gap-3 shrink-0">
+        <div className="px-4 sm:px-6 py-4 border-t border-slate-200/80 bg-slate-50/80 backdrop-blur-xs flex flex-wrap items-center justify-end gap-3 shrink-0">
           <button
             onClick={onClose}
             type="button"

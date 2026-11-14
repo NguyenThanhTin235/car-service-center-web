@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 
 export default function BillingQueuePage() {
   const dispatch = useAppDispatch();
-  const { tab, search, page, summary, records, pagination, loading } = useAppSelector(
+  const { tab, search, page, summary, records, pagination, loading, error } = useAppSelector(
     (state) => state.billing
   );
 
@@ -315,7 +315,7 @@ export default function BillingQueuePage() {
           </div>
 
           {/* Search Box (Flex Siblings - No Overlapping Icon) */}
-          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 max-w-md w-full">
+          <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row sm:items-center gap-2 max-w-md w-full">
             <div className="flex-1 flex items-center gap-2 px-3 rounded-xl border border-slate-200/80 bg-slate-50/80 focus-within:bg-white focus-within:border-[#0866ff] h-9 transition-all">
               <span className="material-symbols-outlined text-[18px] text-slate-500 shrink-0">
                 search
@@ -395,13 +395,44 @@ export default function BillingQueuePage() {
                     <span className="text-xs">Đang tải danh sách hóa đơn...</span>
                   </td>
                 </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={7} className="py-10 px-4 text-center">
+                    <div className="inline-flex flex-col items-center gap-2.5 text-rose-700 bg-rose-50/70 border border-rose-200 rounded-2xl px-6 py-5">
+                      <span className="material-symbols-outlined text-[28px] text-rose-600">error</span>
+                      <span className="text-xs font-semibold">Không thể tải hàng chờ thu ngân: {error}</span>
+                      <button
+                        type="button"
+                        onClick={() => dispatch(fetchBillingQueue({ tab, search, page, limit: 5 }))}
+                        className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">refresh</span>
+                        <span>Thử lại</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               ) : records.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-600">
                     <span className="material-symbols-outlined text-[40px] text-slate-400 block mb-1 mx-auto">
                       inbox
                     </span>
-                    <span className="text-xs">Không có dữ liệu phù hợp trong mục này.</span>
+                    <p className="text-xs">
+                      {search ? `Không có dữ liệu khớp với "${search}".` : 'Không có dữ liệu phù hợp trong mục này.'}
+                    </p>
+                    {search && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchInput('');
+                          dispatch(setSearch(''));
+                        }}
+                        className="mt-2 text-xs font-bold text-[#0866ff] hover:underline cursor-pointer"
+                      >
+                        Xóa tìm kiếm
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (

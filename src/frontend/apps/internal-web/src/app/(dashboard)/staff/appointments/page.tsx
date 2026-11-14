@@ -15,7 +15,7 @@ import toast from 'react-hot-toast';
 
 export default function AppointmentsPage() {
   const dispatch = useAppDispatch();
-  const { appointments, loading, selectedAppointment } = useAppSelector(state => state.appointments);
+  const { appointments, loading, error, selectedAppointment } = useAppSelector(state => state.appointments);
 
   // Date state
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -101,6 +101,14 @@ export default function AppointmentsPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   // Load appointments
+  const reloadAppointments = () => {
+    dispatch(fetchAppointments({
+      startDate: toApiDateStr(dateBoundaries.start),
+      endDate: toApiDateStr(dateBoundaries.end),
+      search: searchQuery
+    }));
+  };
+
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       dispatch(fetchAppointments({ 
@@ -401,7 +409,7 @@ export default function AppointmentsPage() {
         {/* Hero Calendar Control Card (5 cols) */}
         <div className="lg:col-span-5 rounded-2xl saas-hero-gradient text-white p-5 relative overflow-hidden flex flex-col justify-between">
           <div className="absolute inset-0 saas-subtle-grid pointer-events-none" />
-          <div className="relative z-10 flex items-start justify-between gap-3">
+          <div className="relative z-10 flex flex-wrap items-start justify-between gap-3">
             <div>
               <span className="text-xs font-medium text-white">Tổng lịch hẹn trong kỳ</span>
               <div className="text-3xl font-mono font-extrabold tabular-nums tracking-tight mt-1 text-white">
@@ -534,12 +542,12 @@ export default function AppointmentsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px] text-slate-600">filter_list</span>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <span className="material-symbols-outlined text-[18px] text-slate-600 shrink-0">filter_list</span>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-9 px-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 focus:border-[#0866ff] focus:outline-none cursor-pointer"
+                className="w-full sm:w-auto h-9 px-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 focus:border-[#0866ff] focus:outline-none cursor-pointer"
               >
                 <option value="ALL">Tất cả trạng thái</option>
                 <option value="REQUESTED">Chờ xác nhận</option>
@@ -553,6 +561,56 @@ export default function AppointmentsPage() {
       </div>
 
       {/* 3. Interactive Scheduler Grid Container */}
+      {error && (
+        <div className="rounded-2xl bg-rose-50/90 border border-rose-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 text-xs font-semibold text-rose-800">
+            <span className="material-symbols-outlined text-[20px] text-rose-600 shrink-0">error</span>
+            <span>Không thể tải lịch hẹn: {error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={reloadAppointments}
+            className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors shrink-0"
+          >
+            <span className="material-symbols-outlined text-[16px]">refresh</span>
+            <span>Thử lại</span>
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && appointmentsToDisplay.length === 0 && (
+        <div className="rounded-2xl bg-slate-50/90 border border-slate-200/80 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-slate-600">
+            <span className="material-symbols-outlined text-[18px] text-slate-400">event_busy</span>
+            <span>
+              {searchQuery || statusFilter !== 'ALL'
+                ? 'Không có lịch hẹn nào khớp với bộ lọc hiện tại.'
+                : 'Chưa có lịch hẹn nào trong khoảng thời gian này.'}
+            </span>
+          </div>
+          {(searchQuery || statusFilter !== 'ALL') ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setStatusFilter('ALL');
+              }}
+              className="text-xs font-bold text-[#0866ff] hover:underline self-start sm:self-auto cursor-pointer"
+            >
+              Xóa bộ lọc
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="text-xs font-bold text-[#0866ff] hover:underline self-start sm:self-auto cursor-pointer"
+            >
+              + Thêm lịch hẹn mới
+            </button>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div className="saas-card p-12 flex flex-col items-center justify-center text-slate-600 gap-2">
           <span className="material-symbols-outlined text-[32px] text-[#0866ff] animate-spin">

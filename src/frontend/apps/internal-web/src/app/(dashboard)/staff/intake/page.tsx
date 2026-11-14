@@ -24,8 +24,8 @@ export default function IntakePage() {
   const router = useRouter();
   
   // State from Redux
-  const { records: queueRecords, loading: queueLoading } = useAppSelector((state) => state.intake);
-  const { appointments, loading: aptLoading } = useAppSelector((state) => state.appointments);
+  const { records: queueRecords, loading: queueLoading, error: queueError } = useAppSelector((state) => state.intake);
+  const { appointments, loading: aptLoading, error: aptError } = useAppSelector((state) => state.appointments);
 
   // Local UI state
   const [isWalkInModalOpen, setWalkInModalOpen] = useState(false);
@@ -47,20 +47,21 @@ export default function IntakePage() {
     isDestructive?: boolean;
   } | null>(null);
 
-  // Fetch data on mount
-  useEffect(() => {
-    // Lấy danh sách tiếp nhận (tất cả trạng thái)
+  const reloadIntakeData = () => {
     dispatch(fetchIntakeQueue({}));
-    
-    // Lấy lịch hẹn trong ngày hôm nay có trạng thái CONFIRMED
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    dispatch(fetchAppointments({ 
-      startDate: todayStr, 
+    dispatch(fetchAppointments({
+      startDate: todayStr,
       endDate: todayStr,
       status: 'CONFIRMED',
-      limit: 100 
+      limit: 100
     }));
+  };
+
+  // Fetch data on mount
+  useEffect(() => {
+    reloadIntakeData();
 
     // Fetch service templates
     api.get('/api/services', { params: { isActive: 'true' } })
@@ -205,7 +206,7 @@ export default function IntakePage() {
           Tiếp nhận xe vào xưởng
         </h1>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => setTowInModalOpen(true)}
             className="h-10 px-4 bg-amber-50/90 hover:bg-amber-100/90 text-amber-800 border border-amber-200/90 rounded-xl text-xs font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
@@ -338,6 +339,23 @@ export default function IntakePage() {
         </div>
       </div>
 
+      {(queueError || aptError) && (
+        <div className="rounded-2xl bg-rose-50/90 border border-rose-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 text-xs font-semibold text-rose-800">
+            <span className="material-symbols-outlined text-[20px] text-rose-600 shrink-0">error</span>
+            <span>Không thể đồng bộ dữ liệu tiếp nhận: {queueError || aptError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={reloadIntakeData}
+            className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors shrink-0"
+          >
+            <span className="material-symbols-outlined text-[16px]">refresh</span>
+            <span>Thử lại</span>
+          </button>
+        </div>
+      )}
+
       {/* 3. LỊCH HẸN CHỜ TỚI HÔM NAY */}
       <div className="saas-card overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/50">
@@ -425,7 +443,7 @@ export default function IntakePage() {
         <div className="p-4 sm:p-5 border-b border-slate-200/80 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">
             {/* Segmented Pill Tabs */}
-            <div className="inline-flex items-center p-1 bg-slate-100/90 rounded-xl border border-slate-200/70">
+            <div className="inline-flex flex-wrap items-center gap-1 p-1 bg-slate-100/90 rounded-xl border border-slate-200/70 max-w-full">
               {(['QUEUED', 'CONVERTED', 'CANCELLED'] as const).map((tab) => {
                 const count = filteredTabCounts[tab];
 
@@ -499,8 +517,34 @@ export default function IntakePage() {
                 </tr>
               ) : filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center text-slate-400 py-12 text-xs">
-                    {searchQuery ? 'Không tìm thấy kết quả phù hợp.' : 'Danh sách tiếp nhận trống.'}
+                  <td colSpan={5} className="text-center py-12 px-4">
+                    <div className="flex flex-col items-center gap-2 text-slate-500">
+                      <span className="material-symbols-outlined text-[36px] text-slate-300">inbox</span>
+                      <p className="text-xs font-semibold text-slate-600">
+                        {searchQuery ? 'Không tìm thấy kết quả phù hợp.' : 'Danh sách tiếp nhận trống.'}
+                      </p>
+                      {searchQuery ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchQuery('');
+                            setCurrentPage(1);
+                          }}
+                          className="text-xs font-bold text-[#0866ff] hover:underline cursor-pointer"
+                        >
+                          Xóa bộ lọc tìm kiếm
+                        </button>
+                      ) : activeTab === 'QUEUED' ? (
+                        <button
+                          type="button"
+                          onClick={() => setWalkInModalOpen(true)}
+                          className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0866ff] text-white text-xs font-bold shadow-xs cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">add</span>
+                          <span>Tiếp nhận khách vãng lai</span>
+                        </button>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ) : (
