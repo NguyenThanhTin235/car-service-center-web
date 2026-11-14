@@ -8,6 +8,7 @@ import { fetchIntakeQueue } from '@/store/slices/intakeSlice';
 import { fetchAppointments } from '@/store/slices/appointmentSlice';
 import { fetchBillingQueue } from '@/store/slices/billingSlice';
 import SaaSWaveChart from '@/components/shared/SaaSWaveChart';
+import IntakeDetailModal from '@/components/intake/IntakeDetailModal';
 import { formatVND } from '@/lib/utils/formatters';
 
 type QueueTab = 'INTAKE' | 'APPOINTMENTS' | 'BILLING';
@@ -49,6 +50,7 @@ export default function StaffDashboardPage() {
 
   const [activeTab, setActiveTab] = useState<QueueTab>('INTAKE');
   const [searchFilter, setSearchFilter] = useState('');
+  const [selectedIntakeRecord, setSelectedIntakeRecord] = useState<any | null>(null);
 
   const loadAllOverviewData = useCallback(() => {
     const now = new Date();
@@ -548,15 +550,16 @@ export default function StaffDashboardPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <Link
-                            href="/staff/intake"
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-[#0866ff] text-slate-700 hover:text-white font-semibold transition-colors"
+                          <button
+                            type="button"
+                            onClick={() => setSelectedIntakeRecord(rec)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-[#0866ff] text-slate-700 hover:text-white font-semibold transition-colors cursor-pointer"
                           >
                             <span>Chi tiết</span>
                             <span className="material-symbols-outlined text-[14px]">
-                              arrow_forward
+                              visibility
                             </span>
-                          </Link>
+                          </button>
                         </td>
                       </tr>
                     );
@@ -706,6 +709,11 @@ export default function StaffDashboardPage() {
           </div>
         )}
       </div>
+
+      <IntakeDetailModal
+        record={selectedIntakeRecord}
+        onClose={() => setSelectedIntakeRecord(null)}
+      />
     </div>
   );
 }

@@ -22,6 +22,7 @@ const { prismaMock } = vi.hoisted(() => {
     workOrder: {
       count: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn(),
     },
     invoice: {
       findFirst: vi.fn(),
@@ -189,5 +190,43 @@ describe('Customer API Integration Tests (/api/customers)', () => {
     const hardRes = await request(app).delete('/api/customers/5/hard');
     expect(hardRes.status).toBe(200);
     expect(hardRes.body.status).toBe('success');
+  });
+
+  it('GET /api/customers/:id/service-history returns customer service history (200) and 400 when missing', async () => {
+    prismaMock.user.findUnique.mockResolvedValueOnce({ id: 21 });
+    prismaMock.workOrder.findMany.mockResolvedValueOnce([
+      {
+        id: 700,
+        wo_number: 'WO-2026-700',
+        status: 'RELEASED',
+        order_type: 'STANDARD',
+        created_at: new Date('2026-11-11T10:00:00Z'),
+        closed_at: null,
+        vehicle: { id: 1, license_plate: '30A-986.48', make: 'Ford', model: 'Ranger', year: 2023 },
+        advisor: { id: 4, full_name: 'Lễ Tân Lan' },
+        check_in: { mileage: 12000 },
+        services: [{ id: 10, name: 'Kiểm tra phanh', status: 'COMPLETED' }],
+        invoices: [
+          { id: 91, invoice_number: 'INV-2026-091', status: 'PAID', total_amount: 1200000, paid_at: new Date('2026-11-11T12:00:00Z') },
+        ],
+      },
+    ]);
+
+    const okRes = await request(app).get('/api/customers/21/service-history');
+    expect(okRes.status).toBe(200);
+    expect(okRes.body.status).toBe('success');
+    expect(okRes.body.data.summary).toEqual({
+      totalOrders: 1,
+      totalVisits: 1,
+      totalSpent: 1200000,
+    });
+    expect(okRes.body.data.records).toHaveLength(1);
+    expect(okRes.body.data.records[0].woNumber).toBe('WO-2026-700');
+
+    prismaMock.user.findUnique.mockResolvedValueOnce(null);
+    const missingRes = await request(app).get('/api/customers/999/service-history');
+    expect(missingRes.status).toBe(400);
+    expect(missingRes.body.status).toBe('error');
+    expect(missingRes.body.message).toBe('Không tìm thấy khách hàng');
   });
 });

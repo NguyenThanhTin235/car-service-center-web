@@ -157,4 +157,142 @@ test.describe('Desk-Staff Portal E2E: Customers (/staff/customers)', () => {
       expect(overflow, `Horizontal overflow at ${vp.name}`).toBe(false);
     }
   });
+
+  test('E2E-STF-CUS-03: CustomerDetailModal hiển thị Lịch sử dịch vụ tại xưởng & Retry khi lỗi', async ({
+    page,
+  }) => {
+    await page.route('**/api/customers?*', async (route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'success',
+          data: MOCK_ACTIVE_CUSTOMERS,
+          pagination: { totalRecords: 1, totalPages: 1, currentPage: 1, limit: 5 },
+        }),
+      });
+    });
+
+    let historyCalls = 0;
+    await page.route('**/api/customers/1/service-history', async (route) => {
+      historyCalls += 1;
+      if (historyCalls === 1) {
+        return route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ status: 'error', message: 'Lỗi tải lịch sử dịch vụ' }),
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'success',
+          data: {
+            summary: { totalOrders: 2, totalVisits: 1, totalSpent: 4500000 },
+            records: [
+              {
+                id: 501,
+                woNumber: 'WO-2026-011',
+                status: 'CLOSED',
+                orderType: 'STANDARD',
+                createdAt: '2026-11-10T08:00:00Z',
+                closedAt: '2026-11-10T16:00:00Z',
+                mileage: 45200,
+                vehicle: { id: 10, licensePlate: '51H-888.99', make: 'Toyota', model: 'Vios', year: 2023 },
+                advisor: { id: 4, fullName: 'Lễ Tân Lan' },
+                services: [
+                  { id: 1, name: 'Bảo dưỡng 40.000 km', status: 'COMPLETED' },
+                  { id: 2, name: 'Thay dầu động cơ', status: 'COMPLETED' },
+                ],
+                invoice: {
+                  id: 88,
+                  invoiceNumber: 'INV-2026-088',
+                  status: 'PAID',
+                  totalAmount: 4500000,
+                  paidAt: '2026-11-10T16:00:00Z',
+                },
+              },
+              {
+                id: 500,
+                woNumber: 'WO-2026-005',
+                status: 'IN_PROGRESS',
+                orderType: 'WARRANTY',
+                createdAt: '2026-11-12T09:00:00Z',
+                closedAt: null,
+                mileage: null,
+                vehicle: { id: 10, licensePlate: '51H-888.99', make: 'Toyota', model: 'Vios', year: 2023 },
+                advisor: null,
+                services: [{ id: 3, name: 'Kiểm tra hệ thống lạnh', status: 'IN_PROGRESS' }],
+                invoice: null,
+              },
+            ],
+          },
+        }),
+      });
+    });
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('http://localhost:3001/staff/customers', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('text=Lê Thị Hoa').first()).toBeVisible({ timeout: 20000 });
+    await page.locator('button[title="Xem hồ sơ"]').first().click();
+
+    await expect(page.locator('text=Hồ sơ chi tiết Khách hàng')).toBeVisible();
+    await expect(page.getByTestId('service-history-error')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=Lỗi tải lịch sử dịch vụ')).toBeVisible();
+
+    await page.getByTestId('service-history-error').getByRole('button', { name: 'Thử lại' }).click();
+
+    await expect(page.getByTestId('service-history-list')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('service-history-item-WO-2026-011')).toBeVisible();
+    await expect(page.getByTestId('service-history-item-WO-2026-005')).toBeVisible();
+    await expect(page.locator('text=Bảo dưỡng 40.000 km')).toBeVisible();
+    await expect(page.locator('text=45.200 km')).toBeVisible();
+    await expect(page.locator('a[href="/staff/billing/88"]')).toContainText('INV-2026-088');
+    await expect(page.locator('text=Bảo hành')).toBeVisible();
+    expect(historyCalls).toBe(2);
+
+    // Click "Xem chi tiết phiếu" to open ReadOnlyROModal (shared with /staff/intake)
+    await page.route('**/api/work-orders/501', async (route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            id: 501,
+            wo_number: 'WO-2026-011',
+            status: 'CLOSED',
+            source_type: 'WALK_IN',
+            order_type: 'STANDARD',
+            created_at: '2026-11-10T08:00:00Z',
+            customer: { id: 1, full_name: 'Lê Thị Hoa', phone: '0909123456', email: 'hoa@example.com' },
+            vehicle: { id: 10, license_plate: '51H-888.99', make: 'Toyota', model: 'Vios', color: 'Trắng', vehicle_size: 'SMALL' },
+            advisor: { id: 4, full_name: 'Lễ Tân Lan', phone: '0901111222' },
+            check_in: { mileage: 45200 },
+            services: [
+              {
+                id: 1,
+                name: 'Bảo dưỡng 40.000 km',
+                pricing_type: 'FIXED',
+                status: 'COMPLETED',
+                jobs: [{ id: 11, name: 'Kiểm tra tổng quát', status: 'COMPLETED', parts: [] }],
+              },
+            ],
+            quotations: [],
+            invoices: [{ id: 88, invoice_number: 'INV-2026-088', status: 'PAID', total_amount: 4500000 }],
+          },
+        }),
+      });
+    });
+
+    await page.getByTestId('view-wo-detail-WO-2026-011').click();
+    await expect(page.locator('text=Chi tiết Lệnh sửa chữa:')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=ODO: 45.200 km')).toBeVisible();
+    await expect(page.locator('text=Bay 4')).toHaveCount(0);
+    await page.locator('button:has(span:text-is("close"))').last().click();
+
+    await page.getByRole('button', { name: 'Đóng hồ sơ' }).click();
+  });
 });

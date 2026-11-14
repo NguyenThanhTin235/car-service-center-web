@@ -151,10 +151,10 @@ export class IntakeRepository {
   /**
    * Cập nhật trạng thái IntakeRecord
    */
-  async updateStatus(id: number, status: IntakeStatus) {
+  async updateStatus(id: number, status: IntakeStatus, notes?: string) {
     return prisma.intakeRecord.update({
       where: { id },
-      data: { status },
+      data: notes !== undefined ? { status, notes } : { status },
     });
   }
 }

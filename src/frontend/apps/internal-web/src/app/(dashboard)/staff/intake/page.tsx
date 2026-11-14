@@ -46,6 +46,11 @@ export default function IntakePage() {
     onConfirm: () => void;
     isDestructive?: boolean;
   } | null>(null);
+  const [cancelModal, setCancelModal] = useState<{
+    id: number;
+    reason: string;
+    submitting: boolean;
+  } | null>(null);
 
   const reloadIntakeData = () => {
     dispatch(fetchIntakeQueue({}));
@@ -131,23 +136,21 @@ export default function IntakePage() {
   };
 
   const handleCancelIntake = (id: number) => {
-    setConfirmAction({
-      isOpen: true,
-      title: 'Hủy phiếu tiếp nhận',
-      message: 'Bạn có chắc chắn muốn hủy phiếu tiếp nhận này?',
-      isDestructive: true,
-      onConfirm: async () => {
-        try {
-          await dispatch(cancelIntakeRecord(id)).unwrap();
-          toast.success('Hủy phiếu thành công');
-          dispatch(fetchIntakeQueue({}));
-        } catch (err: any) {
-          toast.error(err || 'Có lỗi xảy ra khi hủy phiếu');
-        } finally {
-          setConfirmAction(null);
-        }
-      }
-    });
+    setCancelModal({ id, reason: '', submitting: false });
+  };
+
+  const handleConfirmCancelIntake = async () => {
+    if (!cancelModal) return;
+    setCancelModal((prev) => (prev ? { ...prev, submitting: true } : null));
+    try {
+      await dispatch(cancelIntakeRecord({ id: cancelModal.id, reason: cancelModal.reason })).unwrap();
+      toast.success('Hủy phiếu thành công');
+      setCancelModal(null);
+      dispatch(fetchIntakeQueue({}));
+    } catch (err: any) {
+      toast.error(err || 'Có lỗi xảy ra khi hủy phiếu');
+      setCancelModal((prev) => (prev ? { ...prev, submitting: false } : null));
+    }
   };
 
 
@@ -708,6 +711,60 @@ export default function IntakePage() {
       />
       {selectedRecord && (
         <IntakeDetailModal record={selectedRecord} onClose={() => setSelectedRecord(null)} />
+      )}
+
+      {/* CANCEL INTAKE REASON MODAL */}
+      {cancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-rose-50/50">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span className="material-symbols-outlined text-rose-600 text-[20px]">cancel</span>
+                Hủy phiếu tiếp nhận
+              </h3>
+              <button
+                type="button"
+                onClick={() => setCancelModal(null)}
+                disabled={cancelModal.submitting}
+                className="w-8 h-8 rounded-full hover:bg-slate-200/70 flex items-center justify-center text-slate-500 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              <p className="text-xs text-slate-600">
+                Bạn có chắc chắn muốn hủy phiếu tiếp nhận này? Vui lòng nhập lý do hủy (nếu có) để lưu lại trong hồ sơ.
+              </p>
+              <textarea
+                rows={3}
+                value={cancelModal.reason}
+                onChange={(e) =>
+                  setCancelModal((prev) => (prev ? { ...prev, reason: e.target.value } : null))
+                }
+                placeholder="Nhập lý do hủy phiếu (VD: Khách đổi ý, chờ quá lâu, đặt nhầm lịch...)"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-400"
+              />
+            </div>
+            <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCancelModal(null)}
+                disabled={cancelModal.submitting}
+                className="h-9 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-100 cursor-pointer"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCancelIntake}
+                disabled={cancelModal.submitting}
+                className="h-9 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors disabled:opacity-60 cursor-pointer"
+              >
+                {cancelModal.submitting ? 'Đang hủy...' : 'Xác nhận hủy phiếu'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* READ-ONLY WO MODAL */}

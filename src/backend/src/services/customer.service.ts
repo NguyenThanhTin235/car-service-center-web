@@ -82,6 +82,23 @@ export class CustomerService {
         take: limit,
         include: {
           vehicles: true,
+          work_orders: {
+            orderBy: { created_at: 'desc' },
+            select: {
+              id: true,
+              status: true,
+              created_at: true,
+              services: {
+                orderBy: { sort_order: 'asc' },
+                take: 1,
+                select: { name: true },
+              },
+              invoices: {
+                where: { status: 'PAID' },
+                select: { total_amount: true },
+              },
+            },
+          },
         },
         orderBy: {
           created_at: 'desc',
@@ -89,12 +106,21 @@ export class CustomerService {
       })
     ]);
 
-    // Mock data for Total Spent, and Last Visit
-    const data = customers.map((c) => {
-      // Mock logic based on ID to have stable mock data
-      const mockVisits = (c.id * 3) % 15; // 0 to 14
-      const mockSpent = (c.id * 5000000) % 150000000;
-      
+    const completedStatuses = new Set(['FINANCIAL_CLEARED', 'RELEASED', 'CLOSED']);
+
+    const data = customers.map((c: any) => {
+      const workOrders = Array.isArray(c.work_orders) ? c.work_orders : [];
+      const totalVisits = workOrders.filter((wo: any) => completedStatuses.has(wo.status)).length;
+      const totalSpent = workOrders.reduce(
+        (sum: number, wo: any) =>
+          sum +
+          (Array.isArray(wo.invoices)
+            ? wo.invoices.reduce((invSum: number, inv: any) => invSum + Number(inv.total_amount), 0)
+            : 0),
+        0
+      );
+      const latestWo = workOrders[0] ?? null;
+
       return {
         id: c.id,
         fullName: c.full_name,
@@ -102,7 +128,7 @@ export class CustomerService {
         email: c.email,
         address: c.address,
         isActive: c.is_active,
-        vehicles: c.vehicles.map((v) => ({
+        vehicles: c.vehicles.map((v: any) => ({
           id: v.id,
           licensePlate: v.license_plate,
           make: v.make,
@@ -111,10 +137,10 @@ export class CustomerService {
           vehicleSize: v.vehicle_size,
         })),
         stats: {
-          totalVisits: mockVisits,
-          totalSpent: mockSpent,
-          lastVisitDate: mockVisits > 0 ? new Date(Date.now() - mockVisits * 86400000 * 5) : null,
-          lastService: mockVisits > 0 ? 'Bảo dưỡng định kỳ' : null,
+          totalVisits,
+          totalSpent,
+          lastVisitDate: latestWo?.created_at ?? null,
+          lastService: latestWo?.services?.[0]?.name ?? null,
         },
       };
     });
@@ -394,6 +420,136 @@ export class CustomerService {
     }).catch((error) => {
       throw new Error('Không thể xóa vĩnh viễn khách hàng vì có dữ liệu liên quan (hóa đơn, lịch hẹn...).');
     });
+  }
+
+  /**
+   * Lấy lịch sử dịch vụ tại xưởng (Work Orders) của khách hàng trong 1 query duy nhất (tránh N+1)
+   */
+  async getCustomerServiceHistory(customerId: number) {
+    if (!customerId || Number.isNaN(customerId)) {
+      throw new Error('ID khách hàng không hợp lệ');
+    }
+
+    const customer = await prisma.user.findUnique({
+      where: { id: customerId },
+      select: { id: true },
+    });
+
+    if (!customer) {
+      throw new Error('Không tìm thấy khách hàng');
+    }
+
+    const workOrders = await prisma.workOrder.findMany({
+      where: { customer_id: customerId },
+      orderBy: { created_at: 'desc' },
+      select: {
+        id: true,
+        wo_number: true,
+        status: true,
+        order_type: true,
+        created_at: true,
+        closed_at: true,
+        vehicle: {
+          select: {
+            id: true,
+            license_plate: true,
+            make: true,
+            model: true,
+            year: true,
+          },
+        },
+        advisor: {
+          select: {
+            id: true,
+            full_name: true,
+          },
+        },
+        check_in: {
+          select: {
+            mileage: true,
+          },
+        },
+        services: {
+          orderBy: { sort_order: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            status: true,
+          },
+        },
+        invoices: {
+          where: { status: { not: 'CANCELLED' } },
+          orderBy: { created_at: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            invoice_number: true,
+            status: true,
+            total_amount: true,
+            paid_at: true,
+          },
+        },
+      },
+    });
+
+    const completedStatuses = new Set(['FINANCIAL_CLEARED', 'RELEASED', 'CLOSED']);
+
+    const records = workOrders.map((wo) => {
+      const latestInvoice = wo.invoices[0] ?? null;
+      return {
+        id: wo.id,
+        woNumber: wo.wo_number,
+        status: wo.status,
+        orderType: wo.order_type,
+        createdAt: wo.created_at,
+        closedAt: wo.closed_at,
+        mileage: wo.check_in?.mileage ?? null,
+        vehicle: wo.vehicle
+          ? {
+              id: wo.vehicle.id,
+              licensePlate: wo.vehicle.license_plate,
+              make: wo.vehicle.make,
+              model: wo.vehicle.model,
+              year: wo.vehicle.year,
+            }
+          : null,
+        advisor: wo.advisor
+          ? {
+              id: wo.advisor.id,
+              fullName: wo.advisor.full_name,
+            }
+          : null,
+        services: wo.services.map((svc) => ({
+          id: svc.id,
+          name: svc.name,
+          status: svc.status,
+        })),
+        invoice: latestInvoice
+          ? {
+              id: latestInvoice.id,
+              invoiceNumber: latestInvoice.invoice_number,
+              status: latestInvoice.status,
+              totalAmount: Number(latestInvoice.total_amount),
+              paidAt: latestInvoice.paid_at,
+            }
+          : null,
+      };
+    });
+
+    const totalVisits = records.filter((r) => completedStatuses.has(r.status)).length;
+    const totalSpent = records.reduce(
+      (sum, r) => (r.invoice?.status === 'PAID' ? sum + r.invoice.totalAmount : sum),
+      0
+    );
+
+    return {
+      summary: {
+        totalOrders: records.length,
+        totalVisits,
+        totalSpent,
+      },
+      records,
+    };
   }
 }
 

@@ -193,4 +193,46 @@ test.describe('Desk-Staff Portal E2E: Vehicle Intake (/staff/intake)', () => {
       expect(overflow, `Horizontal overflow at ${vp.name}`).toBe(false);
     }
   });
+
+  test('E2E-STF-INT-03: Chi tiết phiếu tiếp nhận trạng thái Đã hủy hiển thị Lý do hủy phiếu', async ({
+    page,
+  }) => {
+    await page.route('**/api/intake**', async (route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: [
+            {
+              id: 88,
+              intake_type: 'WALK_IN',
+              status: 'CANCELLED',
+              arrived_at: '2026-11-14T08:00:00Z',
+              notes: '[Tình trạng xe]: Trầy nhẹ cản trước\n\n[Ghi chú]: Khách cần gấp\n\n[Lý do hủy]: Khách bận việc đột xuất nên hẹn lại hôm khác',
+              customer: { id: 1, full_name: 'Trần Văn B', phone: '0908777666', email: 'b@example.com' },
+              vehicle: { id: 10, license_plate: '51K-999.88', make: 'Mazda', model: 'CX-5', vehicle_size: 'MEDIUM', color: 'Đỏ' },
+              services: [],
+            },
+          ],
+          meta: { pagination: { total: 1, totalPages: 1, currentPage: 1, perPage: 10 } },
+        }),
+      });
+    });
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('http://localhost:3001/staff/intake', { waitUntil: 'domcontentloaded' });
+
+    await page.getByRole('button', { name: /Đã hủy/i }).last().click();
+    await expect(page.locator('text=Trần Văn B').first()).toBeVisible({ timeout: 10000 });
+    await page.locator('button[title="Xem chi tiết"]').first().click();
+
+    await expect(page.locator('text=Chi tiết phiếu tiếp nhận')).toBeVisible();
+    await expect(page.locator('text=Trạng thái: Đã hủy')).toBeVisible();
+    await expect(page.getByTestId('intake-cancel-reason')).toBeVisible();
+    await expect(page.getByTestId('intake-cancel-reason')).toContainText(
+      'Khách bận việc đột xuất nên hẹn lại hôm khác'
+    );
+    await page.getByRole('button', { name: 'Đóng' }).click();
+  });
 });

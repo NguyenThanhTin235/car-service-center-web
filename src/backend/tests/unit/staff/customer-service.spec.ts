@@ -21,6 +21,7 @@ const { prismaMock } = vi.hoisted(() => {
     workOrder: {
       count: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn(),
     },
     invoice: {
       findFirst: vi.fn(),
@@ -77,6 +78,22 @@ describe('CustomerService - Desk-Staff Unit Tests', () => {
               vehicle_size: 'SMALL',
             },
           ],
+          work_orders: [
+            {
+              id: 301,
+              status: 'CLOSED',
+              created_at: new Date('2026-11-10T08:00:00Z'),
+              services: [{ name: 'Thay dầu động cơ' }],
+              invoices: [{ total_amount: 3200000 }],
+            },
+            {
+              id: 300,
+              status: 'IN_PROGRESS',
+              created_at: new Date('2026-11-01T08:00:00Z'),
+              services: [{ name: 'Kiểm tra gầm' }],
+              invoices: [],
+            },
+          ],
         },
       ]);
 
@@ -110,6 +127,12 @@ describe('CustomerService - Desk-Staff Unit Tests', () => {
             licensePlate: '51H-888.99',
           }),
         ],
+        stats: {
+          totalVisits: 1,
+          totalSpent: 3200000,
+          lastVisitDate: new Date('2026-11-10T08:00:00Z'),
+          lastService: 'Thay dầu động cơ',
+        },
       });
     });
 
@@ -296,6 +319,80 @@ describe('CustomerService - Desk-Staff Unit Tests', () => {
       await expect(service.hardDeleteCustomer(40)).rejects.toThrow(
         'Không thể xóa vĩnh viễn khách hàng vì có dữ liệu liên quan (hóa đơn, lịch hẹn...).'
       );
+    });
+  });
+
+  describe('STF-CUS-UT-04: getCustomerServiceHistory', () => {
+    it('returns mapped work orders and aggregated summary in a single query', async () => {
+      prismaMock.user.findUnique.mockResolvedValueOnce({ id: 21 });
+      prismaMock.workOrder.findMany.mockResolvedValueOnce([
+        {
+          id: 501,
+          wo_number: 'WO-2026-011',
+          status: 'CLOSED',
+          order_type: 'STANDARD',
+          created_at: new Date('2026-11-10T08:00:00Z'),
+          closed_at: new Date('2026-11-10T16:00:00Z'),
+          vehicle: { id: 10, license_plate: '30A-986.48', make: 'Ford', model: 'Ranger', year: 2023 },
+          advisor: { id: 4, full_name: 'Lễ Tân Lan' },
+          check_in: { mileage: 45200 },
+          services: [
+            { id: 1, name: 'Bảo dưỡng 40.000 km', status: 'COMPLETED' },
+            { id: 2, name: 'Thay dầu động cơ', status: 'COMPLETED' },
+          ],
+          invoices: [
+            { id: 88, invoice_number: 'INV-2026-088', status: 'PAID', total_amount: 4500000, paid_at: new Date('2026-11-10T16:00:00Z') },
+          ],
+        },
+        {
+          id: 500,
+          wo_number: 'WO-2026-005',
+          status: 'IN_PROGRESS',
+          order_type: 'WARRANTY',
+          created_at: new Date('2026-11-12T09:00:00Z'),
+          closed_at: null,
+          vehicle: { id: 11, license_plate: '61A-281.63', make: 'Honda', model: 'Accord', year: 2022 },
+          advisor: null,
+          check_in: null,
+          services: [],
+          invoices: [],
+        },
+      ]);
+
+      const result = await service.getCustomerServiceHistory(21);
+
+      expect(prismaMock.workOrder.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { customer_id: 21 },
+          orderBy: { created_at: 'desc' },
+        })
+      );
+      expect(result.summary).toEqual({
+        totalOrders: 2,
+        totalVisits: 1,
+        totalSpent: 4500000,
+      });
+      expect(result.records[0]).toMatchObject({
+        woNumber: 'WO-2026-011',
+        status: 'CLOSED',
+        mileage: 45200,
+        vehicle: { licensePlate: '30A-986.48', make: 'Ford', model: 'Ranger' },
+        advisor: { fullName: 'Lễ Tân Lan' },
+        invoice: { invoiceNumber: 'INV-2026-088', status: 'PAID', totalAmount: 4500000 },
+      });
+      expect(result.records[1]).toMatchObject({
+        woNumber: 'WO-2026-005',
+        orderType: 'WARRANTY',
+        mileage: null,
+        invoice: null,
+      });
+    });
+
+    it('throws error when customer is not found or id is invalid', async () => {
+      await expect(service.getCustomerServiceHistory(NaN)).rejects.toThrow('ID khách hàng không hợp lệ');
+
+      prismaMock.user.findUnique.mockResolvedValueOnce(null);
+      await expect(service.getCustomerServiceHistory(999)).rejects.toThrow('Không tìm thấy khách hàng');
     });
   });
 });

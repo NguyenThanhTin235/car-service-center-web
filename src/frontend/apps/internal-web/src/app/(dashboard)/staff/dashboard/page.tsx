@@ -22,8 +22,6 @@ export default function StaffCommandDashboardPage() {
   const {
     period,
     setPeriod,
-    scope,
-    setScope,
     data,
     isLoading,
     isRefreshing,
@@ -32,7 +30,7 @@ export default function StaffCommandDashboardPage() {
   } = useDashboardData({
     portal: 'staff',
     initialPeriod: '7days',
-    initialScope: 'my',
+    initialScope: 'workshop',
   });
 
   const [selectedStatus, setSelectedStatus] = useState<string>('');
@@ -49,12 +47,27 @@ export default function StaffCommandDashboardPage() {
       label: 'Hạng mục công việc',
       sortable: true,
       render: (row) => (
-        <div>
-          <div className="font-semibold text-slate-900 dark:text-white">{row.name}</div>
-          <div className="text-[11px] text-slate-400 font-mono">
-            WO: {row.woNumber} • Biển số: {row.vehiclePlate}
-          </div>
-        </div>
+        <span className="font-semibold text-slate-900 dark:text-white">{row.name}</span>
+      ),
+    },
+    {
+      key: 'woNumber',
+      label: 'Mã lệnh (WO)',
+      sortable: true,
+      render: (row) => (
+        <span className="font-mono font-semibold text-[#0050cd] tabular-nums">
+          {row.woNumber || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'vehiclePlate',
+      label: 'Biển số xe',
+      sortable: true,
+      render: (row) => (
+        <span className="font-mono font-bold text-slate-800 dark:text-slate-200 tabular-nums">
+          {row.vehiclePlate || '—'}
+        </span>
       ),
     },
     {
@@ -88,18 +101,6 @@ export default function StaffCommandDashboardPage() {
         <span className="font-mono text-slate-600 dark:text-slate-400">
           {row.estimatedHours ? `${row.estimatedHours} giờ` : '—'}
         </span>
-      ),
-    },
-    {
-      key: 'action',
-      label: 'Thao tác',
-      render: () => (
-        <Link
-          href="/staff/intake"
-          className="text-xs font-semibold text-[#0050cd] hover:underline"
-        >
-          Chi tiết →
-        </Link>
       ),
     },
   ];
@@ -163,13 +164,11 @@ export default function StaffCommandDashboardPage() {
         </div>
       </div>
 
-      {/* Filter Bar with Scope Switcher */}
+      {/* Filter Bar */}
       <DashboardFilterBar
         period={period}
         onPeriodChange={setPeriod}
-        scope={scope}
-        onScopeChange={setScope}
-        showScopeSelector={true}
+        showScopeSelector={false}
         onRefresh={refetch}
         isRefreshing={isRefreshing}
         lastUpdated={lastUpdated}
@@ -253,10 +252,10 @@ export default function StaffCommandDashboardPage() {
               Chế độ giám sát
             </div>
             <div className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-              {scope === 'my' ? 'Công việc cá nhân' : 'Toàn bộ chuyền xưởng'}
+              Toàn bộ chuyền xưởng
             </div>
             <p className="text-xs text-slate-500">
-              Đang hiển thị danh sách các hạng mục công việc được phân công trực tiếp cho thợ hoặc theo dõi toàn bộ các lệnh đang thi công trong phân xưởng.
+              Đang hiển thị danh sách các hạng mục công việc và lệnh sửa chữa đang thi công trong toàn phân xưởng.
             </p>
           </div>
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
@@ -312,7 +311,7 @@ export default function StaffCommandDashboardPage() {
           </div>
         )}
         <DashboardActionTable
-          title={`Hàng Đợi Công Việc ${scope === 'my' ? '(Được giao cho tôi)' : '(Toàn xưởng)'}`}
+          title="Hàng Đợi Công Việc (Toàn xưởng)"
           subtitle="Danh sách các công việc cần tiến hành sửa chữa, bảo dưỡng hoặc thay thế phụ tùng"
           columns={columns}
           data={filteredJobs}

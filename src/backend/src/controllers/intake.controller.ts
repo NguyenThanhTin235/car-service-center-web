@@ -132,7 +132,11 @@ export const createIntake = async (req: Request, res: Response): Promise<void> =
 export const cancelIntake = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const result = await intakeService.cancelIntake(Number(id));
+    const { reason } = req.body || {};
+    const result = await intakeService.cancelIntake(
+      Number(id),
+      typeof reason === 'string' ? reason : undefined
+    );
 
     res.json({
       success: true,

@@ -141,6 +141,13 @@ test.describe('Desk-Staff Portal E2E: Overview (/staff) & Command Dashboard (/st
     await expect(page.locator('text=51K-888.99').first()).toBeVisible();
     await expect(page.locator('text=30E-456.78')).toHaveCount(0);
 
+    // Click Chi tiết opens IntakeDetailModal without navigating away from /staff
+    await page.getByRole('button', { name: /Chi tiết/i }).first().click();
+    await expect(page.locator('h2:has-text("Chi tiết phiếu tiếp nhận")')).toBeVisible();
+    await expect(page).toHaveURL(/\/staff$/);
+    await page.getByRole('button', { name: 'Đóng', exact: true }).click();
+    await expect(page.locator('h2:has-text("Chi tiết phiếu tiếp nhận")')).toHaveCount(0);
+
     await page.click('a:has-text("Tiếp nhận xe mới")');
     await expect(page).toHaveURL(/\/staff\/intake/);
     await expect(page.locator('h1:has-text("Tiếp nhận xe vào xưởng")')).toBeVisible({ timeout: 15000 });
@@ -245,13 +252,15 @@ test.describe('Desk-Staff Portal E2E: Overview (/staff) & Command Dashboard (/st
     await expect(page.locator('text=Tiến độ thực thi nhiệm vụ kỹ thuật qua các khâu')).toBeVisible();
     await expect(page.locator('text=Mật độ xe theo khung giờ ca trực')).toBeVisible();
     await expect(page.locator('text=Thay má phanh trước').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Mã lệnh (WO)")')).toBeVisible();
+    await expect(page.locator('th:has-text("Biển số xe")')).toBeVisible();
+    await expect(page.locator('th:has-text("Thao tác")')).toHaveCount(0);
+    await expect(page.locator('text=WO-2026-501').first()).toBeVisible();
+    await expect(page.locator('text=51G-999.88').first()).toBeVisible();
 
-    const workshopBtn = page.getByRole('button', { name: /Toàn xưởng/i });
-    if ((await workshopBtn.count()) > 0) {
-      await workshopBtn.first().click();
-      await expect(page.locator('text=Toàn bộ chuyền xưởng').first()).toBeVisible({ timeout: 10000 });
-      expect(capturedParams.some((p) => p.scope === 'workshop')).toBe(true);
-    }
+    await expect(page.getByRole('button', { name: /Việc của tôi/i })).toHaveCount(0);
+    await expect(page.locator('text=Toàn bộ chuyền xưởng').first()).toBeVisible();
+    expect(capturedParams.some((p) => p.scope === 'workshop')).toBe(true);
 
     expect(hydrationErrors).toEqual([]);
 

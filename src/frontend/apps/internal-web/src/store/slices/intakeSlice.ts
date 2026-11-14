@@ -113,9 +113,14 @@ export const arriveAppointment = createAsyncThunk(
 
 export const cancelIntakeRecord = createAsyncThunk(
   'intake/cancel',
-  async (id: number, { rejectWithValue }) => {
+  async (payload: number | { id: number; reason?: string }, { rejectWithValue }) => {
+    const id = typeof payload === 'number' ? payload : payload.id;
+    const reason = typeof payload === 'number' ? undefined : payload.reason;
     try {
-      const response = await api.patch(`/api/intake/${id}/cancel`);
+      const response = await api.patch(
+        `/api/intake/${id}/cancel`,
+        reason?.trim() ? { reason: reason.trim() } : undefined
+      );
       return { id, data: response.data };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Lỗi khi hủy phiếu tiếp nhận');

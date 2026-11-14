@@ -312,6 +312,29 @@ describe('IntakeService - Desk-Staff Unit Tests', () => {
           data: { status: 'CANCELLED' },
         })
       );
+
+      prismaMock.intakeRecord.findUnique.mockResolvedValueOnce({
+        id: 502,
+        status: 'QUEUED',
+        notes: '[Ghi chú]: Xe hẹn sáng',
+      });
+      prismaMock.intakeRecord.update.mockResolvedValueOnce({
+        id: 502,
+        status: 'CANCELLED',
+        notes: '[Ghi chú]: Xe hẹn sáng\n\n[Lý do hủy]: Khách đổi ý không làm nữa',
+      });
+
+      const cancelledWithReason = await service.cancelIntake(502, 'Khách đổi ý không làm nữa');
+      expect(cancelledWithReason.status).toBe('CANCELLED');
+      expect(prismaMock.intakeRecord.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 502 },
+          data: {
+            status: 'CANCELLED',
+            notes: '[Ghi chú]: Xe hẹn sáng\n\n[Lý do hủy]: Khách đổi ý không làm nữa',
+          },
+        })
+      );
     });
   });
 });

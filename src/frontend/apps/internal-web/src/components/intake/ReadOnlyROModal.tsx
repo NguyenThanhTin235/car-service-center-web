@@ -5,7 +5,6 @@ import WOBadgeBar from '@/components/advisor/work-order/WOBadgeBar';
 import WOOverviewCards from '@/components/advisor/work-order/WOOverviewCards';
 import WOVehicleCustomerInfo from '@/components/advisor/work-order/WOVehicleCustomerInfo';
 import WOTabContainer from '@/components/advisor/work-order/WOTabContainer';
-import toast from 'react-hot-toast';
 
 type Props = {
   workOrderId: number;
@@ -15,24 +14,24 @@ type Props = {
 export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchWO = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await getWorkOrderById(workOrderId);
       if (res.success && res.data) {
         setWorkOrder(res.data);
       } else {
-        toast.error(res.message || 'Không tìm thấy phiếu công việc');
-        onClose();
+        setError(res.message || 'Không tìm thấy phiếu công việc');
       }
     } catch (err: any) {
-      toast.error('Lỗi khi tải phiếu công việc');
-      onClose();
+      setError(err?.response?.data?.message || 'Lỗi khi tải chi tiết phiếu công việc');
     } finally {
       setLoading(false);
     }
-  }, [workOrderId, onClose]);
+  }, [workOrderId]);
 
   useEffect(() => {
     fetchWO();
@@ -40,45 +39,106 @@ export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-        <div className="bg-surface p-8 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="bg-surface p-8 rounded-2xl flex flex-col items-center gap-4 shadow-2xl border border-outline-variant/40">
           <span className="material-symbols-outlined animate-spin text-[40px] text-primary">progress_activity</span>
-          <p className="text-on-surface-variant font-medium">Đang tải phiếu công việc...</p>
+          <p className="text-on-surface-variant font-medium">Đang tải chi tiết phiếu công việc...</p>
         </div>
       </div>
     );
   }
 
-  if (!workOrder) return null;
+  if (error || !workOrder) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div
+          data-testid="readonly-ro-error"
+          className="bg-surface w-full max-w-md p-6 rounded-2xl shadow-2xl border border-outline-variant/40 flex flex-col items-center text-center gap-3"
+        >
+          <span className="material-symbols-outlined text-[40px] text-rose-500">error</span>
+          <h3 className="text-base font-bold text-on-surface">Không thể tải phiếu công việc</h3>
+          <p className="text-xs text-on-surface-variant">{error || 'Dữ liệu phiếu công việc không tồn tại.'}</p>
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              type="button"
+              onClick={fetchWO}
+              className="h-9 px-4 rounded-xl bg-primary text-white text-xs font-bold hover:opacity-90 transition-opacity cursor-pointer"
+            >
+              Thử lại
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-9 px-4 rounded-xl border border-outline-variant text-on-surface text-xs font-bold hover:bg-surface-container transition-colors cursor-pointer"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const dummyOverview = {
-    checkInTime: new Date(workOrder.created_at).toLocaleString('vi-VN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
-    bay: 'Bay 4',
-    jobsTotal: 3,
-    jobsInProgress: 2,
-    jobsPending: 1,
-    partsTotal: 3,
-    partsIn: 3,
-    quotationTotal: 2649.44,
-    quotationQuotes: 4,
-    quotationApproved: 1940.94,
-    quotationPending: 708.50,
-    billingCollected: 780.00,
-    billingInvoices: 2,
-    billingInsurer: 1660.94,
+  const woAny = workOrder as any;
+  const allJobs = (workOrder.services || []).flatMap((s: any) => s.jobs || []);
+  const jobsInProgress = allJobs.filter((j: any) => j.status === 'IN_PROGRESS').length;
+  const jobsPending = allJobs.filter((j: any) => ['PLANNED', 'PENDING'].includes(j.status)).length;
+
+  const allParts = allJobs.flatMap((j: any) => j.parts || []);
+  const partsIn = allParts.filter((p: any) => ['ISSUED', 'INSTALLED', 'COMPLETED'].includes(p.status)).length;
+
+  const quotations = Array.isArray(woAny.quotations) ? woAny.quotations : [];
+  const quotationTotal = quotations.reduce((sum: number, q: any) => sum + Number(q.total_amount || 0), 0);
+  const quotationApproved = quotations
+    .filter((q: any) => q.status === 'APPROVED')
+    .reduce((sum: number, q: any) => sum + Number(q.total_amount || 0), 0);
+  const quotationPending = quotations
+    .filter((q: any) => ['SENT', 'PENDING_APPROVAL', 'DRAFT'].includes(q.status))
+    .reduce((sum: number, q: any) => sum + Number(q.total_amount || 0), 0);
+
+  const invoices = (Array.isArray(woAny.invoices) ? woAny.invoices : []).filter(
+    (inv: any) => inv.status !== 'CANCELLED'
+  );
+  const billingCollected = invoices
+    .filter((inv: any) => inv.status === 'PAID')
+    .reduce((sum: number, inv: any) => sum + Number(inv.total_amount || 0), 0);
+
+  const realOverview = {
+    checkInTime: new Date(workOrder.created_at).toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+    bay: woAny.check_in?.mileage
+      ? `ODO: ${Number(woAny.check_in.mileage).toLocaleString('vi-VN')} km`
+      : 'Chưa ghi nhận ODO',
+    jobsTotal: allJobs.length,
+    jobsInProgress,
+    jobsPending,
+    partsTotal: allParts.length,
+    partsIn,
+    quotationTotal,
+    quotationQuotes: quotations.length,
+    quotationApproved,
+    quotationPending,
+    billingCollected,
+    billingInvoices: invoices.length,
+    billingInsurer: 0,
   };
 
-  const dummyCustomer = {
+  const customerInfo = {
     name: workOrder?.customer?.full_name || '...',
     phone: workOrder?.customer?.phone || '...',
     email: workOrder?.customer?.email || '...',
-    memberType: 'Khách vãng lai',
-    memberId: '-',
-    packageDesc: '-'
+    memberType: 'Khách hàng xưởng',
+    memberId: workOrder?.customer?.id ? `KH-${workOrder.customer.id}` : '-',
+    packageDesc: '-',
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 lg:p-8 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 lg:p-8 backdrop-blur-sm">
       <div className="bg-surface w-full max-w-[1400px] h-full max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/40 bg-surface-container-lowest shrink-0">
@@ -91,7 +151,7 @@ export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
           </div>
           <button 
             onClick={onClose} 
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors group"
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors group cursor-pointer"
           >
             <span className="material-symbols-outlined text-[24px] group-hover:text-error transition-colors">close</span>
           </button>
@@ -108,16 +168,16 @@ export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
               statusBadge={workOrder.status}
             />
 
-            <WOOverviewCards data={dummyOverview} />
+            <WOOverviewCards data={realOverview} />
 
             <WOVehicleCustomerInfo 
               isReadOnly={true}
               vehicle={{ vin: 'N/A', color: workOrder.vehicle?.color || 'N/A', class: workOrder.vehicle?.vehicle_size || 'N/A', classDesc: '' }} 
-              customer={dummyCustomer} 
+              customer={customerInfo} 
               workOrderInfo={{
-                type: 'Dịch vụ & Sửa chữa',
+                type: woAny.order_type === 'WARRANTY' ? 'Bảo hành' : 'Dịch vụ & Sửa chữa',
                 advisor: workOrder.advisor?.full_name || 'Đang cập nhật',
-                planDate: '...'
+                planDate: new Date(workOrder.created_at).toLocaleDateString('vi-VN'),
               }}
             />
 

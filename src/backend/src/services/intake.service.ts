@@ -164,7 +164,7 @@ export class IntakeService {
   /**
    * Hủy phiếu tiếp nhận (chỉ khi đang QUEUED)
    */
-  async cancelIntake(id: number) {
+  async cancelIntake(id: number, reason?: string) {
     const record = await intakeRepo.findById(id);
     if (!record) throw new Error('Không tìm thấy phiếu tiếp nhận.');
 
@@ -172,6 +172,13 @@ export class IntakeService {
       throw new Error(`Chỉ có thể hủy phiếu đang ở trạng thái QUEUED. Trạng thái hiện tại: ${record.status}`);
     }
 
-    return intakeRepo.updateStatus(id, 'CANCELLED');
+    const trimmedReason = reason?.trim();
+    const updatedNotes = trimmedReason
+      ? record.notes
+        ? `${record.notes}\n\n[Lý do hủy]: ${trimmedReason}`
+        : `[Lý do hủy]: ${trimmedReason}`
+      : undefined;
+
+    return intakeRepo.updateStatus(id, 'CANCELLED', updatedNotes);
   }
 }

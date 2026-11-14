@@ -104,3 +104,19 @@ export const hardDeleteCustomer = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getCustomerServiceHistory = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const history = await customerService.getCustomerServiceHistory(Number(id));
+    res.json({
+      status: 'success',
+      data: history,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      status: 'error',
+      message: error.message || 'Lỗi khi lấy lịch sử dịch vụ của khách hàng',
+    });
+  }
+};
