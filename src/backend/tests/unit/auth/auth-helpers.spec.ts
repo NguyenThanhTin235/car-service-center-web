@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { generateToken, verifyToken, JwtPayload } from '../../src/utils/jwt.util';
+import { generateToken, verifyToken, JwtPayload } from '../../../src/utils/jwt.util';
 import {
   generateOtp,
   hashOtp,
   verifyOtp,
   getOtpExpiresAt,
   isOtpExpired,
-} from '../../src/utils/otp.util';
+} from '../../../src/utils/otp.util';
 
 describe('Auth Helpers & Security Utilities (SPEC-AUTH-01)', () => {
   describe('JWT Utility (jwt.util.ts)', () => {

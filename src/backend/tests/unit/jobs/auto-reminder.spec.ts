@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { runAppointmentReminderCheck } from '../../src/jobs/appointment-reminder.job';
-import prisma from '../../src/utils/prisma';
-import { notificationService } from '../../src/services/notification.service';
+import { runAppointmentReminderCheck } from '../../../src/jobs/appointment-reminder.job';
+import prisma from '../../../src/utils/prisma';
+import { notificationService } from '../../../src/services/notification.service';
 
-vi.mock('../../src/services/notification.service', () => ({
+vi.mock('../../../src/services/notification.service', () => ({
   notificationService: {
     sendEmail: vi.fn().mockResolvedValue(true),
   },
 }));
 
-vi.mock('../../src/utils/prisma', () => ({
+vi.mock('../../../src/utils/prisma', () => ({
   __esModule: true,
   default: {
     appointment: {

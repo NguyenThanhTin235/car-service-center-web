@@ -65,7 +65,7 @@ export default function IntakePage() {
     }));
 
     // Fetch service templates
-    api.get('/api/services')
+    api.get('/api/services', { params: { isActive: 'true' } })
       .then((res) => {
         const data = res.data;
         if (data && data.data) {

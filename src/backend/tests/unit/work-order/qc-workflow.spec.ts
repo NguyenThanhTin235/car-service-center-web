@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { qcService } from '../../src/services/qc.service';
-import prisma from '../../src/utils/prisma';
+import { qcService } from '../../../src/services/qc.service';
+import prisma from '../../../src/utils/prisma';
 import { QcResult, JobStatus, ServiceStatus, WorkOrderStatus } from '@prisma/client';
 
 describe('Unit Test - QC Workflow & Rework Loop (UC-41 / SPEC-QC-01)', () => {

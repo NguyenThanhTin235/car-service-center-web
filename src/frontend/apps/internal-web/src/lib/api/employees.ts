@@ -26,7 +26,7 @@ export interface UpdateEmployeePayload {
 }
 
 export const employeeApi = {
-  getAll: (params?: { search?: string; position?: string; page?: number; limit?: number }) =>
+  getAll: (params?: { search?: string; position?: string; status?: string; page?: number; limit?: number }) =>
     api.get('/api/employees', { params }),
 
   getById: (id: number) =>

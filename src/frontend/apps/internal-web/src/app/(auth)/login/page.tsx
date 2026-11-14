@@ -58,7 +58,7 @@ export default function LoginPage() {
     isAuthenticated && user?.roles?.some((r: string) => ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA'].includes(r))
   );
 
-  if (!mounted || isInternalRole) {
+  if (mounted && isInternalRole) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-container-low">
         <div className="w-8 h-8 rounded-full border-2 border-outline-variant border-t-primary-container animate-spin"></div>
@@ -163,7 +163,7 @@ export default function LoginPage() {
             )}
 
             {/* Form Fields */}
-            <form className="space-y-4" onSubmit={handleLogin}>
+            <form suppressHydrationWarning className="space-y-4" onSubmit={handleLogin}>
               {/* Input 1: Email */}
               <div className="space-y-1.5">
                 <label className="text-label-md font-medium text-on-surface block" htmlFor="email">
@@ -174,6 +174,7 @@ export default function LoginPage() {
                     <span className="material-symbols-outlined text-xl">mail</span>
                   </div>
                   <input
+                    suppressHydrationWarning
                     className="block w-full rounded-xl border border-outline-variant bg-surface-container-lowest pl-11 pr-4 py-3 text-body-md text-on-surface placeholder:text-outline focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:outline-none transition-all"
                     id="email"
                     name="email"
@@ -196,6 +197,7 @@ export default function LoginPage() {
                     <span className="material-symbols-outlined text-xl">lock</span>
                   </div>
                   <input
+                    suppressHydrationWarning
                     className="block w-full rounded-xl border border-outline-variant bg-surface-container-lowest pl-11 pr-11 py-3 text-body-md text-on-surface placeholder:text-outline focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:outline-none transition-all"
                     id="password"
                     name="password"
@@ -206,6 +208,7 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                   <button
+                    suppressHydrationWarning
                     type="button"
                     className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
                     onClick={() => setShowPassword(!showPassword)}
@@ -221,7 +224,7 @@ export default function LoginPage() {
               {/* Extras Row */}
               <div className="flex items-center justify-between pt-1 pb-1">
                 <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                  <input className="h-4 w-4 rounded border-outline-variant text-primary-container focus:ring-primary-container/30 cursor-pointer" type="checkbox" />
+                  <input suppressHydrationWarning className="h-4 w-4 rounded border-outline-variant text-primary-container focus:ring-primary-container/30 cursor-pointer" type="checkbox" />
                   <span className="text-body-md text-on-surface-variant">Ghi nhớ đăng nhập</span>
                 </label>
                 <Link className="text-label-md text-primary-container hover:underline transition-colors" href="/forgot-password">
@@ -232,6 +235,7 @@ export default function LoginPage() {
               {/* Primary Submit Action */}
               <div className="pt-2">
                 <button
+                  suppressHydrationWarning
                   type="submit"
                   disabled={loading}
                   className="w-full h-12 bg-primary-container hover:bg-primary active:scale-[0.99] text-on-primary font-bold rounded-xl shadow-md shadow-primary-container/25 transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
@@ -244,8 +248,9 @@ export default function LoginPage() {
               {/* Quick Login Role Shortcuts */}
               <div className="pt-3 border-t border-outline-variant/40">
                 <p className="text-[12px] font-semibold text-on-surface-variant mb-2 text-center">Tài khoản demo nội bộ (Mật khẩu: password123):</p>
-                <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="grid grid-cols-2 gap-2 text-xs" suppressHydrationWarning>
                   <button
+                    suppressHydrationWarning
                     type="button"
                     onClick={() => { setEmail('manager3@carservice.com'); setPassword('password123'); }}
                     className="p-2 text-left rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors"
@@ -256,6 +261,7 @@ export default function LoginPage() {
                     <div className="text-[10px] text-emerald-700 truncate">manager3@carservice.com</div>
                   </button>
                   <button
+                    suppressHydrationWarning
                     type="button"
                     onClick={() => { setEmail('admin1@carservice.com'); setPassword('password123'); }}
                     className="p-2 text-left rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 transition-colors"
@@ -266,6 +272,7 @@ export default function LoginPage() {
                     <div className="text-[10px] text-blue-700 truncate">admin1@carservice.com</div>
                   </button>
                   <button
+                    suppressHydrationWarning
                     type="button"
                     onClick={() => { setEmail('advisor5@carservice.com'); setPassword('password123'); }}
                     className="p-2 text-left rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors"
@@ -276,6 +283,7 @@ export default function LoginPage() {
                     <div className="text-[10px] text-amber-700 truncate">advisor5@carservice.com</div>
                   </button>
                   <button
+                    suppressHydrationWarning
                     type="button"
                     onClick={() => { setEmail('desk9@carservice.com'); setPassword('password123'); }}
                     className="p-2 text-left rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition-colors"

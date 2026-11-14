@@ -43,4 +43,7 @@ export const serviceTemplateApi = {
 
   toggle: (id: number) =>
     api.patch(`/api/services/${id}/toggle`),
+
+  delete: (id: number) =>
+    api.delete(`/api/services/${id}`),
 };

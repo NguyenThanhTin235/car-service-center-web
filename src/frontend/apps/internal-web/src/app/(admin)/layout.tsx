@@ -10,6 +10,11 @@ import SaaSDashboardShell, {
 
 const ADMIN_NAV_ITEMS: SaaSNavItem[] = [
   {
+    label: 'Tổng quan hệ thống',
+    href: '/admin',
+    icon: 'dashboard',
+  },
+  {
     label: 'Tài khoản & Phân quyền',
     href: '/accounts',
     icon: 'manage_accounts',

@@ -38,7 +38,7 @@ export default function BookAppointmentPage() {
   const loadServices = async () => {
     setServicesLoading(true);
     try {
-      const { data } = await api.get('/api/services', { params: { limit: 100 } });
+      const { data } = await api.get('/api/services', { params: { limit: 100, isActive: 'true' } });
       setServices(data.data.filter((s: any) => s.isActive));
     } catch (error) {
       console.error('Lỗi khi tải dịch vụ', error);

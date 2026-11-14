@@ -161,15 +161,16 @@ export default function CreateDispatchJobModal({
     setLoadingData(true);
 
     Promise.allSettled([
-      jobTypeApi.getAll({ limit: 50 }),
-      employeeApi.getAll({ limit: 100, position: 'TECHNICIAN' }),
+      jobTypeApi.getAll({ limit: 100, isActive: true }),
+      employeeApi.getAll({ limit: 100, position: 'TECHNICIAN', status: 'active' }),
     ])
       .then(([jobTypeRes, employeeRes]) => {
         if (!mounted) return;
 
         if (jobTypeRes.status === 'fulfilled') {
-          const types: JobTypeData[] =
+          const rawTypes: JobTypeData[] =
             jobTypeRes.value?.data?.data || jobTypeRes.value?.data || [];
+          const types = rawTypes.filter((jt) => jt.isActive !== false);
           setJobTypes(types);
           if (types.length > 0 && !selectedJobTypeId) {
             setSelectedJobTypeId(types[0].id);
@@ -180,7 +181,7 @@ export default function CreateDispatchJobModal({
           const emps: EmployeeData[] =
             employeeRes.value?.data?.data || employeeRes.value?.data || [];
           setEmployees(
-            emps.filter((e) => e.isActive !== false && e.position === 'TECHNICIAN')
+            emps.filter((e) => Boolean(e.isActive) && e.position === 'TECHNICIAN')
           );
         }
       })

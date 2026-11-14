@@ -8,7 +8,7 @@ export interface JobTypeData {
 }
 
 export const jobTypeApi = {
-  getAll: (params?: { search?: string; page?: number; limit?: number }) =>
+  getAll: (params?: { search?: string; page?: number; limit?: number | string; all?: boolean; isActive?: boolean }) =>
     api.get('/api/job-types', { params }),
 
   create: (data: { name: string; description?: string }) =>

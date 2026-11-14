@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { calculatePricingTotals } from '../../src/utils/pricing-calculator.util';
+import { calculatePricingTotals } from '../../../src/utils/pricing-calculator.util';
 
 describe('Quotation Business Rules & Pricing Compliance (SPEC-FIN-02)', () => {
   it('QUOT-01: Zero-Tax Rule - Tax rate and tax amount must ALWAYS be 0 regardless of subtotal', () => {

@@ -31,6 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const navItems: SaaSNavItem[] = useMemo(
     () => [
       { label: 'Tổng quan', href: '/staff', icon: 'grid_view' },
+      { label: 'Điều phối & KPI', href: '/staff/dashboard', icon: 'speed' },
       {
         label: 'Quản lý lịch hẹn',
         href: '/staff/appointments',

@@ -1,20 +1,20 @@
 # TÀI LIỆU ĐẶC TẢ & HƯỚNG DẪN KIỂM THỬ TỰ ĐỘNG (AUTOMATED TESTING SPECIFICATION & MANUAL)
 ## HỆ THỐNG QUẢN LÝ TRUNG TÂM DỊCH VỤ Ô TÔ (CAR SERVICE CENTER)
 
-> **Phiên bản tài liệu:** 2.0  
-> **Ngày cập nhật:** 2026-11-01  
-> **Tài liệu tham chiếu:** [`docs/requirements/UseCase V2.md`](file:///d:/TLCN/CAR%20SERVICE%20CENTER/docs/requirements/UseCase%20V2.md), [`docs/requirements/Requirement v2.md`](file:///d:/TLCN/CAR%20SERVICE%20CENTER/docs/requirements/Requirement%20v2.md), [`docs/requirements/WORK_ORDER_STATUS_TRANSITION.md`](file:///d:/TLCN/CAR%20SERVICE%20CENTER/docs/requirements/WORK_ORDER_STATUS_TRANSITION.md), [`docs/requirements/Pricing_Calculation_Formulas.md`](file:///d:/TLCN/CAR%20SERVICE%20CENTER/docs/requirements/Pricing_Calculation_Formulas.md)  
-> **Trạng thái thực thi:** **111/111 Tests PASSED (100% Pass Rate)**
+> **Phiên bản tài liệu:** 2.2  
+> **Ngày cập nhật:** 2026-11-13  
+> **Tài liệu tham chiếu:** [`UseCase V2.md`](../../requirements/UseCase%20V2.md), [`Requirement v2.md`](../../requirements/Requirement%20v2.md), [`WORK_ORDER_STATUS_TRANSITION.md`](../../requirements/WORK_ORDER_STATUS_TRANSITION.md), [`Pricing_Calculation_Formulas.md`](../../requirements/Pricing_Calculation_Formulas.md), [`SPEC-ADMIN-PORTAL-AUTOMATED-TESTING.md`](./SPEC-ADMIN-PORTAL-AUTOMATED-TESTING.md)  
+> **Trạng thái thực thi:** **346/346 Backend Tests PASSED + 43 Playwright E2E Tests (24/24 Admin E2E PASSED) — Tổng 389 Tests / 51 Files**
 
 ---
 
 ## MỤC LỤC
 1. [Tổng quan & Mục đích tài liệu](#1-tổng-quan--mục-đích-tài-liệu)
 2. [Kiến trúc Kiểm thử Kim tự tháp (Test Pyramid Architecture)](#2-kiến-trúc-kiểm-thử-kim-tự-tháp-test-pyramid-architecture)
-3. [Đặc tả Chi tiết 111 Kịch bản Kiểm thử theo Từng Tầng](#3-đặc-tả-chi-tiết-111-kịch-bản-kiểm-thử-theo-từng-tầng)
-   - [3.1. Tầng 1: Backend Unit Tests (8 files, 45 tests)](#31-tầng-1-backend-unit-tests-8-files-45-tests)
-   - [3.2. Tầng 2: Backend Integration & API Tests (6 files, 58 tests)](#32-tầng-2-backend-integration--api-tests-6-files-58-tests)
-   - [3.3. Tầng 3: Frontend Playwright E2E Tests (3 files, 8 tests)](#33-tầng-3-frontend-playwright-e2e-tests-3-files-8-tests)
+3. [Đặc tả Chi tiết 389 Kịch bản Kiểm thử theo Từng Tầng](#3-đặc-tả-chi-tiết-389-kịch-bản-kiểm-thử-theo-từng-tầng)
+   - [3.1. Tầng 1: Backend Unit Tests (25 files, 187 tests)](#31-tầng-1-backend-unit-tests-25-files-187-tests)
+   - [3.2. Tầng 2: Backend Integration & API Tests (14 files, 159 tests)](#32-tầng-2-backend-integration--api-tests-14-files-159-tests)
+   - [3.3. Tầng 3: Frontend Playwright E2E Tests (12 files, 43 tests)](#33-tầng-3-frontend-playwright-e2e-tests-12-files-43-tests)
 4. [Chiến lược Phân lập Môi trường & Mocking Hermetic](#4-chiến-lược-phân-lập-môi-trường--mocking-hermetic)
 5. [Hướng dẫn Vận hành & Lệnh Thực thi Kiểm thử](#5-hướng-dẫn-vận-hành--lệnh-thực-thi-kiểm-thử)
 6. [Tích hợp Tự động hóa CI/CD (GitHub Actions Pipeline)](#6-tích-hợp-tự-động-hóa-cicd-github-actions-pipeline)
@@ -45,10 +45,10 @@ Hệ thống áp dụng mô hình Kim tự tháp kiểm thử 3 tầng chuẩn c
 
 ```mermaid
 flowchart TD
-    subgraph Pyramid ["HỆ THỐNG KIỂM THỬ 3 TẦNG (111 TESTS - 100% PASS)"]
-        E2E["Tầng 3: End-to-End (E2E) Tests\n3 files · 8 tests · ~38.4s\nCông cụ: Playwright Chromium Headless\nPhạm vi: Trải nghiệm người dùng xuyên suốt 2 cổng Portal độc lập"]
-        INT["Tầng 2: Backend Integration & API Tests\n6 files · 58 tests · ~4.47s\nCông cụ: Vitest + Supertest + Prisma Mocking\nPhạm vi: Endpoints, DTO Validation, RBAC Barrier, State Machine, Transaction"]
-        UNIT["Tầng 1: Backend Unit Tests\n8 files · 45 tests · ~0.98s\nCông cụ: Vitest\nPhạm vi: Thuật toán tính giá, AI Prompt Guardrail, Moving WAC, JWT/OTP Helpers"]
+    subgraph Pyramid ["HỆ THỐNG KIỂM THỬ 3 TẦNG (389 TESTS)"]
+        E2E["Tầng 3: End-to-End (E2E) Tests\n12 files · 43 tests\nCông cụ: Playwright Chromium Headless\nPhạm vi: Trải nghiệm người dùng xuyên suốt Customer Web & Internal Web (gồm toàn phần Admin Portal)"]
+        INT["Tầng 2: Backend Integration & API Tests\n14 files · 159 tests · ~18-23s\nCông cụ: Vitest + Supertest + Prisma Mocking\nPhạm vi: Endpoints, DTO Validation, RBAC Barrier, State Machine, SePay IPN, Admin CRUD"]
+        UNIT["Tầng 1: Backend Unit Tests\n25 files · 187 tests · ~2.4s\nCông cụ: Vitest\nPhạm vi: Tính giá, AI Prompt Guardrail, Moving WAC, Admin Services & Guards, Billing"]
     end
 
     UNIT --> INT --> E2E
@@ -57,18 +57,48 @@ flowchart TD
 ### Bảng phân bố tài nguyên kiểm thử:
 | Tầng kiểm thử | Số files | Số tests | Thời gian chạy | Công cụ chính | Mức độ phụ thuộc |
 | :--- | :---: | :---: | :---: | :--- | :--- |
-| **Unit Testing** | 8 | **45** | `~0.98s` | Vitest | Thuần In-Memory, không phụ thuộc mạng/DB |
-| **Integration Testing** | 6 | **58** | `~4.47s` | Vitest + Supertest | Mock Prisma transaction & Express app |
-| **Playwright E2E Testing** | 3 | **8** | `~38.4s` | Playwright Chromium | Browser thật (Headless), Route interception |
-| **TỔNG CỘNG** | **17** | **111** | **~47.4s** | **Tự động hóa hoàn toàn** | **100% Hermetic & Self-Contained** |
+| **Unit Testing** | 25 | **187** | `~2.4s` | Vitest | Thuần In-Memory, không phụ thuộc mạng/DB |
+| **Integration Testing** | 14 | **159** | `~18-23s` | Vitest + Supertest | Mock Prisma transaction, Redis & Express app |
+| **Playwright E2E Testing** | 12 | **43** | `~1.5-2 phút` | Playwright Chromium | Browser thật (Headless), Route interception |
+| **TỔNG CỘNG** | **51** | **389** | **~2 phút** | **Tự động hóa hoàn toàn** | **100% Hermetic & Self-Contained** |
 
 ---
 
-## 3. ĐẶC TẢ CHI TIẾT 111 KỊCH BẢN KIỂM THỬ THEO TỪNG TẦNG
+## 3. ĐẶC TẢ CHI TIẾT 389 KỊCH BẢN KIỂM THỬ THEO TỪNG TẦNG
 
 ---
 
-### 3.1. TẦNG 1: BACKEND UNIT TESTS (8 files, 45 tests)
+### 3.1. TẦNG 1: BACKEND UNIT TESTS (25 files, 187 tests)
+
+Cấu trúc chuẩn hóa theo từng domain nghiệp vụ dưới `src/backend/tests/unit/<domain>/*.spec.ts`:
+
+| Domain | File | Số tests | Phạm vi chính |
+| :--- | :--- | :---: | :--- |
+| `admin/` | `admin-validators.spec.ts` | 16 | Validate DTO quản trị danh mục, nhân viên, dịch vụ |
+| `admin/` | `employee-deactivation.spec.ts` | 4 | Chặn vô hiệu hóa nhân viên đang giữ phiếu/việc mở |
+| `admin/` | `employee-service.spec.ts` | 21 | Toàn bộ `EmployeeService` & logic thật `checkEmployeeActiveWorkConstraints`, kỹ năng theo role |
+| `admin/` | `job-type-service.spec.ts` | 9 | `JobTypeService` CRUD, chặn trùng tên, chặn xóa khi còn tham chiếu |
+| `admin/` | `job-type-toggle.spec.ts` | 3 | Bật/tắt loại công việc và kiểm tra ràng buộc |
+| `admin/` | `service-category-delete.spec.ts` | 2 | Chặn xóa nhóm dịch vụ còn dịch vụ con |
+| `admin/` | `service-category-service.spec.ts` | 6 | `ServiceCategoryService` (`getCategories`, `createCategory`, `updateCategory`) |
+| `admin/` | `service-delete.spec.ts` | 4 | Chặn xóa dịch vụ đang gắn trên Work Order |
+| `admin/` | `service-service.spec.ts` | 10 | `ServiceService` (`FIXED` bội số 1000, `VEHICLE_SIZE` `sizePrices`, `LABOUR_PARTS`) |
+| `admin/` | `service-toggle-active.spec.ts` | 3 | Đổi trạng thái kích hoạt dịch vụ |
+| `admin/` | `system-catalog-service.spec.ts` | 11 | `SystemCatalogService` (`typeCounts`, chặn trùng `(catalog_type, name)`, toggle, delete guard) |
+| `admin/` | `user-service.spec.ts` | 13 | `UserService` (role alias, bcrypt, Redis `revoked_user:<id>`, chặn khóa `ADMIN`, reset pass) |
+| `ai/` | `ai-rag-validator.spec.ts` | 7 | Guardrail chống trùng lặp Job, chuẩn hóa tiếng Việt, fallback `job_type_id` |
+| `auth/` | `auth-helpers.spec.ts` | 6 | Bcrypt hash/compare, JWT sign/verify, OTP 6 số, RBAC role check |
+| `billing/` | `invoice-builder.spec.ts` | 5 | Dựng hóa đơn từ Work Order / Quotation |
+| `billing/` | `invoice-guards.spec.ts` | 10 | Bảo vệ trạng thái hóa đơn & thanh toán |
+| `billing/` | `pricing-calculator.spec.ts` | 6 | Tính công, phụ tùng, hệ số kích thước xe, Zero-Tax, cap chiết khấu |
+| `billing/` | `sepay-util.spec.ts` | 5 | Tiện ích chữ ký, mã đơn & parse payload SePay |
+| `inventory/` | `inventory-wac.spec.ts` | 5 | Moving Weighted Average Cost (WAC), tồn khả dụng, chặn xuất âm |
+| `jobs/` | `auto-reminder.spec.ts` | 3 | Cron job nhắc lịch hẹn trước 24h (UC-78) |
+| `quotation/` | `quotation.service.spec.ts` | 5 | Versioning báo giá, snapshot đơn giá, khóa sau duyệt |
+| `utils/` | `formatters.spec.ts` | 5 | Chuẩn hóa định dạng tiền tệ, ngày giờ, mã số |
+| `work-order/` | `qc-workflow.spec.ts` | 7 | Quy trình nghiệm thu QC Pass / Fail & tạo Rework |
+| `work-order/` | `start-work.spec.ts` | 4 | Điều kiện tiên quyết trước khi bắt đầu thi công |
+| `work-order/` | `work-order-guards.spec.ts` | 17 | State machine Work Order & Release Gate 3 điều kiện |
 
 #### 1. `src/backend/tests/unit/ai-rag-validator.spec.ts` (7 tests)
 * **Mục tiêu:** Bọc quy tắc an toàn (Guardrail) cho module gợi ý công việc bằng AI RAG, giải quyết triệt để lỗi sinh trùng lặp công việc và sai lệch loại thợ.
@@ -150,7 +180,17 @@ flowchart TD
 
 ---
 
-### 3.2. TẦNG 2: BACKEND INTEGRATION & API TESTS (6 files, 58 tests)
+### 3.2. TẦNG 2: BACKEND INTEGRATION & API TESTS (14 files, 159 tests)
+
+Ngoài 6 suite cốt lõi (`auth-rbac.spec.ts`: 9, `intake-api.spec.ts`: 9, `work-order-api.spec.ts`: 10, `quotation-api.spec.ts`: 8, `appointment-api.spec.ts`: 14, `invoice-payment-api.spec.ts`: 22 gồm cả SePay IPN webhook), tầng Integration đã bao phủ toàn phần **Admin Portal** với 8 suite:
+- `src/backend/tests/integration/dashboard-api.spec.ts` (**10 tests**): Kiểm thử `GET /api/dashboard/:portal` cho Admin (`today`, `7days`, `30days`, `this_month`, `workshop` cross-access), Manager, SA, Staff, chặn sai role (403) và sai portal (400).
+- `src/backend/tests/integration/user-api.spec.ts` (**12 tests**): Đủ 7 endpoints `/api/users` (`GET /`, `GET /:id`, `POST /`, `PUT /:id`, `DELETE /:id`, `PATCH /:id/reactivate`, `PATCH /:id/reset-password`).
+- `src/backend/tests/integration/employee-api.spec.ts` (**17 tests**): Đủ 7 endpoints `/api/employees` (`GET /skills`, `GET /`, `GET /:id`, `POST /`, `PUT /:id`, `DELETE /:id`, `PATCH /:id/reactivate`).
+- `src/backend/tests/integration/service-api.spec.ts`: Kiểm thử `GET /api/services/categories`, `GET /`, `POST /`, `PUT /:id`, `PATCH /:id/toggle`.
+- `src/backend/tests/integration/service-delete-api.spec.ts` (**3 tests**): Kiểm thử `DELETE /api/services/:id` (soft-deactivate vs hard-delete & 404).
+- `src/backend/tests/integration/service-category-api.spec.ts`: Đủ 4 endpoints `/api/service-categories`.
+- `src/backend/tests/integration/job-type-api.spec.ts`: Đủ 5 endpoints `/api/job-types`.
+- `src/backend/tests/integration/system-catalog-api.spec.ts` (**13 tests**): Đủ 5 endpoints trên cả `/api/system-catalogs` và alias `/api/catalogs`.
 
 #### 1. `src/backend/tests/integration/auth-rbac.spec.ts` (9 tests)
 * **Mục tiêu:** Kiểm thử xác thực JWT Middleware và ranh giới bảo mật phân quyền RBAC.
@@ -236,7 +276,7 @@ flowchart TD
 
 ---
 
-### 3.3. TẦNG 3: FRONTEND PLAYWRIGHT E2E TESTS (3 files, 8 tests)
+### 3.3. TẦNG 3: FRONTEND PLAYWRIGHT E2E TESTS (12 files, 43 tests)
 
 ```mermaid
 sequenceDiagram
@@ -273,6 +313,21 @@ sequenceDiagram
 #### 3. `src/frontend/e2e/auth-rbac-guard.spec.ts` (2 tests)
 * **Kịch bản 1:** Chặn tài khoản vai trò `CUSTOMER` đăng nhập vào Cổng quản trị nội bộ (`:3001`) $\rightarrow$ hiển thị thông báo lỗi từ chối truy cập.
 * **Kịch bản 2:** Tự động xóa phiên làm việc (Session Guard) nếu người dùng truy cập trái phép cổng nội bộ khi đang giữ cookie khách hàng.
+
+#### 4. `src/frontend/e2e/multi-portal-dashboard.spec.ts` (5 tests)
+* Kiểm thử Dashboard đa cổng (`admin`, `manager`, `advisor`, `staff`), chuyển đổi scope (`my` vs `workshop`), cross-filtering và kiểm tra hiển thị trên 390px / 1440px.
+
+#### 5. `src/frontend/e2e/saas-dashboard-roles.spec.ts` (5 tests)
+* Kiểm thử giao diện SaaS Dashboard redesign cho Staff, Manager, Admin, Harmonic Sidebar Tone Switcher, Inventory 3-tab MWA Workspace và audit 4 viewports (`390px`, `768px`, `1024px`, `1440px`).
+
+#### 6. Bộ E2E Toàn phần Admin Portal (7 files, 24 tests — chi tiết tại [`SPEC-ADMIN-PORTAL-AUTOMATED-TESTING.md`](./SPEC-ADMIN-PORTAL-AUTOMATED-TESTING.md))
+* `src/frontend/e2e/admin-dashboard.spec.ts` (**4 tests**): Filter period, tabs `ALL/ACTIVE/LOCKED`, search, `UserDetailModal`, Empty/Error 500 states.
+* `src/frontend/e2e/admin-accounts.spec.ts` (**4 tests**): Search/URL `?search=`/role pills/status/pagination, Create/Edit (`email` disabled), Reset password, Toggle & chặn self-deactivation.
+* `src/frontend/e2e/admin-employees.spec.ts` (**4 tests**): Bento tiles, `EmployeeDetailModal`, `ComboBox` link `userId` & `skillIds` theo role, Deactivate guardrail 400 & Reactivate.
+* `src/frontend/e2e/admin-service-categories.spec.ts` (**3 tests**): Search/pagination, Create/Edit (`isActive`), Delete `ConfirmModal` (soft-deactivate vs hard-delete).
+* `src/frontend/e2e/admin-services.spec.ts` (**3 tests**): Search/`filterCat`, Create/Edit (`FIXED`, `VEHICLE_SIZE`, `LABOUR_PARTS`), Toggle & Delete.
+* `src/frontend/e2e/admin-job-types.spec.ts` (**3 tests**): Search/pagination, Create/Edit, Toggle & Delete (lỗi 400 khi đang được sử dụng).
+* `src/frontend/e2e/admin-catalogs.spec.ts` (**3 tests**): Bento filter tiles (`UOM`, `CANCEL_REASON`, `ADJUST_REASON`, `TERMS`), Create/Edit (`catalogType` disabled), Toggle & Delete.
 
 ---
 
@@ -315,23 +370,23 @@ await page.route('**/api/work-orders/101/apply-ai-jobs', async (route) => {
 
 ## 5. HƯỚNG DẪN VẬN HÀNH & LỆNH THỰC THI KIỂM THỬ
 
-Toàn bộ 111 bài test được điều phối thống nhất thông qua công cụ trung tâm:
+Toàn bộ 389 bài test được điều phối thống nhất thông qua công cụ trung tâm:
 
 ### 5.1. Sử dụng Master Test Runner (Khuyến nghị)
 ```powershell
-# Chạy TOÀN BỘ 111 bài test (Unit + Integration + E2E)
+# Chạy TOÀN BỘ 389 bài test (Unit + Integration + E2E)
 python scripts/test_runner.py --all
 
-# Chạy riêng toàn bộ Backend (45 Unit + 58 Integration = 103 tests)
+# Chạy riêng toàn bộ Backend (187 Unit + 159 Integration = 346 tests)
 python scripts/test_runner.py --backend
 
-# Chạy riêng tầng Backend Unit Tests (45 tests, ~1s)
+# Chạy riêng tầng Backend Unit Tests (187 tests, ~2.4s)
 python scripts/test_runner.py --unit
 
-# Chạy riêng tầng Backend Integration Tests (58 tests, ~5s)
+# Chạy riêng tầng Backend Integration Tests (159 tests, ~18-23s)
 python scripts/test_runner.py --integration
 
-# Chạy riêng tầng Playwright E2E Tests (8 tests, ~38s)
+# Chạy riêng tầng Playwright E2E Tests (43 tests)
 python scripts/test_runner.py --e2e
 
 # Mở giao diện tương tác trực quan Playwright UI
@@ -342,13 +397,13 @@ python scripts/test_runner.py --ui
 ```powershell
 # Chạy Backend tests
 cd src/backend
-npm run test:unit           # Chạy Unit Tests
-npm run test:integration    # Chạy Integration Tests
-npm test                    # Chạy toàn bộ 103 backend tests
+npm run test:unit           # Chạy Unit Tests (187 tests)
+npm run test:integration    # Chạy Integration Tests (159 tests)
+npm test                    # Chạy toàn bộ 346 backend tests
 
 # Chạy Frontend E2E tests
 cd src/frontend
-npm run test:e2e            # Chạy Playwright headless
+npm run test:e2e            # Chạy Playwright headless (43 tests)
 npm run test:e2e:ui         # Chạy Playwright với UI mode
 ```
 
@@ -368,9 +423,15 @@ flowchart LR
 
 ---
 
-## 7. QUY CHUẨN VIẾT TEST MỚI & BẢO TRÌ HỆ THỐNG
+## 7. QUY CHUẨN CẤU TRÚC THƯ MỤC & VIẾT TEST MỚI
 
-1. **Tuân thủ mô hình AAA (Arrange - Act - Assert):**
+1. **Cấu trúc thư mục chuẩn (Single Source of Truth):**
+   - **Tài liệu kiểm thử tự động:** `docs/testing/automatic/` (không tạo bản sao ở `docs/plan/`).
+   - **Backend Unit Tests:** `src/backend/tests/unit/<domain>/<feature>.spec.ts` (nhóm theo domain: `admin`, `ai`, `auth`, `billing`, `inventory`, `jobs`, `quotation`, `utils`, `work-order`).
+   - **Backend Integration Tests:** `src/backend/tests/integration/<module>-api.spec.ts`.
+   - **Backend Manual/Ad-hoc Scripts:** `src/backend/scripts/` (không đặt ở root `src/backend/`).
+   - **Frontend E2E Tests:** `src/frontend/e2e/<flow>.spec.ts` dùng chung [`src/frontend/playwright.config.ts`](../../../src/frontend/playwright.config.ts) (không tạo `tests/` hay `playwright.config.ts` riêng trong từng app con).
+2. **Tuân thủ mô hình AAA (Arrange - Act - Assert):**
    - **Arrange:** Chuẩn bị dữ liệu mẫu và thiết lập mock cho Prisma / Notification Service.
    - **Act:** Thực hiện gọi hàm nghiệp vụ hoặc gửi HTTP request qua Supertest / Playwright.
    - **Assert:** Kiểm tra mã trạng thái HTTP, định dạng dữ liệu trả về và trạng thái chuyển đổi.

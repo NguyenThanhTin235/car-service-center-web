@@ -5,7 +5,7 @@ import {
   getSepayCheckoutUrl,
   verifySepayIpnSecretKey,
   extractInvoiceNumberFromContent,
-} from '../../src/utils/sepay.util';
+} from '../../../src/utils/sepay.util';
 import * as crypto from 'crypto';
 
 describe('Unit Test - SePay Payment Gateway Utility (SPEC-SEPAY)', () => {

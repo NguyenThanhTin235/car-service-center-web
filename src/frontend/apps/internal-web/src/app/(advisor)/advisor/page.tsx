@@ -294,7 +294,7 @@ export default function SADashboardPage() {
               {/* Wave Sparkline & Callout Pill */}
               <div className="mt-4 relative pt-5">
                 <div className="absolute right-6 top-0 bg-white text-zinc-900 px-2.5 py-0.5 rounded-lg text-[11px] font-mono font-extrabold shadow-md">
-                  {metrics.activeWOs} active
+                  {metrics.activeWOs} đang mở
                 </div>
 
                 <svg viewBox="0 0 240 60" className="w-full h-14 overflow-visible">
@@ -739,7 +739,7 @@ export default function SADashboardPage() {
 
               {/* Floating Percentage Badges */}
               <span className="absolute top-2 left-8 bg-white border border-slate-200 shadow-xs px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold text-zinc-900">
-                {metrics.totalWOs} WO
+                {metrics.totalWOs} phiếu
               </span>
               <span className="absolute bottom-2 right-6 bg-white border border-slate-200 shadow-xs px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold text-[#0050cd]">
                 {metrics.queuedCount} chờ

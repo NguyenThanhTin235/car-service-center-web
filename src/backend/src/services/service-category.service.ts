@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
 
 export interface CreateCategoryDto {
   name: string;
@@ -108,14 +106,14 @@ export class ServiceCategoryService {
           where: { id },
           data: { is_active: false },
         });
-        return { message: 'Nhóm dịch vụ đã có dịch vụ phụ thuộc, đã được vô hiệu hóa thành công.', deleted: false };
+        return { message: 'danh mục dịch vụ đã có dịch vụ phụ thuộc, đã được vô hiệu hóa thành công.', deleted: false, isDeactivated: true };
       } else {
-        throw new Error('Nhóm dịch vụ đã bị vô hiệu hóa trước đó và không thể xóa vì có dịch vụ phụ thuộc.');
+        return { message: 'danh mục dịch vụ đã có dịch vụ phụ thuộc, đã được vô hiệu hóa thành công.', deleted: false, isDeactivated: true };
       }
     }
 
     // Xóa cứng nếu chưa có dịch vụ nào
     await prisma.serviceCategory.delete({ where: { id } });
-    return { message: 'Xóa nhóm dịch vụ thành công.', deleted: true };
+    return { message: 'Xóa danh mục dịch vụ thành công.', deleted: true };
   }
 }

@@ -1,3 +1,4 @@
+import { getCache } from '../utils/redis.util';
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JwtPayload } from '../utils/jwt.util';
 import prisma from '../utils/prisma';
@@ -46,6 +47,13 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
   try {
     const payload = verifyToken(token);
+
+    // Kiểm tra nhanh token đã bị thu hồi do khóa tài khoản chưa
+    const isRevoked = await getCache(`revoked_user:${payload.id}`);
+    if (isRevoked) {
+      res.status(401).json({ status: 'error', message: 'Tài khoản đã bị tạm khóa và phiên đăng nhập bị thu hồi.' });
+      return;
+    }
     
     // Load fresh roles directly from database to ensure role changes take effect immediately
     const user = await prisma.user.findUnique({
