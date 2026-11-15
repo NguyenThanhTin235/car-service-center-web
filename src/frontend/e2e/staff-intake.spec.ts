@@ -131,21 +131,23 @@ test.describe('Desk-Staff Portal E2E: Vehicle Intake (/staff/intake)', () => {
     await searchInput.fill('');
 
     // Switch tab to CONVERTED (client-side filter) and back to QUEUED
-    await page.getByRole('button', { name: /Đã chuyển RO/i }).click();
+    await page.getByRole('button', { name: /Đã chuyển đổi/i }).click();
     await expect(page.locator('text=51A-999.11').first()).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: /Chờ xử lý/i }).last().click();
 
-    // WalkInIntakeModal validation check
+    // WalkInIntakeModal 3-step validation check
     await page.locator('button:has-text("+ Tiếp nhận khách vãng lai")').click();
     await expect(page.locator('text=Tiếp nhận Khách vãng lai').first()).toBeVisible();
-    await page.getByRole('button', { name: 'Tạo phiếu tiếp nhận', exact: true }).click();
+    await expect(page.locator('text=1. Khách & Xe')).toBeVisible();
+    await page.getByRole('button', { name: /Tiếp tục/i }).click();
     await expect(page.locator('text=Vui lòng chọn khách hàng')).toBeVisible();
     await page.getByRole('button', { name: 'Hủy', exact: true }).last().click();
 
-    // TowInIntakeModal validation check
+    // TowInIntakeModal 3-step validation check
     await page.locator('button:has-text("Tiếp nhận xe cứu hộ")').click();
     await expect(page.locator('text=Tiếp nhận Xe cứu hộ').first()).toBeVisible();
-    await page.getByRole('button', { name: 'Tạo phiếu tiếp nhận xe cứu hộ' }).click();
+    await expect(page.locator('text=1. Khách & Xe')).toBeVisible();
+    await page.getByRole('button', { name: /Tiếp tục/i }).click();
     await expect(
       page.locator('text=Đơn vị kéo xe / Người bàn giao không được để trống')
     ).toBeVisible();

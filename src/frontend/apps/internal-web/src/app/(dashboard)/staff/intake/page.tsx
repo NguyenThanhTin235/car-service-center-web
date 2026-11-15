@@ -31,6 +31,7 @@ export default function IntakePage() {
   const [isWalkInModalOpen, setWalkInModalOpen] = useState(false);
   const [isTowInModalOpen, setTowInModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'QUEUED' | 'CONVERTED' | 'CANCELLED'>('QUEUED');
+  const [intakeTypeFilter, setIntakeTypeFilter] = useState<'ALL' | 'APPOINTMENT' | 'WALK_IN' | 'TOW_IN'>('ALL');
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
   const [viewingROId, setViewingROId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -181,7 +182,8 @@ export default function IntakePage() {
         r.vehicle?.license_plate?.toLowerCase().includes(q) ||
         r.customer?.full_name?.toLowerCase().includes(q) ||
         r.customer?.phone?.includes(rawSearch);
-      if (!matchesSearch) continue;
+      const matchesType = intakeTypeFilter === 'ALL' || r.intake_type === intakeTypeFilter;
+      if (!matchesSearch || !matchesType) continue;
       if (r.status === 'QUEUED' || r.status === 'CONVERTED' || r.status === 'CANCELLED') {
         counts[r.status] += 1;
       }
@@ -199,7 +201,7 @@ export default function IntakePage() {
       totalPages: pages,
       paginatedRecords: matched.slice(startIdx, startIdx + itemsPerPage),
     };
-  }, [queueRecords, deferredSearch, activeTab, currentPage, itemsPerPage]);
+  }, [queueRecords, deferredSearch, intakeTypeFilter, activeTab, currentPage, itemsPerPage]);
 
   return (
     <div className="space-y-6 w-full">
@@ -465,7 +467,7 @@ export default function IntakePage() {
                   >
                     <span>
                       {tab === 'QUEUED' && 'Chờ xử lý'}
-                      {tab === 'CONVERTED' && 'Đã chuyển RO'}
+                      {tab === 'CONVERTED' && 'Đã chuyển đổi'}
                       {tab === 'CANCELLED' && 'Đã hủy'}
                     </span>
                     <span
@@ -483,20 +485,37 @@ export default function IntakePage() {
             </div>
           </div>
 
-          <div className="relative max-w-sm w-full">
-            <span className="material-symbols-outlined text-[18px] absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-              search
-            </span>
-            <input
-              type="text"
-              placeholder="Tìm biển số, khách hàng, SĐT..."
-              value={searchQuery}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
+            <select
+              aria-label="Lọc theo loại tiếp nhận"
+              value={intakeTypeFilter}
               onChange={(e) => {
-                setSearchQuery(e.target.value);
+                setIntakeTypeFilter(e.target.value as 'ALL' | 'APPOINTMENT' | 'WALK_IN' | 'TOW_IN');
                 setCurrentPage(1);
               }}
-              className="w-full h-9 pl-9 pr-4 bg-slate-50/80 border border-slate-200/80 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15 outline-none transition-all"
-            />
+              className="h-9 px-3 bg-slate-50/80 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 focus:bg-white focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15 outline-none transition-all cursor-pointer"
+            >
+              <option value="ALL">Tất cả loại tiếp nhận</option>
+              <option value="APPOINTMENT">Hẹn trước</option>
+              <option value="WALK_IN">Khách vãng lai</option>
+              <option value="TOW_IN">Xe cứu hộ</option>
+            </select>
+
+            <div className="relative sm:w-64 w-full">
+              <span className="material-symbols-outlined text-[18px] absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                search
+              </span>
+              <input
+                type="text"
+                placeholder="Tìm biển số, khách hàng, SĐT..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full h-9 pl-9 pr-4 bg-slate-50/80 border border-slate-200/80 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15 outline-none transition-all"
+              />
+            </div>
           </div>
         </div>
 
@@ -524,18 +543,21 @@ export default function IntakePage() {
                     <div className="flex flex-col items-center gap-2 text-slate-500">
                       <span className="material-symbols-outlined text-[36px] text-slate-300">inbox</span>
                       <p className="text-xs font-semibold text-slate-600">
-                        {searchQuery ? 'Không tìm thấy kết quả phù hợp.' : 'Danh sách tiếp nhận trống.'}
+                        {searchQuery || intakeTypeFilter !== 'ALL'
+                          ? 'Không tìm thấy kết quả phù hợp.'
+                          : 'Danh sách tiếp nhận trống.'}
                       </p>
-                      {searchQuery ? (
+                      {searchQuery || intakeTypeFilter !== 'ALL' ? (
                         <button
                           type="button"
                           onClick={() => {
                             setSearchQuery('');
+                            setIntakeTypeFilter('ALL');
                             setCurrentPage(1);
                           }}
                           className="text-xs font-bold text-[#0866ff] hover:underline cursor-pointer"
                         >
-                          Xóa bộ lọc tìm kiếm
+                          Xóa bộ lọc
                         </button>
                       ) : activeTab === 'QUEUED' ? (
                         <button
@@ -693,6 +715,13 @@ export default function IntakePage() {
         onSubmit={handleWalkInSubmit}
         services={serviceTemplates}
         customers={customers}
+        onVehicleAdded={(customerId, vehicle) => {
+          setCustomers((prev) =>
+            prev.map((c) =>
+              Number(c.id) === customerId ? { ...c, vehicles: [...(c.vehicles || []), vehicle] } : c
+            )
+          );
+        }}
       />
       <TowInIntakeModal
         isOpen={isTowInModalOpen}
@@ -700,6 +729,13 @@ export default function IntakePage() {
         onSubmit={handleTowInSubmit}
         services={serviceTemplates}
         customers={customers}
+        onVehicleAdded={(customerId, vehicle) => {
+          setCustomers((prev) =>
+            prev.map((c) =>
+              Number(c.id) === customerId ? { ...c, vehicles: [...(c.vehicles || []), vehicle] } : c
+            )
+          );
+        }}
       />
       <ConfirmModal
         isOpen={confirmAction?.isOpen || false}
