@@ -254,7 +254,7 @@ describe('AppointmentService - Desk-Staff Unit Tests', () => {
           scheduled_date: '2026-12-01',
           scheduled_time: '10:00',
         })
-      ).rejects.toThrow('Xe này đã có lịch hẹn hoặc đang được tiếp nhận trong ngày hôm nay. Vui lòng chọn ngày khác.');
+      ).rejects.toThrow('Xe này đã có lịch hẹn trong ngày được chọn. Vui lòng chọn ngày khác.');
     });
   });
 
