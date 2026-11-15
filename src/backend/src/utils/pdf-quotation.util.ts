@@ -78,6 +78,16 @@ export function generateQuotationPdfBuffer(data: QuotationPdfData): Promise<Buff
     const setFontRegular = () => (isUnicodeSupported ? doc.font('AppFont') : doc.font('Helvetica'));
     const setFontBold = () => (isUnicodeSupported ? doc.font('AppFont-Bold') : doc.font('Helvetica-Bold'));
 
+    const safeText = (text: string | null | undefined): string => {
+      if (!text) return '';
+      if (isUnicodeSupported) return String(text);
+      return String(text)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D');
+    };
+
     const formatVnd = (val: number) => {
       return Number(val || 0).toLocaleString('vi-VN') + ' đ';
     };
@@ -86,16 +96,16 @@ export function generateQuotationPdfBuffer(data: QuotationPdfData): Promise<Buff
     // Logo / Brand (Bên trái)
     setFontBold().fontSize(18).fillColor('#1e40af').text('CAR SERVICE CENTER', 40, 36);
     setFontRegular().fontSize(8.5).fillColor('#4b5563')
-      .text('Hệ thống Dịch vụ & Chăm sóc Kỹ thuật Ô tô Toàn diện', 40, 60)
-      .text('Hotline CSKH: 1900 6868   •   Email: cskh@carservice.vn', 40, 75)
-      .text('Địa chỉ: Trung tâm Kỹ thuật Công nghệ Ô tô, TP. Thủ Đức, TP. Hồ Chí Minh', 40, 90);
+      .text(safeText('Hệ thống Dịch vụ & Chăm sóc Kỹ thuật Ô tô Toàn diện'), 40, 60)
+      .text(safeText('Hotline CSKH: 1900 6868   •   Email: cskh@carservice.vn'), 40, 75)
+      .text(safeText('Địa chỉ: Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh'), 40, 90);
 
     // Tiêu đề Báo Giá & Số hiệu (Bên phải)
-    setFontBold().fontSize(15).fillColor('#111827').text('BẢNG BÁO GIÁ DỊCH VỤ', 330, 36, { align: 'right' });
+    setFontBold().fontSize(15).fillColor('#111827').text(safeText('BẢNG BÁO GIÁ DỊCH VỤ'), 330, 36, { align: 'right' });
     setFontRegular().fontSize(8.5).fillColor('#4b5563')
-      .text(`Số báo giá: ${data.quotationNumber}`, 330, 60, { align: 'right' })
-      .text(`Ngày lập: ${new Date(data.createdAt).toLocaleDateString('vi-VN')}`, 330, 75, { align: 'right' })
-      .text(`Phân loại: ${data.quotationType === 'PRIMARY' ? 'Báo giá chính thức' : 'Báo giá bổ sung'}`, 330, 90, { align: 'right' });
+      .text(safeText(`Số báo giá: ${data.quotationNumber}`), 330, 60, { align: 'right' })
+      .text(safeText(`Ngày lập: ${new Date(data.createdAt).toLocaleDateString('vi-VN')}`), 330, 75, { align: 'right' })
+      .text(safeText(`Phân loại: ${data.quotationType === 'PRIMARY' ? 'Báo giá chính thức' : 'Báo giá bổ sung'}`), 330, 90, { align: 'right' });
 
     // Đường kẻ phân cách Header
     doc.moveTo(40, 108).lineTo(555, 108).strokeColor('#cbd5e1').lineWidth(0.8).stroke();
@@ -191,8 +201,8 @@ export function generateQuotationPdfBuffer(data: QuotationPdfData): Promise<Buff
     doc.moveTo(40, currentY).lineTo(555, currentY).strokeColor('#cbd5e1').lineWidth(0.8).stroke();
 
     // ================= 4. KHỐI TỔNG KẾT TÀI CHÍNH ZERO-TAX =================
-    // Nếu không đủ chỗ cho summary + terms + signatures (~200pt), tự động ngắt trang gọn gàng
-    if (currentY > 580) {
+    // Nếu không đủ chỗ cho summary + terms + signatures (~260pt), tự động ngắt trang gọn gàng
+    if (currentY > 520) {
       doc.addPage();
       currentY = 36;
     }
@@ -228,14 +238,16 @@ export function generateQuotationPdfBuffer(data: QuotationPdfData): Promise<Buff
 
     // ================= 5. SỐ TIỀN BẰNG CHỮ =================
     const wordsTop = summaryTop + summaryHeight + 16;
-    const amountInWords = numberToWordsVietnamese(data.grandTotal);
+    const amountInWords = safeText(numberToWordsVietnamese(data.grandTotal));
     setFontRegular().fontSize(9).fillColor('#1e293b')
-      .text(`* Bằng chữ: `, 40, wordsTop, { continued: true })
+      .text(`${safeText('* Bằng chữ:')} `, 40, wordsTop, { continued: true })
       .font(isUnicodeSupported ? 'AppFont-Bold' : 'Helvetica-Bold')
-      .text(amountInWords);
+      .text(amountInWords, { width: 515 });
+
+    const wordsHeight = doc.heightOfString(`* Bằng chữ: ${amountInWords}`, { width: 515 });
 
     // ================= 6. ĐIỀU KHOẢN DỊCH VỤ =================
-    const termsTop = wordsTop + 20;
+    const termsTop = wordsTop + Math.max(wordsHeight, 14) + 10;
     setFontRegular().fontSize(8).fillColor('#64748b')
       .text('• Bảng báo giá có hiệu lực trong vòng 07 ngày kể từ ngày lập.', 40, termsTop)
       .text('• Đơn giá nhân công là chi phí khoán trọn gói cố định theo quy trình kỹ thuật, không tính theo giờ công.', 40, termsTop + 15)

@@ -247,11 +247,26 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
 
       </div>
 
+      {/* Print-only Header */}
+      <div className="hidden print:block border-b-2 border-blue-800 pb-3 mb-4">
+        <div className="flex items-end justify-between">
+          <div>
+            <h1 className="text-base font-bold text-blue-900 uppercase">TRUNG TÂM BẢO DƯỠNG &amp; SỬA CHỮA Ô TÔ CAR SERVICE CENTER</h1>
+            <p className="text-xs text-slate-600">Địa chỉ: Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh • Hotline: 1900 6868</p>
+          </div>
+          <div className="text-right text-xs text-slate-600">
+            <div>Ngày in: {new Date().toLocaleDateString('vi-VN')}</div>
+            <div>Tổng số hóa đơn: {filteredInvoices.length}</div>
+          </div>
+        </div>
+        <h2 className="text-center text-lg font-bold text-slate-900 uppercase mt-3">DANH SÁCH HÓA ĐƠN DỊCH VỤ</h2>
+      </div>
+
       {/* ================= MAIN DATA CARD: Search, Filters & Table ================= */}
-      <section className="bg-surface-container-lowest border border-surface-container-highest rounded-2xl shadow-sm overflow-hidden">
+      <section className="bg-surface-container-lowest border border-surface-container-highest rounded-2xl shadow-sm overflow-hidden print-full-width">
         
         {/* Top Toolbar */}
-        <div className="p-4 sm:p-5 border-b border-surface-container-highest flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 border-b border-surface-container-highest flex flex-col lg:flex-row lg:items-center justify-between gap-4 no-print">
           
           {/* Search Box */}
           <form onSubmit={handleSearch} className="relative w-full lg:w-80">
@@ -484,7 +499,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
         </div>
 
         {/* Footer & Pagination */}
-        <div className="p-3.5 border-t border-surface-container-highest bg-surface-container-lowest flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-on-surface-variant">
+        <div className="p-3.5 border-t border-surface-container-highest bg-surface-container-lowest flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-on-surface-variant no-print">
           <p>
             Hiển thị{' '}
             <strong className="text-on-surface">

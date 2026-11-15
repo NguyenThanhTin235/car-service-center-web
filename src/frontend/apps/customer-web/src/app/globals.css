@@ -196,13 +196,35 @@ body {
 }
 
 /* Print Optimizations for Invoices */
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
 @media print {
   body {
     background: #ffffff !important;
     color: #000000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
-  header, footer, nav, button, .no-print {
+  header, footer, nav, aside, button, input, select, .no-print {
     display: none !important;
+  }
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+  table {
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 11px !important;
+    border-collapse: collapse !important;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tr {
+    page-break-inside: avoid;
   }
   .print-full-width {
     width: 100% !important;
