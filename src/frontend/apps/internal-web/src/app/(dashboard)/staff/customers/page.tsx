@@ -203,6 +203,7 @@ export default function CustomersPage() {
 
       const fileDateStr = new Date().toISOString().split('T')[0];
       XLSX.writeFile(workbook, `Bao_Cao_Khach_Hang_${fileDateStr}.xlsx`);
+      toast.success('Đã xuất báo cáo khách hàng thành công!');
     } catch (error) {
       console.error('Lỗi khi xuất báo cáo', error);
       toast.error('Có lỗi xảy ra khi xuất báo cáo!');

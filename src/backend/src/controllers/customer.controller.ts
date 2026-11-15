@@ -120,3 +120,20 @@ export const getCustomerServiceHistory = async (req: Request, res: Response) => 
     });
   }
 };
+
+export const addCustomerVehicle = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const vehicle = await customerService.addVehicleToCustomer(Number(id), req.body);
+    res.status(201).json({
+      status: 'success',
+      message: 'Thêm phương tiện thành công',
+      data: vehicle,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      status: 'error',
+      message: error.message || 'Lỗi khi thêm phương tiện cho khách hàng',
+    });
+  }
+};

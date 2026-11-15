@@ -161,12 +161,12 @@ export class AppointmentService {
     if (!vehicle) throw new Error('Phương tiện không tồn tại');
     if (vehicle.customer_id !== data.customer_id) throw new Error('Phương tiện không thuộc về khách hàng này');
 
-    // Validate duplicate appointment for the same vehicle on the same date
-    const reqDate = new Date(data.scheduled_date);
-    const startOfDay = new Date(reqDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const endOfDay = new Date(reqDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    // Normalize date to YYYY-MM-DD first to avoid timezone boundary issues
+    const rawDateStr = typeof data.scheduled_date === 'string'
+      ? data.scheduled_date.substring(0, 10)
+      : new Date(data.scheduled_date).toISOString().substring(0, 10);
+    const startOfDay = new Date(`${rawDateStr}T00:00:00.000Z`);
+    const endOfDay = new Date(`${rawDateStr}T23:59:59.999Z`);
 
     const existingAppointment = await prisma.appointment.findFirst({
       where: {
@@ -182,7 +182,7 @@ export class AppointmentService {
     });
 
     if (existingAppointment) {
-      throw new Error('Xe này đã có lịch hẹn hoặc đang được tiếp nhận trong ngày hôm nay. Vui lòng chọn ngày khác.');
+      throw new Error('Xe này đã có lịch hẹn trong ngày được chọn. Vui lòng chọn ngày khác.');
     }
 
     // Convert time string "HH:mm" to Date object for Prisma @db.Time
@@ -196,10 +196,13 @@ export class AppointmentService {
 
     const timeDate = new Date(Date.UTC(1970, 0, 1, hour, minute, 0));
 
-    // Normalize date to UTC midnight (YYYY-MM-DD)
-    const rawDateStr = typeof data.scheduled_date === 'string'
-      ? data.scheduled_date.substring(0, 10)
-      : new Date(data.scheduled_date).toISOString().substring(0, 10);
+    const scheduledDateTime = new Date(
+      `${rawDateStr}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`
+    );
+    if (scheduledDateTime < new Date()) {
+      throw new Error('Không thể đặt lịch hẹn trong quá khứ.');
+    }
+
     const scheduledDateObj = new Date(`${rawDateStr}T00:00:00.000Z`);
 
     return prisma.$transaction(async (tx) => {
@@ -307,7 +310,7 @@ export class AppointmentService {
     let hasTimeOrDateChanged = false;
 
     if (data.scheduled_date || data.scheduled_time) {
-      updateData.status = 'RESCHEDULED'; // Status transition
+      // Giữ nguyên trạng thái trước đó khi dời lịch (vd: CONFIRMED vẫn là CONFIRMED, REQUESTED vẫn là REQUESTED)
       hasTimeOrDateChanged = true;
       
       if (data.scheduled_date) {

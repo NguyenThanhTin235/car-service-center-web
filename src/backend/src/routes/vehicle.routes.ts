@@ -5,6 +5,7 @@ import {
   createVehicle,
   updateVehicle,
   deleteVehicle,
+  restoreVehicle,
 } from '../controllers/vehicle.controller';
 
 const router = Router();
@@ -23,5 +24,8 @@ router.put('/:id', updateVehicle);
 
 // UC-10: Xóa hoặc vô hiệu hóa xe
 router.delete('/:id', deleteVehicle);
+
+// Kích hoạt lại xe đã vô hiệu hóa
+router.patch('/:id/restore', restoreVehicle);
 
 export default router;

@@ -80,6 +80,7 @@ export default function AppointmentsPage() {
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createSlot, setCreateSlot] = useState<{ date?: Date; time?: string }>({});
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   
@@ -368,6 +369,7 @@ export default function AppointmentsPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    toast.success('Đã xuất danh sách lịch hẹn thành công!');
     URL.revokeObjectURL(url);
   };
 
@@ -395,7 +397,10 @@ export default function AppointmentsPage() {
             <span>In lịch</span>
           </button>
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              setCreateSlot({});
+              setShowCreateModal(true);
+            }}
             className="h-10 px-4 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs active:scale-[0.98] transition-all cursor-pointer"
           >
             <span className="material-symbols-outlined text-[18px]">add_circle</span>
@@ -602,7 +607,10 @@ export default function AppointmentsPage() {
           ) : (
             <button
               type="button"
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => {
+                setCreateSlot({});
+                setShowCreateModal(true);
+              }}
               className="text-xs font-bold text-[#0866ff] hover:underline self-start sm:self-auto cursor-pointer"
             >
               + Thêm lịch hẹn mới
@@ -625,7 +633,8 @@ export default function AppointmentsPage() {
               appointments={appointmentsToDisplay}
               currentDate={currentDate}
               onAppointmentClick={handleAppointmentClick}
-              onTimeSlotClick={() => {
+              onTimeSlotClick={(date, timeStr) => {
+                setCreateSlot({ date, time: timeStr });
                 setShowCreateModal(true);
               }}
             />
@@ -635,7 +644,8 @@ export default function AppointmentsPage() {
               appointments={appointmentsToDisplay}
               startOfWeek={startOfWeek}
               onAppointmentClick={handleAppointmentClick}
-              onTimeSlotClick={() => {
+              onTimeSlotClick={(date, timeStr) => {
+                setCreateSlot({ date, time: timeStr });
                 setShowCreateModal(true);
               }}
             />
@@ -645,7 +655,8 @@ export default function AppointmentsPage() {
               appointments={appointmentsToDisplay}
               currentDate={currentDate}
               onAppointmentClick={handleAppointmentClick}
-              onTimeSlotClick={() => {
+              onTimeSlotClick={(date, timeStr) => {
+                setCreateSlot({ date, time: timeStr });
                 setShowCreateModal(true);
               }}
             />
@@ -666,7 +677,12 @@ export default function AppointmentsPage() {
       {/* Modals */}
       {showCreateModal && (
         <CreateAppointmentModal
-          onClose={() => setShowCreateModal(false)}
+          selectedDate={createSlot.date}
+          selectedTime={createSlot.time}
+          onClose={() => {
+            setShowCreateModal(false);
+            setCreateSlot({});
+          }}
           onSuccess={() => {
             dispatch(
               fetchAppointments({

@@ -116,7 +116,7 @@ export const updateAppointment = async (req: Request, res: Response): Promise<vo
 
     const userRoles = (req.user?.roles || []).map((r: string) => r.toUpperCase());
     const hasStaffRole = userRoles.some((r: string) => 
-      ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA', 'STAFF', 'SERVICE_ADVISOR', 'TECHNICIAN'].includes(r)
+      ['ADMIN', 'MANAGER', 'DESK STAFF', 'DESK_STAFF', 'SA', 'STAFF', 'SERVICE_ADVISOR', 'TECHNICIAN'].includes(r)
     );
     const isStaff = hasStaffRole || isInternalPortal;
     const isCustomer = !isStaff;
@@ -170,7 +170,7 @@ export const cancelAppointment = async (req: Request, res: Response): Promise<vo
 
     const userRoles = (req.user?.roles || []).map((r: string) => r.toUpperCase());
     const hasStaffRole = userRoles.some((r: string) => 
-      ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA', 'STAFF', 'SERVICE_ADVISOR', 'TECHNICIAN'].includes(r)
+      ['ADMIN', 'MANAGER', 'DESK STAFF', 'DESK_STAFF', 'SA', 'STAFF', 'SERVICE_ADVISOR', 'TECHNICIAN'].includes(r)
     );
     const isStaff = hasStaffRole || isInternalPortal;
     const isCustomer = !isStaff;

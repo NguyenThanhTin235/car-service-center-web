@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, VehicleSize } from '@prisma/client';
 import prisma from '../utils/prisma';
 
 export interface CreateCustomerDto {
@@ -549,6 +549,70 @@ export class CustomerService {
         totalSpent,
       },
       records,
+    };
+  }
+
+  /**
+   * Thêm nhanh phương tiện cho khách hàng (dùng từ modal đặt lịch của Staff)
+   */
+  async addVehicleToCustomer(
+    customerId: number,
+    dto: {
+      licensePlate: string;
+      make: string;
+      model: string;
+      year?: number;
+      color?: string;
+      vehicleSize?: VehicleSize;
+    }
+  ) {
+    if (!customerId || Number.isNaN(customerId)) {
+      throw new Error('ID khách hàng không hợp lệ');
+    }
+
+    const plate = dto.licensePlate?.trim().toUpperCase();
+    const make = dto.make?.trim();
+    const model = dto.model?.trim();
+
+    if (!plate || !make || !model) {
+      throw new Error('Vui lòng nhập đầy đủ Biển số xe, Hãng xe và Dòng xe.');
+    }
+
+    const customer = await prisma.user.findUnique({
+      where: { id: customerId },
+      select: { id: true },
+    });
+    if (!customer) {
+      throw new Error('Không tìm thấy khách hàng.');
+    }
+
+    const existingPlate = await prisma.vehicle.findUnique({
+      where: { license_plate: plate },
+    });
+    if (existingPlate) {
+      throw new Error(`Biển số xe ${plate} đã tồn tại trong hệ thống.`);
+    }
+
+    const created = await prisma.vehicle.create({
+      data: {
+        customer_id: customerId,
+        license_plate: plate,
+        make,
+        model,
+        year: dto.year ?? null,
+        color: dto.color?.trim() || null,
+        vehicle_size: dto.vehicleSize || 'MEDIUM',
+      },
+    });
+
+    return {
+      id: created.id,
+      licensePlate: created.license_plate,
+      make: created.make,
+      model: created.model,
+      year: created.year,
+      color: created.color,
+      vehicleSize: created.vehicle_size,
     };
   }
 }

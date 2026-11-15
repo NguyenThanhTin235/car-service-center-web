@@ -134,15 +134,14 @@ export class VehicleService {
       throw new Error('Bạn không có quyền xóa xe này.');
     }
 
-    // Kiểm tra xem xe đã có lịch hẹn hoặc phiếu tiếp nhận chưa
-    const appointmentCount = await prisma.appointment.count({
-      where: { vehicle_id: vehicleId },
-    });
-    const intakeCount = await prisma.intakeRecord.count({
-      where: { vehicle_id: vehicleId },
-    });
+    // Kiểm tra xem xe đã có lịch hẹn, phiếu tiếp nhận hoặc lệnh sửa chữa chưa
+    const [appointmentCount, intakeCount, workOrderCount] = await Promise.all([
+      prisma.appointment.count({ where: { vehicle_id: vehicleId } }),
+      prisma.intakeRecord.count({ where: { vehicle_id: vehicleId } }),
+      prisma.workOrder.count({ where: { vehicle_id: vehicleId } }),
+    ]);
 
-    const hasHistory = appointmentCount > 0 || intakeCount > 0;
+    const hasHistory = appointmentCount > 0 || intakeCount > 0 || workOrderCount > 0;
 
     if (hasHistory) {
       // Soft delete: vô hiệu hóa xe
@@ -156,5 +155,29 @@ export class VehicleService {
       await prisma.vehicle.delete({ where: { id: vehicleId } });
       return { deleted: true, deactivated: false, message: 'Xóa xe thành công.' };
     }
+  }
+
+  /**
+   * Kích hoạt lại xe đã vô hiệu hóa (INACTIVE -> ACTIVE)
+   */
+  async restoreVehicle(vehicleId: number, customerId: number) {
+    const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!vehicle) {
+      throw new Error('Không tìm thấy xe.');
+    }
+    if (vehicle.customer_id !== customerId) {
+      throw new Error('Bạn không có quyền kích hoạt lại xe này.');
+    }
+
+    if (vehicle.status === 'ACTIVE') {
+      return { restored: true, message: 'Phương tiện đang ở trạng thái hoạt động.' };
+    }
+
+    await prisma.vehicle.update({
+      where: { id: vehicleId },
+      data: { status: 'ACTIVE' },
+    });
+
+    return { restored: true, message: 'Đã kích hoạt lại phương tiện thành công.' };
   }
 }

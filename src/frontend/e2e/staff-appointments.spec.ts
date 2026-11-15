@@ -65,7 +65,14 @@ test.describe('Desk-Staff Portal E2E: Appointments (/staff/appointments)', () =>
         contentType: 'application/json',
         body: JSON.stringify({
           status: 'success',
-          data: [{ id: 1, fullName: 'Nguyễn Minh Quân', phone: '0909111222', vehicles: [] }],
+          data: [
+            {
+              id: 1,
+              fullName: 'Nguyễn Minh Quân',
+              phone: '0909111222',
+              vehicles: [{ id: 10, licensePlate: '30H-123.45', make: 'Toyota', model: 'Camry', color: 'Đen' }],
+            },
+          ],
         }),
       });
     });
@@ -91,13 +98,23 @@ test.describe('Desk-Staff Portal E2E: Appointments (/staff/appointments)', () =>
     page,
   }) => {
     await page.route('**/api/appointments**', async (route) => {
+      const url = new URL(route.request().url());
+      const q = (url.searchParams.get('search') || '').trim().toLowerCase();
+      const filtered = q
+        ? MOCK_APPOINTMENTS.filter(
+            (a) =>
+              a.vehicle.license_plate.toLowerCase().includes(q) ||
+              a.customer.full_name.toLowerCase().includes(q) ||
+              a.customer.phone.includes(q)
+          )
+        : MOCK_APPOINTMENTS;
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           success: true,
-          data: MOCK_APPOINTMENTS,
-          pagination: { page: 1, limit: 50, total: 2 },
+          data: filtered,
+          pagination: { page: 1, limit: 50, total: filtered.length },
         }),
       });
     });
@@ -125,15 +142,55 @@ test.describe('Desk-Staff Portal E2E: Appointments (/staff/appointments)', () =>
     await expect(page.locator('text=51G-777.88')).toHaveCount(0);
     await searchInput.fill('');
 
-    // Open CreateAppointmentModal and verify empty validation
+    // Open CreateAppointmentModal and verify 3-step wizard (identical UI to customer-web profile booking)
     await page.locator('button:has-text("+ Thêm lịch hẹn mới")').first().click();
-    await expect(page.locator('h2:has-text("Thêm lịch hẹn mới")')).toBeVisible();
+    await expect(page.locator('h2:has-text("Đặt lịch hẹn mới")')).toBeVisible();
+    await expect(page.getByText('1. Chọn xe', { exact: true })).toBeVisible();
+    await expect(page.locator('text=2. Dịch vụ & Mô tả')).toBeVisible();
+    await expect(page.locator('text=3. Ngày & Giờ')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Lưu lịch hẹn' }).click();
-    await expect(page.locator('text=Vui lòng điền đầy đủ thông tin bắt buộc')).toBeVisible();
+    await page.getByRole('button', { name: /Tiếp tục/i }).click();
+    await expect(page.locator('text=Vui lòng chọn khách hàng.')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Hủy', exact: true }).last().click();
-    await expect(page.locator('h2:has-text("Thêm lịch hẹn mới")')).toHaveCount(0);
+    await page.locator('input[list="customers-list"]').fill('Nguyễn Minh Quân - 0909111222');
+    await page.locator('text=30H-123.45').last().click();
+    await page.getByRole('button', { name: /Tiếp tục/i }).click();
+
+    await expect(page.locator('text=2. Dịch vụ yêu cầu & Mô tả tình trạng')).toBeVisible();
+    await page.getByRole('button', { name: /Tiếp tục/i }).click();
+    await expect(page.locator('text=Vui lòng chọn dịch vụ hoặc mô tả tình trạng xe.')).toBeVisible();
+
+    await page.locator('h4:has-text("Bảo dưỡng phanh")').click();
+    await page.getByRole('button', { name: /Tiếp tục/i }).click();
+
+    await expect(page.locator('text=3. Chọn ngày & khung giờ tiếp nhận')).toBeVisible();
+    await expect(page.locator('text=Buổi sáng (07:30 - 11:30)')).toBeVisible();
+    await expect(page.locator('text=Buổi chiều (13:30 - 17:30)')).toBeVisible();
+    await expect(page.locator('text=Tóm tắt phiếu đặt hẹn:')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Xác nhận đặt lịch' })).toBeVisible();
+
+    // Select a future date (tomorrow) & time slot and submit to verify success toast
+    await page.route('**/api/appointments', async (route) => {
+      if (route.request().method() === 'POST') {
+        return route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true, data: { id: 999 } }),
+        });
+      }
+      return route.fallback();
+    });
+
+    const tomorrow = new Date(Date.now() + 86400000);
+    if (tomorrow.getMonth() !== new Date().getMonth()) {
+      await page.locator('button:has-text("›")').click();
+    }
+    await page.locator('.grid-cols-7 button').filter({ hasText: new RegExp(`^${tomorrow.getDate()}$`) }).click();
+    await page.getByRole('button', { name: '09:00', exact: true }).click();
+    await page.getByRole('button', { name: 'Xác nhận đặt lịch' }).click();
+
+    await expect(page.locator('text=Đặt lịch hẹn thành công!')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2:has-text("Đặt lịch hẹn mới")')).toHaveCount(0);
   });
 
   test('E2E-STF-APT-02: Error banner Retry khi API 500, Empty state và audit 4 viewports', async ({
@@ -178,5 +235,68 @@ test.describe('Desk-Staff Portal E2E: Appointments (/staff/appointments)', () =>
       );
       expect(overflow, `Horizontal overflow at ${vp.name}`).toBe(false);
     }
+  });
+
+  test('E2E-STF-APT-03: Thêm nhanh phương tiện ở Bước 1 khi khách hàng chưa có xe', async ({ page }) => {
+    await page.route('**/api/customers**', async (route) => {
+      if (route.request().method() === 'POST' && route.request().url().includes('/vehicles')) {
+        return route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            status: 'success',
+            message: 'Thêm phương tiện thành công',
+            data: {
+              id: 77,
+              licensePlate: '51A-999.88',
+              make: 'Honda',
+              model: 'Civic',
+              color: 'Trắng',
+              vehicleSize: 'MEDIUM',
+            },
+          }),
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'success',
+          data: [
+            {
+              id: 2,
+              fullName: 'Trần Thị Bích',
+              phone: '0912345678',
+              vehicles: [],
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('http://localhost:3001/staff/appointments', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('h1:has-text("Lịch hẹn khách hàng")')).toBeVisible({ timeout: 20000 });
+
+    await page.locator('button:has-text("+ Thêm lịch hẹn mới")').first().click();
+    await expect(page.locator('h2:has-text("Đặt lịch hẹn mới")')).toBeVisible();
+
+    await page.locator('input[list="customers-list"]').fill('Trần Thị Bích - 0912345678');
+    await expect(page.locator('text=Chưa có phương tiện trong hồ sơ')).toBeVisible();
+
+    await page.getByRole('button', { name: '+ Thêm phương tiện' }).click();
+    await expect(page.locator('h3:has-text("Thêm phương tiện mới")')).toBeVisible();
+
+    await page.locator('input[placeholder="VD: 51A-123.45"]').fill('51A-999.88');
+    await page.locator('input[placeholder="VD: Toyota"]').fill('Honda');
+    await page.locator('input[placeholder="VD: Camry"]').fill('Civic');
+    await page.locator('input[placeholder="VD: Đen"]').fill('Trắng');
+    await page.getByRole('button', { name: 'Lưu phương tiện' }).click();
+
+    await expect(page.locator('text=Thêm phương tiện mới thành công!')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h3:has-text("Thêm phương tiện mới")')).toHaveCount(0);
+    await expect(page.locator('text=51A-999.88').first()).toBeVisible();
+    await expect(page.locator('text=Honda Civic').first()).toBeVisible();
+    await expect(page.locator('text=Đang chọn').first()).toBeVisible();
   });
 });

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getCustomers, getCustomerServiceHistory, createCustomer, updateCustomer, deleteCustomer, restoreCustomer, hardDeleteCustomer } from '../controllers/customer.controller';
+import { getCustomers, getCustomerServiceHistory, addCustomerVehicle, createCustomer, updateCustomer, deleteCustomer, restoreCustomer, hardDeleteCustomer } from '../controllers/customer.controller';
 
 const router = Router();
 
@@ -8,6 +8,9 @@ router.get('/', getCustomers);
 
 // Lấy lịch sử dịch vụ tại xưởng của khách hàng
 router.get('/:id/service-history', getCustomerServiceHistory);
+
+// Thêm nhanh phương tiện cho khách hàng
+router.post('/:id/vehicles', addCustomerVehicle);
 
 // Thêm mới khách hàng
 router.post('/', createCustomer);
