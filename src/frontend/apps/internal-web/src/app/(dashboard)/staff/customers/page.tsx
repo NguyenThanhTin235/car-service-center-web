@@ -117,20 +117,27 @@ export default function CustomersPage() {
       });
       const exportData = res.data.data;
 
+      if (!exportData || exportData.length === 0) {
+        toast.error('Không có dữ liệu khách hàng để xuất Excel!');
+        return;
+      }
+
       const excelData: any[] = [];
-      
+      let rowIndex = 1;
+
       exportData.forEach((c: any) => {
         const baseCustomer = {
           'Mã KH': c.id,
           'Tên khách hàng': c.fullName,
           'Số điện thoại': c.phone,
           'Email': c.email || '',
-          'Tổng chi tiêu (VNĐ)': c.stats?.totalSpent || 0,
-          'Lượt dịch vụ': c.stats?.totalVisits || 0,
+          'Tổng chi tiêu (VNĐ)': Number(c.stats?.totalSpent || 0),
+          'Lượt dịch vụ': Number(c.stats?.totalVisits || 0),
         };
 
         if (!c.vehicles || c.vehicles.length === 0) {
           excelData.push({
+            'STT': rowIndex++,
             ...baseCustomer,
             'Biển số xe': '',
             'Hãng xe': '',
@@ -140,6 +147,7 @@ export default function CustomersPage() {
         } else {
           c.vehicles.forEach((v: any) => {
             excelData.push({
+              'STT': rowIndex++,
               ...baseCustomer,
               'Biển số xe': v.licensePlate || '',
               'Hãng xe': v.make || '',
@@ -163,7 +171,7 @@ export default function CustomersPage() {
       const exporterName = user?.full_name || user?.username || user?.phone || 'Nhân viên';
 
       const reportHeader = [
-        ["TRUNG TÂM BẢO DƯỠNG & SỬA CHỮA XE Ô TÔ UTE"],
+        ["TRUNG TÂM BẢO DƯỠNG & SỬA CHỮA Ô TÔ CAR SERVICE CENTER"],
         ["BÁO CÁO DANH SÁCH KHÁCH HÀNG VÀ PHƯƠNG TIỆN"],
         [],
         ["Ngày xuất báo cáo:", exportTime],
@@ -178,14 +186,23 @@ export default function CustomersPage() {
       // Thêm data dạng JSON vào worksheet, bắt đầu từ dòng thứ 7 (A7)
       XLSX.utils.sheet_add_json(worksheet, excelData, { origin: "A7" });
 
-      // Merge các ô title để đẹp hơn (gộp từ cột A đến J, tương đương index 0-9)
+      // Định dạng số tiền VNĐ cho cột Tổng chi tiêu (cột F, từ dòng 8)
+      for (let r = 7; r < 7 + excelData.length; r++) {
+        const cellRef = XLSX.utils.encode_cell({ r, c: 5 });
+        if (worksheet[cellRef]) {
+          worksheet[cellRef].z = '#,##0';
+        }
+      }
+
+      // Merge các ô title để đẹp hơn (gộp từ cột A đến K, tương đương index 0-10)
       worksheet['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }, // Dòng 1
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } }  // Dòng 2
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } }, // Dòng 1
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 10 } }  // Dòng 2
       ];
 
       // Adjust column widths
       worksheet['!cols'] = [
+        { wch: 6 },  // STT
         { wch: 8 },  // Mã KH
         { wch: 25 }, // Tên KH
         { wch: 15 }, // SĐT
@@ -277,33 +294,7 @@ export default function CustomersPage() {
       />
 
       <div className="space-y-6 w-full">
-        {/* 1. SaaS Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
-            Khách hàng &amp; Phương tiện
-          </h1>
-
-          <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
-            <button
-              onClick={() => fetchCustomers(search, currentPage, activeTab)}
-              className="h-10 px-3.5 rounded-xl border border-slate-200/90 bg-white hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 hover:text-[#0866ff] text-xs font-semibold flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
-            >
-              <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin text-[#0866ff]' : ''}`}>
-                sync
-              </span>
-              <span>Đồng bộ CRM</span>
-            </button>
-            <button
-              onClick={openAddModal}
-              className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#0866ff]/20 transition-all active:scale-[0.98] cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[18px]">person_add</span>
-              <span>+ Thêm mới</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 2. Asymmetrical 12-Col CRM Bento Header (5 + 4 + 3) */}
+        {/* 1. Asymmetrical 12-Col CRM Bento Header (5 + 4 + 3) */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
           {/* Hero Card: Tổng khách hàng (5 cols) */}
           <div className="md:col-span-5 rounded-2xl saas-hero-gradient text-white p-5 relative overflow-hidden flex flex-col justify-between">
@@ -418,12 +409,28 @@ export default function CustomersPage() {
               </div>
               <button
                 onClick={handleExportExcel}
-                className="h-10 px-3.5 rounded-xl border border-emerald-200/90 bg-emerald-50/80 text-emerald-700 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-100/80 transition-colors cursor-pointer"
+                className="h-10 px-3.5 rounded-xl border border-emerald-200/90 bg-emerald-50/80 text-emerald-700 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-100/80 transition-colors cursor-pointer shrink-0"
               >
                 <span className="material-symbols-outlined text-[16px] text-emerald-600">
                   description
                 </span>
                 <span>Xuất Excel</span>
+              </button>
+              <button
+                onClick={() => fetchCustomers(search, currentPage, activeTab)}
+                className="h-10 px-3.5 rounded-xl border border-slate-200/90 bg-white hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 hover:text-[#0866ff] text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer shrink-0"
+              >
+                <span className={`material-symbols-outlined text-[17px] ${loading ? 'animate-spin text-[#0866ff]' : ''}`}>
+                  sync
+                </span>
+                <span>Đồng bộ CRM</span>
+              </button>
+              <button
+                onClick={openAddModal}
+                className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#0866ff]/20 transition-all active:scale-[0.98] cursor-pointer shrink-0"
+              >
+                <span className="material-symbols-outlined text-[17px]">person_add</span>
+                <span>+ Thêm mới</span>
               </button>
             </div>
           </div>
@@ -480,132 +487,223 @@ export default function CustomersPage() {
                 ) : null}
               </div>
             ) : (
-              <table className="w-full text-left border-collapse min-w-[760px]">
-                <thead>
-                  <tr className="bg-slate-50/70 border-b border-slate-200/80 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
-                    <th className="px-5 py-3.5">Khách hàng</th>
-                    <th className="px-5 py-3.5">Số điện thoại</th>
-                    <th className="px-5 py-3.5">Phương tiện &amp; Biển số</th>
-                    <th className="px-5 py-3.5 text-right">Tổng chi tiêu</th>
-                    <th className="px-5 py-3.5 text-center w-32">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200/60 text-sm">
+              <>
+                {/* Desktop & Tablet Table (>= md) */}
+                <table className="hidden md:table w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/70 border-b border-slate-200/80 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                      <th className="px-3.5 lg:px-5 py-3.5 whitespace-nowrap">Khách hàng</th>
+                      <th className="px-3.5 lg:px-5 py-3.5 whitespace-nowrap">Số điện thoại</th>
+                      <th className="px-3.5 lg:px-5 py-3.5">Phương tiện &amp; Biển số</th>
+                      <th className="px-3.5 lg:px-5 py-3.5 text-right whitespace-nowrap">Tổng chi tiêu</th>
+                      <th className="px-3.5 lg:px-5 py-3.5 text-center whitespace-nowrap">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200/60 text-sm">
+                    {customers.map((c) => (
+                      <tr key={c.id} className="hover:bg-blue-50/25 transition-colors group">
+                        <td className="px-3.5 lg:px-5 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs">
+                              {c.fullName.split(' ').pop()?.[0]?.toUpperCase() || 'K'}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span
+                                onClick={() => openViewModal(c)}
+                                className="font-bold text-slate-900 hover:text-[#0866ff] cursor-pointer flex items-center gap-1 transition-colors whitespace-nowrap"
+                              >
+                                {c.fullName}
+                              </span>
+                              <span className="text-xs text-slate-400 truncate max-w-[160px]">
+                                {c.email || 'Chưa cập nhật email'}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3.5 lg:px-5 py-3.5 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5 text-slate-700 font-mono text-xs font-semibold">
+                            <span className="material-symbols-outlined text-[15px] text-[#0866ff]">
+                              phone_iphone
+                            </span>
+                            <span>{c.phone}</span>
+                          </div>
+                        </td>
+                        <td className="px-3.5 lg:px-5 py-3.5">
+                          {c.vehicles && c.vehicles.length > 0 ? (
+                            <div className="flex flex-col gap-2">
+                              {c.vehicles.map((v: any, vIdx: number) => (
+                                <div key={v.id || vIdx} className="flex items-center gap-2">
+                                  <span className="px-2 py-0.5 rounded bg-slate-900 font-mono text-xs font-bold text-white tracking-wider whitespace-nowrap">
+                                    {v.licensePlate}
+                                  </span>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-xs font-semibold text-slate-800 truncate max-w-[150px]">
+                                      {v.make} {v.model}
+                                    </span>
+                                    <span className="text-[11px] text-slate-400 truncate">
+                                      Màu {v.color || 'Chưa rõ'}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic text-xs">Chưa đăng ký xe</span>
+                          )}
+                        </td>
+                        <td className="px-3.5 lg:px-5 py-3.5 text-right whitespace-nowrap">
+                          <span className="font-bold font-mono tabular-nums text-sm text-[#0866ff]">
+                            {formatVND(c.stats?.totalSpent || 0)}
+                          </span>
+                          <span className="block text-[11px] text-slate-400">
+                            {c.stats?.totalVisits || 0} lượt dịch vụ
+                          </span>
+                        </td>
+                        <td className="px-3.5 lg:px-5 py-3.5 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1.5 shrink-0">
+                            {activeTab === 'active' ? (
+                              <>
+                                <button
+                                  onClick={() => openViewModal(c)}
+                                  className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 flex items-center justify-center text-[#0866ff] transition-colors cursor-pointer"
+                                  title="Xem hồ sơ"
+                                >
+                                  <span className="material-symbols-outlined text-[17px]">
+                                    visibility
+                                  </span>
+                                </button>
+                                <button
+                                  onClick={() => openEditModal(c)}
+                                  className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 flex items-center justify-center text-slate-600 hover:text-[#0866ff] transition-colors cursor-pointer"
+                                  title="Chỉnh sửa"
+                                >
+                                  <span className="material-symbols-outlined text-[17px]">edit</span>
+                                </button>
+                                <button
+                                  onClick={() => openConfirm(c.id, 'delete')}
+                                  className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-rose-50 border border-slate-200/80 flex items-center justify-center text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
+                                  title="Vô hiệu hóa"
+                                >
+                                  <span className="material-symbols-outlined text-[17px]">delete</span>
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => openConfirm(c.id, 'restore')}
+                                  className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 flex items-center justify-center text-emerald-600 transition-colors cursor-pointer"
+                                  title="Khôi phục"
+                                >
+                                  <span className="material-symbols-outlined text-[17px]">
+                                    restore
+                                  </span>
+                                </button>
+                                <button
+                                  onClick={() => openConfirm(c.id, 'hard_delete')}
+                                  className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200/80 flex items-center justify-center text-rose-600 transition-colors cursor-pointer"
+                                  title="Xóa vĩnh viễn"
+                                >
+                                  <span className="material-symbols-outlined text-[17px]">
+                                    delete_forever
+                                  </span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Mobile Card List (< md) */}
+                <div className="md:hidden divide-y divide-slate-200/70">
                   {customers.map((c) => (
-                    <tr key={c.id} className="hover:bg-blue-50/25 transition-colors group">
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs">
+                    <div key={c.id} className="p-4 space-y-3 bg-white">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
                             {c.fullName.split(' ').pop()?.[0]?.toUpperCase() || 'K'}
                           </div>
-                          <div className="flex flex-col">
-                            <span
+                          <div className="min-w-0">
+                            <p
                               onClick={() => openViewModal(c)}
-                              className="font-bold text-slate-900 hover:text-[#0866ff] cursor-pointer flex items-center gap-1 transition-colors"
+                              className="font-bold text-sm text-slate-900 truncate cursor-pointer"
                             >
                               {c.fullName}
-                            </span>
-                            <span className="text-xs text-slate-400 truncate max-w-[180px]">
-                              {c.email || 'Chưa cập nhật email'}
-                            </span>
+                            </p>
+                            <p className="text-xs font-mono text-slate-600">{c.phone}</p>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1.5 text-slate-700 font-mono text-xs font-semibold">
-                          <span className="material-symbols-outlined text-[15px] text-[#0866ff]">
-                            phone_iphone
+                        <div className="text-right shrink-0">
+                          <span className="font-bold font-mono text-xs text-[#0866ff] block">
+                            {formatVND(c.stats?.totalSpent || 0)}
                           </span>
-                          <span>{c.phone}</span>
+                          <span className="text-[11px] text-slate-400">
+                            {c.stats?.totalVisits || 0} lượt
+                          </span>
                         </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        {c.vehicles && c.vehicles.length > 0 ? (
-                          <div className="flex flex-col gap-2">
-                            {c.vehicles.map((v: any, vIdx: number) => (
-                              <div key={v.id || vIdx} className="flex items-center gap-2.5">
-                                <span className="px-2 py-0.5 rounded bg-slate-900 font-mono text-xs font-bold text-white tracking-wider whitespace-nowrap">
-                                  {v.licensePlate}
-                                </span>
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-xs font-semibold text-slate-800 truncate max-w-[160px]">
-                                    {v.make} {v.model}
-                                  </span>
-                                  <span className="text-[11px] text-slate-400 truncate">
-                                    Màu {v.color || 'Chưa rõ'}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                      </div>
+
+                      {c.vehicles && c.vehicles.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {c.vehicles.map((v: any, vIdx: number) => (
+                            <span
+                              key={v.id || vIdx}
+                              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 text-xs"
+                            >
+                              <span className="font-mono font-bold text-slate-900">{v.licensePlate}</span>
+                              <span className="text-slate-500">
+                                ({v.make} {v.model})
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-end gap-1.5 pt-1">
+                        {activeTab === 'active' ? (
+                          <>
+                            <button
+                              onClick={() => openViewModal(c)}
+                              className="h-8 px-3 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-xs font-semibold text-[#0866ff] cursor-pointer"
+                            >
+                              Hồ sơ
+                            </button>
+                            <button
+                              onClick={() => openEditModal(c)}
+                              className="h-8 px-3 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-xs font-semibold text-slate-700 cursor-pointer"
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              onClick={() => openConfirm(c.id, 'delete')}
+                              className="h-8 px-3 rounded-xl bg-rose-50/80 border border-rose-200/80 text-xs font-semibold text-rose-600 cursor-pointer"
+                            >
+                              Vô hiệu hóa
+                            </button>
+                          </>
                         ) : (
-                          <span className="text-slate-400 italic text-xs">Chưa đăng ký xe</span>
+                          <>
+                            <button
+                              onClick={() => openConfirm(c.id, 'restore')}
+                              className="h-8 px-3 rounded-xl bg-emerald-50 border border-emerald-200/80 text-xs font-semibold text-emerald-700 cursor-pointer"
+                            >
+                              Khôi phục
+                            </button>
+                            <button
+                              onClick={() => openConfirm(c.id, 'hard_delete')}
+                              className="h-8 px-3 rounded-xl bg-rose-50 border border-rose-200/80 text-xs font-semibold text-rose-600 cursor-pointer"
+                            >
+                              Xóa vĩnh viễn
+                            </button>
+                          </>
                         )}
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <span className="font-bold font-mono tabular-nums text-sm text-[#0866ff]">
-                          {formatVND(c.stats?.totalSpent || 0)}
-                        </span>
-                        <span className="block text-[11px] text-slate-400">
-                          {c.stats?.totalVisits || 0} lượt dịch vụ
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          {activeTab === 'active' ? (
-                            <>
-                              <button
-                                onClick={() => openViewModal(c)}
-                                className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 flex items-center justify-center text-[#0866ff] transition-colors cursor-pointer"
-                                title="Xem hồ sơ"
-                              >
-                                <span className="material-symbols-outlined text-[17px]">
-                                  visibility
-                                </span>
-                              </button>
-                              <button
-                                onClick={() => openEditModal(c)}
-                                className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 flex items-center justify-center text-slate-600 hover:text-[#0866ff] transition-colors cursor-pointer"
-                                title="Chỉnh sửa"
-                              >
-                                <span className="material-symbols-outlined text-[17px]">edit</span>
-                              </button>
-                              <button
-                                onClick={() => openConfirm(c.id, 'delete')}
-                                className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-rose-50 border border-slate-200/80 flex items-center justify-center text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
-                                title="Vô hiệu hóa"
-                              >
-                                <span className="material-symbols-outlined text-[17px]">delete</span>
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => openConfirm(c.id, 'restore')}
-                                className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 flex items-center justify-center text-emerald-600 transition-colors cursor-pointer"
-                                title="Khôi phục"
-                              >
-                                <span className="material-symbols-outlined text-[17px]">
-                                  restore
-                                </span>
-                              </button>
-                              <button
-                                onClick={() => openConfirm(c.id, 'hard_delete')}
-                                className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200/80 flex items-center justify-center text-rose-600 transition-colors cursor-pointer"
-                                title="Xóa vĩnh viễn"
-                              >
-                                <span className="material-symbols-outlined text-[17px]">
-                                  delete_forever
-                                </span>
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </>
             )}
           </div>
 

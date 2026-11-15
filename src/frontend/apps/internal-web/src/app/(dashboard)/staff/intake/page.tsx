@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState, useMemo, useDeferredValue } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -205,33 +205,7 @@ export default function IntakePage() {
 
   return (
     <div className="space-y-6 w-full">
-      {/* 1. SaaS Page Header & Primary Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
-          Tiếp nhận xe vào xưởng
-        </h1>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => setTowInModalOpen(true)}
-            className="h-10 px-4 bg-amber-50/90 hover:bg-amber-100/90 text-amber-800 border border-amber-200/90 rounded-xl text-xs font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px] text-amber-600">
-              local_shipping
-            </span>
-            <span>Tiếp nhận xe cứu hộ</span>
-          </button>
-          <button
-            onClick={() => setWalkInModalOpen(true)}
-            className="h-10 px-4 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-[#0866ff]/20 active:scale-[0.98] transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px]">directions_walk</span>
-            <span>+ Tiếp nhận khách vãng lai</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Asymmetrical Bento Summary (5 + 7 cols) */}
+      {/* 1. Asymmetrical Bento Summary (5 + 7 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Hero Intake Card (5 cols) */}
         <div className="lg:col-span-5 rounded-2xl saas-hero-gradient text-white p-5 relative overflow-hidden flex flex-col justify-between">
@@ -445,63 +419,71 @@ export default function IntakePage() {
 
       {/* 4. DANH SÁCH HÀNG ĐỢI TIẾP NHẬN */}
       <div className="saas-card overflow-hidden flex flex-col">
-        <div className="p-4 sm:p-5 border-b border-slate-200/80 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Segmented Pill Tabs */}
-            <div className="inline-flex flex-wrap items-center gap-1 p-1 bg-slate-100/90 rounded-xl border border-slate-200/70 max-w-full">
-              {(['QUEUED', 'CONVERTED', 'CANCELLED'] as const).map((tab) => {
-                const count = filteredTabCounts[tab];
+        <div className="p-4 sm:p-5 border-b border-slate-200/80 space-y-3">
+          {/* Hàng 1: Tabs trạng thái + Nút thao tác tiếp nhận */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="overflow-x-auto no-scrollbar">
+              {/* Segmented Pill Tabs */}
+              <div className="inline-flex items-center gap-1 p-1 bg-slate-100/90 rounded-xl border border-slate-200/70 shrink-0">
+                {(['QUEUED', 'CONVERTED', 'CANCELLED'] as const).map((tab) => {
+                  const count = filteredTabCounts[tab];
 
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => {
-                      setActiveTab(tab);
-                      setCurrentPage(1);
-                    }}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                      activeTab === tab
-                        ? 'bg-white text-[#0866ff] shadow-2xs font-bold'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <span>
-                      {tab === 'QUEUED' && 'Chờ xử lý'}
-                      {tab === 'CONVERTED' && 'Đã chuyển đổi'}
-                      {tab === 'CANCELLED' && 'Đã hủy'}
-                    </span>
-                    <span
-                      className={`font-mono text-[11px] px-1.5 py-0.2 rounded-full ${
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => {
+                        setActiveTab(tab);
+                        setCurrentPage(1);
+                      }}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
                         activeTab === tab
-                          ? 'bg-blue-50 text-[#0866ff] font-bold'
-                          : 'bg-slate-200/80 text-slate-600'
+                          ? 'bg-white text-[#0866ff] shadow-2xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span>
+                        {tab === 'QUEUED' && 'Chờ xử lý'}
+                        {tab === 'CONVERTED' && 'Đã chuyển đổi'}
+                        {tab === 'CANCELLED' && 'Đã hủy'}
+                      </span>
+                      <span
+                        className={`font-mono text-[11px] px-1.5 py-0.2 rounded-full ${
+                          activeTab === tab
+                            ? 'bg-blue-50 text-[#0866ff] font-bold'
+                            : 'bg-slate-200/80 text-slate-600'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 lg:justify-end">
+              <button
+                onClick={() => setTowInModalOpen(true)}
+                className="h-9 px-3.5 bg-amber-50/90 hover:bg-amber-100/90 text-amber-800 border border-amber-200/90 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <span className="material-symbols-outlined text-[17px] text-amber-600">
+                  local_shipping
+                </span>
+                <span>Tiếp nhận xe cứu hộ</span>
+              </button>
+              <button
+                onClick={() => setWalkInModalOpen(true)}
+                className="h-9 px-3.5 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#0866ff]/20 active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <span className="material-symbols-outlined text-[17px]">directions_walk</span>
+                <span>+ Tiếp nhận khách vãng lai</span>
+              </button>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
-            <select
-              aria-label="Lọc theo loại tiếp nhận"
-              value={intakeTypeFilter}
-              onChange={(e) => {
-                setIntakeTypeFilter(e.target.value as 'ALL' | 'APPOINTMENT' | 'WALK_IN' | 'TOW_IN');
-                setCurrentPage(1);
-              }}
-              className="h-9 px-3 bg-slate-50/80 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 focus:bg-white focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15 outline-none transition-all cursor-pointer"
-            >
-              <option value="ALL">Tất cả loại tiếp nhận</option>
-              <option value="APPOINTMENT">Hẹn trước</option>
-              <option value="WALK_IN">Khách vãng lai</option>
-              <option value="TOW_IN">Xe cứu hộ</option>
-            </select>
-
-            <div className="relative sm:w-64 w-full">
+          {/* Hàng 2: Tìm kiếm & Lọc loại tiếp nhận */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            <div className="relative flex-1 sm:max-w-sm">
               <span className="material-symbols-outlined text-[18px] absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                 search
               </span>
@@ -516,64 +498,77 @@ export default function IntakePage() {
                 className="w-full h-9 pl-9 pr-4 bg-slate-50/80 border border-slate-200/80 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15 outline-none transition-all"
               />
             </div>
+
+            <select
+              aria-label="Lọc theo loại tiếp nhận"
+              value={intakeTypeFilter}
+              onChange={(e) => {
+                setIntakeTypeFilter(e.target.value as 'ALL' | 'APPOINTMENT' | 'WALK_IN' | 'TOW_IN');
+                setCurrentPage(1);
+              }}
+              className="h-9 px-3 bg-slate-50/80 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 focus:bg-white focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15 outline-none transition-all cursor-pointer sm:w-52"
+            >
+              <option value="ALL">Tất cả loại tiếp nhận</option>
+              <option value="APPOINTMENT">Hẹn trước</option>
+              <option value="WALK_IN">Khách vãng lai</option>
+              <option value="TOW_IN">Xe cứu hộ</option>
+            </select>
           </div>
         </div>
 
-        <div className="overflow-x-auto flex-1">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-            <thead>
-              <tr className="border-b border-slate-200/80 bg-slate-50/60 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
-                <th className="py-3.5 px-5"> Phân loại &amp; Giờ vào</th>
-                <th className="py-3.5 px-5">Biển số &amp; Dòng xe</th>
-                <th className="py-3.5 px-5">Khách hàng</th>
-                <th className="py-3.5 px-5">Dịch vụ yêu cầu</th>
-                <th className="py-3.5 px-5 text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200/60 text-sm">
-              {queueLoading ? (
-                <tr>
-                  <td colSpan={5} className="text-center text-slate-500 py-12 text-xs">
-                    Đang tải danh sách tiếp nhận...
-                  </td>
-                </tr>
-              ) : filteredRecords.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-12 px-4">
-                    <div className="flex flex-col items-center gap-2 text-slate-500">
-                      <span className="material-symbols-outlined text-[36px] text-slate-300">inbox</span>
-                      <p className="text-xs font-semibold text-slate-600">
-                        {searchQuery || intakeTypeFilter !== 'ALL'
-                          ? 'Không tìm thấy kết quả phù hợp.'
-                          : 'Danh sách tiếp nhận trống.'}
-                      </p>
-                      {searchQuery || intakeTypeFilter !== 'ALL' ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSearchQuery('');
-                            setIntakeTypeFilter('ALL');
-                            setCurrentPage(1);
-                          }}
-                          className="text-xs font-bold text-[#0866ff] hover:underline cursor-pointer"
-                        >
-                          Xóa bộ lọc
-                        </button>
-                      ) : activeTab === 'QUEUED' ? (
-                        <button
-                          type="button"
-                          onClick={() => setWalkInModalOpen(true)}
-                          className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0866ff] text-white text-xs font-bold shadow-xs cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">add</span>
-                          <span>Tiếp nhận khách vãng lai</span>
-                        </button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                paginatedRecords.map((record) => {
+        {queueLoading ? (
+          <div className="text-center text-slate-500 py-12 text-xs">
+            Đang tải danh sách tiếp nhận...
+          </div>
+        ) : filteredRecords.length === 0 ? (
+          <div className="text-center py-12 px-4">
+            <div className="flex flex-col items-center gap-2 text-slate-500">
+              <span className="material-symbols-outlined text-[36px] text-slate-300">inbox</span>
+              <p className="text-xs font-semibold text-slate-600">
+                {searchQuery || intakeTypeFilter !== 'ALL'
+                  ? 'Không tìm thấy kết quả phù hợp.'
+                  : 'Danh sách tiếp nhận trống.'}
+              </p>
+              {searchQuery || intakeTypeFilter !== 'ALL' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setIntakeTypeFilter('ALL');
+                    setCurrentPage(1);
+                  }}
+                  className="text-xs font-bold text-[#0866ff] hover:underline cursor-pointer"
+                >
+                  Xóa bộ lọc
+                </button>
+              ) : activeTab === 'QUEUED' ? (
+                <button
+                  type="button"
+                  onClick={() => setWalkInModalOpen(true)}
+                  className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0866ff] text-white text-xs font-bold shadow-xs cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[16px]">add</span>
+                  <span>Tiếp nhận khách vãng lai</span>
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Desktop & Tablet Table (>= md) */}
+            <div className="hidden md:block overflow-x-auto flex-1">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200/80 bg-slate-50/60 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                    <th className="py-3.5 px-3.5 lg:px-5 whitespace-nowrap">Phân loại &amp; Giờ vào</th>
+                    <th className="py-3.5 px-3.5 lg:px-5 whitespace-nowrap">Biển số &amp; Dòng xe</th>
+                    <th className="py-3.5 px-3.5 lg:px-5 whitespace-nowrap">Khách hàng</th>
+                    <th className="py-3.5 px-3.5 lg:px-5">Dịch vụ yêu cầu</th>
+                    <th className="py-3.5 px-3.5 lg:px-5 text-right whitespace-nowrap">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200/60 text-sm">
+                  {paginatedRecords.map((record) => {
                     const getTypeStyles = (type: string) => {
                       switch (type) {
                         case 'WALK_IN':
@@ -602,10 +597,10 @@ export default function IntakePage() {
 
                     return (
                       <tr key={record.id} className="hover:bg-blue-50/25 transition-colors">
-                        <td className="py-3.5 px-5">
+                        <td className="py-3.5 px-3.5 lg:px-5 whitespace-nowrap">
                           <div className="flex flex-col gap-1">
                             <span
-                              className={`w-fit px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${getTypeStyles(
+                              className={`w-fit px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${getTypeStyles(
                                 record.intake_type
                               )}`}
                             >
@@ -619,9 +614,9 @@ export default function IntakePage() {
                             </span>
                           </div>
                         </td>
-                        <td className="py-3.5 px-5">
+                        <td className="py-3.5 px-3.5 lg:px-5 whitespace-nowrap">
                           <div className="flex flex-col gap-0.5">
-                            <span className="w-fit px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-xs font-bold tracking-wider">
+                            <span className="w-fit px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-xs font-bold tracking-wider whitespace-nowrap">
                               {record.vehicle.license_plate}
                             </span>
                             <span className="text-xs text-slate-500">
@@ -629,17 +624,17 @@ export default function IntakePage() {
                             </span>
                           </div>
                         </td>
-                        <td className="py-3.5 px-5">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-semibold text-slate-900">
+                        <td className="py-3.5 px-3.5 lg:px-5">
+                          <div className="flex flex-col min-w-[120px]">
+                            <span className="text-sm font-semibold text-slate-900 whitespace-nowrap">
                               {record.customer.full_name}
                             </span>
-                            <span className="text-xs font-mono text-slate-500">
+                            <span className="text-xs font-mono text-slate-500 whitespace-nowrap">
                               {record.customer.phone || 'Chưa cập nhật'}
                             </span>
                           </div>
                         </td>
-                        <td className="py-3.5 px-5">
+                        <td className="py-3.5 px-3.5 lg:px-5">
                           {record.services && record.services.length > 0 ? (
                             <div className="flex flex-wrap items-center gap-1.5">
                               {record.services.map((s) => (
@@ -655,8 +650,8 @@ export default function IntakePage() {
                             <span className="text-xs text-slate-400 italic">Chưa chọn dịch vụ</span>
                           )}
                         </td>
-                        <td className="py-3.5 px-5 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                        <td className="py-3.5 px-3.5 lg:px-5 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-2 shrink-0">
                             <button
                               onClick={() => setSelectedRecord(record)}
                               className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-[#0866ff] transition-colors border border-slate-200/80 cursor-pointer"
@@ -689,11 +684,102 @@ export default function IntakePage() {
                         </td>
                       </tr>
                     );
-                  })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card List (< md) */}
+            <div className="md:hidden divide-y divide-slate-200/70">
+              {paginatedRecords.map((record) => {
+              const typeLabel =
+                record.intake_type === 'WALK_IN'
+                  ? 'Khách vãng lai'
+                  : record.intake_type === 'TOW_IN'
+                    ? 'Xe cứu hộ'
+                    : record.intake_type === 'APPOINTMENT'
+                      ? 'Hẹn trước'
+                      : record.intake_type;
+              const typeBadge =
+                record.intake_type === 'WALK_IN'
+                  ? 'bg-blue-50 text-[#0866ff] border border-blue-200/70'
+                  : record.intake_type === 'TOW_IN'
+                    ? 'bg-amber-50 text-amber-700 border border-amber-200/70'
+                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200/70';
+
+              return (
+                <div key={record.id} className="p-4 space-y-2.5 bg-white">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase whitespace-nowrap ${typeBadge}`}>
+                        {typeLabel}
+                      </span>
+                      <span className="text-xs font-mono text-slate-500">
+                        {new Date(record.arrived_at).toLocaleTimeString('vi-VN', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-xs font-bold tracking-wider whitespace-nowrap">
+                      {record.vehicle.license_plate}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900 truncate">{record.customer.full_name}</p>
+                      <p className="text-xs text-slate-500 font-mono">
+                        {record.customer.phone || 'Chưa cập nhật'} • {record.vehicle.make} {record.vehicle.model}
+                      </p>
+                    </div>
+                  </div>
+
+                  {record.services && record.services.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {record.services.map((s) => (
+                        <span
+                          key={s.id}
+                          className="bg-blue-50/60 text-slate-700 text-[11px] px-2 py-0.5 rounded-md border border-blue-200/60"
+                        >
+                          {s.service?.name || 'Dịch vụ'}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <button
+                      onClick={() => setSelectedRecord(record)}
+                      className="h-8 px-3 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-[#0866ff] border border-slate-200/80 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">visibility</span>
+                      Chi tiết
+                    </button>
+                    {activeTab === 'QUEUED' && (
+                      <button
+                        onClick={() => handleCancelIntake(record.id)}
+                        className="h-8 px-3 bg-rose-50/80 border border-rose-200/80 text-rose-600 rounded-xl text-xs font-semibold hover:bg-rose-100 cursor-pointer"
+                      >
+                        Hủy
+                      </button>
+                    )}
+                    {activeTab === 'CONVERTED' && record.work_order && (
+                      <button
+                        onClick={() => setViewingROId(record.work_order?.id || null)}
+                        className="h-8 px-3 rounded-xl bg-[#0866ff] text-white text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">receipt_long</span>
+                        Xem RO
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            </div>
+          </>
+        )}
 
         {/* Pagination Controls */}
         {filteredRecords.length > 0 && (
