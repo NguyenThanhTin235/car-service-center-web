@@ -150,7 +150,7 @@ test.describe('Desk-Staff Portal E2E: Overview (/staff) & Command Dashboard (/st
 
     await page.click('a:has-text("Tiếp nhận xe mới")');
     await expect(page).toHaveURL(/\/staff\/intake/);
-    await expect(page.locator('h1:has-text("Tiếp nhận xe vào xưởng")')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('button:has-text("+ Tiếp nhận khách vãng lai")')).toBeVisible({ timeout: 15000 });
   });
 
   test('E2E-STF-OVR-02: /staff hiển thị banner lỗi và nút Thử lại khi API lỗi 500, phục hồi khi Retry', async ({

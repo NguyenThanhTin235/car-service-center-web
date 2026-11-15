@@ -122,7 +122,7 @@ test.describe('Desk-Staff Portal E2E: Appointments (/staff/appointments)', () =>
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('http://localhost:3001/staff/appointments', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.locator('h1:has-text("Lịch hẹn khách hàng")')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('button:has-text("+ Thêm lịch hẹn mới")').first()).toBeVisible({ timeout: 20000 });
     await expect(page.locator('text=30H-123.45').first()).toBeVisible();
     await expect(page.locator('text=51G-777.88').first()).toBeVisible();
 
@@ -276,7 +276,7 @@ test.describe('Desk-Staff Portal E2E: Appointments (/staff/appointments)', () =>
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('http://localhost:3001/staff/appointments', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('h1:has-text("Lịch hẹn khách hàng")')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('button:has-text("+ Thêm lịch hẹn mới")').first()).toBeVisible({ timeout: 20000 });
 
     await page.locator('button:has-text("+ Thêm lịch hẹn mới")').first().click();
     await expect(page.locator('h2:has-text("Đặt lịch hẹn mới")')).toBeVisible();

@@ -119,7 +119,7 @@ test.describe('Desk-Staff Portal E2E: Vehicle Intake (/staff/intake)', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('http://localhost:3001/staff/intake', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.locator('h1:has-text("Tiếp nhận xe vào xưởng")')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('button:has-text("+ Tiếp nhận khách vãng lai")')).toBeVisible({ timeout: 20000 });
     await expect(page.locator('text=51K-888.99').first()).toBeVisible();
     await expect(page.locator('text=51D-777.00').first()).toBeVisible();
 
