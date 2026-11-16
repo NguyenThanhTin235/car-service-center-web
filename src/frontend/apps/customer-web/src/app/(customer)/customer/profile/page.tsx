@@ -10,6 +10,7 @@ import {
   createVehicle,
   updateVehicle,
   deleteVehicle,
+  restoreVehicle,
   Vehicle,
 } from '@/store/slices/vehicleSlice';
 import {
@@ -349,7 +350,7 @@ export default function ProfilePage() {
 
     try {
       if (vehicleModalMode === 'add') {
-        await dispatch(createVehicle({
+        const created = await dispatch(createVehicle({
           licensePlate: vehicleForm.licensePlate.trim().toUpperCase(),
           make: vehicleForm.make.trim(),
           model: vehicleForm.model.trim(),
@@ -357,6 +358,10 @@ export default function ProfilePage() {
           color: vehicleForm.color ? vehicleForm.color.trim() : undefined,
           vehicleSize: vehicleForm.vehicleSize,
         })).unwrap();
+        if (bookingModalOpen && created?.id) {
+          setBookingVehicleId(created.id);
+          setCustomPlateInput('');
+        }
         setVehicleToast({ message: 'Thêm phương tiện mới thành công!', type: 'success' });
       } else if (selectedVehicle) {
         await dispatch(updateVehicle({
@@ -381,13 +386,36 @@ export default function ProfilePage() {
   const handleDeleteVehicle = async () => {
     if (!vehicleDeleteConfirm) return;
     try {
-      await dispatch(deleteVehicle(vehicleDeleteConfirm.id)).unwrap();
-      setVehicleToast({ message: 'Đã xóa phương tiện thành công!', type: 'success' });
+      const res = await dispatch(deleteVehicle(vehicleDeleteConfirm.id)).unwrap();
+      setVehicleToast({
+        message:
+          res.message ||
+          (res.deactivated
+            ? 'Xe đã có lịch sử dịch vụ, đã được vô hiệu hóa thay vì xóa.'
+            : 'Đã xóa phương tiện thành công!'),
+        type: 'success',
+      });
       setVehicleDeleteConfirm(null);
       dispatch(fetchVehicles());
     } catch (err: any) {
       setVehicleToast({ message: typeof err === 'string' ? err : 'Không thể xóa phương tiện này', type: 'error' });
       setVehicleDeleteConfirm(null);
+    }
+  };
+
+  const handleRestoreVehicle = async (vehicleId: number) => {
+    try {
+      const res = await dispatch(restoreVehicle(vehicleId)).unwrap();
+      setVehicleToast({
+        message: res.message || 'Đã kích hoạt lại phương tiện thành công!',
+        type: 'success',
+      });
+      dispatch(fetchVehicles());
+    } catch (err: any) {
+      setVehicleToast({
+        message: typeof err === 'string' ? err : 'Không thể kích hoạt lại phương tiện này',
+        type: 'error',
+      });
     }
   };
 
@@ -448,8 +476,54 @@ export default function ProfilePage() {
     });
   }, [calendarDate, appointments, data?.id]);
 
+  const MORNING_BOOKING_SLOTS = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30'];
+  const AFTERNOON_BOOKING_SLOTS = ['13:30', '14:00', '14:30', '15:00', '16:00'];
+  const ALL_BOOKING_SLOTS = [...MORNING_BOOKING_SLOTS, ...AFTERNOON_BOOKING_SLOTS];
+
+  const isBookingSlotInPast = (dateObj: Date, slot: string) => {
+    const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+    return new Date(`${dateStr}T${slot}:00`) < new Date();
+  };
+
+  const hasVehicleAppointmentOnDate = (vehicleId: number | string | null | undefined, dateStr: string) => {
+    if (!vehicleId) return false;
+    const vid = Number(vehicleId);
+    return appointments.some((apt) => {
+      if (!['REQUESTED', 'CONFIRMED', 'RESCHEDULED', 'ARRIVED'].includes(apt.status)) return false;
+      const aptVid = Number(apt.vehicle_id || apt.vehicle?.id);
+      if (aptVid !== vid) return false;
+      const aptDateStr =
+        typeof apt.scheduled_date === 'string'
+          ? apt.scheduled_date.substring(0, 10)
+          : new Date(apt.scheduled_date).toISOString().substring(0, 10);
+      return aptDateStr === dateStr;
+    });
+  };
+
   const handleOpen3StepBooking = (initialDate?: Date) => {
-    setBookingDate(initialDate || new Date());
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    let targetDate = initialDate ? new Date(initialDate) : new Date();
+    const targetDayStart = new Date(targetDate);
+    targetDayStart.setHours(0, 0, 0, 0);
+
+    if (targetDayStart < todayStart) {
+      targetDate = new Date();
+      setVehicleToast({ message: 'Không thể đặt lịch cho ngày trong quá khứ.', type: 'error' });
+    }
+
+    const firstValidSlot = ALL_BOOKING_SLOTS.find((slot) => !isBookingSlotInPast(targetDate, slot));
+    if (firstValidSlot) {
+      setBookingDate(targetDate);
+      setBookingTime(firstValidSlot);
+    } else {
+      const tomorrow = new Date(targetDate);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      setBookingDate(tomorrow);
+      setBookingTime('08:00');
+    }
+
     setBookingNotes('');
     setBookingStep(1);
     setBookingModalOpen(true);
@@ -475,9 +549,15 @@ export default function ProfilePage() {
       return;
     }
 
+    const formattedDate = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}-${String(bookingDate.getDate()).padStart(2, '0')}`;
+    const selectedDateTime = new Date(`${formattedDate}T${bookingTime}:00`);
+    if (selectedDateTime < new Date()) {
+      setVehicleToast({ message: 'Không thể đặt lịch hẹn trong quá khứ. Vui lòng chọn ngày giờ hợp lệ.', type: 'error' });
+      return;
+    }
+
     setBookingSubmitting(true);
     try {
-      const formattedDate = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}-${String(bookingDate.getDate()).padStart(2, '0')}`;
 
       let chosenVehicleId = bookingVehicleId;
       // If user entered custom plate
@@ -510,6 +590,15 @@ export default function ProfilePage() {
           setBookingSubmitting(false);
           return;
         }
+      }
+
+      if (chosenVehicleId && hasVehicleAppointmentOnDate(chosenVehicleId, formattedDate)) {
+        setVehicleToast({
+          message: 'Xe này đã có lịch hẹn trong ngày được chọn. Vui lòng chọn ngày khác.',
+          type: 'error',
+        });
+        setBookingSubmitting(false);
+        return;
       }
 
       await dispatch(
@@ -932,14 +1021,25 @@ export default function ProfilePage() {
                             <span className="material-symbols-outlined text-[15px]">edit</span>
                             Chỉnh sửa
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setVehicleDeleteConfirm(v)}
-                            className="flex items-center gap-1 px-3 py-1.5 border border-red-100 text-red-600 hover:bg-red-50 rounded-xl text-xs font-semibold transition-all"
-                          >
-                            <span className="material-symbols-outlined text-[15px]">delete</span>
-                            Xóa
-                          </button>
+                          {v.isActive ? (
+                            <button
+                              type="button"
+                              onClick={() => setVehicleDeleteConfirm(v)}
+                              className="flex items-center gap-1 px-3 py-1.5 border border-red-100 text-red-600 hover:bg-red-50 rounded-xl text-xs font-semibold transition-all"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">delete</span>
+                              Xóa
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleRestoreVehicle(v.id)}
+                              className="flex items-center gap-1 px-3 py-1.5 border border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl text-xs font-semibold transition-all"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">restart_alt</span>
+                              Kích hoạt lại
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -1224,14 +1324,27 @@ export default function ProfilePage() {
                 {/* Vehicle Selection Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   {/* Default / Registered Vehicles */}
-                  {vehicles.length === 0 ? (
+                  {vehicles.filter((v) => v.isActive !== false).length === 0 ? (
                     <div className="col-span-full p-6 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
                       <span className="material-symbols-outlined text-3xl text-slate-400 mb-1">directions_car</span>
                       <p className="text-sm font-semibold text-slate-700">Chưa có phương tiện trong hồ sơ</p>
-                      <p className="text-xs text-slate-500 mt-1">Vui lòng nhập biển số xe bên dưới để tiếp tục đặt lịch.</p>
+                      <p className="text-xs text-slate-500 mt-1">Thêm nhanh phương tiện vào hồ sơ hoặc nhập biển số xe bên dưới để tiếp tục đặt lịch.</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVehicleModalMode('add');
+                          setSelectedVehicle(null);
+                          setVehicleForm(EMPTY_VEHICLE_FORM);
+                          setVehicleModalOpen(true);
+                        }}
+                        className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">add</span>
+                        + Thêm phương tiện
+                      </button>
                     </div>
                   ) : (
-                    vehicles.map((v) => {
+                    vehicles.filter((v) => v.isActive !== false).map((v) => {
                       const isSelected = !customPlateInput && bookingVehicleId === v.id;
                       return (
                         <div
@@ -1418,17 +1531,36 @@ export default function ProfilePage() {
                         </h4>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const d = new Date(bookingDate);
-                            d.setMonth(d.getMonth() - 1);
-                            setBookingDate(d);
-                          }}
-                          className="w-6 h-6 rounded hover:bg-slate-100 flex items-center justify-center text-slate-500"
-                        >
-                          ‹
-                        </button>
+                        {(() => {
+                          const now = new Date();
+                          const isPrevMonthDisabled =
+                            bookingDate.getFullYear() < now.getFullYear() ||
+                            (bookingDate.getFullYear() === now.getFullYear() &&
+                              bookingDate.getMonth() <= now.getMonth());
+                          return (
+                            <button
+                              type="button"
+                              disabled={isPrevMonthDisabled}
+                              onClick={() => {
+                                const d = new Date(bookingDate);
+                                d.setMonth(d.getMonth() - 1);
+                                const todayStart = new Date();
+                                todayStart.setHours(0, 0, 0, 0);
+                                if (
+                                  d.getFullYear() === todayStart.getFullYear() &&
+                                  d.getMonth() === todayStart.getMonth() &&
+                                  d < todayStart
+                                ) {
+                                  d.setDate(todayStart.getDate());
+                                }
+                                setBookingDate(d);
+                              }}
+                              className="w-6 h-6 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-slate-500"
+                            >
+                              ‹
+                            </button>
+                          );
+                        })()}
                         <button
                           type="button"
                           onClick={() => {
@@ -1456,28 +1588,59 @@ export default function ProfilePage() {
 
                     {/* Mini Day Grid */}
                     <div className="grid grid-cols-7 gap-1 text-center text-xs">
-                      {Array.from({ length: 30 }, (_, i) => {
-                        const dayNum = i + 1;
-                        const isSelectedDay = bookingDate.getDate() === dayNum;
+                      {(() => {
+                        const year = bookingDate.getFullYear();
+                        const month = bookingDate.getMonth();
+                        const daysInMonth = new Date(year, month + 1, 0).getDate();
+                        const firstDayOffset = (new Date(year, month, 1).getDay() + 6) % 7;
+                        const todayStart = new Date();
+                        todayStart.setHours(0, 0, 0, 0);
+
                         return (
-                          <button
-                            key={dayNum}
-                            type="button"
-                            onClick={() => {
-                              const newD = new Date(bookingDate);
-                              newD.setDate(dayNum);
-                              setBookingDate(newD);
-                            }}
-                            className={`h-7 rounded-lg font-medium text-xs flex items-center justify-center transition-all ${
-                              isSelectedDay
-                                ? 'bg-blue-600 text-white font-bold shadow-sm'
-                                : 'hover:bg-slate-100 text-slate-700'
-                            }`}
-                          >
-                            {dayNum}
-                          </button>
+                          <>
+                            {Array.from({ length: firstDayOffset }, (_, idx) => (
+                              <div key={`empty-${idx}`} className="h-7" />
+                            ))}
+                            {Array.from({ length: daysInMonth }, (_, i) => {
+                              const dayNum = i + 1;
+                              const cellDate = new Date(year, month, dayNum);
+                              const cellDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                              const isPastDay = cellDate < todayStart;
+                              const isDuplicateDay = !isPastDay && hasVehicleAppointmentOnDate(bookingVehicleId, cellDateStr);
+                              const isSelectedDay = bookingDate.getDate() === dayNum;
+                              return (
+                                <button
+                                  key={dayNum}
+                                  type="button"
+                                  disabled={isPastDay || isDuplicateDay}
+                                  title={isDuplicateDay ? 'Xe này đã có lịch hẹn trong ngày này' : undefined}
+                                  onClick={() => {
+                                    const newD = new Date(year, month, dayNum);
+                                    setBookingDate(newD);
+                                    if (isBookingSlotInPast(newD, bookingTime)) {
+                                      const nextSlot = ALL_BOOKING_SLOTS.find(
+                                        (s) => !isBookingSlotInPast(newD, s)
+                                      );
+                                      if (nextSlot) setBookingTime(nextSlot);
+                                    }
+                                  }}
+                                  className={`h-7 rounded-lg font-medium text-xs flex items-center justify-center transition-all ${
+                                    isPastDay
+                                      ? 'text-slate-300 cursor-not-allowed line-through'
+                                      : isDuplicateDay
+                                        ? 'bg-amber-50 text-amber-500 border border-amber-200 cursor-not-allowed'
+                                        : isSelectedDay
+                                          ? 'bg-blue-600 text-white font-bold shadow-sm'
+                                          : 'hover:bg-slate-100 text-slate-700'
+                                  }`}
+                                >
+                                  {dayNum}
+                                </button>
+                              );
+                            })}
+                          </>
                         );
-                      })}
+                      })()}
                     </div>
 
                     <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
@@ -1487,6 +1650,15 @@ export default function ProfilePage() {
                       </span>
                       <span>Xưởng mở cửa (07:30 - 17:30)</span>
                     </div>
+                    {hasVehicleAppointmentOnDate(
+                      bookingVehicleId,
+                      `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}-${String(bookingDate.getDate()).padStart(2, '0')}`
+                    ) && (
+                      <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-medium flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-sm text-amber-600">warning</span>
+                        <span>Xe này đã có lịch hẹn vào ngày đang chọn. Vui lòng chọn ngày khác.</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Right: Morning & Afternoon Slots */}
@@ -1498,20 +1670,26 @@ export default function ProfilePage() {
                           <span className="material-symbols-outlined text-amber-500 text-base">wb_sunny</span>
                           Buổi sáng (07:30 - 11:30)
                         </span>
-                        <span className="text-[11px] text-slate-400">6/6 khung giờ sẵn sàng</span>
+                        <span className="text-[11px] text-slate-400">
+                          {MORNING_BOOKING_SLOTS.filter((s) => !isBookingSlotInPast(bookingDate, s)).length}/{MORNING_BOOKING_SLOTS.length} khung giờ sẵn sàng
+                        </span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
-                        {['08:00', '08:30', '09:00', '09:30', '10:00', '10:30'].map((slot) => {
-                          const isSelected = bookingTime === slot;
+                        {MORNING_BOOKING_SLOTS.map((slot) => {
+                          const isPastSlot = isBookingSlotInPast(bookingDate, slot);
+                          const isSelected = bookingTime === slot && !isPastSlot;
                           return (
                             <button
                               key={slot}
                               type="button"
+                              disabled={isPastSlot}
                               onClick={() => setBookingTime(slot)}
                               className={`py-2 rounded-xl text-xs font-semibold transition-all border ${
-                                isSelected
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                                isPastSlot
+                                  ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed line-through'
+                                  : isSelected
+                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
                               }`}
                             >
                               {slot}
@@ -1528,20 +1706,26 @@ export default function ProfilePage() {
                           <span className="material-symbols-outlined text-blue-500 text-base">wb_twilight</span>
                           Buổi chiều (13:30 - 17:30)
                         </span>
-                        <span className="text-[11px] text-slate-400">5 khung giờ sẵn sàng</span>
+                        <span className="text-[11px] text-slate-400">
+                          {AFTERNOON_BOOKING_SLOTS.filter((s) => !isBookingSlotInPast(bookingDate, s)).length}/{AFTERNOON_BOOKING_SLOTS.length} khung giờ sẵn sàng
+                        </span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
-                        {['13:30', '14:00', '14:30', '15:00', '16:00'].map((slot) => {
-                          const isSelected = bookingTime === slot;
+                        {AFTERNOON_BOOKING_SLOTS.map((slot) => {
+                          const isPastSlot = isBookingSlotInPast(bookingDate, slot);
+                          const isSelected = bookingTime === slot && !isPastSlot;
                           return (
                             <button
                               key={slot}
                               type="button"
+                              disabled={isPastSlot}
                               onClick={() => setBookingTime(slot)}
                               className={`py-2 rounded-xl text-xs font-semibold transition-all border ${
-                                isSelected
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                                isPastSlot
+                                  ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed line-through'
+                                  : isSelected
+                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
                               }`}
                             >
                               {slot}
@@ -1618,6 +1802,13 @@ export default function ProfilePage() {
                       setVehicleToast({ message: 'Vui lòng chọn xe hoặc nhập biển số xe để tiếp tục.', type: 'error' });
                       return;
                     }
+                    if (bookingStep === 2 && selectedServiceIds.length === 0 && !bookingNotes.trim()) {
+                      setVehicleToast({
+                        message: 'Vui lòng chọn ít nhất 1 dịch vụ hoặc nhập mô tả tình trạng xe để tiếp tục.',
+                        type: 'error',
+                      });
+                      return;
+                    }
                     setBookingStep((bookingStep + 1) as any);
                   }}
                   className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-1.5"
@@ -1637,7 +1828,7 @@ export default function ProfilePage() {
                   ) : (
                     <span className="material-symbols-outlined text-[18px]">calendar_month</span>
                   )}
-                  Tiếp tục / Xác nhận đặt lịch
+                  Lưu lịch hẹn
                 </button>
               )}
             </div>
@@ -1648,134 +1839,283 @@ export default function ProfilePage() {
       {/* ============================================================== */}
       {/* CUSTOMER APPOINTMENT DETAIL MODAL (CUSTOM BUILT FOR CUSTOMER)   */}
       {/* ============================================================== */}
-      {selectedAptDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-xl">event_available</span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-slate-900 text-sm">Chi tiết lịch hẹn #{selectedAptDetail.id}</h3>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        selectedAptDetail.status === 'ARRIVED'
-                          ? 'bg-purple-100 text-purple-800'
-                          : selectedAptDetail.status === 'CONFIRMED'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : selectedAptDetail.status === 'CANCELLED'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}
-                    >
-                      {selectedAptDetail.status === 'ARRIVED'
-                        ? 'Đã tiếp nhận'
-                        : selectedAptDetail.status === 'CONFIRMED'
-                        ? 'Đã xác nhận'
-                        : selectedAptDetail.status === 'CANCELLED'
-                        ? 'Đã hủy'
-                        : 'Chờ xác nhận'}
-                    </span>
+      {selectedAptDetail && (() => {
+        const rawDate = typeof selectedAptDetail.scheduled_date === 'string'
+          ? selectedAptDetail.scheduled_date.substring(0, 10)
+          : new Date(selectedAptDetail.scheduled_date).toISOString().substring(0, 10);
+        const [yStr, mStr, dStr] = rawDate.split('-');
+        const dateObj = new Date(Number(yStr), Number(mStr) - 1, Number(dStr));
+        const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+        const weekdayLabel = dayNames[dateObj.getDay()] || '';
+        const timeStr = selectedAptDetail.scheduled_time_str || selectedAptDetail.scheduled_time || '08:00';
+        const hourNum = parseInt(timeStr.split(':')[0] || '8', 10);
+        const periodLabel = hourNum < 12 ? 'Buổi sáng' : 'Buổi chiều';
+
+        const matchedVehicle = vehicles.find(
+          (v) => Number(v.id) === Number(selectedAptDetail.vehicle_id || selectedAptDetail.vehicle?.id)
+        );
+        const plateText = selectedAptDetail.vehicle?.license_plate || matchedVehicle?.licensePlate || '—';
+        const makeModelText = `${selectedAptDetail.vehicle?.make || matchedVehicle?.make || ''} ${selectedAptDetail.vehicle?.model || matchedVehicle?.model || ''}`.trim() || 'Chưa rõ dòng xe';
+        const sizeLabelMap: Record<string, string> = {
+          SMALL: 'Nhỏ',
+          MEDIUM: 'Trung bình',
+          LARGE: 'Lớn',
+        };
+
+        const statusMeta: Record<string, { label: string; badgeClass: string; stepIndex: number }> = {
+          REQUESTED: { label: 'Chờ xác nhận', badgeClass: 'bg-blue-100 text-blue-800', stepIndex: 1 },
+          RESCHEDULED: { label: 'Đã dời lịch', badgeClass: 'bg-amber-100 text-amber-800', stepIndex: 1 },
+          CONFIRMED: { label: 'Đã xác nhận', badgeClass: 'bg-emerald-100 text-emerald-800', stepIndex: 2 },
+          ARRIVED: { label: 'Đã tiếp nhận', badgeClass: 'bg-purple-100 text-purple-800', stepIndex: 3 },
+          CANCELLED: { label: 'Đã hủy', badgeClass: 'bg-red-100 text-red-800', stepIndex: 0 },
+        };
+        const currentStatus = statusMeta[selectedAptDetail.status] || statusMeta.REQUESTED;
+        const aptServices = selectedAptDetail.services || [];
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-100 space-y-5">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-xl">event_available</span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5">Trung tâm Car Service Center</p>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-bold text-slate-900 text-base">
+                        Chi tiết lịch hẹn #{selectedAptDetail.id}
+                      </h3>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${currentStatus.badgeClass}`}>
+                        {currentStatus.label}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Phiếu đặt lịch dịch vụ • Trung tâm Car Service Center
+                    </p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedAptDetail(null)}
+                  className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700"
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedAptDetail(null)}
-                className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700"
-              >
-                <span className="material-symbols-outlined text-lg">close</span>
-              </button>
-            </div>
 
-            {/* Info Grid */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2.5 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Phương tiện:</span>
-                <span className="font-bold text-slate-900">
-                  {selectedAptDetail.vehicle?.license_plate || '—'} ({selectedAptDetail.vehicle?.make} {selectedAptDetail.vehicle?.model})
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Thời gian hẹn:</span>
-                <span className="font-bold text-blue-700">
-                  {(() => {
-                    const raw = typeof selectedAptDetail.scheduled_date === 'string'
-                      ? selectedAptDetail.scheduled_date.substring(0, 10)
-                      : new Date(selectedAptDetail.scheduled_date).toISOString().substring(0, 10);
-                    const [y, m, d] = raw.split('-');
-                    return `${d}/${m}/${y}`;
-                  })()} lúc {selectedAptDetail.scheduled_time_str || selectedAptDetail.scheduled_time}
-                </span>
-              </div>
-              {selectedAptDetail.notes && (
-                <div className="pt-2 border-t border-slate-200">
-                  <span className="text-slate-500 block mb-1">Ghi chú của bạn:</span>
-                  <p className="text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200 leading-relaxed">
-                    {selectedAptDetail.notes}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Actions: Reschedule / Cancel / Close */}
-            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              {selectedAptDetail.status === 'REQUESTED' || selectedAptDetail.status === 'RESCHEDULED' ? (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRescheduleApt(selectedAptDetail);
-                      const rawD = typeof selectedAptDetail.scheduled_date === 'string'
-                        ? selectedAptDetail.scheduled_date.substring(0, 10)
-                        : new Date(selectedAptDetail.scheduled_date).toISOString().substring(0, 10);
-                      setRescheduleDate(rawD);
-                      setRescheduleTime(selectedAptDetail.scheduled_time_str || '08:30');
-                      setSelectedAptDetail(null);
-                    }}
-                    className="px-3 py-1.5 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-semibold transition-colors"
-                  >
-                    Dời ngày/giờ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCancelApt(selectedAptDetail);
-                      setCancelReason('');
-                      setSelectedAptDetail(null);
-                    }}
-                    className="px-3 py-1.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl text-xs font-semibold transition-colors"
-                  >
-                    Hủy lịch
-                  </button>
+              {/* Status Timeline or Cancelled Alert */}
+              {selectedAptDetail.status === 'CANCELLED' ? (
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-xs">
+                  <span className="material-symbols-outlined text-red-600 text-lg shrink-0 mt-0.5">cancel</span>
+                  <div>
+                    <p className="font-bold text-red-800">Lịch hẹn này đã bị hủy</p>
+                    <p className="text-red-700 mt-0.5">
+                      Lý do: {selectedAptDetail.cancel_reason || 'Không có lý do cụ thể'}
+                    </p>
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <span className="material-symbols-outlined text-[16px] text-amber-500">lock</span>
-                  <span>
-                    {selectedAptDetail.status === 'CONFIRMED'
-                      ? 'Đơn đã xác nhận không thể hủy hoặc dời (Vui lòng liên hệ hotline)'
-                      : selectedAptDetail.status === 'ARRIVED'
-                      ? 'Xe đã tiếp nhận tại xưởng, không thể thay đổi'
-                      : 'Lịch hẹn đã hủy'}
-                  </span>
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      {
+                        step: 1,
+                        title: selectedAptDetail.status === 'RESCHEDULED' ? 'Đã dời lịch' : 'Đã gửi yêu cầu',
+                        icon: 'edit_calendar',
+                      },
+                      { step: 2, title: 'Xưởng xác nhận', icon: 'verified' },
+                      { step: 3, title: 'Tiếp nhận xe', icon: 'directions_car' },
+                    ].map((item) => {
+                      const done = currentStatus.stepIndex >= item.step;
+                      const active = currentStatus.stepIndex === item.step;
+                      return (
+                        <div
+                          key={item.step}
+                          className={`flex items-center gap-2 p-2 rounded-lg border text-xs ${
+                            active
+                              ? 'bg-blue-50 border-blue-200 text-blue-800 font-bold'
+                              : done
+                                ? 'bg-emerald-50/70 border-emerald-200 text-emerald-800 font-semibold'
+                                : 'bg-white border-slate-200 text-slate-400'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-base shrink-0">
+                            {done && !active ? 'check_circle' : item.icon}
+                          </span>
+                          <span className="truncate">{item.title}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
-              <button
-                type="button"
-                onClick={() => setSelectedAptDetail(null)}
-                className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold transition-all self-end sm:self-auto"
-              >
-                Đóng
-              </button>
+
+              {/* 2-Column Detailed Info */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                {/* Schedule & Workshop */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                    <span className="material-symbols-outlined text-sm text-blue-600">schedule</span>
+                    <span>Thời gian &amp; Địa điểm</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">Ngày hẹn:</span>
+                      <span className="font-bold text-slate-900 text-right">
+                        {weekdayLabel}, {dStr}/{mStr}/{yStr}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">Khung giờ:</span>
+                      <span className="font-bold text-blue-700 text-right">
+                        {timeStr} ({periodLabel})
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">Địa điểm:</span>
+                      <span className="font-semibold text-slate-800 text-right">Car Service Center</span>
+                    </div>
+                    <div className="pt-1.5 border-t border-slate-200/70 text-[11px] text-emerald-700 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">local_car_wash</span>
+                      <span>Miễn phí rửa xe, hút bụi &amp; kiểm tra an toàn</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vehicle & Customer */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                    <span className="material-symbols-outlined text-sm text-blue-600">directions_car</span>
+                    <span>Phương tiện &amp; Liên hệ</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-slate-500">Biển số xe:</span>
+                      <span className="px-2 py-0.5 rounded bg-white border border-slate-200 font-mono font-bold text-slate-900">
+                        {plateText}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">Hãng &amp; Dòng xe:</span>
+                      <span className="font-bold text-slate-900 text-right">{makeModelText}</span>
+                    </div>
+                    {(matchedVehicle?.color || matchedVehicle?.year || matchedVehicle?.vehicleSize) && (
+                      <div className="flex justify-between gap-2">
+                        <span className="text-slate-500">Thông số:</span>
+                        <span className="text-slate-700 text-right">
+                          {[
+                            matchedVehicle.color ? `Màu ${matchedVehicle.color}` : null,
+                            matchedVehicle.year ? `Đời ${matchedVehicle.year}` : null,
+                            matchedVehicle.vehicleSize ? `Cỡ ${sizeLabelMap[matchedVehicle.vehicleSize] || matchedVehicle.vehicleSize}` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' • ')}
+                        </span>
+                      </div>
+                    )}
+                    <div className="pt-1.5 border-t border-slate-200/70 flex justify-between gap-2">
+                      <span className="text-slate-500">Khách hàng:</span>
+                      <span className="font-semibold text-slate-800 text-right">
+                        {selectedAptDetail.customer?.full_name || data?.fullName || '—'}
+                        {(selectedAptDetail.customer?.phone || data?.phone) &&
+                          ` (${selectedAptDetail.customer?.phone || data?.phone})`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Requested Services */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                    <span className="material-symbols-outlined text-sm text-blue-600">build_circle</span>
+                    <span>Dịch vụ yêu cầu ({aptServices.length})</span>
+                  </div>
+                </div>
+                {aptServices.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {aptServices.map((svc) => (
+                      <span
+                        key={svc.id}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-800 font-semibold shadow-2xs"
+                      >
+                        <span className="material-symbols-outlined text-[15px] text-blue-600">check_circle</span>
+                        {svc.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-500 italic">
+                    Chưa chọn dịch vụ cụ thể — Cố vấn kỹ thuật sẽ kiểm tra theo mô tả tình trạng xe.
+                  </p>
+                )}
+              </div>
+
+              {/* Notes */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1.5 text-xs">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                  <span className="material-symbols-outlined text-sm text-blue-600">notes</span>
+                  <span>Ghi chú / Tình trạng xe</span>
+                </div>
+                <p className="text-slate-700 bg-white p-3 rounded-lg border border-slate-200 leading-relaxed">
+                  {selectedAptDetail.notes?.trim() ? selectedAptDetail.notes : 'Không có ghi chú thêm.'}
+                </p>
+              </div>
+
+              {/* Actions: Reschedule / Cancel / Close */}
+              <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {selectedAptDetail.status === 'REQUESTED' || selectedAptDetail.status === 'RESCHEDULED' ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRescheduleApt(selectedAptDetail);
+                        setRescheduleDate(rawDate);
+                        setRescheduleTime(selectedAptDetail.scheduled_time_str || '08:30');
+                        setSelectedAptDetail(null);
+                      }}
+                      className="px-3.5 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-semibold transition-colors"
+                    >
+                      Dời ngày/giờ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCancelApt(selectedAptDetail);
+                        setCancelReason('');
+                        setSelectedAptDetail(null);
+                      }}
+                      className="px-3.5 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl text-xs font-semibold transition-colors"
+                    >
+                      Hủy lịch
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                    <span className="material-symbols-outlined text-[16px] text-amber-500">lock</span>
+                    <span>
+                      {selectedAptDetail.status === 'CONFIRMED'
+                        ? 'Đơn đã xác nhận không thể hủy hoặc dời (Vui lòng liên hệ hotline)'
+                        : selectedAptDetail.status === 'ARRIVED'
+                        ? 'Xe đã tiếp nhận tại xưởng, không thể thay đổi'
+                        : 'Lịch hẹn đã hủy'}
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedAptDetail(null)}
+                  className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold transition-all self-end sm:self-auto"
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Reschedule Modal */}
       {rescheduleApt && (
@@ -1857,7 +2197,7 @@ export default function ProfilePage() {
 
       {/* Vehicle Add/Edit Modal (In Child Panel) */}
       {vehicleModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">

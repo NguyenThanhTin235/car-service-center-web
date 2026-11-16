@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -8,11 +8,13 @@ import InvoiceStatusBadge from '@/components/billing/InvoiceStatusBadge';
 import CreateInvoiceDraftModal from '@/components/billing/CreateInvoiceDraftModal';
 import PaymentModal from '@/components/billing/PaymentModal';
 import { InvoiceDetail, getInvoiceById } from '@/lib/api/invoice.api';
+import TablePagination from '@/components/shared/TablePagination';
+import { formatVND } from '@/lib/utils/formatters';
 import toast from 'react-hot-toast';
 
 export default function BillingQueuePage() {
   const dispatch = useAppDispatch();
-  const { tab, search, page, summary, records, pagination, loading } = useAppSelector(
+  const { tab, search, page, summary, records, pagination, loading, error } = useAppSelector(
     (state) => state.billing
   );
 
@@ -42,9 +44,6 @@ export default function BillingQueuePage() {
     dispatch(setSearch(searchInput.trim()));
   };
 
-  const formatMoney = (val: number | undefined) =>
-    (Number(val) || 0).toLocaleString('vi-VN') + ' đ';
-
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return '-';
     const d = new Date(dateStr);
@@ -63,28 +62,7 @@ export default function BillingQueuePage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. SaaS Header Toolbar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
-          Hóa đơn &amp; Thu ngân
-        </h1>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => dispatch(fetchBillingQueue({ tab, search, page }))}
-            className="h-10 px-4 bg-white border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 hover:text-[#0866ff] rounded-xl shadow-2xs text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
-            title="Làm mới bảng"
-            type="button"
-          >
-            <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin text-[#0866ff]' : ''}`}>
-              sync
-            </span>
-            <span>Làm mới dữ liệu</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Asymmetrical 12-Col Bento Summary (5 + 7 cols) */}
+      {/* 1. Asymmetrical 12-Col Bento Summary (5 + 7 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Hero Card: Đã thu hôm nay (5 cols) */}
         <div
@@ -97,7 +75,7 @@ export default function BillingQueuePage() {
             <div>
               <span className="text-xs font-semibold text-white">Doanh thu đã thu hôm nay</span>
               <div className="text-2xl sm:text-3xl font-mono font-extrabold tabular-nums tracking-tight mt-1 text-white">
-                {formatMoney(summary.paidTodayRevenue)}
+                {formatVND(summary.paidTodayRevenue)}
               </div>
             </div>
 
@@ -315,72 +293,85 @@ export default function BillingQueuePage() {
             </button>
           </div>
 
-          {/* Search Box (Flex Siblings - No Overlapping Icon) */}
-          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 max-w-md w-full">
-            <div className="flex-1 flex items-center gap-2 px-3 rounded-xl border border-slate-200/80 bg-slate-50/80 focus-within:bg-white focus-within:border-[#0866ff] h-9 transition-all">
-              <span className="material-symbols-outlined text-[18px] text-slate-500 shrink-0">
-                search
-              </span>
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Tìm biển số, mã phiếu WO, tên khách hàng..."
-                className="flex-1 min-w-0 bg-transparent outline-none text-xs text-slate-800 placeholder:text-slate-500"
-              />
-              {searchInput && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchInput('');
-                    dispatch(setSearch(''));
-                  }}
-                  className="flex items-center text-slate-500 hover:text-slate-800 cursor-pointer shrink-0"
-                  title="Xóa tìm kiếm"
-                >
-                  <span className="material-symbols-outlined text-[16px]">close</span>
-                </button>
-              )}
-            </div>
+          {/* Search Box & Refresh Action */}
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto lg:justify-end">
+            <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row sm:items-center gap-2 max-w-md w-full lg:w-auto flex-1">
+              <div className="flex-1 flex items-center gap-2 px-3 rounded-xl border border-slate-200/80 bg-slate-50/80 focus-within:bg-white focus-within:border-[#0866ff] h-9 transition-all min-w-[220px]">
+                <span className="material-symbols-outlined text-[18px] text-slate-500 shrink-0">
+                  search
+                </span>
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Tìm biển số, mã phiếu WO, tên khách hàng..."
+                  className="flex-1 min-w-0 bg-transparent outline-none text-xs text-slate-800 placeholder:text-slate-500"
+                />
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchInput('');
+                      dispatch(setSearch(''));
+                    }}
+                    className="flex items-center text-slate-500 hover:text-slate-800 cursor-pointer shrink-0"
+                    title="Xóa tìm kiếm"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                )}
+              </div>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-[#0866ff] hover:bg-[#0050cd] text-white rounded-xl text-xs font-semibold transition-colors shrink-0 h-9 flex items-center justify-center cursor-pointer shadow-xs"
+              >
+                Tìm kiếm
+              </button>
+            </form>
             <button
-              type="submit"
-              className="px-4 py-2 bg-[#0866ff] hover:bg-[#0050cd] text-white rounded-xl text-xs font-semibold transition-colors shrink-0 h-9 flex items-center justify-center cursor-pointer shadow-xs"
+              onClick={() => dispatch(fetchBillingQueue({ tab, search, page }))}
+              className="h-9 px-3.5 bg-white border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 hover:text-[#0866ff] rounded-xl shadow-2xs text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+              title="Làm mới bảng"
+              type="button"
             >
-              Tìm kiếm
+              <span className={`material-symbols-outlined text-[17px] ${loading ? 'animate-spin text-[#0866ff]' : ''}`}>
+                sync
+              </span>
+              <span>Làm mới dữ liệu</span>
             </button>
-          </form>
+          </div>
         </div>
 
-        {/* 4. Table view (Flush inside .saas-card - No Nested Card Border) */}
-        <div className="overflow-x-auto bg-white">
-          <table className="w-full text-left text-sm min-w-[1020px]">
-            <thead className="bg-slate-50/80 text-slate-600 font-semibold text-xs uppercase tracking-wider border-b border-slate-200/80">
+        {/* 4. Desktop & Tablet Table view (Flush inside .saas-card - No Nested Card Border) */}
+        <div className="hidden md:block overflow-x-auto bg-white">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50/80 text-slate-600 font-semibold text-[11px] uppercase tracking-wider border-b border-slate-200/80">
               {tab === 'PENDING' ? (
                 <tr>
-                  <th className="py-3.5 px-4 w-[16%] min-w-[150px]">Mã phiếu WO</th>
-                  <th className="py-3.5 px-4 w-[24%] min-w-[210px]">Biển số &amp; Xe</th>
-                  <th className="py-3.5 px-4 w-[18%] min-w-[160px]">Khách hàng</th>
-                  <th className="py-3.5 px-4 w-[16%] min-w-[150px]">Cố vấn dịch vụ</th>
-                  <th className="py-3.5 px-4 text-right w-[14%] min-w-[130px] whitespace-nowrap">
-                    Tạm tính (Báo giá duyệt)
+                  <th className="py-3.5 px-3.5 lg:px-4 whitespace-nowrap">Mã phiếu WO</th>
+                  <th className="py-3.5 px-3.5 lg:px-4 whitespace-nowrap">Biển số &amp; Xe</th>
+                  <th className="py-3.5 px-3.5 lg:px-4 whitespace-nowrap">Khách hàng</th>
+                  <th className="py-3.5 px-3.5 lg:px-4 whitespace-nowrap">Cố vấn dịch vụ</th>
+                  <th className="py-3.5 px-3.5 lg:px-4 text-right whitespace-nowrap">
+                    Tạm tính
                   </th>
-                  <th className="py-3.5 px-4 text-center w-[12%] min-w-[130px] whitespace-nowrap">
+                  <th className="py-3.5 px-3.5 lg:px-4 text-center whitespace-nowrap">
                     Thao tác
                   </th>
                 </tr>
               ) : (
                 <tr>
-                  <th className="py-3.5 px-4 w-[16%] min-w-[150px]">Mã hóa đơn</th>
-                  <th className="py-3.5 px-4 w-[18%] min-w-[170px]">Mã WO &amp; Biển số</th>
-                  <th className="py-3.5 px-4 w-[18%] min-w-[160px]">Khách hàng</th>
-                  <th className="py-3.5 px-4 w-[13%] min-w-[130px]">Trạng thái</th>
-                  <th className="py-3.5 px-4 text-right w-[11%] min-w-[110px] whitespace-nowrap">
+                  <th className="py-3.5 px-3.5 lg:px-4 whitespace-nowrap">Mã hóa đơn</th>
+                  <th className="py-3.5 px-3.5 lg:px-4 whitespace-nowrap">Mã WO &amp; Biển số</th>
+                  <th className="py-3.5 px-3.5 lg:px-4 whitespace-nowrap">Khách hàng</th>
+                  <th className="py-3.5 px-3.5 lg:px-4 whitespace-nowrap">Trạng thái</th>
+                  <th className="py-3.5 px-3.5 lg:px-4 text-right whitespace-nowrap">
                     Tổng tiền
                   </th>
-                  <th className="py-3.5 px-4 text-right w-[11%] min-w-[110px] whitespace-nowrap">
+                  <th className="py-3.5 px-3.5 lg:px-4 text-right whitespace-nowrap">
                     Còn phải trả
                   </th>
-                  <th className="py-3.5 px-4 text-center w-[13%] min-w-[180px] whitespace-nowrap">
+                  <th className="py-3.5 px-3.5 lg:px-4 text-center whitespace-nowrap">
                     Thao tác
                   </th>
                 </tr>
@@ -396,13 +387,44 @@ export default function BillingQueuePage() {
                     <span className="text-xs">Đang tải danh sách hóa đơn...</span>
                   </td>
                 </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={7} className="py-10 px-4 text-center">
+                    <div className="inline-flex flex-col items-center gap-2.5 text-rose-700 bg-rose-50/70 border border-rose-200 rounded-2xl px-6 py-5">
+                      <span className="material-symbols-outlined text-[28px] text-rose-600">error</span>
+                      <span className="text-xs font-semibold">Không thể tải hàng chờ thu ngân: {error}</span>
+                      <button
+                        type="button"
+                        onClick={() => dispatch(fetchBillingQueue({ tab, search, page, limit: 5 }))}
+                        className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">refresh</span>
+                        <span>Thử lại</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               ) : records.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-600">
                     <span className="material-symbols-outlined text-[40px] text-slate-400 block mb-1 mx-auto">
                       inbox
                     </span>
-                    <span className="text-xs">Không có dữ liệu phù hợp trong mục này.</span>
+                    <p className="text-xs">
+                      {search ? `Không có dữ liệu khớp với "${search}".` : 'Không có dữ liệu phù hợp trong mục này.'}
+                    </p>
+                    {search && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchInput('');
+                          dispatch(setSearch(''));
+                        }}
+                        className="mt-2 text-xs font-bold text-[#0866ff] hover:underline cursor-pointer"
+                      >
+                        Xóa tìm kiếm
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -422,8 +444,8 @@ export default function BillingQueuePage() {
                             {formatDate(rec.updatedAt)}
                           </div>
                         </td>
-                        <td className="py-3.5 px-4">
-                          <span className="px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-xs font-bold tracking-wider uppercase">
+                        <td className="py-3.5 px-3.5 lg:px-4 whitespace-nowrap">
+                          <span className="px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-xs font-bold tracking-wider uppercase whitespace-nowrap">
                             {rec.vehicle?.licensePlate || (rec.vehicle as any)?.license_plate || '-'}
                           </span>
                           <div className="text-xs text-slate-600 mt-1">
@@ -442,7 +464,7 @@ export default function BillingQueuePage() {
                           {rec.advisor?.fullName || (rec.advisor as any)?.full_name || '-'}
                         </td>
                         <td className="py-3.5 px-4 text-right font-mono font-bold tabular-nums text-slate-900 whitespace-nowrap">
-                          {formatMoney(rec.estimatedTotal)}
+                          {formatVND(rec.estimatedTotal ?? 0)}
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           <button
@@ -474,8 +496,8 @@ export default function BillingQueuePage() {
                           {formatDate(rec.issuedAt || rec.createdAt)}
                         </div>
                       </td>
-                      <td className="py-3.5 px-4">
-                        <span className="px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-xs font-bold tracking-wider uppercase">
+                      <td className="py-3.5 px-3.5 lg:px-4 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-xs font-bold tracking-wider uppercase whitespace-nowrap">
                           {rec.vehicle?.licensePlate || (rec.vehicle as any)?.license_plate || '-'}
                         </span>
                         <div className="text-xs text-slate-600 font-mono mt-1">{rec.woNumber}</div>
@@ -492,13 +514,13 @@ export default function BillingQueuePage() {
                         <InvoiceStatusBadge status={rec.status as any} />
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono font-semibold tabular-nums text-slate-900 whitespace-nowrap">
-                        {formatMoney(rec.totalAmount)}
+                        {formatVND(rec.totalAmount ?? 0)}
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono font-bold tabular-nums whitespace-nowrap">
                         {rec.amountDue && rec.amountDue > 0 ? (
-                          <span className="text-amber-700">{formatMoney(rec.amountDue)}</span>
+                          <span className="text-amber-700">{formatVND(rec.amountDue)}</span>
                         ) : (
-                          <span className="text-emerald-700">0 đ</span>
+                          <span className="text-emerald-700">{formatVND(0)}</span>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-center">
@@ -532,49 +554,122 @@ export default function BillingQueuePage() {
           </table>
         </div>
 
-        {/* 5. Pagination */}
-        {pagination.totalPages > 1 && (
-          <div className="flex flex-wrap items-center justify-between px-5 py-3.5 border-t border-slate-200/80 text-xs text-slate-600 gap-2">
-            <span>
-              Hiển thị <strong className="font-mono text-slate-700">{(pagination.currentPage - 1) * 5 + 1}</strong> -{' '}
-              <strong className="font-mono text-slate-700">{Math.min(pagination.currentPage * 5, pagination.total)}</strong> trên tổng số{' '}
-              <strong className="font-mono text-slate-700">{pagination.total}</strong> bản ghi (Trang {pagination.currentPage}/{pagination.totalPages})
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                disabled={pagination.currentPage <= 1}
-                onClick={() => dispatch(setPage(pagination.currentPage - 1))}
-                className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 transition-colors inline-flex items-center gap-1 text-xs cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[15px]">chevron_left</span>
-                <span>Trước</span>
-              </button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => dispatch(setPage(num))}
-                    className={`w-7 h-7 rounded-lg text-xs font-mono font-semibold transition-colors cursor-pointer ${
-                      pagination.currentPage === num
-                        ? 'bg-[#0866ff] text-white shadow-xs'
-                        : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    {num}
-                  </button>
-                ))}
-              </div>
-              <button
-                disabled={pagination.currentPage >= pagination.totalPages}
-                onClick={() => dispatch(setPage(pagination.currentPage + 1))}
-                className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 transition-colors inline-flex items-center gap-1 text-xs cursor-pointer"
-              >
-                <span>Sau</span>
-                <span className="material-symbols-outlined text-[15px]">chevron_right</span>
-              </button>
+        {/* 4. Mobile Card List (< md) */}
+        <div className="md:hidden divide-y divide-slate-200/70 bg-white">
+          {loading ? (
+            <div className="py-10 text-center text-slate-500">
+              <span className="material-symbols-outlined text-[30px] animate-spin text-[#0866ff] block mb-2 mx-auto">
+                progress_activity
+              </span>
+              <span className="text-xs">Đang tải danh sách hóa đơn...</span>
             </div>
-          </div>
+          ) : error ? (
+            <div className="py-8 px-4 text-center">
+              <div className="inline-flex flex-col items-center gap-2 text-rose-700 bg-rose-50/70 border border-rose-200 rounded-2xl px-4 py-4">
+                <span className="material-symbols-outlined text-[24px] text-rose-600">error</span>
+                <span className="text-xs font-semibold">Không thể tải hàng chờ thu ngân: {error}</span>
+                <button
+                  type="button"
+                  onClick={() => dispatch(fetchBillingQueue({ tab, search, page, limit: 5 }))}
+                  className="h-9 px-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[15px]">refresh</span>
+                  <span>Thử lại</span>
+                </button>
+              </div>
+            </div>
+          ) : records.length === 0 ? (
+            <div className="py-10 text-center text-slate-600 px-4">
+              <span className="material-symbols-outlined text-[36px] text-slate-400 block mb-1 mx-auto">inbox</span>
+              <p className="text-xs font-semibold">Không có dữ liệu phù hợp.</p>
+            </div>
+          ) : (
+            records.map((rec, index) => {
+              const isWorkOrder =
+                rec.type === 'WORK_ORDER' || (!rec.invoiceNumber && Boolean(rec.workOrderId));
+              const rowKey = isWorkOrder
+                ? `wo-m-${rec.workOrderId ?? rec.id ?? index}`
+                : `inv-m-${rec.id ?? rec.invoiceNumber ?? index}`;
+              const plate = rec.vehicle?.licensePlate || (rec.vehicle as any)?.license_plate || '-';
+              const custName = rec.customer?.fullName || (rec.customer as any)?.full_name || '-';
+
+              return (
+                <div key={rowKey} className="p-4 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    {isWorkOrder ? (
+                      <span className="font-mono font-bold text-xs text-[#0050cd]">{rec.woNumber}</span>
+                    ) : (
+                      <Link href={`/staff/billing/${rec.id}`} className="font-mono font-bold text-xs text-[#0050cd] hover:underline">
+                        {rec.invoiceNumber}
+                      </Link>
+                    )}
+                    <span className="px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-xs font-bold tracking-wider uppercase whitespace-nowrap">
+                      {plate}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900 truncate">{custName}</p>
+                      <p className="text-slate-500 font-mono">{rec.customer?.phone || '-'}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-mono font-bold text-slate-900">
+                        {formatVND(isWorkOrder ? (rec.estimatedTotal ?? 0) : (rec.totalAmount ?? 0))}
+                      </p>
+                      {!isWorkOrder && <InvoiceStatusBadge status={rec.status as any} />}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    {isWorkOrder ? (
+                      <button
+                        onClick={() => {
+                          setSelectedWoId(rec.workOrderId!);
+                          setIsCreateModalOpen(true);
+                        }}
+                        className="h-8 px-3 rounded-xl bg-[#0866ff] text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">receipt</span>
+                        <span>Lập hóa đơn</span>
+                      </button>
+                    ) : (
+                      <>
+                        {rec.status === 'ISSUED' && (
+                          <button
+                            onClick={() => handleOpenPayment(rec.id!)}
+                            className="h-8 px-3 rounded-xl bg-emerald-600 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">payments</span>
+                            <span>Thu tiền</span>
+                          </button>
+                        )}
+                        <Link
+                          href={`/staff/billing/${rec.id}`}
+                          className="h-8 px-3 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold inline-flex items-center gap-1"
+                        >
+                          <span>Chi tiết</span>
+                          <span className="material-symbols-outlined text-[15px]">chevron_right</span>
+                        </Link>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* 5. Pagination */}
+        {pagination.total > 0 && (
+          <TablePagination
+            totalRecords={pagination.total}
+            totalPages={Math.max(1, pagination.totalPages)}
+            currentPage={pagination.currentPage}
+            onPageChange={(p) => dispatch(setPage(p))}
+            currentCount={records.length}
+            recordLabel={tab === 'PENDING' ? 'lệnh sửa chữa' : 'hóa đơn'}
+          />
         )}
       </div>
 

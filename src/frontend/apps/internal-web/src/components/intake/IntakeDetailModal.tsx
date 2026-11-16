@@ -25,6 +25,13 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
   // Parse combined notes if they contain the formatted tags
   let vehicleCondition = record.vehicle_condition || '';
   let actualNotes = record.notes || '';
+  let cancelReason = record.cancel_reason || '';
+
+  const cancelMatch = actualNotes.match(/\[Lý do hủy\]:\s*([\s\S]*)$/);
+  if (cancelMatch) {
+    if (!cancelReason) cancelReason = cancelMatch[1].trim();
+    actualNotes = actualNotes.replace(/\n*\[Lý do hủy\]:\s*[\s\S]*$/, '').trim();
+  }
 
   if (actualNotes.includes('[Tình trạng xe]:') && actualNotes.includes('[Ghi chú]:')) {
     const vcMatch = actualNotes.match(/\[Tình trạng xe\]:\s*([\s\S]*?)(?=\n\n\[Ghi chú\]:|$)/);
@@ -32,6 +39,12 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
     
     if (vcMatch) vehicleCondition = vcMatch[1].trim();
     if (nMatch) actualNotes = nMatch[1].trim();
+  } else if (actualNotes.includes('[Tình trạng xe]:')) {
+    const vcMatch = actualNotes.match(/\[Tình trạng xe\]:\s*([\s\S]*)/);
+    if (vcMatch) {
+      vehicleCondition = vcMatch[1].trim();
+      actualNotes = '';
+    }
   }
 
   return (
@@ -59,11 +72,34 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
               <span className="px-2 py-0.5 bg-primary-container text-on-primary-container rounded text-label-sm font-bold uppercase whitespace-nowrap">{getTypeName(record.intake_type)}</span>
             </div>
             <div className="flex-shrink-0">
-              <span className="px-3 py-1 bg-surface-variant text-on-surface-variant rounded-full text-label-sm font-bold whitespace-nowrap">
+              <span
+                className={`px-3 py-1 rounded-full text-label-sm font-bold whitespace-nowrap ${
+                  record.status === 'CANCELLED'
+                    ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                    : 'bg-surface-variant text-on-surface-variant'
+                }`}
+              >
                 Trạng thái: {getStatusName(record.status)}
               </span>
             </div>
           </div>
+
+          {record.status === 'CANCELLED' && (
+            <div
+              data-testid="intake-cancel-reason"
+              className="flex flex-col gap-2 bg-rose-50/80 border border-rose-200 rounded-xl p-4"
+            >
+              <h3 className="text-label-lg font-bold text-rose-700 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">cancel</span>
+                Lý do hủy phiếu
+              </h3>
+              <p className="text-body-md text-rose-900 whitespace-pre-wrap">
+                {cancelReason || (
+                  <span className="italic text-rose-600/80">Không có lý do hủy được ghi nhận</span>
+                )}
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-6">
             {/* Customer Info */}

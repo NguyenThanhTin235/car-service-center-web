@@ -233,12 +233,14 @@ describe('Integration API - Appointment Lifecycle (SPEC-APPT / UC-11, UC-12, UC-
         return callback(tx);
       });
 
+      const futureDateIso = new Date(Date.now() + 7 * 86400000).toISOString().substring(0, 10) + 'T00:00:00.000Z';
+
       const res = await request(app)
         .post('/api/appointments')
         .set('Authorization', `Bearer ${customerToken}`)
         .send({
           vehicle_id: 201,
-          scheduled_date: '2026-11-15T00:00:00.000Z',
+          scheduled_date: futureDateIso,
           scheduled_time: '10:00',
           notes: 'Thay dầu và lọc gió',
           service_ids: [1],
@@ -305,7 +307,7 @@ describe('Integration API - Appointment Lifecycle (SPEC-APPT / UC-11, UC-12, UC-
 
       expect(res.status).toBe(400);
       expect(res.body.status).toBe('error');
-      expect(res.body.message).toContain('đã có lịch hẹn hoặc đang được tiếp nhận');
+      expect(res.body.message).toContain('Xe này đã có lịch hẹn trong ngày được chọn');
     });
   });
 

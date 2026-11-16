@@ -1,4 +1,71 @@
-import React from 'react';
+'use client';
+
+import React, { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import api from '@/lib/axios';
+import { formatVND } from '@/lib/utils/formatters';
+import ReadOnlyROModal from '@/components/intake/ReadOnlyROModal';
+
+interface ServiceHistoryItem {
+  id: number;
+  name: string;
+  status: string;
+}
+
+interface ServiceHistoryRecord {
+  id: number;
+  woNumber: string;
+  status: string;
+  orderType: string;
+  createdAt: string;
+  closedAt: string | null;
+  mileage: number | null;
+  vehicle: {
+    id: number;
+    licensePlate: string;
+    make: string;
+    model: string;
+    year: number | null;
+  } | null;
+  advisor: {
+    id: number;
+    fullName: string;
+  } | null;
+  services: ServiceHistoryItem[];
+  invoice: {
+    id: number;
+    invoiceNumber: string;
+    status: string;
+    totalAmount: number;
+    paidAt: string | null;
+  } | null;
+}
+
+interface ServiceHistorySummary {
+  totalOrders: number;
+  totalVisits: number;
+  totalSpent: number;
+}
+
+const WO_STATUS_META: Record<string, { label: string; className: string }> = {
+  DRAFT: { label: 'Nháp', className: 'bg-slate-100 text-slate-700 border-slate-200' },
+  IN_PLANNING: { label: 'Đang lập kế hoạch', className: 'bg-sky-50 text-sky-700 border-sky-200' },
+  PENDING_APPROVAL: { label: 'Chờ duyệt báo giá', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  APPROVED: { label: 'Đã duyệt', className: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  IN_PROGRESS: { label: 'Đang sửa chữa', className: 'bg-blue-50 text-[#0050cd] border-blue-200' },
+  BILLING_REQUESTED: { label: 'Chờ thanh toán', className: 'bg-orange-50 text-orange-700 border-orange-200' },
+  FINANCIAL_CLEARED: { label: 'Đã thanh toán', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  RELEASED: { label: 'Đã giao xe', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  CLOSED: { label: 'Hoàn tất', className: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  CANCELLED: { label: 'Đã hủy', className: 'bg-rose-50 text-rose-700 border-rose-200' },
+};
+
+const INVOICE_STATUS_META: Record<string, { label: string; className: string }> = {
+  PAID: { label: 'Đã thanh toán', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  ISSUED: { label: 'Chờ thanh toán', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  PARTIALLY_PAID: { label: 'Thanh toán một phần', className: 'bg-orange-50 text-orange-700 border-orange-200' },
+  DRAFT: { label: 'Nháp', className: 'bg-slate-100 text-slate-600 border-slate-200' },
+};
 
 interface CustomerDetailModalProps {
   isOpen: boolean;
@@ -7,6 +74,48 @@ interface CustomerDetailModalProps {
 }
 
 export default function CustomerDetailModal({ isOpen, onClose, customerData }: CustomerDetailModalProps) {
+  const [records, setRecords] = useState<ServiceHistoryRecord[]>([]);
+  const [summary, setSummary] = useState<ServiceHistorySummary | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedWorkOrderId, setSelectedWorkOrderId] = useState<number | null>(null);
+
+  const fetchHistory = useCallback(async (customerId: number, isCancelled?: () => boolean) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.get(`/api/customers/${customerId}/service-history`);
+      if (isCancelled?.()) return;
+      const data = res.data?.data;
+      setRecords(Array.isArray(data?.records) ? data.records : []);
+      setSummary(data?.summary ?? null);
+    } catch (err: any) {
+      if (isCancelled?.()) return;
+      setError(err?.response?.data?.message || 'Không thể tải lịch sử dịch vụ tại xưởng.');
+      setRecords([]);
+    } finally {
+      if (!isCancelled?.()) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen || !customerData?.id) {
+      setRecords([]);
+      setSummary(null);
+      setError(null);
+      setSelectedWorkOrderId(null);
+      return;
+    }
+
+    let cancelled = false;
+    fetchHistory(customerData.id, () => cancelled);
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, customerData?.id, fetchHistory]);
+
   if (!isOpen || !customerData) return null;
 
   // Vietnamese last word initial e.g. "Nguyễn Văn An" -> "A"
@@ -15,6 +124,9 @@ export default function CustomerDetailModal({ isOpen, onClose, customerData }: C
     const parts = name.trim().split(/\s+/);
     return parts[parts.length - 1]?.[0]?.toUpperCase() || 'K';
   };
+
+  const displayTotalSpent = summary?.totalSpent ?? customerData.stats?.totalSpent ?? 0;
+  const displayTotalVisits = summary?.totalVisits ?? customerData.stats?.totalVisits ?? 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
@@ -76,13 +188,13 @@ export default function CustomerDetailModal({ isOpen, onClose, customerData }: C
               <div>
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Tổng chi tiêu</span>
                 <div className="text-base font-extrabold text-[#0050cd] font-mono tabular-nums">
-                  {(customerData.stats?.totalSpent || 0).toLocaleString('vi-VN')} ₫
+                  {formatVND(displayTotalSpent)}
                 </div>
               </div>
               <div>
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Lượt dịch vụ</span>
                 <div className="text-xs font-bold text-slate-900 font-mono tabular-nums">
-                  {customerData.stats?.totalVisits || 0} lượt hoàn tất
+                  {displayTotalVisits} lượt hoàn tất
                 </div>
               </div>
             </div>
@@ -133,15 +245,162 @@ export default function CustomerDetailModal({ isOpen, onClose, customerData }: C
 
           {/* Service History Section */}
           <div>
-            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 mb-3">
-              <span className="material-symbols-outlined text-[18px] text-[#0050cd]">history</span>
-              <span>Lịch sử Dịch vụ tại Xưởng</span>
-            </h4>
-            <div className="p-6 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
-              <span className="material-symbols-outlined text-[28px] text-slate-400">build_circle</span>
-              <p className="font-medium text-slate-600">Hồ sơ lịch sử dịch vụ sửa chữa và bảo dưỡng</p>
-              <span className="text-[11px] text-slate-500">Đồng bộ tự động từ các Phiếu công việc (Work Orders) của khách hàng.</span>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px] text-[#0050cd]">history</span>
+                <span>Lịch sử Dịch vụ tại Xưởng ({records.length})</span>
+              </h4>
             </div>
+
+            {loading ? (
+              <div
+                data-testid="service-history-loading"
+                className="p-6 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col items-center justify-center gap-2 text-slate-500 text-xs"
+              >
+                <span className="w-5 h-5 border-2 border-[#0050cd]/30 border-t-[#0050cd] rounded-full animate-spin" />
+                <span>Đang đồng bộ lịch sử dịch vụ từ xưởng...</span>
+              </div>
+            ) : error ? (
+              <div
+                data-testid="service-history-error"
+                className="p-5 rounded-xl bg-rose-50/70 border border-rose-200 text-center flex flex-col items-center justify-center gap-2.5"
+              >
+                <span className="material-symbols-outlined text-[26px] text-rose-500">error</span>
+                <p className="text-xs font-medium text-rose-700">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => fetchHistory(customerData.id)}
+                  className="h-8 px-3.5 rounded-lg bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Thử lại
+                </button>
+              </div>
+            ) : records.length === 0 ? (
+              <div
+                data-testid="service-history-empty"
+                className="p-6 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[28px] text-slate-400">build_circle</span>
+                <p className="font-medium text-slate-600">Chưa có lịch sử sửa chữa hoặc bảo dưỡng tại xưởng</p>
+                <span className="text-[11px] text-slate-500">Dữ liệu sẽ tự động hiển thị khi khách hàng phát sinh Phiếu công việc (Work Order).</span>
+              </div>
+            ) : (
+              <div data-testid="service-history-list" className="space-y-3">
+                {records.map((rec) => {
+                  const statusMeta = WO_STATUS_META[rec.status] ?? {
+                    label: rec.status,
+                    className: 'bg-slate-100 text-slate-700 border-slate-200',
+                  };
+                  const invoiceMeta = rec.invoice
+                    ? INVOICE_STATUS_META[rec.invoice.status] ?? {
+                        label: rec.invoice.status,
+                        className: 'bg-slate-100 text-slate-600 border-slate-200',
+                      }
+                    : null;
+
+                  return (
+                    <div
+                      key={rec.id}
+                      data-testid={`service-history-item-${rec.woNumber}`}
+                      className="p-4 rounded-xl bg-white border border-slate-200/90 hover:border-slate-300 transition-colors space-y-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-bold font-mono text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
+                            {rec.woNumber}
+                          </span>
+                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${statusMeta.className}`}>
+                            {statusMeta.label}
+                          </span>
+                          {rec.orderType === 'WARRANTY' && (
+                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-purple-50 text-purple-700 border-purple-200">
+                              Bảo hành
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-slate-500 font-mono tabular-nums">
+                            {new Date(rec.createdAt).toLocaleDateString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            })}
+                          </span>
+                          <button
+                            type="button"
+                            data-testid={`view-wo-detail-${rec.woNumber}`}
+                            onClick={() => setSelectedWorkOrderId(rec.id)}
+                            className="h-7 px-2.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0050cd] text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">visibility</span>
+                            Xem chi tiết phiếu
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-600">
+                        {rec.vehicle && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[15px] text-slate-400">directions_car</span>
+                            <strong className="font-mono text-slate-800">{rec.vehicle.licensePlate}</strong>
+                            <span>
+                              ({rec.vehicle.make} {rec.vehicle.model})
+                            </span>
+                          </span>
+                        )}
+                        {rec.mileage !== null && (
+                          <span className="inline-flex items-center gap-1 font-mono tabular-nums">
+                            <span className="material-symbols-outlined text-[15px] text-slate-400">speed</span>
+                            {rec.mileage.toLocaleString('vi-VN')} km
+                          </span>
+                        )}
+                        {rec.advisor && (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[15px] text-slate-400">support_agent</span>
+                            CV: {rec.advisor.fullName}
+                          </span>
+                        )}
+                      </div>
+
+                      {rec.services.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {rec.services.map((svc) => (
+                            <span
+                              key={svc.id}
+                              className="text-[11px] px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200/80 text-slate-700 font-medium"
+                            >
+                              {svc.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {rec.invoice && (
+                        <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/staff/billing/${rec.invoice.id}`}
+                              className="font-mono font-semibold text-[#0050cd] hover:underline inline-flex items-center gap-1"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">receipt_long</span>
+                              {rec.invoice.invoiceNumber}
+                            </Link>
+                            {invoiceMeta && (
+                              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${invoiceMeta.className}`}>
+                                {invoiceMeta.label}
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-mono font-bold text-slate-900 tabular-nums">
+                            {formatVND(rec.invoice.totalAmount)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -156,6 +415,13 @@ export default function CustomerDetailModal({ isOpen, onClose, customerData }: C
           </button>
         </div>
       </div>
+
+      {selectedWorkOrderId && (
+        <ReadOnlyROModal
+          workOrderId={selectedWorkOrderId}
+          onClose={() => setSelectedWorkOrderId(null)}
+        />
+      )}
     </div>
   );
 }

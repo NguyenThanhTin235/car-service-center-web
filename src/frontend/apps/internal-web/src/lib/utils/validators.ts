@@ -12,11 +12,11 @@ export const EMAIL_REGEX =
 export const VN_PHONE_REGEX = /^(0|\+84)(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-9])[0-9]{7}$/;
 
 /**
- * Validate địa chỉ email
+ * Validate địa chỉ email (hỗ trợ tùy chọn bắt buộc hoặc không bắt buộc)
  */
-export function validateEmail(email?: string, fieldName = 'Email'): string | null {
+export function validateEmail(email?: string, fieldName = 'Email', required = true): string | null {
   if (!email || !email.trim()) {
-    return `${fieldName} không được để trống`;
+    return required ? `${fieldName} không được để trống` : null;
   }
   if (!EMAIL_REGEX.test(email.trim())) {
     return 'Định dạng email không hợp lệ.';
@@ -170,6 +170,26 @@ export function validateInteger(
 export function validateRequired(val?: string, fieldName = 'Trường này'): string | null {
   if (!val || !val.trim()) {
     return `${fieldName} không được để trống`;
+  }
+  return null;
+}
+
+/**
+ * Validate biển số xe Việt Nam (VD: 51K-888.99, 30A-12345, 59X1-123.45)
+ */
+export const VN_LICENSE_PLATE_REGEX = /^[0-9]{2}[A-Z]{1,2}[A-Z0-9]?[-\s.]?[0-9]{3,5}(?:\.[0-9]{2})?$/;
+
+export function validateLicensePlate(
+  plate?: string,
+  required = true,
+  fieldName = 'Biển số xe'
+): string | null {
+  const trimmed = (plate ?? '').trim().toUpperCase();
+  if (!trimmed) {
+    return required ? `${fieldName} không được để trống` : null;
+  }
+  if (!VN_LICENSE_PLATE_REGEX.test(trimmed)) {
+    return `${fieldName} không đúng định dạng (VD: 51K-888.99 hoặc 30A-12345)`;
   }
   return null;
 }

@@ -382,10 +382,10 @@ test.describe('SaaS Dashboard Redesign E2E: Staff, Manager & Admin Roles', () =>
     await page.setViewportSize({ width: 1440, height: 900 });
 
     const subPages = [
-      { path: '/staff/appointments', selector: 'h1:has-text("Lịch hẹn khách hàng")' },
-      { path: '/staff/intake', selector: 'h1:has-text("Tiếp nhận xe vào xưởng")' },
-      { path: '/staff/billing', selector: 'h1:has-text("Hóa đơn & Thu ngân")' },
-      { path: '/staff/customers', selector: 'h1:has-text("Khách hàng & Phương tiện")' },
+      { path: '/staff/appointments', selector: 'button:has-text("Xuất Excel")' },
+      { path: '/staff/intake', selector: 'button:has-text("+ Tiếp nhận khách vãng lai")' },
+      { path: '/staff/billing', selector: 'text=Chờ lập hóa đơn' },
+      { path: '/staff/customers', selector: 'text=Tổng khách hàng hệ thống' },
       { path: '/inventory', selector: 'h1:has-text("Quản lý kho phụ tùng")' },
       { path: '/part-categories', selector: 'h1:has-text("Danh mục phụ tùng")' },
       { path: '/employees', selector: 'text=Tổng nhân sự hệ thống' },

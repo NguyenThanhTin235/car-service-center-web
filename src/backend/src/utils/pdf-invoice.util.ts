@@ -32,6 +32,25 @@ export interface InvoicePdfData {
   }>;
 }
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  CASH: 'Tiền mặt',
+  TRANSFER: 'Chuyển khoản ngân hàng',
+  BANK_TRANSFER: 'Chuyển khoản ngân hàng',
+  SEPAY: 'Chuyển khoản VietQR (SePay)',
+  VIETQR: 'Chuyển khoản VietQR',
+  VNPAY: 'Cổng thanh toán VNPay',
+  CARD: 'Thẻ tín dụng / ATM',
+  POS: 'Quẹt thẻ POS',
+};
+
+const LINE_TYPE_LABELS: Record<string, string> = {
+  LABOUR: 'Nhân công',
+  PART: 'Phụ tùng',
+  MATERIAL: 'Vật tư',
+  PACKAGE: 'Trọn gói',
+  FEE: 'Phụ phí',
+};
+
 /**
  * Sinh tài liệu PDF Hóa đơn thanh toán chuyên nghiệp hỗ trợ font tiếng Việt
  */
@@ -72,6 +91,14 @@ export function generateInvoicePdfBuffer(data: InvoicePdfData): Promise<Buffer> 
     doc.on('end', () => resolve(Buffer.concat(buffers)));
     doc.on('error', reject);
 
+    if (isUnicodeSupported) {
+      doc.registerFont('AppFont', fontRegular);
+      doc.registerFont('AppFont-Bold', fontBold);
+    }
+
+    const setFontRegular = () => (isUnicodeSupported ? doc.font('AppFont') : doc.font('Helvetica'));
+    const setFontBold = () => (isUnicodeSupported ? doc.font('AppFont-Bold') : doc.font('Helvetica-Bold'));
+
     const safeText = (text: string | null | undefined): string => {
       if (!text) return '';
       if (isUnicodeSupported) return String(text);
@@ -92,162 +119,215 @@ export function generateInvoicePdfBuffer(data: InvoicePdfData): Promise<Buffer> 
       return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     };
 
-    // Header
-    doc.fillColor('#1e3a8a').fontSize(14).font(fontBold);
-    doc.text(safeText('TRUNG TÂM BẢO DƯỠNG & SỬA CHỮA Ô TÔ CAR SERVICE CENTER'), { align: 'center' });
-    doc.fillColor('#4b5563').fontSize(9).font(fontRegular);
-    doc.text(safeText('Địa chỉ: Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh | Hotline: 1900 8888'), { align: 'center' });
-    doc.moveDown(0.8);
+    // ================= 1. HEADER TRUNG TÂM =================
+    setFontBold().fontSize(14).fillColor('#1e40af')
+      .text(safeText('TRUNG TÂM BẢO DƯỠNG & SỬA CHỮA Ô TÔ CAR SERVICE CENTER'), 40, 34, { width: 515, align: 'center' });
+    setFontRegular().fontSize(8.5).fillColor('#4b5563')
+      .text(safeText('Địa chỉ: Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh   •   Hotline: 1900 6868   •   Email: cskh@carservice.vn'), 40, 54, { width: 515, align: 'center' });
 
-    doc.moveTo(40, doc.y).lineTo(555, doc.y).strokeColor('#2563eb').lineWidth(2).stroke();
-    doc.moveDown(0.8);
+    doc.moveTo(40, 72).lineTo(555, 72).strokeColor('#1e40af').lineWidth(1.5).stroke();
 
-    // Tiêu đề hóa đơn
-    doc.fillColor('#111827').fontSize(15).font(fontBold);
-    doc.text(safeText('HÓA ĐƠN DỊCH VỤ / INVOICE'), { align: 'center' });
-    doc.fillColor('#2563eb').fontSize(11).font(fontBold);
-    doc.text(`Số HĐ: ${data.invoiceNumber}`, { align: 'center' });
+    // ================= 2. TIÊU ĐỀ HÓA ĐƠN =================
+    setFontBold().fontSize(15).fillColor('#111827')
+      .text(safeText('HÓA ĐƠN DỊCH VỤ / INVOICE'), 40, 82, { width: 515, align: 'center' });
+    setFontBold().fontSize(10.5).fillColor('#1e40af')
+      .text(safeText(`Số hóa đơn: ${data.invoiceNumber}`), 40, 102, { width: 515, align: 'center' });
 
     let statusText = 'CHƯA THANH TOÁN';
-    if (data.status === 'PAID') statusText = 'ĐÃ THANH TOÁN (PAID)';
-    else if (data.status === 'DRAFT') statusText = 'BẢN NHÁP (DRAFT)';
-    else if (data.status === 'CANCELLED') statusText = 'ĐÃ HỦY (CANCELLED)';
+    let statusColor = '#d97706';
+    if (data.status === 'PAID') {
+      statusText = 'ĐÃ THANH TOÁN (PAID)';
+      statusColor = '#16a34a';
+    } else if (data.status === 'DRAFT') {
+      statusText = 'BẢN NHÁP (DRAFT)';
+      statusColor = '#64748b';
+    } else if (data.status === 'CANCELLED') {
+      statusText = 'ĐÃ HỦY (CANCELLED)';
+      statusColor = '#dc2626';
+    }
 
-    doc.fillColor(data.status === 'PAID' ? '#16a34a' : '#d97706').fontSize(10).font(fontBold);
-    doc.text(`[ ${safeText(statusText)} ]`, { align: 'center' });
-    doc.moveDown(0.6);
+    setFontBold().fontSize(9.5).fillColor(statusColor)
+      .text(`[ ${safeText(statusText)} ]`, 40, 118, { width: 515, align: 'center' });
 
-    // Thông tin khách hàng & xe (2 cột)
-    const startY = doc.y;
-    const colWidth = 240;
+    // ================= 3. THÔNG TIN KHÁCH HÀNG & XE (2 CỘT) =================
+    const infoTop = 138;
+    const infoHeight = 68;
+    doc.rect(40, infoTop, 515, infoHeight).fillColor('#f8fafc').strokeColor('#cbd5e1').lineWidth(0.6).fillAndStroke();
 
-    // Cột trái: Khách hàng
-    doc.fillColor('#111827').fontSize(9).font(fontBold);
-    doc.text(safeText('THÔNG TIN KHÁCH HÀNG:'), 40, startY);
-    doc.font(fontRegular).fillColor('#374151');
-    doc.text(`${safeText('Họ và tên:')} ${safeText(data.customerName)}`, 40, startY + 14);
-    doc.text(`${safeText('Số điện thoại:')} ${data.customerPhone || '-'}`, 40, startY + 26);
-    doc.text(`${safeText('Email:')} ${data.customerEmail || '-'}`, 40, startY + 38);
+    setFontBold().fontSize(9).fillColor('#1e40af')
+      .text(safeText('THÔNG TIN KHÁCH HÀNG'), 52, infoTop + 9);
+    setFontRegular().fontSize(8.5).fillColor('#334155')
+      .text(`${safeText('Họ và tên:')} ${safeText(data.customerName || '-')}`, 52, infoTop + 24, { width: 240 })
+      .text(`${safeText('Số điện thoại:')} ${data.customerPhone || '-'}`, 52, infoTop + 38, { width: 240 })
+      .text(`${safeText('Email:')} ${data.customerEmail || '-'}`, 52, infoTop + 52, { width: 240 });
 
-    // Cột phải: Xe & Thời gian
-    doc.fillColor('#111827').fontSize(9).font(fontBold);
-    doc.text(safeText('THÔNG TIN PHƯƠNG TIỆN:'), 310, startY);
-    doc.font(fontRegular).fillColor('#374151');
-    doc.text(`${safeText('Biển số xe:')} ${data.licensePlate}`, 310, startY + 14);
-    doc.text(`${safeText('Dòng xe:')} ${safeText(data.vehicleName)}`, 310, startY + 26);
-    doc.text(`${safeText('Ngày phát hành:')} ${formatDate(data.issuedAt || data.createdAt)}`, 310, startY + 38);
+    setFontBold().fontSize(9).fillColor('#1e40af')
+      .text(safeText('THÔNG TIN PHƯƠNG TIỆN'), 305, infoTop + 9);
+    setFontRegular().fontSize(8.5).fillColor('#334155')
+      .text(`${safeText('Biển số xe:')} ${safeText(data.licensePlate || '-')}`, 305, infoTop + 24, { width: 240 })
+      .text(`${safeText('Dòng xe:')} ${safeText(data.vehicleName || '-')}`, 305, infoTop + 38, { width: 240 })
+      .text(`${safeText('Ngày phát hành:')} ${formatDate(data.issuedAt || data.createdAt)}`, 305, infoTop + 52, { width: 240 });
 
-    doc.y = startY + 54;
-    doc.moveDown(0.5);
+    // ================= 4. BẢNG CHI TIẾT HẠNG MỤC =================
+    const tableTop = infoTop + infoHeight + 14;
+    const headerHeight = 24;
 
-    // Bảng chi tiết
-    const tableTop = doc.y;
-    doc.rect(40, tableTop, 515, 20).fill('#f3f4f6');
-    doc.fillColor('#111827').fontSize(8.5).font(fontBold);
+    const renderTableHeader = (y: number) => {
+      doc.rect(40, y, 515, headerHeight).fillColor('#1e40af').fill();
+      setFontBold().fontSize(8.5).fillColor('#ffffff')
+        .text(safeText('STT'), 42, y + 7, { width: 26, align: 'center' })
+        .text(safeText('NỘI DUNG HẠNG MỤC'), 72, y + 7, { width: 228, align: 'left' })
+        .text(safeText('LOẠI'), 304, y + 7, { width: 58, align: 'center' })
+        .text(safeText('SL'), 366, y + 7, { width: 26, align: 'center' })
+        .text(safeText('ĐƠN GIÁ'), 396, y + 7, { width: 72, align: 'right' })
+        .text(safeText('THÀNH TIỀN'), 472, y + 7, { width: 78, align: 'right' });
+    };
 
-    doc.text(safeText('STT'), 45, tableTop + 5, { width: 30, align: 'center' });
-    doc.text(safeText('Nội dung hạng mục'), 80, tableTop + 5, { width: 230, align: 'left' });
-    doc.text(safeText('Loại'), 315, tableTop + 5, { width: 60, align: 'center' });
-    doc.text(safeText('SL'), 380, tableTop + 5, { width: 35, align: 'center' });
-    doc.text(safeText('Đơn giá'), 420, tableTop + 5, { width: 65, align: 'right' });
-    doc.text(safeText('Thành tiền'), 490, tableTop + 5, { width: 60, align: 'right' });
-
-    let currentY = tableTop + 22;
-    doc.font(fontRegular).fontSize(8).fillColor('#374151');
+    renderTableHeader(tableTop);
+    let currentY = tableTop + headerHeight;
 
     data.lines.forEach((line, idx) => {
-      if (currentY > 720) {
+      setFontRegular().fontSize(8.5);
+      const desc = safeText(line.description);
+      const descHeight = doc.heightOfString(desc, { width: 228, lineGap: 2 });
+      const rowHeight = Math.max(descHeight + 12, 24);
+
+      if (currentY + rowHeight > 745) {
         doc.addPage();
-        currentY = 40;
+        currentY = 36;
+        renderTableHeader(currentY);
+        currentY += headerHeight;
       }
 
       if (idx % 2 === 1) {
-        doc.rect(40, currentY - 2, 515, 18).fill('#fafafa');
+        doc.rect(40, currentY, 515, rowHeight).fillColor('#f8fafc').fill();
       }
 
-      let typeBadge = 'Công';
-      if (line.lineType === 'PART') typeBadge = 'Phụ tùng';
-      else if (line.lineType === 'MATERIAL') typeBadge = 'Vật tư';
-      else if (line.lineType === 'PACKAGE') typeBadge = 'Gói';
-      else if (line.lineType === 'FEE') typeBadge = 'Phí';
+      const typeBadge = LINE_TYPE_LABELS[line.lineType] || 'Dịch vụ';
+      const textY = currentY + 6;
 
-      doc.fillColor('#374151');
-      doc.text(String(idx + 1), 45, currentY, { width: 30, align: 'center' });
-      doc.text(safeText(line.description), 80, currentY, { width: 230, align: 'left' });
-      doc.text(safeText(typeBadge), 315, currentY, { width: 60, align: 'center' });
-      doc.text(String(line.quantity), 380, currentY, { width: 35, align: 'center' });
-      doc.text(formatMoney(line.unitPrice), 420, currentY, { width: 65, align: 'right' });
-      doc.text(formatMoney(line.amount), 490, currentY, { width: 60, align: 'right' });
+      setFontRegular().fontSize(8.5).fillColor('#1e293b')
+        .text(String(idx + 1), 42, textY, { width: 26, align: 'center' })
+        .text(desc, 72, textY, { width: 228, align: 'left', lineGap: 2 })
+        .text(safeText(typeBadge), 304, textY, { width: 58, align: 'center' })
+        .text(String(line.quantity), 366, textY, { width: 26, align: 'center' })
+        .text(formatMoney(line.unitPrice), 396, textY, { width: 72, align: 'right' });
 
-      currentY += 18;
+      setFontBold().fontSize(8.5).fillColor('#0f172a')
+        .text(formatMoney(line.amount), 472, textY, { width: 78, align: 'right' });
+
+      doc.moveTo(40, currentY + rowHeight).lineTo(555, currentY + rowHeight).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
+      currentY += rowHeight;
     });
 
-    doc.moveTo(40, currentY).lineTo(555, currentY).strokeColor('#e5e7eb').lineWidth(1).stroke();
-    currentY += 8;
+    doc.moveTo(40, currentY).lineTo(555, currentY).strokeColor('#cbd5e1').lineWidth(0.8).stroke();
+    currentY += 12;
 
-    // Tổng kết chi phí
-    const summaryX = 350;
-    const valueX = 460;
-    const valueWidth = 95;
+    // ================= 5. TỔNG KẾT CHI PHÍ & CHỮ KÝ =================
+    const words = safeText(numberToWordsVietnamese(data.totalAmount));
+    setFontRegular().fontSize(8.5);
+    const wordsHeight = doc.heightOfString(`${safeText('Bằng chữ:')} ${words}`, { width: 515 });
+    const estimatedFooterBlockHeight = 140 + wordsHeight + (data.discountReason ? 16 : 0);
 
-    doc.fontSize(8.5).font(fontRegular).fillColor('#4b5563');
-    doc.text(safeText('Tổng tiền dịch vụ (Subtotal):'), summaryX, currentY);
-    doc.text(formatMoney(data.subtotal), valueX, currentY, { width: valueWidth, align: 'right' });
-    currentY += 14;
-
-    if (data.discountAmount > 0) {
-      doc.text(safeText('Chiết khấu / Giảm trừ:'), summaryX, currentY);
-      doc.fillColor('#dc2626').text(`- ${formatMoney(data.discountAmount)}`, valueX, currentY, { width: valueWidth, align: 'right' });
-      currentY += 14;
-      if (data.discountReason) {
-        doc.fontSize(7.5).font(fontRegular).fillColor('#6b7280');
-        doc.text(`(${safeText('Lý do:')} ${safeText(data.discountReason)})`, summaryX, currentY, { width: 200 });
-        currentY += 12;
-      }
-    }
-
-    doc.fontSize(8.5).font(fontRegular).fillColor('#4b5563');
-    doc.text(safeText('Thuế GTGT (VAT 0% - Zero-Tax):'), summaryX, currentY);
-    doc.text('0 đ', valueX, currentY, { width: valueWidth, align: 'right' });
-    currentY += 16;
-
-    doc.rect(340, currentY - 3, 215, 22).fill('#f0fdf4');
-    doc.fillColor('#15803d').fontSize(10).font(fontBold);
-    doc.text(safeText('TỔNG THANH TOÁN:'), 345, currentY + 3);
-    doc.text(formatMoney(data.totalAmount), valueX, currentY + 3, { width: valueWidth, align: 'right' });
-    currentY += 28;
-
-    if (data.status === 'PAID') {
-      doc.fillColor('#16a34a').fontSize(8.5).font(fontBold);
-      doc.text(`${safeText('Đã thanh toán:')} ${formatMoney(data.totalAmount)} (${data.paymentMethod || 'Thành công'}) - ${formatDate(data.paidAt)}`, 40, currentY);
-      currentY += 14;
-    } else {
-      doc.fillColor('#d97706').fontSize(8.5).font(fontBold);
-      doc.text(`${safeText('Số tiền còn phải thanh toán:')} ${formatMoney(data.amountDue)}`, 40, currentY);
-      currentY += 14;
-    }
-
-    // Bằng chữ
-    const words = numberToWordsVietnamese(data.totalAmount);
-    doc.fontSize(8).font(fontRegular).fillColor('#4b5563');
-    doc.text(`${safeText('Bằng chữ:')} ${safeText(words)}`, 40, currentY, { width: 515 });
-    currentY += 25;
-
-    // Chữ ký
-    if (currentY > 680) {
+    if (currentY + estimatedFooterBlockHeight > 770) {
       doc.addPage();
       currentY = 40;
     }
 
-    doc.fontSize(8.5).font(fontBold).fillColor('#111827');
-    doc.text(safeText('KHÁCH HÀNG'), 70, currentY, { width: 150, align: 'center' });
-    doc.text(safeText('ĐẠI DIỆN TRUNG TÂM / THU NGÂN'), 340, currentY, { width: 180, align: 'center' });
+    const summaryTop = currentY;
+    const hasDiscountReason = data.discountAmount > 0 && Boolean(data.discountReason);
+    const summaryHeight = hasDiscountReason ? 100 : 86;
 
-    doc.font(fontRegular).fontSize(7.5).fillColor('#6b7280');
-    doc.text(safeText('(Ký và ghi rõ họ tên)'), 70, currentY + 12, { width: 150, align: 'center' });
-    doc.text(safeText('(Ký, đóng dấu hoặc xác thực điện tử)'), 340, currentY + 12, { width: 180, align: 'center' });
+    doc.rect(285, summaryTop, 270, summaryHeight).fillColor('#f8fafc').strokeColor('#cbd5e1').lineWidth(0.6).fillAndStroke();
+
+    const summaryX = 298;
+    const valueX = 445;
+    const valueWidth = 100;
+    let sy = summaryTop + 10;
+
+    setFontRegular().fontSize(8.5).fillColor('#475569')
+      .text(safeText('Tổng tiền dịch vụ (Subtotal):'), summaryX, sy, { width: 145 });
+    setFontRegular().fontSize(8.5).fillColor('#0f172a')
+      .text(formatMoney(data.subtotal), valueX, sy, { width: valueWidth, align: 'right' });
+    sy += 17;
+
+    setFontRegular().fontSize(8.5).fillColor('#dc2626')
+      .text(safeText('Chiết khấu / Giảm trừ:'), summaryX, sy, { width: 145 })
+      .text(data.discountAmount > 0 ? `- ${formatMoney(data.discountAmount)}` : '0 đ', valueX, sy, { width: valueWidth, align: 'right' });
+    sy += 15;
+
+    if (hasDiscountReason) {
+      setFontRegular().fontSize(7.5).fillColor('#64748b')
+        .text(`(${safeText('Lý do:')} ${safeText(data.discountReason)})`, summaryX, sy, { width: 245, ellipsis: true });
+      sy += 14;
+    }
+
+    setFontRegular().fontSize(8).fillColor('#64748b')
+      .text(safeText('Thuế GTGT (VAT 0% - Zero-Tax):'), summaryX, sy, { width: 145 })
+      .text('0 đ', valueX, sy, { width: valueWidth, align: 'right' });
+    sy += 15;
+
+    doc.moveTo(298, sy).lineTo(545, sy).strokeColor('#cbd5e1').lineWidth(0.6).stroke();
+    sy += 6;
+
+    setFontBold().fontSize(9.5).fillColor('#15803d')
+      .text(safeText('TỔNG THANH TOÁN:'), summaryX, sy, { width: 145 });
+    setFontBold().fontSize(10.5).fillColor('#15803d')
+      .text(formatMoney(data.totalAmount), valueX, sy - 1, { width: valueWidth, align: 'right' });
+
+    currentY = summaryTop + summaryHeight + 12;
+
+    if (data.status === 'PAID') {
+      const methodLabel = data.paymentMethod
+        ? (PAYMENT_METHOD_LABELS[data.paymentMethod.toUpperCase()] || data.paymentMethod)
+        : 'Hoàn tất';
+      setFontBold().fontSize(8.5).fillColor('#16a34a')
+        .text(
+          `${safeText('Đã thanh toán:')} ${formatMoney(data.totalAmount)} (${safeText(methodLabel)}) - ${formatDate(data.paidAt)}`,
+          40,
+          currentY,
+          { width: 515 }
+        );
+      currentY += 15;
+    } else if (data.status !== 'CANCELLED') {
+      setFontBold().fontSize(8.5).fillColor('#d97706')
+        .text(`${safeText('Số tiền còn phải thanh toán:')} ${formatMoney(data.amountDue)}`, 40, currentY, { width: 515 });
+      currentY += 15;
+    }
+
+    // Bằng chữ
+    setFontRegular().fontSize(8.5).fillColor('#1e293b')
+      .text(`${safeText('* Bằng chữ:')} `, 40, currentY, { continued: true })
+      .font(isUnicodeSupported ? 'AppFont-Bold' : 'Helvetica-Bold')
+      .text(words, { width: 515 });
+
+    currentY += wordsHeight + 24;
+
+    if (currentY > 710) {
+      doc.addPage();
+      currentY = 40;
+    }
+
+    // Chữ ký
+    setFontBold().fontSize(9).fillColor('#1e293b')
+      .text(safeText('KHÁCH HÀNG'), 70, currentY, { width: 160, align: 'center' })
+      .text(safeText('ĐẠI DIỆN TRUNG TÂM / THU NGÂN'), 335, currentY, { width: 190, align: 'center' });
+
+    setFontRegular().fontSize(8).fillColor('#64748b')
+      .text(safeText('(Ký và ghi rõ họ tên)'), 70, currentY + 14, { width: 160, align: 'center' })
+      .text(safeText('(Ký, đóng dấu hoặc xác thực điện tử)'), 335, currentY + 14, { width: 190, align: 'center' });
+
+    // Footer trang
+    const pages = doc.bufferedPageRange();
+    for (let i = 0; i < pages.count; i++) {
+      doc.switchToPage(i);
+      const footerText = pages.count > 1
+        ? `Tài liệu được trích xuất tự động từ Hệ thống Quản trị Car Service Center   •   Trang ${i + 1} / ${pages.count}`
+        : 'Tài liệu được trích xuất tự động từ Hệ thống Quản trị Car Service Center';
+      setFontRegular().fontSize(7.5).fillColor('#94a3b8')
+        .text(safeText(footerText), 40, 792, { align: 'center', width: 515, lineBreak: false });
+    }
 
     doc.end();
   });
 }
-
