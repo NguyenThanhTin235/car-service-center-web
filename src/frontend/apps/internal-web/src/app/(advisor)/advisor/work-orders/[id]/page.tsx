@@ -10,7 +10,7 @@ import EditCustomerModal from '@/components/advisor/work-order/modals/EditCustom
 import { getWorkOrderById, getWorkOrders, WorkOrder } from '@/lib/api/work-order.api';
 import { getWOQuotations } from '@/lib/api/quotation.api';
 import toast from 'react-hot-toast';
-import { WO_STATUS_META } from '@/components/advisor/work-order/work-order.constants';
+import { WO_STATUS_META, formatVehicleSize } from '@/components/advisor/work-order/work-order.constants';
 
 const STATUS_PIPELINE = [
   'Tiếp nhận',
@@ -380,7 +380,7 @@ export default function WorkOrderDetailPage() {
             </div>
 
             <p className="text-xs text-slate-600 mt-1">
-              Phân khúc: <strong className="text-zinc-900">{workOrder.vehicle?.vehicle_size || 'N/A'}</strong>
+              Phân khúc: <strong className="text-zinc-900">{formatVehicleSize(workOrder.vehicle?.vehicle_size)}</strong>
               {workOrder.vehicle?.color ? ` • Màu: ${workOrder.vehicle.color}` : ''}
               {workOrder.vehicle?.year ? ` • Năm: ${workOrder.vehicle.year}` : ''}
             </p>

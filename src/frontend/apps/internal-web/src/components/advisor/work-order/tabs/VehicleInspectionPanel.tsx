@@ -462,7 +462,7 @@ export default function VehicleInspectionPanel({
               <span className="font-semibold">
                 {inspectors.map((i) => i.name).join(', ')}
               </span>
-              <span className="px-1.5 py-0.2 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+              <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-bold">
                 {inspectors.length} người
               </span>
             </div>
@@ -507,7 +507,7 @@ export default function VehicleInspectionPanel({
                       : 'border-outline-variant text-on-surface-variant bg-white hover:bg-surface-container-low'
                   }`}
                 >
-                  <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] text-white ${tool.bgColor}`}>
+                  <span className={`min-w-[18px] h-[18px] px-0.5 rounded-full flex items-center justify-center text-[11px] leading-none text-white ${tool.bgColor}`}>
                     {tool.icon}
                   </span>
                   {tool.label}
@@ -524,7 +524,7 @@ export default function VehicleInspectionPanel({
           >
             <span className="material-symbols-outlined text-[15px] text-[#4682B4]">history</span>
             Nhật ký kiểm tra
-            <span className="bg-surface-variant text-on-surface px-1.5 py-0.2 rounded text-[10px] font-bold">
+            <span className="bg-surface-variant text-on-surface px-1.5 py-0.5 rounded text-[11px] font-bold">
               {findings.length}
             </span>
           </button>
@@ -535,7 +535,7 @@ export default function VehicleInspectionPanel({
           >
             <span className="material-symbols-outlined text-[15px]">photo_library</span>
             Thư viện ảnh
-            <span className="bg-[#2563EB] text-white px-1.5 py-0.2 rounded text-[10px] font-bold">
+            <span className="bg-[#2563EB] text-white px-1.5 py-0.5 rounded text-[11px] font-bold">
               {totalPhotos}
             </span>
           </button>
@@ -561,30 +561,6 @@ export default function VehicleInspectionPanel({
             }}
             isReadOnly={isReadOnly}
           />
-
-                    <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-700 font-semibold">
-            <span className="font-bold text-zinc-900">Chú thích:</span>
-            <span className="inline-flex items-center gap-1.5 text-[#B22222] font-bold">
-              <span className="w-4 h-4 rounded-full bg-[#B22222] text-white flex items-center justify-center text-[10px]">X</span>
-              Hư hỏng
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-[#B8860B] font-bold">
-              <span className="w-4 h-4 rounded-full bg-[#B8860B] text-white flex items-center justify-center text-[10px]">R</span>
-              Rỉ sét
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-[#1E40AF] font-bold">
-              <span className="w-4 h-4 rounded-full bg-[#1E40AF] text-white flex items-center justify-center text-[10px]">M</span>
-              Thiếu
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-[#0284c7] font-bold">
-              <span className="w-4 h-4 rounded-full bg-[#0284c7] text-white flex items-center justify-center text-[10px]">D</span>
-              Móp méo
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-[#475569] font-bold">
-              <span className="w-4 h-4 rounded-full bg-[#475569] text-white flex items-center justify-center text-[10px]">S</span>
-              Trầy xước
-            </span>
-          </div>
         </div>
 
         {/* Right: Findings List */}
@@ -596,18 +572,19 @@ export default function VehicleInspectionPanel({
             </span>
           </div>
 
-          <div className="md:overflow-x-auto">
-            <div className={`hidden md:grid ${isReadOnly ? 'md:grid-cols-[32px_96px_125px_minmax(160px,1fr)_145px_40px]' : 'md:grid-cols-[32px_96px_125px_minmax(160px,1fr)_145px_40px_36px]'} gap-2 pb-2.5 border-b border-slate-200 text-xs text-slate-500 font-bold items-center`}>
-              <div className="text-center font-mono">#</div>
-              <div className="whitespace-nowrap">Loại dấu vết</div>
-              <div className="whitespace-nowrap">Vị trí bộ phận</div>
-              <div className="whitespace-nowrap">Ghi chú</div>
-              <div className="text-center whitespace-nowrap">Công việc</div>
-              <div className="text-center whitespace-nowrap">Ảnh</div>
-              {!isReadOnly && <div></div>}
-            </div>
+          <div className="md:overflow-x-auto styled-scrollbar pb-1">
+            <div className="md:min-w-[920px]">
+              <div className={`hidden md:grid ${isReadOnly ? 'md:grid-cols-[32px_100px_145px_minmax(200px,1fr)_minmax(240px,1.2fr)_44px]' : 'md:grid-cols-[32px_100px_145px_minmax(200px,1fr)_minmax(240px,1.2fr)_44px_40px]'} gap-2 pb-2.5 border-b border-slate-200 text-xs text-slate-500 font-bold items-center`}>
+                <div className="text-center font-mono">#</div>
+                <div className="whitespace-nowrap">Loại dấu vết</div>
+                <div className="whitespace-nowrap">Vị trí bộ phận</div>
+                <div className="whitespace-nowrap">Ghi chú</div>
+                <div className="text-center whitespace-nowrap">Công việc</div>
+                <div className="text-center whitespace-nowrap">Ảnh</div>
+                {!isReadOnly && <div></div>}
+              </div>
 
-            <div className="flex-1 overflow-y-auto max-h-[460px] pr-1 styled-scrollbar flex flex-col">
+              <div className="flex-1 overflow-y-auto max-h-[460px] pr-1 styled-scrollbar flex flex-col">
             {loading && findings.length === 0 ? (
               <div className="flex items-center justify-center py-12 text-on-surface-variant text-[11px] gap-2">
                 <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
@@ -662,7 +639,7 @@ export default function VehicleInspectionPanel({
                     key={finding.id}
                     onMouseEnter={() => setHighlightedFindingId(finding.id)}
                     onMouseLeave={() => setHighlightedFindingId(null)}
-                    className={`flex flex-col gap-2.5 p-3 mb-2 rounded-xl border border-slate-200/80 bg-slate-50/40 md:mb-0 md:p-0 md:rounded md:border-0 md:border-b md:border-slate-100 md:bg-transparent md:grid ${isReadOnly ? 'md:grid-cols-[32px_96px_125px_minmax(160px,1fr)_145px_40px]' : 'md:grid-cols-[32px_96px_125px_minmax(160px,1fr)_145px_40px_36px]'} md:gap-2 md:items-center md:py-2.5 group transition-colors ${
+                    className={`flex flex-col gap-2.5 p-3 mb-2 rounded-xl border border-slate-200/80 bg-slate-50/40 md:mb-0 md:p-0 md:rounded md:border-0 md:border-b md:border-slate-100 md:bg-transparent md:grid ${isReadOnly ? 'md:grid-cols-[32px_100px_145px_minmax(200px,1fr)_minmax(240px,1.2fr)_44px]' : 'md:grid-cols-[32px_100px_145px_minmax(200px,1fr)_minmax(240px,1.2fr)_44px_40px]'} md:gap-2 md:items-center md:py-2.5 group transition-colors ${
                       isHighlighted ? 'bg-primary/5 md:bg-primary/5' : 'md:hover:bg-slate-50/60'
                     }`}
                   >
@@ -675,7 +652,7 @@ export default function VehicleInspectionPanel({
 
                         <div className="shrink-0 md:order-2">
                           <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${toolDef?.lightBg}`}>
-                            <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-bold ${toolDef?.bgColor}`}>
+                            <span className={`min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[11px] leading-none text-white font-bold ${toolDef?.bgColor}`}>
                               {toolDef?.icon}
                             </span>
                             <span className={`text-xs font-bold ${toolDef?.color}`}>{toolDef?.label}</span>
@@ -710,7 +687,7 @@ export default function VehicleInspectionPanel({
                               </span>
                             )}
                             {photoCount > 0 && (
-                              <span className="absolute -top-1 -right-1 bg-[#2563EB] text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                              <span className="absolute -top-1.5 -right-1.5 bg-[#2563EB] text-white text-[11px] leading-none font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
                                 {photoCount}
                               </span>
                             )}
@@ -780,7 +757,7 @@ export default function VehicleInspectionPanel({
                                 </span>
                                 <span className="truncate flex-1 font-semibold">{job.name}</span>
                                 {job.status && (
-                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold shrink-0">
+                                  <span className="text-[11px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold shrink-0">
                                     {job.status === 'PLANNED' ? 'Mới' : job.status === 'IN_PROGRESS' ? 'Đang làm' : job.status === 'PASSED' ? 'Đạt KCS' : job.status}
                                   </span>
                                 )}
@@ -840,6 +817,7 @@ export default function VehicleInspectionPanel({
                 );
               })
             )}
+            </div>
             </div>
           </div>
         </div>

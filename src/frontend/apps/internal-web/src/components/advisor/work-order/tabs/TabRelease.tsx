@@ -207,7 +207,7 @@ export default function TabRelease({ workOrder, refetchWO, isReadOnly = false }:
                           <span className="material-symbols-outlined text-[17px] text-emerald-600">speed</span>
                           <span>ODO xuất xưởng</span>
                         </div>
-                        <div className="text-sm sm:text-base font-bold font-mono text-on-surface">
+                        <div className="text-sm sm:text-base font-bold font-mono tabular-nums text-on-surface">
                           {parsedNotes.returnMileage ? `${Number(parsedNotes.returnMileage).toLocaleString('vi-VN')} km` : 'Theo xe'}
                         </div>
                       </div>
@@ -299,7 +299,7 @@ export default function TabRelease({ workOrder, refetchWO, isReadOnly = false }:
                             alt="Chữ ký khách hàng"
                             className="h-12 max-w-[200px] object-contain"
                           />
-                          <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 font-bold border-l pl-2 border-outline-variant/60">
+                          <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-bold border-l pl-2 border-outline-variant/60">
                             XÁC THỰC
                           </span>
                         </div>

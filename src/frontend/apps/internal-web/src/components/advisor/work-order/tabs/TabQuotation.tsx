@@ -444,7 +444,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
               <div>
                 <div className="font-bold text-sm text-rose-900 dark:text-rose-100 flex items-center gap-2">
                   <span>Khách hàng từ chối làm dịch vụ & Yêu cầu nhận lại xe</span>
-                  <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-rose-200 dark:bg-rose-900 text-rose-900 dark:text-rose-100 border border-rose-300">
+                  <span className="text-[11px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-rose-200 dark:bg-rose-900 text-rose-900 dark:text-rose-100 border border-rose-300">
                     Hủy dịch vụ
                   </span>
                 </div>
@@ -488,7 +488,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
               <div>
                 <div className="font-bold text-sm text-amber-900 dark:text-amber-100 flex items-center gap-2">
                   <span>Khách hàng yêu cầu điều chỉnh phương án dịch vụ</span>
-                  <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100 border border-amber-300">
+                  <span className="text-[11px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100 border border-amber-300">
                     Cần báo giá lại
                   </span>
                 </div>
@@ -568,7 +568,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                 return (
                   <React.Fragment key={serviceName}>
                     {/* Service Group Header Row - Full 6 Columns Span */}
-                    <tr className="bg-gradient-to-r from-blue-50/90 via-indigo-50/40 to-surface-container-low/30 dark:from-blue-950/40 dark:via-indigo-950/20 border-y border-blue-200/80 dark:border-blue-900/50">
+                    <tr className="bg-[#edf4fe]/80 border-y border-blue-200/80">
                       <td colSpan={6} className="py-3.5 px-5">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2 text-[#0050cd] font-bold text-xs sm:text-sm tracking-normal min-w-0">
@@ -578,10 +578,10 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                             <span className="break-words">Dịch vụ {groupIdx + 1}: {serviceName}</span>
                           </div>
                           <div className="flex items-center gap-3 shrink-0 ml-auto">
-                            <span className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3 py-1 rounded-full shadow-2xs">
+                            <span className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3 py-1 rounded-full shadow-2xs tabular-nums">
                               {lines.length} hạng mục
                             </span>
-                            <span className="text-sm font-bold font-mono text-[#0050cd]">
+                            <span className="text-sm font-bold font-mono tabular-nums text-[#0050cd]">
                               {formatVND(groupSubtotal)}
                             </span>
                           </div>
@@ -640,7 +640,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                               {isLabour ? 'Nhân công' : isPart ? 'Phụ tùng' : isPackage ? 'Trọn gói' : 'Phụ phí'}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-center font-mono font-medium text-xs text-on-surface">
+                          <td className="py-3 px-4 text-center font-mono tabular-nums font-medium text-xs text-on-surface">
                             {line.quantity}
                           </td>
                           <td className="py-3 px-4 text-right font-mono text-xs text-on-surface-variant tabular-nums hidden md:table-cell">
@@ -673,7 +673,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
           <div className="w-full sm:w-80 space-y-2.5 bg-slate-50/80 p-4.5 rounded-2xl border border-slate-200/80">
             <div className="flex justify-between text-xs text-on-surface-variant">
               <span>Tổng tiền hạng mục (Subtotal):</span>
-              <span className="font-mono font-bold text-on-surface">{formatVND(activeQuotation?.subtotal || 0)}</span>
+              <span className="font-mono tabular-nums font-bold text-on-surface">{formatVND(activeQuotation?.subtotal || 0)}</span>
             </div>
 
             <div className="flex justify-between text-xs items-center">
@@ -691,19 +691,19 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                   </button>
                 )}
               </span>
-              <span className="font-mono font-bold text-rose-600">
+              <span className="font-mono tabular-nums font-bold text-rose-600">
                 - {formatVND(activeQuotation?.discountAmount || 0)}
               </span>
             </div>
 
             <div className="flex justify-between text-xs text-on-surface-variant">
               <span>Thuế GTGT (VAT 0% - Không thu):</span>
-              <span className="font-mono text-emerald-600 font-semibold">0 đ</span>
+              <span className="font-mono tabular-nums text-emerald-600 font-semibold">0 đ</span>
             </div>
 
             <div className="pt-2 border-t border-outline-variant/60 flex justify-between items-baseline">
               <span className="text-sm font-bold text-on-surface">TỔNG THANH TOÁN:</span>
-              <span className="font-mono text-lg font-extrabold text-primary">
+              <span className="font-mono tabular-nums text-lg font-extrabold text-primary">
                 {formatVND(activeQuotation?.grandTotal || 0)}
               </span>
             </div>

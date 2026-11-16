@@ -600,7 +600,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
               <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-1 sm:gap-4 items-center">
                   <span className="text-body-sm text-on-surface-variant">Số ODO</span>
-                  <span className="text-body-sm font-bold font-mono">{mileage ? `${parseInt(mileage).toLocaleString()} km` : ''}</span>
+                  <span className="text-body-sm font-bold font-mono tabular-nums">{mileage ? `${parseInt(mileage).toLocaleString()} km` : ''}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-1 sm:gap-4 items-start">
                   <span className="text-body-sm text-on-surface-variant">Tài sản để trên xe</span>
@@ -608,7 +608,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-1 sm:gap-4 items-start">
                   <span className="text-body-sm text-on-surface-variant">Chi phí ước tính</span>
-                  <span className="text-body-sm text-[#0050cd] font-bold font-mono">{estimatedCostText}</span>
+                  <span className="text-body-sm text-[#0050cd] font-bold font-mono tabular-nums">{estimatedCostText}</span>
                 </div>
               </div>
 

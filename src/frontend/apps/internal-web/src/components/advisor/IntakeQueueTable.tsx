@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { IntakeQueueItem, createWorkOrder } from '@/lib/api/work-order.api';
+import { formatVehicleSize } from '@/components/advisor/work-order/work-order.constants';
 import toast from 'react-hot-toast';
 
 function calcWaitTime(arrivedAt: string): { text: string; minutes: number } {
@@ -258,7 +259,7 @@ function IntakeDetailModal({
                 </p>
                 <p>
                   <span className="text-zinc-400 inline-block w-20">Phân khúc:</span>{' '}
-                  {intake.vehicle.vehicle_size} • {intake.vehicle.color || '—'}
+                  {formatVehicleSize(intake.vehicle.vehicle_size)} • {intake.vehicle.color || '—'}
                 </p>
               </div>
             </div>

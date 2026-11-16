@@ -266,9 +266,9 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
 
       {/* 2. Toolbar: Search, Filters, Add Button */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-surface-container-lowest p-3.5 border border-outline-variant rounded-2xl shadow-sm">
-        <div className="flex flex-1 flex-wrap items-center gap-2.5">
+        <div className="flex flex-1 flex-wrap items-center gap-2">
           {/* Search input */}
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative flex-1 min-w-[160px]">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">
               search
             </span>
@@ -285,7 +285,7 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
           <select
             value={selectedJobFilter}
             onChange={(e) => setSelectedJobFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-body-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary max-w-[200px] truncate"
+            className="px-2.5 lg:px-3 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-body-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary max-w-[160px] lg:max-w-[200px] truncate"
           >
             <option value="ALL">Tất cả công việc</option>
             {allJobs.map((j) => (
@@ -361,17 +361,17 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
             <table className="w-full text-left border-collapse text-body-medium">
               <thead>
                 <tr className="border-b border-outline-variant/60 bg-surface-container-low/40 text-on-surface-variant text-label-medium uppercase tracking-wider font-semibold">
-                  <th className="py-3.5 px-4 hidden xl:table-cell">Mã</th>
-                  <th className="py-3.5 px-4">Tên phụ tùng & Hãng</th>
-                  <th className="py-3.5 px-4">Công việc áp dụng</th>
-                  <th className="py-3.5 px-4 text-center">Tồn kho</th>
-                  <th className="py-3.5 px-3 text-center lg:hidden whitespace-nowrap">DK / Xuất</th>
-                  <th className="py-3.5 px-4 text-center hidden lg:table-cell whitespace-nowrap">SL Dự kiến</th>
-                  <th className="py-3.5 px-4 text-center hidden lg:table-cell whitespace-nowrap">SL Xuất</th>
-                  <th className="py-3.5 px-4 text-right hidden md:table-cell whitespace-nowrap">Đơn giá</th>
-                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Thành tiền</th>
-                  <th className="py-3.5 px-4 text-center">Trạng thái</th>
-                  {!isWOClosed && <th className="py-3.5 px-4 text-center">Thao tác</th>}
+                  <th className="py-3 px-4 hidden xl:table-cell whitespace-nowrap">Mã</th>
+                  <th className="py-3 px-2.5 lg:px-4 min-w-[170px]">Tên phụ tùng & Hãng</th>
+                  <th className="py-3 px-2.5 lg:px-4 min-w-[150px]">Công việc áp dụng</th>
+                  <th className="py-3 px-2 lg:px-4 text-center whitespace-nowrap">Tồn kho</th>
+                  <th className="py-3 px-2 text-center lg:hidden whitespace-nowrap">DK / Xuất</th>
+                  <th className="py-3 px-4 text-center hidden lg:table-cell whitespace-nowrap">SL Dự kiến</th>
+                  <th className="py-3 px-4 text-center hidden lg:table-cell whitespace-nowrap">SL Xuất</th>
+                  <th className="py-3 px-4 text-right hidden lg:table-cell whitespace-nowrap">Đơn giá</th>
+                  <th className="py-3 px-2.5 lg:px-4 text-right whitespace-nowrap">Thành tiền</th>
+                  <th className="py-3 px-2.5 lg:px-4 text-center whitespace-nowrap">Trạng thái</th>
+                  {!isWOClosed && <th className="py-3 px-2 lg:px-4 text-center whitespace-nowrap">Thao tác</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/40">
@@ -393,7 +393,7 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                       </td>
 
                       {/* Part Name & Brand */}
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-2.5 lg:px-4">
                         <div className="xl:hidden mb-1">
                           <span className="inline-block font-mono font-bold text-primary text-[11px] bg-primary/10 px-1.5 py-0.5 rounded">
                             {part.item?.sku || 'N/A'}
@@ -402,14 +402,14 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                         <div className="font-semibold text-on-surface">
                           {part.item?.part_category?.name || 'Phụ tùng chưa rõ'}
                         </div>
-                        <div className="text-body-small text-on-surface-variant flex items-center gap-2 mt-0.5">
-                          {part.item?.brand && <span>Hãng: {part.item.brand.name}</span>}
-                          <span>ĐVT: {part.item?.part_category?.uom?.name || 'Cái'}</span>
+                        <div className="text-body-small text-on-surface-variant flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                          {part.item?.brand && <span className="whitespace-nowrap">Hãng: {part.item.brand.name}</span>}
+                          <span className="whitespace-nowrap">ĐVT: {part.item?.part_category?.uom?.name || 'Cái'}</span>
                         </div>
                       </td>
 
                       {/* Job name */}
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-2.5 lg:px-4">
                         <div className="font-medium text-on-surface">{part.job?.name || 'Chưa rõ'}</div>
                         {part.job?.wo_service?.name && (
                           <div className="text-body-small text-on-surface-variant">
@@ -419,9 +419,9 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                       </td>
 
                       {/* Stock badge */}
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                      <td className="py-3 px-2 lg:px-4 text-center whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold tabular-nums ${
                             isShortage
                               ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20'
                               : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20'
@@ -435,7 +435,7 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                       </td>
 
                       {/* Compact Planned / Issued Qty (<lg) */}
-                      <td className="py-3 px-3 text-center lg:hidden whitespace-nowrap tabular-nums">
+                      <td className="py-3 px-2 text-center lg:hidden whitespace-nowrap tabular-nums">
                         <span className="font-bold text-on-surface">{planned}</span>
                         <span className="text-on-surface-variant mx-1">/</span>
                         <span className="font-medium text-on-surface-variant">{issued}</span>
@@ -451,23 +451,23 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                         {issued}
                       </td>
 
-                      {/* Unit Price (md+) */}
-                      <td className="py-3 px-4 text-right font-medium text-on-surface whitespace-nowrap hidden md:table-cell tabular-nums">
+                      {/* Unit Price (lg+) */}
+                      <td className="py-3 px-4 text-right font-medium text-on-surface whitespace-nowrap hidden lg:table-cell tabular-nums">
                         {unitPrice.toLocaleString('vi-VN')} đ
                       </td>
 
                       {/* Total */}
-                      <td className="py-3 px-4 text-right font-bold text-primary whitespace-nowrap tabular-nums">
+                      <td className="py-3 px-2.5 lg:px-4 text-right font-bold text-primary whitespace-nowrap tabular-nums">
                         <div>{total.toLocaleString('vi-VN')} đ</div>
-                        <div className="md:hidden text-[11px] font-normal text-on-surface-variant mt-0.5">
+                        <div className="lg:hidden text-[11px] font-normal text-on-surface-variant mt-0.5">
                           {planned} × {unitPrice.toLocaleString('vi-VN')} đ
                         </div>
                       </td>
 
                       {/* Status */}
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                      <td className="py-3 px-2.5 lg:px-4 text-center whitespace-nowrap">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusInfo.bg} ${statusInfo.text}`}
+                          className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold border ${statusInfo.bg} ${statusInfo.text}`}
                         >
                           {statusInfo.label}
                         </span>
@@ -475,8 +475,8 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
 
                       {/* Actions */}
                       {!isWOClosed && (
-                        <td className="py-3 px-4 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
+                        <td className="py-3 px-2 lg:px-4 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-0.5">
                             {/* Edit */}
                             <button
                               onClick={() => {

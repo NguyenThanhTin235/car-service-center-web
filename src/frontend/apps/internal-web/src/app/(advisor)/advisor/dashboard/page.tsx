@@ -94,7 +94,7 @@ export default function SADashboardAnalyticsPage() {
       headerClassName: 'whitespace-nowrap',
       cellClassName: 'whitespace-nowrap',
       render: (row) => (
-        <span className="font-mono font-bold text-[#0050cd] dark:text-blue-400 whitespace-nowrap">
+        <span className="font-mono font-bold text-[#0050cd] dark:text-blue-400 whitespace-nowrap tabular-nums">
           {row.woNumber}
         </span>
       ),
@@ -106,7 +106,7 @@ export default function SADashboardAnalyticsPage() {
       render: (row) => (
         <div>
           <div className="font-semibold text-slate-900 dark:text-white">{row.customerName}</div>
-          <div className="text-[11px] text-slate-400 font-mono">{row.customerPhone}</div>
+          <div className="text-[11px] text-slate-400 font-mono tabular-nums">{row.customerPhone}</div>
         </div>
       ),
     },
@@ -148,7 +148,7 @@ export default function SADashboardAnalyticsPage() {
               {conf.label}
             </span>
             {row.updatedAt && (
-              <span className="md:hidden text-slate-400 text-[10px] font-mono whitespace-nowrap">
+              <span className="md:hidden text-slate-400 text-[11px] font-mono whitespace-nowrap tabular-nums">
                 {new Date(row.updatedAt).toLocaleTimeString('vi-VN', {
                   hour: '2-digit',
                   minute: '2-digit',
@@ -168,7 +168,7 @@ export default function SADashboardAnalyticsPage() {
       headerClassName: 'hidden md:table-cell whitespace-nowrap',
       cellClassName: 'hidden md:table-cell whitespace-nowrap',
       render: (row) => (
-        <span className="text-slate-400 text-[11px] font-mono whitespace-nowrap">
+        <span className="text-slate-400 text-[11px] font-mono whitespace-nowrap tabular-nums">
           {new Date(row.updatedAt).toLocaleTimeString('vi-VN', {
             hour: '2-digit',
             minute: '2-digit',

@@ -70,7 +70,7 @@ export function PhotoLibraryModal({
                       alt={finding.part_name}
                       className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
                     />
-                    <div className="p-2 text-[10px] bg-white border-t border-outline-variant/30 flex flex-col gap-0.5">
+                    <div className="p-2 text-[11px] bg-white border-t border-outline-variant/30 flex flex-col gap-0.5">
                       <span className="font-bold text-primary truncate">
                         #{fIndex + 1} - {finding.part_name}
                       </span>
@@ -168,7 +168,7 @@ export function InspectionLogModal({
                   key={insp.id}
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white border border-outline-variant/60 font-semibold text-on-surface"
                 >
-                  <span className="w-3.5 h-3.5 bg-[#20B2AA] text-white rounded-full flex items-center justify-center text-[8px] font-bold">
+                  <span className="min-w-[18px] h-[18px] bg-[#20B2AA] text-white rounded-full flex items-center justify-center text-[11px] leading-none font-bold">
                     {insp.name[0].toUpperCase()}
                   </span>
                   {insp.name}
@@ -204,7 +204,7 @@ export function InspectionLogModal({
                 return (
                   <div key={f.id} className="relative group">
                     {/* Timeline dot */}
-                    <div className={`absolute -left-[27px] top-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center text-[8px] text-white font-bold shadow-xs ${toolDef?.bgColor || 'bg-primary'}`}>
+                    <div className={`absolute -left-[29px] top-1 min-w-[20px] h-[20px] rounded-full border-2 border-white flex items-center justify-center text-[11px] leading-none text-white font-bold shadow-xs ${toolDef?.bgColor || 'bg-primary'}`}>
                       {toolDef?.icon || f.originalIndex}
                     </div>
 
@@ -216,15 +216,15 @@ export function InspectionLogModal({
                             Điểm #{f.originalIndex} - {f.part_name}
                           </span>
                           {logIdx === 0 && (
-                            <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300 text-[9px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 text-[11px] font-bold">
                               Mới nhất
                             </span>
                           )}
-                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${toolDef?.lightBg} ${toolDef?.color}`}>
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold ${toolDef?.lightBg} ${toolDef?.color}`}>
                             {toolDef?.label || f.marker_type}
                           </span>
                           {linkedJob && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                               <span className="material-symbols-outlined text-[11px]">link</span>
                               {linkedJob.name}
                             </span>
@@ -244,7 +244,7 @@ export function InspectionLogModal({
                           <div className="flex items-center gap-1.5">
                             <span className="text-slate-600 font-medium">Người ghi nhận:</span>
                             <span className="inline-flex items-center gap-1 font-semibold text-on-surface">
-                              <span className="w-4 h-4 bg-[#20B2AA] text-white rounded-full flex items-center justify-center text-[8px] font-bold">
+                              <span className="min-w-[18px] h-[18px] bg-[#20B2AA] text-white rounded-full flex items-center justify-center text-[11px] leading-none font-bold">
                                 {creatorName[0]?.toUpperCase()}
                               </span>
                               {creatorName}

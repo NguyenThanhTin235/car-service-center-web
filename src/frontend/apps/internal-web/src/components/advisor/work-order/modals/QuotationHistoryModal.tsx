@@ -105,15 +105,15 @@ export default function QuotationHistoryModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="w-full max-w-4xl max-h-[90vh] bg-surface-container-lowest rounded-3xl border border-outline-variant shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-primary text-white px-6 py-5 flex items-center justify-between shrink-0 shadow-sm">
+        <div className="bg-[#0c2340] border-b border-white/10 text-white px-6 py-5 flex items-center justify-between shrink-0 shadow-sm">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 shadow-inner">
+            <div className="w-11 h-11 rounded-2xl bg-[#0050cd] flex items-center justify-center shrink-0 shadow-inner">
               <span className="material-symbols-outlined text-[26px]">history</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-title-md font-bold">Lịch sử các phiên bản Báo giá</h3>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-white/20 text-white">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-[#0050cd] text-white">
                   {quotations.length} phiên bản
                 </span>
               </div>
@@ -281,7 +281,7 @@ export default function QuotationHistoryModal({
                       )}
 
                       {/* Loại báo giá */}
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-surface-container-high text-on-surface-variant">
+                      <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-surface-container-high text-on-surface-variant">
                         {q.quotationType === 'PRIMARY' ? 'Chính' : 'Bổ sung'}
                       </span>
                     </div>
@@ -357,7 +357,7 @@ export default function QuotationHistoryModal({
                       <span className="font-medium text-on-surface block truncate" title={q.createdBy?.full_name}>
                         {q.createdBy?.full_name || 'Hệ thống'}
                       </span>
-                      <span className="text-[10px] text-on-surface-variant">{formatDateTime(q.createdAt)}</span>
+                      <span className="text-[11px] text-on-surface-variant">{formatDateTime(q.createdAt)}</span>
                     </div>
                   </div>
 
@@ -411,11 +411,11 @@ export default function QuotationHistoryModal({
                                 <td className="py-2 px-3">
                                   <div className="font-semibold text-on-surface">{line.description}</div>
                                   {line.woServiceName && (
-                                    <div className="text-[10px] text-primary">{line.woServiceName}</div>
+                                    <div className="text-[11px] text-primary">{line.woServiceName}</div>
                                   )}
                                 </td>
                                 <td className="py-2 px-3">
-                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-surface-container text-on-surface-variant">
+                                  <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-surface-container text-on-surface-variant">
                                     {line.lineType === 'PACKAGE'
                                       ? 'Trọn gói'
                                       : line.lineType === 'LABOUR'
@@ -433,7 +433,7 @@ export default function QuotationHistoryModal({
                                 </td>
                                 <td className="py-2 px-3 text-right font-mono font-bold text-on-surface tabular-nums whitespace-nowrap">
                                   <div>{formatVND(line.amount)}</div>
-                                  <div className="md:hidden text-[10px] font-normal text-on-surface-variant mt-0.5">
+                                  <div className="md:hidden text-[11px] font-normal text-on-surface-variant mt-0.5">
                                     {Number(line.quantity || 0)} × {formatVND(line.snapshotUnitPrice)}
                                   </div>
                                 </td>

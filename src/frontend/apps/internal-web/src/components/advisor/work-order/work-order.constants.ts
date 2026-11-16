@@ -139,3 +139,16 @@ export const FUEL_LEVEL_LABELS: Record<string, string> = {
 export const FUEL_LEVEL_OPTIONS: { value: string; label: string }[] = Object.entries(
   FUEL_LEVEL_LABELS
 ).map(([value, label]) => ({ value, label }));
+
+export const VEHICLE_SIZE_LABELS: Record<string, string> = {
+  SMALL: 'Cỡ nhỏ',
+  MEDIUM: 'Cỡ vừa',
+  LARGE: 'Cỡ lớn',
+  SUV: 'SUV / Crossover',
+  TRUCK: 'Bán tải',
+};
+
+export function formatVehicleSize(size?: string | null): string {
+  if (!size) return 'N/A';
+  return VEHICLE_SIZE_LABELS[size.toUpperCase().trim()] || size;
+}

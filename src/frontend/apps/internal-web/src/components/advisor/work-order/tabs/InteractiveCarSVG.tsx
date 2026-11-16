@@ -437,7 +437,7 @@ const InteractiveCarSVG = React.memo(function InteractiveCarSVG({
           >
             <div className="relative group flex items-center justify-center w-8 h-8 cursor-pointer">
               <div
-                className={`w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center shadow-md transition-all ${getMarkerColor(
+                className={`min-w-[20px] h-[20px] rounded-full text-white text-[11px] leading-none font-bold flex items-center justify-center shadow-md transition-all ${getMarkerColor(
                   finding.type
                 )} ${isHighlighted ? 'ring-4 ring-primary/40 ring-offset-1' : ''}`}
               >
@@ -450,13 +450,13 @@ const InteractiveCarSVG = React.memo(function InteractiveCarSVG({
                   {/* Dòng 1: Badge số thứ tự + Badge Loại vết + Badge số lượng ảnh */}
                   <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-100">
                     <div className="flex items-center gap-1.5">
-                      <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 font-bold text-[9px] flex items-center justify-center shrink-0">
+                      <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-slate-100 text-slate-700 font-bold text-[11px] leading-none flex items-center justify-center shrink-0">
                         {index + 1}
                       </span>
                       {(() => {
                         const badgeStyle = getMarkerBadgeStyle(finding.type);
                         return (
-                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border ${badgeStyle.lightBg} ${badgeStyle.color} ${badgeStyle.border}`}>
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold border ${badgeStyle.lightBg} ${badgeStyle.color} ${badgeStyle.border}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${badgeStyle.bgColor}`}></span>
                             {markerLabel}
                           </span>
@@ -465,7 +465,7 @@ const InteractiveCarSVG = React.memo(function InteractiveCarSVG({
                     </div>
 
                     {finding.photos && finding.photos.length > 0 && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#2563EB] bg-[#EFF6FF] px-1.5 py-0.5 rounded">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#2563EB] bg-[#EFF6FF] px-1.5 py-0.5 rounded">
                         <span className="material-symbols-outlined text-[12px]">image</span>
                         {finding.photos.length} ảnh
                       </span>
@@ -479,7 +479,7 @@ const InteractiveCarSVG = React.memo(function InteractiveCarSVG({
 
                   {/* Dòng 3: Ghi chú nếu có */}
                   {finding.note && (
-                    <div className="text-[10px] text-slate-600 bg-slate-50 rounded p-1.5 border border-slate-100 italic line-clamp-2">
+                    <div className="text-[11px] text-slate-600 bg-slate-50 rounded p-1.5 border border-slate-100 italic line-clamp-2">
                       "{finding.note}"
                     </div>
                   )}
