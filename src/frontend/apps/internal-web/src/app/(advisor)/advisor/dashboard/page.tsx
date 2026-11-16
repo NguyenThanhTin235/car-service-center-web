@@ -102,8 +102,10 @@ export default function SADashboardAnalyticsPage() {
       key: 'woNumber',
       label: 'Mã hồ sơ',
       sortable: true,
+      headerClassName: 'whitespace-nowrap',
+      cellClassName: 'whitespace-nowrap',
       render: (row) => (
-        <span className="font-mono font-bold text-[#0050cd] dark:text-blue-400">
+        <span className="font-mono font-bold text-[#0050cd] dark:text-blue-400 whitespace-nowrap">
           {row.woNumber}
         </span>
       ),
@@ -136,6 +138,8 @@ export default function SADashboardAnalyticsPage() {
       key: 'status',
       label: 'Trạng thái',
       sortable: true,
+      headerClassName: 'whitespace-nowrap',
+      cellClassName: 'whitespace-nowrap',
       render: (row) => {
         const conf = SA_STATUS_MAP[row.status] || {
           label: row.status,
@@ -143,15 +147,27 @@ export default function SADashboardAnalyticsPage() {
           dotColor: '#94a3b8',
         };
         return (
-          <span
-            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${conf.badgeCls}`}
-          >
+          <div className="flex flex-col items-start gap-1">
             <span
-              className="w-1.5 h-1.5 rounded-full shrink-0"
-              style={{ backgroundColor: conf.dotColor }}
-            ></span>
-            {conf.label}
-          </span>
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap ${conf.badgeCls}`}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0"
+                style={{ backgroundColor: conf.dotColor }}
+              ></span>
+              {conf.label}
+            </span>
+            {row.updatedAt && (
+              <span className="md:hidden text-slate-400 text-[10px] font-mono whitespace-nowrap">
+                {new Date(row.updatedAt).toLocaleTimeString('vi-VN', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  day: '2-digit',
+                  month: '2-digit',
+                })}
+              </span>
+            )}
+          </div>
         );
       },
     },
@@ -159,8 +175,10 @@ export default function SADashboardAnalyticsPage() {
       key: 'updatedAt',
       label: 'Cập nhật',
       sortable: true,
+      headerClassName: 'hidden md:table-cell whitespace-nowrap',
+      cellClassName: 'hidden md:table-cell whitespace-nowrap',
       render: (row) => (
-        <span className="text-slate-400 text-[11px] font-mono">
+        <span className="text-slate-400 text-[11px] font-mono whitespace-nowrap">
           {new Date(row.updatedAt).toLocaleTimeString('vi-VN', {
             hour: '2-digit',
             minute: '2-digit',
@@ -173,10 +191,12 @@ export default function SADashboardAnalyticsPage() {
     {
       key: 'action',
       label: 'Thao tác',
+      headerClassName: 'whitespace-nowrap',
+      cellClassName: 'whitespace-nowrap',
       render: (row) => (
         <Link
           href={`/advisor?woId=${row.id}`}
-          className="text-xs font-semibold text-[#0050cd] hover:underline"
+          className="text-xs font-semibold text-[#0050cd] hover:underline whitespace-nowrap"
         >
           Xử lý hồ sơ →
         </Link>
@@ -229,7 +249,7 @@ export default function SADashboardAnalyticsPage() {
   }, [data?.charts?.appointmentsVolume]);
 
   return (
-    <div className="flex flex-col min-w-0 w-full space-y-6 p-4 sm:p-6">
+    <div className="flex flex-col min-w-0 w-full space-y-6 py-4 sm:py-6 max-w-[1440px] mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

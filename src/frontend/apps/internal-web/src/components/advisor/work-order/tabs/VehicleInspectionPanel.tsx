@@ -548,9 +548,9 @@ export default function VehicleInspectionPanel({
       </div>
 
       {/* Content Area */}
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex flex-col xl:flex-row gap-6">
         {/* Left: SVG Diagram */}
-        <div className="w-full lg:w-1/2 flex flex-col">
+        <div className="w-full xl:w-1/2 flex flex-col">
           <InteractiveCarSVG
             findings={svgFindings}
             selectedTool={isReadOnly ? null : selectedTool}
@@ -586,7 +586,7 @@ export default function VehicleInspectionPanel({
         </div>
 
         {/* Right: Findings List */}
-        <div className="w-full lg:w-1/2 bg-white flex flex-col pt-1 border border-outline-variant/40 rounded-lg p-3">
+        <div className="w-full xl:w-1/2 bg-white flex flex-col pt-1 border border-outline-variant/40 rounded-lg p-3">
           <div className="flex items-center justify-between pb-2 mb-1.5 border-b border-outline-variant/30">
             <span className="text-[12px] font-bold text-on-surface flex items-center gap-1.5">
               <span className="material-symbols-outlined text-primary text-[16px]">format_list_bulleted</span>
@@ -594,17 +594,18 @@ export default function VehicleInspectionPanel({
             </span>
           </div>
 
-                    <div className={`grid ${isReadOnly ? 'grid-cols-[28px_85px_130px_1fr_150px_40px]' : 'grid-cols-[28px_80px_115px_1fr_140px_36px_28px]'} gap-2 pb-2.5 border-b border-slate-200 text-xs text-slate-500 font-bold items-center`}>
-            <div className="text-center font-mono">#</div>
-            <div className="whitespace-nowrap">Loại dấu vết</div>
-            <div className="whitespace-nowrap">Vị trí bộ phận</div>
-            <div className="whitespace-nowrap">Ghi chú</div>
-            <div className="text-center whitespace-nowrap">Công việc</div>
-            <div className="text-center whitespace-nowrap">Ảnh</div>
-            {!isReadOnly && <div></div>}
-          </div>
+          <div className="md:overflow-x-auto">
+            <div className={`hidden md:grid ${isReadOnly ? 'md:grid-cols-[32px_96px_125px_minmax(160px,1fr)_145px_40px]' : 'md:grid-cols-[32px_96px_125px_minmax(160px,1fr)_145px_40px_36px]'} gap-2 pb-2.5 border-b border-slate-200 text-xs text-slate-500 font-bold items-center`}>
+              <div className="text-center font-mono">#</div>
+              <div className="whitespace-nowrap">Loại dấu vết</div>
+              <div className="whitespace-nowrap">Vị trí bộ phận</div>
+              <div className="whitespace-nowrap">Ghi chú</div>
+              <div className="text-center whitespace-nowrap">Công việc</div>
+              <div className="text-center whitespace-nowrap">Ảnh</div>
+              {!isReadOnly && <div></div>}
+            </div>
 
-          <div className="flex-1 overflow-y-auto max-h-[460px] pr-1 styled-scrollbar flex flex-col">
+            <div className="flex-1 overflow-y-auto max-h-[460px] pr-1 styled-scrollbar flex flex-col">
             {loading && findings.length === 0 ? (
               <div className="flex items-center justify-center py-12 text-on-surface-variant text-[11px] gap-2">
                 <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
@@ -659,175 +660,185 @@ export default function VehicleInspectionPanel({
                     key={finding.id}
                     onMouseEnter={() => setHighlightedFindingId(finding.id)}
                     onMouseLeave={() => setHighlightedFindingId(null)}
-                    className={`grid ${isReadOnly ? 'grid-cols-[28px_85px_130px_1fr_150px_40px]' : 'grid-cols-[28px_80px_115px_1fr_140px_36px_28px]'} gap-2 items-center py-2.5 border-b border-slate-100 group transition-colors rounded ${
-                      isHighlighted ? 'bg-primary/5' : 'hover:bg-slate-50/60'
+                    className={`flex flex-col gap-2.5 p-3 mb-2 rounded-xl border border-slate-200/80 bg-slate-50/40 md:mb-0 md:p-0 md:rounded md:border-0 md:border-b md:border-slate-100 md:bg-transparent md:grid ${isReadOnly ? 'md:grid-cols-[32px_96px_125px_minmax(160px,1fr)_145px_40px]' : 'md:grid-cols-[32px_96px_125px_minmax(160px,1fr)_145px_40px_36px]'} md:gap-2 md:items-center md:py-2.5 group transition-colors ${
+                      isHighlighted ? 'bg-primary/5 md:bg-primary/5' : 'md:hover:bg-slate-50/60'
                     }`}
                   >
-                    <div className="text-slate-500 font-mono font-bold text-xs text-center">
-                      {index + 1}
-                    </div>
-
-                    <div>
-                      <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${toolDef?.lightBg}`}>
-                        <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-bold ${toolDef?.bgColor}`}>
-                          {toolDef?.icon}
-                        </span>
-                        <span className={`text-xs font-bold ${toolDef?.color}`}>{toolDef?.label}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-zinc-900 leading-snug">
-                        {finding.part_name}
-                      </span>
-                    </div>
-
-                    <div>
-                      {!isReadOnly ? (
-                        <input
-                          type="text"
-                          placeholder="Thêm ghi chú..."
-                          value={finding.description || ''}
-                          onChange={(e) => updateFindingNote(finding.id, e.target.value)}
-                          className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none placeholder:text-outline bg-white"
-                        />
-                      ) : (
-                        <p className="text-xs text-slate-600 italic">
-                          {finding.description || '—'}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Job linking - Hiển thị toàn bộ công việc lên bảng & Nút thêm job trực tiếp */}
-                    <div className="flex flex-col items-center justify-center text-center w-full">
-                      {allLinkedJobs.length > 0 ? (
-                        <div className="flex flex-col gap-1 w-full items-stretch">
-                          {allLinkedJobs.map((job) => (
-                            <div
-                              key={job.id}
-                              onClick={() => {
-                                setSelectedJobForModal(job.fullJob || job);
-                                setSelectedFindingForJobModal(finding);
-                                setIsJobModalOpen(true);
-                              }}
-                              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 text-xs font-semibold max-w-full text-left transition-colors cursor-pointer active:scale-98"
-                              title={`Nhấn để xem thông tin chi tiết công việc: ${job.name}`}
-                            >
-                              <span className="material-symbols-outlined text-[12px] text-emerald-600 shrink-0">
-                                build_circle
-                              </span>
-                              <span className="truncate flex-1 font-semibold">{job.name}</span>
-                              {job.status && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold shrink-0">
-                                  {job.status === 'PLANNED' ? 'Mới' : job.status === 'IN_PROGRESS' ? 'Đang làm' : job.status === 'PASSED' ? 'Đạt KCS' : job.status}
-                                </span>
-                              )}
-                              {!isReadOnly && !isApprovedOrBeyond && (job.status === 'PLANNED' || !job.status) && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    promptDeleteJob(job.id, job.name);
-                                  }}
-                                  className="p-0.5 rounded hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors shrink-0"
-                                  title={`Xóa công việc "${job.name}"`}
-                                >
-                                  <span className="material-symbols-outlined text-[12px]">close</span>
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                          {!isReadOnly && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedFindingForJobModal(finding);
-                                setSelectedJobForModal(null);
-                                setIsJobModalOpen(true);
-                              }}
-                              className="inline-flex items-center justify-center gap-1 px-2 py-1 mt-1 rounded-md border border-dashed border-emerald-400 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 hover:border-emerald-600 text-xs font-bold transition-all cursor-pointer active:scale-95 whitespace-nowrap w-full"
-                              title="Thêm công việc khác trực tiếp cho dấu vết này"
-                            >
-                              <span className="material-symbols-outlined text-[12px] text-emerald-600">add_circle</span>
-                              + Thêm job
-                            </button>
-                          )}
+                    {/* Tier 1 on <md: # + Badge + Part Name (left), Photo + Delete (right) */}
+                    <div className="flex items-center justify-between gap-2 md:contents">
+                      <div className="flex items-center gap-2 min-w-0 md:contents">
+                        <div className="text-slate-500 font-mono font-bold text-xs md:text-center shrink-0 md:order-1">
+                          {index + 1}
                         </div>
-                      ) : !isReadOnly ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedFindingForJobModal(finding);
-                            setSelectedJobForModal(null);
-                            setIsJobModalOpen(true);
-                          }}
-                          className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 hover:border-emerald-500 text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer whitespace-nowrap w-full"
-                          title="Tạo và liên kết công việc trực tiếp cho dấu vết này"
-                        >
-                          <span className="material-symbols-outlined text-[13px] text-emerald-600">add_circle</span>
-                          + Thêm job
-                        </button>
-                      ) : (
-                        <span className="text-xs text-slate-500 italic font-medium">
-                          Chưa gắn
-                        </span>
-                      )}
-                    </div>
 
-                    {/* Photo upload */}
-                    <div className="flex items-center justify-center">
-                      <button
-                        onClick={() => triggerUploadPhoto(finding.id)}
-                        disabled={isReadOnly || uploadingFindingId === finding.id}
-                        title={photoCount > 0 ? `${photoCount} ảnh minh chứng` : 'Tải ảnh minh chứng'}
-                        className={`relative p-1 rounded hover:bg-surface-container transition-colors ${
-                          photoCount > 0 ? 'text-[#2563EB]' : 'text-on-surface-variant'
-                        } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}
-                      >
-                        {uploadingFindingId === finding.id ? (
-                          <span className="material-symbols-outlined text-[16px] animate-spin">
-                            progress_activity
-                          </span>
-                        ) : (
-                          <span className="material-symbols-outlined text-[16px]">
-                            {photoCount > 0 ? 'image' : 'add_a_photo'}
-                          </span>
-                        )}
-                        {photoCount > 0 && (
-                          <span className="absolute -top-1 -right-1 bg-[#2563EB] text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
-                            {photoCount}
-                          </span>
-                        )}
-                      </button>
-                    </div>
+                        <div className="shrink-0 md:order-2">
+                          <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${toolDef?.lightBg}`}>
+                            <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-bold ${toolDef?.bgColor}`}>
+                              {toolDef?.icon}
+                            </span>
+                            <span className={`text-xs font-bold ${toolDef?.color}`}>{toolDef?.label}</span>
+                          </div>
+                        </div>
 
-                    {/* Remove / Lock button */}
-                    {!isReadOnly && (
-                      <div className="flex items-center justify-center">
-                        
-                        <button
-                          onClick={() => handleRemoveFinding(finding.id)}
-                          title={
-                            isLinkedToJob
-                              ? 'Không thể xóa vì đã liên kết với công việc'
-                              : 'Xóa đánh dấu'
-                          }
-                          className={`p-1 transition-all ${
-                            isLinkedToJob
-                              ? 'text-outline/40 hover:text-outline cursor-not-allowed'
-                              : 'opacity-0 group-hover:opacity-100 text-outline hover:text-error cursor-pointer'
-                          }`}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">
-                            {isLinkedToJob ? 'lock' : 'close'}
+                        <div className="flex flex-col min-w-0 md:order-3">
+                          <span className="text-xs font-bold text-zinc-900 leading-snug truncate md:whitespace-normal">
+                            {finding.part_name}
                           </span>
-                        </button>
+                        </div>
                       </div>
-                    )}
+
+                      <div className="flex items-center gap-1 shrink-0 md:contents">
+                        {/* Photo upload */}
+                        <div className="flex items-center justify-center md:order-6">
+                          <button
+                            onClick={() => triggerUploadPhoto(finding.id)}
+                            disabled={isReadOnly || uploadingFindingId === finding.id}
+                            title={photoCount > 0 ? `${photoCount} ảnh minh chứng` : 'Tải ảnh minh chứng'}
+                            className={`relative p-1.5 rounded hover:bg-surface-container transition-colors ${
+                              photoCount > 0 ? 'text-[#2563EB]' : 'text-on-surface-variant'
+                            } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}
+                          >
+                            {uploadingFindingId === finding.id ? (
+                              <span className="material-symbols-outlined text-[16px] animate-spin">
+                                progress_activity
+                              </span>
+                            ) : (
+                              <span className="material-symbols-outlined text-[16px]">
+                                {photoCount > 0 ? 'image' : 'add_a_photo'}
+                              </span>
+                            )}
+                            {photoCount > 0 && (
+                              <span className="absolute -top-1 -right-1 bg-[#2563EB] text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                                {photoCount}
+                              </span>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Remove / Lock button */}
+                        {!isReadOnly && (
+                          <div className="flex items-center justify-center md:order-7">
+                            <button
+                              onClick={() => handleRemoveFinding(finding.id)}
+                              title={
+                                isLinkedToJob
+                                  ? 'Không thể xóa vì đã liên kết với công việc'
+                                  : 'Xóa đánh dấu'
+                              }
+                              className={`p-1.5 transition-all ${
+                                isLinkedToJob
+                                  ? 'text-outline/40 hover:text-outline cursor-not-allowed'
+                                  : 'opacity-100 xl:opacity-0 xl:group-hover:opacity-100 text-outline hover:text-error cursor-pointer'
+                              }`}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">
+                                {isLinkedToJob ? 'lock' : 'close'}
+                              </span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tier 2 on <md: Notes input + Linked jobs */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:contents">
+                      <div className="flex-1 min-w-0 md:order-4">
+                        {!isReadOnly ? (
+                          <input
+                            type="text"
+                            placeholder="Thêm ghi chú..."
+                            value={finding.description || ''}
+                            onChange={(e) => updateFindingNote(finding.id, e.target.value)}
+                            className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none placeholder:text-outline bg-white"
+                          />
+                        ) : (
+                          <p className="text-xs text-slate-600 italic">
+                            {finding.description || '—'}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Job linking - Hiển thị toàn bộ công việc lên bảng & Nút thêm job trực tiếp */}
+                      <div className="flex flex-col items-center justify-center text-center w-full sm:w-40 md:w-full shrink-0 md:order-5">
+                        {allLinkedJobs.length > 0 ? (
+                          <div className="flex flex-col gap-1 w-full items-stretch">
+                            {allLinkedJobs.map((job) => (
+                              <div
+                                key={job.id}
+                                onClick={() => {
+                                  setSelectedJobForModal(job.fullJob || job);
+                                  setSelectedFindingForJobModal(finding);
+                                  setIsJobModalOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 text-xs font-semibold max-w-full text-left transition-colors cursor-pointer active:scale-98"
+                                title={`Nhấn để xem thông tin chi tiết công việc: ${job.name}`}
+                              >
+                                <span className="material-symbols-outlined text-[12px] text-emerald-600 shrink-0">
+                                  build_circle
+                                </span>
+                                <span className="truncate flex-1 font-semibold">{job.name}</span>
+                                {job.status && (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold shrink-0">
+                                    {job.status === 'PLANNED' ? 'Mới' : job.status === 'IN_PROGRESS' ? 'Đang làm' : job.status === 'PASSED' ? 'Đạt KCS' : job.status}
+                                  </span>
+                                )}
+                                {!isReadOnly && !isApprovedOrBeyond && (job.status === 'PLANNED' || !job.status) && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      promptDeleteJob(job.id, job.name);
+                                    }}
+                                    className="p-0.5 rounded hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors shrink-0"
+                                    title={`Xóa công việc "${job.name}"`}
+                                  >
+                                    <span className="material-symbols-outlined text-[12px]">close</span>
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedFindingForJobModal(finding);
+                                  setSelectedJobForModal(null);
+                                  setIsJobModalOpen(true);
+                                }}
+                                className="inline-flex items-center justify-center gap-1 px-2 py-1 mt-1 rounded-md border border-dashed border-emerald-400 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 hover:border-emerald-600 text-xs font-bold transition-all cursor-pointer active:scale-95 whitespace-nowrap w-full"
+                                title="Thêm công việc khác trực tiếp cho dấu vết này"
+                              >
+                                <span className="material-symbols-outlined text-[12px] text-emerald-600">add_circle</span>
+                                + Thêm job
+                              </button>
+                            )}
+                          </div>
+                        ) : !isReadOnly ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedFindingForJobModal(finding);
+                              setSelectedJobForModal(null);
+                              setIsJobModalOpen(true);
+                            }}
+                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 hover:border-emerald-500 text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer whitespace-nowrap w-full"
+                            title="Tạo và liên kết công việc trực tiếp cho dấu vết này"
+                          >
+                            <span className="material-symbols-outlined text-[13px] text-emerald-600">add_circle</span>
+                            + Thêm job
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-500 italic font-medium">
+                            Chưa gắn
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
               })
             )}
+            </div>
           </div>
         </div>
       </div>

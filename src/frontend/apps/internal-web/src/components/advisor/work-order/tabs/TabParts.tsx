@@ -366,14 +366,15 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
             <table className="w-full text-left border-collapse text-body-medium">
               <thead>
                 <tr className="border-b border-outline-variant/60 bg-surface-container-low/40 text-on-surface-variant text-label-medium uppercase tracking-wider font-semibold">
-                  <th className="py-3.5 px-4">Mã</th>
+                  <th className="py-3.5 px-4 hidden xl:table-cell">Mã</th>
                   <th className="py-3.5 px-4">Tên phụ tùng & Hãng</th>
                   <th className="py-3.5 px-4">Công việc áp dụng</th>
                   <th className="py-3.5 px-4 text-center">Tồn kho</th>
-                  <th className="py-3.5 px-4 text-center">SL Dự kiến</th>
-                  <th className="py-3.5 px-4 text-center">SL Xuất</th>
-                  <th className="py-3.5 px-4 text-right">Đơn giá</th>
-                  <th className="py-3.5 px-4 text-right">Thành tiền</th>
+                  <th className="py-3.5 px-3 text-center lg:hidden whitespace-nowrap">DK / Xuất</th>
+                  <th className="py-3.5 px-4 text-center hidden lg:table-cell whitespace-nowrap">SL Dự kiến</th>
+                  <th className="py-3.5 px-4 text-center hidden lg:table-cell whitespace-nowrap">SL Xuất</th>
+                  <th className="py-3.5 px-4 text-right hidden md:table-cell whitespace-nowrap">Đơn giá</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Thành tiền</th>
                   <th className="py-3.5 px-4 text-center">Trạng thái</th>
                   {!isWOClosed && <th className="py-3.5 px-4 text-center">Thao tác</th>}
                 </tr>
@@ -392,12 +393,17 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                   return (
                     <tr key={part.id} className="hover:bg-surface-container-low/50 transition-colors">
                       {/* SKU */}
-                      <td className="py-3 px-4 font-mono font-bold text-primary text-body-small whitespace-nowrap">
+                      <td className="py-3 px-4 font-mono font-bold text-primary text-body-small whitespace-nowrap hidden xl:table-cell">
                         {part.item?.sku || 'N/A'}
                       </td>
 
                       {/* Part Name & Brand */}
                       <td className="py-3 px-4">
+                        <div className="xl:hidden mb-1">
+                          <span className="inline-block font-mono font-bold text-primary text-[11px] bg-primary/10 px-1.5 py-0.5 rounded">
+                            {part.item?.sku || 'N/A'}
+                          </span>
+                        </div>
                         <div className="font-semibold text-on-surface">
                           {part.item?.part_category?.name || 'Phụ tùng chưa rõ'}
                         </div>
@@ -433,24 +439,34 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                         </span>
                       </td>
 
-                      {/* Planned Qty */}
-                      <td className="py-3 px-4 text-center font-bold text-on-surface">
+                      {/* Compact Planned / Issued Qty (<lg) */}
+                      <td className="py-3 px-3 text-center lg:hidden whitespace-nowrap tabular-nums">
+                        <span className="font-bold text-on-surface">{planned}</span>
+                        <span className="text-on-surface-variant mx-1">/</span>
+                        <span className="font-medium text-on-surface-variant">{issued}</span>
+                      </td>
+
+                      {/* Planned Qty (lg+) */}
+                      <td className="py-3 px-4 text-center font-bold text-on-surface hidden lg:table-cell tabular-nums">
                         {planned}
                       </td>
 
-                      {/* Issued Qty */}
-                      <td className="py-3 px-4 text-center font-medium text-on-surface-variant">
+                      {/* Issued Qty (lg+) */}
+                      <td className="py-3 px-4 text-center font-medium text-on-surface-variant hidden lg:table-cell tabular-nums">
                         {issued}
                       </td>
 
-                      {/* Unit Price */}
-                      <td className="py-3 px-4 text-right font-medium text-on-surface whitespace-nowrap">
+                      {/* Unit Price (md+) */}
+                      <td className="py-3 px-4 text-right font-medium text-on-surface whitespace-nowrap hidden md:table-cell tabular-nums">
                         {unitPrice.toLocaleString('vi-VN')} đ
                       </td>
 
                       {/* Total */}
-                      <td className="py-3 px-4 text-right font-bold text-primary whitespace-nowrap">
-                        {total.toLocaleString('vi-VN')} đ
+                      <td className="py-3 px-4 text-right font-bold text-primary whitespace-nowrap tabular-nums">
+                        <div>{total.toLocaleString('vi-VN')} đ</div>
+                        <div className="md:hidden text-[11px] font-normal text-on-surface-variant mt-0.5">
+                          {planned} × {unitPrice.toLocaleString('vi-VN')} đ
+                        </div>
                       </td>
 
                       {/* Status */}
@@ -473,7 +489,7 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                                 setIsModalOpen(true);
                               }}
                               title="Chỉnh sửa số lượng / đơn giá"
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors"
+                              className="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-[18px]">edit</span>
                             </button>
@@ -487,7 +503,7 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                                   ? 'Không thể xóa phụ tùng đã xuất kho'
                                   : 'Xóa phụ tùng khỏi công việc'
                               }
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-error/10 hover:text-error disabled:opacity-40 transition-colors"
+                              className="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-error/10 hover:text-error disabled:opacity-40 transition-colors cursor-pointer"
                             >
                               {deletingPartId === part.id ? (
                                 <span className="material-symbols-outlined animate-spin text-[16px]">

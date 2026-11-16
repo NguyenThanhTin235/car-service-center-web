@@ -46,7 +46,7 @@ export default function IntakeQueuePage() {
   const avgWaitMinutes = totalQueue > 0 ? Math.floor(totalWaitMinutes / totalQueue) : 0;
 
   return (
-    <div className="flex flex-col gap-5 px-4 sm:px-6 py-3 max-w-[1440px] mx-auto w-full">
+    <div className="flex flex-col gap-5 px-3 sm:px-5 lg:px-6 py-3 max-w-[1440px] mx-auto w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -59,7 +59,7 @@ export default function IntakeQueuePage() {
           type="button"
           onClick={fetchQueue}
           disabled={loading}
-          className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-slate-50 border border-slate-200/80 text-xs font-bold text-zinc-800 shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+          className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2.5 min-h-[40px] rounded-full bg-white hover:bg-slate-50 border border-slate-200/80 text-xs font-bold text-zinc-800 shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
         >
           <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin' : ''}`}>
             sync
@@ -77,7 +77,7 @@ export default function IntakeQueuePage() {
       />
 
       {/* Main Bento Table Workspace */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-200/70 shadow-xs flex flex-col gap-5">
+      <div className="bg-white rounded-[28px] p-4 sm:p-5 lg:p-6 border border-slate-200/70 shadow-xs flex flex-col gap-5">
         {/* Segmented Pill Switcher */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="bg-[#f2f4f8] p-1.5 rounded-2xl inline-flex items-center gap-1 flex-wrap">

@@ -188,9 +188,9 @@ export default function WorkOrderDetailPage() {
     <div className="flex flex-col gap-5 px-4 sm:px-6 py-3 max-w-[1440px] mx-auto w-full">
       {/* 1. TOP BREADCRUMB, STATUS PIPELINE & RECORD SWITCHER BAR (Sticky on Scroll) */}
       <div className="sticky top-16 z-20 py-1 bg-[#f2f4f8]/95 backdrop-blur-md -my-1">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white rounded-[24px] px-4 sm:px-5 py-2.5 sm:py-3 shadow-xs border border-slate-200/80">
+        <div className="flex flex-wrap xl:flex-nowrap items-center justify-between gap-x-3 gap-y-2 bg-white rounded-[24px] px-4 sm:px-5 py-2 sm:py-2.5 shadow-xs border border-slate-200/80">
           {/* Left: Back button + WO Number */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="order-1 flex items-center gap-3 shrink-0">
             <Link
               href="/advisor/work-orders"
               className="w-9 h-9 rounded-xl bg-[#f2f4f8] hover:bg-slate-200 text-zinc-800 flex items-center justify-center transition-colors shrink-0"
@@ -205,7 +205,7 @@ export default function WorkOrderDetailPage() {
           </div>
 
           {/* Center: Chevron Status Pipeline Stepper */}
-          <div className="overflow-x-auto no-scrollbar py-0.5 max-w-full flex items-center justify-start lg:justify-center">
+          <div className="order-3 xl:order-2 w-full xl:w-auto xl:flex-1 min-w-0 overflow-x-auto no-scrollbar py-0.5 flex items-center justify-start xl:justify-center pt-1.5 xl:pt-0 border-t xl:border-t-0 border-slate-100">
             <ChevronPipeline
               statuses={STATUS_PIPELINE}
               currentStatus={mappedStatus}
@@ -214,7 +214,7 @@ export default function WorkOrderDetailPage() {
           </div>
 
           {/* Right: Prev / Next Work Order Switcher */}
-          <div className="flex items-center justify-between lg:justify-end gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+          <div className="order-2 xl:order-3 flex items-center justify-end gap-2 shrink-0">
             {totalCount > 0 && (
               <span className="text-xs font-mono font-bold text-slate-500 px-2 tabular-nums">
                 {currentIndex} / {totalCount}

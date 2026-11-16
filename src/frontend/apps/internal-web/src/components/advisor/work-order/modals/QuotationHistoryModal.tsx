@@ -162,7 +162,7 @@ export default function QuotationHistoryModal({
                   onSelectQuotation(latestSentQuotation.id);
                   onClose();
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[15px]">visibility</span>
                 <span>Xem báo giá này</span>
@@ -290,12 +290,12 @@ export default function QuotationHistoryModal({
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={() => handlePrint(q)}
                         disabled={exportingId === q.id}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-outline-variant bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 min-h-[44px] rounded-lg border border-outline-variant bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
                         title="In hoặc xem bản in PDF"
                       >
                         <span className="material-symbols-outlined text-[15px] text-primary">print</span>
@@ -305,7 +305,7 @@ export default function QuotationHistoryModal({
                       <button
                         type="button"
                         onClick={() => toggleExpand(q.id)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-outline-variant bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 min-h-[44px] rounded-lg border border-outline-variant bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
                         title="Xem chi tiết các hạng mục"
                       >
                         <span className="material-symbols-outlined text-[15px] text-secondary">
@@ -320,7 +320,7 @@ export default function QuotationHistoryModal({
                           onSelectQuotation(q.id);
                           onClose();
                         }}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs ${
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs ${
                           isSelected
                             ? 'bg-primary/10 text-primary border border-primary/30 pointer-events-none'
                             : 'bg-primary hover:bg-primary/90 text-white'
@@ -403,7 +403,7 @@ export default function QuotationHistoryModal({
                               <th className="py-2 px-3">Hạng mục / Phụ tùng / Tiền công</th>
                               <th className="py-2 px-3 w-24">Loại</th>
                               <th className="py-2 px-3 w-20 text-center">SL</th>
-                              <th className="py-2 px-3 w-28 text-right">Đơn giá</th>
+                              <th className="py-2 px-3 w-28 text-right hidden md:table-cell">Đơn giá</th>
                               <th className="py-2 px-3 w-32 text-right">Thành tiền</th>
                             </tr>
                           </thead>
@@ -431,11 +431,14 @@ export default function QuotationHistoryModal({
                                 <td className="py-2 px-3 text-center font-mono font-medium">
                                   {Number(line.quantity || 0)}
                                 </td>
-                                <td className="py-2 px-3 text-right font-mono text-on-surface-variant">
+                                <td className="py-2 px-3 text-right font-mono text-on-surface-variant hidden md:table-cell tabular-nums">
                                   {formatVnd(line.snapshotUnitPrice)}
                                 </td>
-                                <td className="py-2 px-3 text-right font-mono font-bold text-on-surface">
-                                  {formatVnd(line.amount)}
+                                <td className="py-2 px-3 text-right font-mono font-bold text-on-surface tabular-nums whitespace-nowrap">
+                                  <div>{formatVnd(line.amount)}</div>
+                                  <div className="md:hidden text-[10px] font-normal text-on-surface-variant mt-0.5">
+                                    {Number(line.quantity || 0)} × {formatVnd(line.snapshotUnitPrice)}
+                                  </div>
                                 </td>
                               </tr>
                             ))}

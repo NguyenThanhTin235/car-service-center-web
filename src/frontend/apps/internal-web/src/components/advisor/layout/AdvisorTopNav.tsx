@@ -154,14 +154,14 @@ export default function AdvisorTopNav() {
       </aside>
 
       {/* 2. TOP MINIMALIST HEADER — Matches Uploaded Reference UI */}
-      <header className="sticky top-0 z-30 md:ml-[76px] px-4 sm:px-6 pt-4 pb-2 bg-[#f2f4f8]/90 backdrop-blur-md">
+      <header className="sticky top-0 z-30 md:ml-[76px] px-3 sm:px-5 lg:px-6 pt-4 pb-2 bg-[#f2f4f8]/90 backdrop-blur-md">
         <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-3">
           {/* Left: Brand Title & Active Section */}
           <div className="flex items-center gap-3 min-w-0">
             {/* Mobile Brand Icon (<768px) */}
             <Link
               href="/advisor"
-              className="md:hidden w-10 h-10 rounded-2xl bg-[#0050cd] text-white flex items-center justify-center shadow-sm shrink-0"
+              className="md:hidden w-11 h-11 rounded-2xl bg-[#0050cd] text-white flex items-center justify-center shadow-sm shrink-0"
             >
               <span className="material-symbols-outlined text-[22px]">directions_car</span>
             </Link>
@@ -195,7 +195,7 @@ export default function AdvisorTopNav() {
                     onChange={(e) => setQuickSearch(e.target.value)}
                     placeholder="Biển số, mã WO, khách..."
                     autoFocus
-                    className="w-36 sm:w-48 text-xs font-medium text-zinc-900 placeholder:text-slate-400 focus:outline-none bg-transparent"
+                    className="w-44 sm:w-56 md:w-64 text-xs font-medium text-zinc-900 placeholder:text-slate-400 focus:outline-none bg-transparent"
                   />
                   <button
                     type="button"
@@ -203,7 +203,7 @@ export default function AdvisorTopNav() {
                       setSearchOpen(false);
                       setQuickSearch('');
                     }}
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-zinc-800"
+                    className="w-9 h-9 min-w-[40px] min-h-[40px] rounded-full flex items-center justify-center text-slate-400 hover:text-zinc-800"
                     title="Đóng tìm kiếm"
                   >
                     <span className="material-symbols-outlined text-[16px]">close</span>
@@ -215,7 +215,7 @@ export default function AdvisorTopNav() {
                   onClick={() => setSearchOpen(true)}
                   title="Tìm nhanh biển số hoặc phiếu công việc"
                   aria-label="Tìm nhanh"
-                  className="w-10 h-10 rounded-full bg-white hover:bg-slate-50 border border-slate-200/80 flex items-center justify-center text-zinc-700 shadow-2xs transition-colors cursor-pointer"
+                  className="w-11 h-11 rounded-full bg-white hover:bg-slate-50 border border-slate-200/80 flex items-center justify-center text-zinc-700 shadow-2xs transition-colors cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[20px]">search</span>
                 </button>
@@ -228,7 +228,7 @@ export default function AdvisorTopNav() {
               onClick={() => router.push('/advisor/intake-queue')}
               title="Hàng đợi & Thông báo xưởng"
               aria-label="Thông báo"
-              className="relative w-10 h-10 rounded-full bg-white hover:bg-slate-50 border border-slate-200/80 flex items-center justify-center text-zinc-700 shadow-2xs transition-colors cursor-pointer"
+              className="relative w-11 h-11 rounded-full bg-white hover:bg-slate-50 border border-slate-200/80 flex items-center justify-center text-zinc-700 shadow-2xs transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-[20px]">mail</span>
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-md bg-[#0c2340] text-white text-[10px] font-extrabold flex items-center justify-center shadow-xs">
@@ -241,7 +241,7 @@ export default function AdvisorTopNav() {
               <button
                 type="button"
                 onClick={() => setDropdownOpen((o) => !o)}
-                className="flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-200/80 rounded-full p-1 pr-2.5 shadow-2xs transition-colors cursor-pointer"
+                className="flex items-center gap-2 min-h-[44px] bg-white hover:bg-slate-50 border border-slate-200/80 rounded-full p-1 pr-2.5 shadow-2xs transition-colors cursor-pointer"
                 title={displayName}
               >
                 <div className="w-8 h-8 rounded-full bg-[#0c2340] text-white flex items-center justify-center font-bold text-xs tracking-tight">
@@ -290,7 +290,7 @@ export default function AdvisorTopNav() {
       {/* 3. MOBILE BOTTOM NAVIGATION BAR (< 768px) — Touch-friendly 44x44px targets */}
       <nav
         aria-label="Điều hướng di động"
-        className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-slate-200/90 z-40 flex items-center justify-around px-1 shadow-[0_-4px_20px_rgba(0,0,0,0.04)]"
+        className="md:hidden fixed bottom-0 left-0 right-0 min-h-16 pt-1 pb-[env(safe-area-inset-bottom)] bg-white/95 backdrop-blur-md border-t border-slate-200/90 z-40 flex items-center justify-around px-1 shadow-[0_-4px_20px_rgba(0,0,0,0.04)]"
       >
         {SA_NAV_ITEMS.map((item) => {
           const active = isItemActive(item);

@@ -799,13 +799,13 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
                 {/* HEADER HẠNG MỤC (Thanh bar gọn gàng, rõ nét) */}
                 <div
                   onClick={() => toggleExpand(svc.id)}
-                  className="px-4 sm:px-5 py-3.5 bg-surface-container-low/70 hover:bg-surface-container-low border-b border-outline-variant/30 flex items-center justify-between gap-3 cursor-pointer select-none transition-colors"
+                  className="px-4 sm:px-5 py-3.5 bg-surface-container-low/70 hover:bg-surface-container-low border-b border-outline-variant/30 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 cursor-pointer select-none transition-colors"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1.5 min-w-0 flex-1 basis-[260px]">
                     {/* Nút mở rộng chevron */}
                     <button
                       type="button"
-                      className="p-0.5 rounded text-on-surface-variant hover:text-on-surface transition-transform"
+                      className="p-0.5 rounded text-on-surface-variant hover:text-on-surface transition-transform shrink-0"
                       style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
                     >
                       <span className="material-symbols-outlined text-[18px]">expand_more</span>
@@ -825,7 +825,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
                     </div>
 
                     {/* Tên Hạng mục */}
-                    <h4 className="text-body-sm font-bold text-on-surface truncate">
+                    <h4 className="text-body-sm font-bold text-on-surface leading-snug break-words">
                       {svc.name}
                     </h4>
 
@@ -878,7 +878,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
 
                   {/* Actions Header */}
                   <div
-                    className="flex items-center gap-1.5 shrink-0"
+                    className="flex items-center gap-1.5 shrink-0 ml-auto"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {!isWOClosed && (
@@ -891,7 +891,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
                               setAiTargetService({ id: svc.id, name: svc.name });
                               setIsAIModalOpen(true);
                             }}
-                            className="flex items-center gap-1 px-2.5 py-1 text-label-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors cursor-pointer"
+                            className="flex items-center gap-1 px-2.5 py-1.5 text-label-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors cursor-pointer whitespace-nowrap"
                             title="AI đề xuất các bước thi công cho hạng mục này"
                           >
                             <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
@@ -907,7 +907,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
                             setManualJobTargetService(svc);
                             setManualJobModalOpen(true);
                           }}
-                          className="flex items-center gap-1 px-2.5 py-1 text-label-xs font-semibold bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg transition-colors cursor-pointer"
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-label-xs font-semibold bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg transition-colors cursor-pointer whitespace-nowrap"
                           title="Thêm công việc thủ công"
                         >
                           <span className="material-symbols-outlined text-[14px]">add</span>
@@ -953,13 +953,13 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
                   <div className="overflow-x-auto border-t border-slate-200/80">
                     {jobs.length > 0 ? (
                       <div className="w-full">
-                        <table className="w-full text-left text-body-xs border-collapse">
+                        <table className="w-full min-w-[680px] text-left text-body-xs border-collapse">
                           <thead>
                             <tr className="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase font-bold tracking-wide">
                               <th className="px-4 py-3 text-center w-12 font-mono">#</th>
                               <th className="px-4 py-3">Công việc & Loại thợ</th>
-                              <th className="px-4 py-3 w-56">Kỹ thuật viên phụ trách</th>
-                              <th className="px-4 py-3 text-center w-20">Định mức</th>
+                              <th className="px-3 lg:px-4 py-3 w-44 lg:w-56">Kỹ thuật viên phụ trách</th>
+                              <th className="px-2 lg:px-4 py-3 text-center w-16 lg:w-20">Định mức</th>
                               <th className="px-4 py-3 text-center w-28">Trạng thái</th>
                               {!isWOClosed && <th className="px-4 py-3 text-center w-20">Thao tác</th>}
                             </tr>
@@ -991,7 +991,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
                                         {jIdx + 1}
                                       </span>
                                       {!isWOClosed && jobs.length > 1 && (
-                                        <div className="opacity-0 group-hover:opacity-100 flex flex-col transition-opacity">
+                                        <div className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 flex flex-col transition-opacity">
                                           <button
                                             type="button"
                                             disabled={jIdx === 0 || reorderingServiceId === svc.id}
@@ -1066,9 +1066,9 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
                                   </td>
 
                                   {/* Kỹ thuật viên phụ trách (Select box với initials avatar) */}
-                                  <td className="px-4 py-3">
+                                  <td className="px-3 lg:px-4 py-3">
                                     {!isWOClosed && (job.status === 'PLANNED' || job.status === 'REWORK') ? (
-                                      <div className="relative flex items-center w-full min-w-[190px]">
+                                      <div className="relative flex items-center w-full min-w-[150px] lg:min-w-[190px]">
                                         <div
                                           className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold absolute left-2 pointer-events-none ${
                                             currentEmployeeId

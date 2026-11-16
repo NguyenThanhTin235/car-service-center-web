@@ -173,7 +173,7 @@ export default function WorkOrdersPage() {
   }, [items]);
 
   return (
-    <div className="flex flex-col gap-5 px-4 sm:px-6 py-3 max-w-[1440px] mx-auto w-full">
+    <div className="flex flex-col gap-5 px-3 sm:px-5 lg:px-6 py-3 max-w-[1440px] mx-auto w-full">
       {/* 1. HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -185,7 +185,7 @@ export default function WorkOrdersPage() {
         <button
           onClick={fetchWOs}
           disabled={loading}
-          className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200/80 rounded-full text-xs font-bold text-zinc-800 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+          className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2.5 min-h-[40px] bg-white hover:bg-slate-50 border border-slate-200/80 rounded-full text-xs font-bold text-zinc-800 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
           title="Tải lại danh sách"
         >
           <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin' : ''}`}>
@@ -272,11 +272,11 @@ export default function WorkOrdersPage() {
       </div>
 
       {/* 3. MAIN BENTO TABLE & FILTER WORKSPACE */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-200/70 shadow-xs flex flex-col gap-5">
+      <div className="bg-white rounded-[28px] p-4 sm:p-5 lg:p-6 border border-slate-200/70 shadow-xs flex flex-col gap-5">
         {/* Search & Filter Controls */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           {/* Search Input */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1 w-full lg:max-w-md">
             <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">
               search
             </span>
@@ -299,8 +299,8 @@ export default function WorkOrdersPage() {
           </div>
 
           {/* Segmented Pill Status Filter + Dropdown for full statuses */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 lg:pb-0">
-            <div className="bg-[#f2f4f8] p-1 rounded-2xl inline-flex items-center gap-1 shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="bg-[#f2f4f8] p-1 rounded-2xl inline-flex items-center gap-1 max-w-full overflow-x-auto no-scrollbar">
               {[
                 { value: 'ALL', label: 'Tất cả' },
                 { value: 'IN_PLANNING', label: 'Kế hoạch' },
@@ -315,7 +315,7 @@ export default function WorkOrdersPage() {
                     setStatusFilter(pill.value);
                     setCurrentPage(1);
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                     statusFilter === pill.value
                       ? 'bg-[#0050cd] text-white shadow-2xs'
                       : 'text-slate-600 hover:text-zinc-900'
@@ -333,7 +333,7 @@ export default function WorkOrdersPage() {
                 setCurrentPage(1);
               }}
               aria-label="Lọc trạng thái phiếu công việc"
-              className="px-3.5 py-2 bg-[#f2f4f8] hover:bg-slate-200/70 rounded-2xl text-xs text-zinc-900 font-bold outline-none focus:ring-2 focus:ring-[#0050cd]/30 transition-colors cursor-pointer shrink-0"
+              className="px-3.5 py-2.5 bg-[#f2f4f8] hover:bg-slate-200/70 rounded-2xl text-xs text-zinc-900 font-bold outline-none focus:ring-2 focus:ring-[#0050cd]/30 transition-colors cursor-pointer shrink-0"
             >
               {STATUS_FILTER_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -354,15 +354,15 @@ export default function WorkOrdersPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="table-auto w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400">
-                  <th className="py-3 pr-3">Phương tiện & Biển số</th>
-                  <th className="py-3 px-3">Mã phiếu (RO)</th>
-                  <th className="py-3 px-3">Trạng thái</th>
-                  <th className="py-3 px-3 hidden sm:table-cell">Khách hàng</th>
-                  <th className="py-3 px-3 hidden md:table-cell">Cố vấn</th>
-                  <th className="py-3 pl-3 text-right">Ngày tạo</th>
+                  <th className="py-3 pr-2 lg:pr-3">Phương tiện & Biển số</th>
+                  <th className="py-3 px-2 lg:px-3">Mã phiếu (RO)</th>
+                  <th className="py-3 px-2 lg:px-3">Trạng thái</th>
+                  <th className="py-3 px-2 lg:px-3 hidden sm:table-cell">Khách hàng</th>
+                  <th className="py-3 px-2 lg:px-3 hidden lg:table-cell">Cố vấn</th>
+                  <th className="py-3 pl-2 lg:pl-3 text-right hidden sm:table-cell">Ngày tạo</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
@@ -404,31 +404,46 @@ export default function WorkOrdersPage() {
                         onClick={() => router.push(`/advisor/work-orders/${item.id}`)}
                       >
                         {/* Vehicle Thumbnail + License Plate */}
-                        <td className="py-3.5 pr-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-[#0050cd] flex items-center justify-center shrink-0 group-hover:bg-[#0050cd] group-hover:text-white transition-colors">
+                        <td className="py-3.5 pr-2 lg:pr-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="hidden sm:flex w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-[#0050cd] items-center justify-center shrink-0 group-hover:bg-[#0050cd] group-hover:text-white transition-colors">
                               <span className="material-symbols-outlined text-[20px]">
                                 directions_car
                               </span>
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <div className="font-mono font-extrabold text-zinc-900 uppercase">
                                 {item.vehicle?.license_plate || 'N/A'}
                               </div>
-                              <div className="text-xs text-slate-500 font-medium">{vehicleName}</div>
+                              <div className="text-xs text-slate-500 font-medium truncate">{vehicleName}</div>
+                              {/* Mobile (<sm) consolidated Customer name + compact created date */}
+                              <div className="sm:hidden mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-slate-500">
+                                <span className="font-semibold text-zinc-800 truncate">
+                                  {item.customer?.full_name || 'N/A'}
+                                </span>
+                                <span className="text-slate-300">•</span>
+                                <span className="font-mono tabular-nums">
+                                  {new Date(item.created_at).toLocaleString('vi-VN', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </td>
 
                         {/* RO Number */}
-                        <td className="py-3.5 px-3 font-mono font-bold text-[#0050cd] group-hover:underline whitespace-nowrap tabular-nums">
+                        <td className="py-3.5 px-2 lg:px-3 font-mono font-bold text-[#0050cd] group-hover:underline whitespace-nowrap tabular-nums">
                           {item.wo_number}
                         </td>
 
                         {/* Status */}
-                        <td className="py-3.5 px-3 whitespace-nowrap">
+                        <td className="py-3.5 px-2 lg:px-3 whitespace-nowrap">
                           <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${statusConfig.bg} ${statusConfig.text}`}
+                            className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold ${statusConfig.bg} ${statusConfig.text}`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusConfig.dot}`} />
                             <span>{statusConfig.label}</span>
@@ -436,17 +451,17 @@ export default function WorkOrdersPage() {
                         </td>
 
                         {/* Customer */}
-                        <td className="py-3.5 px-3 text-zinc-900 font-bold hidden sm:table-cell whitespace-nowrap">
+                        <td className="py-3.5 px-2 lg:px-3 text-zinc-900 font-bold hidden sm:table-cell whitespace-nowrap">
                           {item.customer?.full_name || 'N/A'}
                         </td>
 
                         {/* Advisor */}
-                        <td className="py-3.5 px-3 text-slate-600 hidden md:table-cell whitespace-nowrap">
+                        <td className="py-3.5 px-2 lg:px-3 text-slate-600 hidden lg:table-cell whitespace-nowrap">
                           {item.advisor?.full_name || 'N/A'}
                         </td>
 
                         {/* Created Date */}
-                        <td className="py-3.5 pl-3 text-right font-mono text-xs text-slate-500 whitespace-nowrap tabular-nums">
+                        <td className="py-3.5 pl-2 lg:pl-3 text-right font-mono text-xs text-slate-500 hidden sm:table-cell whitespace-nowrap tabular-nums">
                           {new Date(item.created_at).toLocaleString('vi-VN', {
                             day: '2-digit',
                             month: '2-digit',

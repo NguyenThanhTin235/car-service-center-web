@@ -238,7 +238,7 @@ export default function SADashboardPage() {
   }, [intakeItems, queueFilter]);
 
   return (
-    <div className="px-4 sm:px-6 py-3 max-w-[1440px] mx-auto w-full">
+    <div className="py-3 max-w-[1440px] mx-auto w-full">
       {error && (
         <div className="mb-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs font-semibold">
@@ -479,7 +479,8 @@ export default function SADashboardPage() {
             </div>
 
             {/* Bar Chart Area */}
-            <div className="grid grid-cols-8 gap-2 sm:gap-4 items-end h-44 pt-6 px-1 sm:px-3 border-b border-slate-100 pb-3 relative">
+            <div className="overflow-x-auto no-scrollbar -mx-1 px-1">
+              <div className="grid grid-cols-8 gap-2 sm:gap-4 items-end h-44 pt-6 px-1 sm:px-3 border-b border-slate-100 pb-3 relative min-w-[540px] md:min-w-0">
               {stageBars.map((bar) => {
                 if (bar.highlight) {
                   return (
@@ -539,6 +540,7 @@ export default function SADashboardPage() {
                   </div>
                 );
               })}
+              </div>
             </div>
           </div>
 
@@ -590,10 +592,10 @@ export default function SADashboardPage() {
                   <thead>
                     <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400">
                       <th className="pb-3 pr-3 font-medium">Phương tiện & Biển số</th>
-                      <th className="pb-3 px-3 font-medium">Mã phiếu</th>
+                      <th className="pb-3 px-3 font-medium hidden sm:table-cell">Mã phiếu</th>
                       <th className="pb-3 px-3 font-medium hidden sm:table-cell">Khách hàng</th>
                       <th className="pb-3 px-3 font-medium">Trạng thái</th>
-                      <th className="pb-3 px-3 font-medium hidden md:table-cell">Cố vấn</th>
+                      <th className="pb-3 px-3 font-medium hidden xl:table-cell">Cố vấn</th>
                       <th className="pb-3 pl-3 font-medium text-right">Tiếp nhận</th>
                     </tr>
                   </thead>
@@ -628,12 +630,21 @@ export default function SADashboardPage() {
                                   {wo.vehicle?.license_plate || 'N/A'}
                                 </div>
                                 <div className="text-xs text-slate-500 truncate">{vehicleLabel}</div>
+                                <div className="sm:hidden flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-[11px]">
+                                  <span className="font-mono font-bold text-[#0050cd] tabular-nums">
+                                    {wo.wo_number}
+                                  </span>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="text-slate-600 font-medium truncate">
+                                    {wo.customer?.full_name || 'Khách vãng lai'}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </td>
 
                           {/* WO Number */}
-                          <td className="py-3.5 px-3 font-mono font-bold text-zinc-800 group-hover:text-[#0050cd] whitespace-nowrap tabular-nums">
+                          <td className="py-3.5 px-3 font-mono font-bold text-zinc-800 group-hover:text-[#0050cd] hidden sm:table-cell whitespace-nowrap tabular-nums">
                             {wo.wo_number}
                           </td>
 
@@ -652,7 +663,7 @@ export default function SADashboardPage() {
                           </td>
 
                           {/* Advisor */}
-                          <td className="py-3.5 px-3 text-slate-500 hidden md:table-cell whitespace-nowrap">
+                          <td className="py-3.5 px-3 text-slate-500 hidden xl:table-cell whitespace-nowrap">
                             {wo.advisor?.full_name || 'Cố vấn DV'}
                           </td>
 
@@ -674,7 +685,7 @@ export default function SADashboardPage() {
         </div>
 
         {/* ==================== RIGHT STACKED BENTO WIDGETS COLUMN (4/12 on lg, 3/12 on xl) ==================== */}
-        <div className="lg:col-span-4 xl:col-span-3 flex flex-col gap-4 sm:gap-5">
+        <div className="lg:col-span-4 xl:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-5">
           {/* WIDGET 1: Service Category Donut/Pie + 3-Pill Switcher (Matches "Top categories" in Reference) */}
           <div className="bg-white rounded-[28px] p-5 shadow-xs border border-slate-200/70 flex flex-col justify-between">
             <div className="flex items-center justify-between">
@@ -855,7 +866,7 @@ export default function SADashboardPage() {
           {/* BOTTOM SOLID DARK ACTION BUTTON (Matches "Export statistics" in Reference & Preserves E2E `text=Xem hàng đợi`) */}
           <Link
             href="/advisor/intake-queue"
-            className="w-full py-4 px-5 rounded-[22px] bg-[#0c2340] hover:bg-[#07172c] text-white font-bold text-sm flex items-center justify-center gap-2.5 shadow-md transition-all active:scale-[0.99]"
+            className="md:col-span-2 lg:col-span-1 w-full py-4 px-5 rounded-[22px] bg-[#0c2340] hover:bg-[#07172c] text-white font-bold text-sm flex items-center justify-center gap-2.5 shadow-md transition-all active:scale-[0.99]"
           >
             <span className="material-symbols-outlined text-[20px]">inbox</span>
             <span>Xem hàng đợi</span>

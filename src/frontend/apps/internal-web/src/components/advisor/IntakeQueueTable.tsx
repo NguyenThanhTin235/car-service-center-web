@@ -125,6 +125,25 @@ function getEffectiveServices(
   return [];
 }
 
+function getServiceCategoryBadges(
+  item: IntakeQueueItem
+): Array<{ category: string; serviceNames: string[] }> {
+  const effectiveServices = getEffectiveServices(item);
+  if (effectiveServices.length === 0) return [];
+
+  const categoryMap = new Map<string, string[]>();
+  effectiveServices.forEach((s) => {
+    const cat = s.category || 'Dịch vụ khác';
+    if (!categoryMap.has(cat)) categoryMap.set(cat, []);
+    categoryMap.get(cat)!.push(s.name);
+  });
+
+  return Array.from(categoryMap.entries()).map(([category, serviceNames]) => ({
+    category,
+    serviceNames,
+  }));
+}
+
 function IntakeDetailModal({
   intake,
   onClose,
@@ -413,15 +432,15 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
     <>
       <div className="flex flex-col">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse table-fixed min-w-[840px]">
+          <table className="table-auto w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                <th className="py-3.5 pl-4 pr-2 w-14 text-center">#</th>
-                <th className="py-3.5 px-4 w-[28%]">Thông tin xe & Biển số</th>
-                <th className="py-3.5 px-4 w-[26%] hidden md:table-cell">Loại dịch vụ</th>
-                <th className="py-3.5 px-4 w-[22%] hidden sm:table-cell">Khách hàng</th>
-                <th className="py-3.5 px-4 w-[14%]">Thời gian chờ</th>
-                <th className="py-3.5 pl-2 pr-4 w-[116px] text-right">Hành động</th>
+                <th className="py-3.5 pl-2 pr-1.5 sm:pl-3 sm:pr-2 lg:pl-4 w-10 sm:w-12 text-center">#</th>
+                <th className="py-3.5 px-2 sm:px-3 lg:px-4">Thông tin xe & Biển số</th>
+                <th className="py-3.5 px-3 lg:px-4 hidden lg:table-cell">Loại dịch vụ</th>
+                <th className="py-3.5 px-2 sm:px-3 lg:px-4 hidden sm:table-cell">Khách hàng</th>
+                <th className="py-3.5 px-2 sm:px-3 lg:px-4 whitespace-nowrap">Thời gian chờ</th>
+                <th className="py-3.5 pl-2 pr-2 sm:pr-3 lg:pr-4 text-right whitespace-nowrap">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
@@ -429,6 +448,7 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                 const waitTime = calcWaitTime(item.arrived_at);
                 const isLoading = loadingId === item.id;
                 const isUrgent = waitTime.minutes > 30;
+                const serviceBadges = getServiceCategoryBadges(item);
 
                 return (
                   <tr
@@ -437,59 +457,65 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                       isUrgent ? 'bg-rose-50/30' : ''
                     }`}
                   >
-                    <td className="py-4 pl-4 pr-2 text-center font-mono text-xs text-slate-400 tabular-nums">
+                    <td className="py-3.5 sm:py-4 pl-2 pr-1.5 sm:pl-3 sm:pr-2 lg:pl-4 text-center font-mono text-xs text-slate-400 tabular-nums align-top sm:align-middle">
                       {String(startIndex + index + 1).padStart(2, '0')}
                     </td>
 
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="bg-[#0c2340] text-white px-2.5 py-1.5 rounded-xl text-xs font-mono font-extrabold tracking-wider whitespace-nowrap shrink-0 shadow-2xs">
+                    <td className="py-3.5 sm:py-4 px-2 sm:px-3 lg:px-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 min-w-0">
+                        <div className="bg-[#0c2340] text-white px-2.5 py-1 rounded-xl text-xs font-mono font-extrabold tracking-wider whitespace-nowrap shrink-0 self-start sm:self-auto shadow-2xs">
                           {item.vehicle.license_plate}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="font-bold text-zinc-900 truncate" title={`${item.vehicle.make} ${item.vehicle.model}`}>
                             {item.vehicle.make} {item.vehicle.model}
                           </div>
-                          <div className="text-xs text-slate-500 sm:hidden truncate">
-                            {item.customer.full_name}
+                          {/* Consolidated Customer name + phone on <sm Mobile */}
+                          <div className="text-xs text-slate-600 sm:hidden mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                            <span className="font-semibold text-zinc-800 truncate">{item.customer.full_name}</span>
+                            <span className="text-slate-400">•</span>
+                            <span className="font-mono text-slate-500">{item.customer.phone}</span>
+                          </div>
+                          {/* Consolidated Service category pills on <lg (Mobile & Tablet Portrait) */}
+                          <div className="flex flex-wrap gap-1 mt-1.5 lg:hidden">
+                            {serviceBadges.length === 0 ? (
+                              <span className="text-[11px] text-slate-400 italic">Chưa xác định</span>
+                            ) : (
+                              serviceBadges.map((badge, idx) => (
+                                <span
+                                  key={idx}
+                                  title={`Chi tiết: ${badge.serviceNames.join(', ')}`}
+                                  className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-[#0050cd]"
+                                >
+                                  {badge.category}
+                                </span>
+                              ))
+                            )}
                           </div>
                         </div>
                       </div>
                     </td>
 
-                    <td className="py-4 px-4 hidden md:table-cell">
+                    <td className="py-4 px-3 lg:px-4 hidden lg:table-cell">
                       <div className="flex flex-wrap gap-1.5">
-                        {(() => {
-                          const effectiveServices = getEffectiveServices(item);
-                          if (effectiveServices.length === 0) {
-                            return (
-                              <span className="text-xs text-slate-400 italic">Chưa xác định</span>
-                            );
-                          }
-                          const categoryMap = new Map<string, string[]>();
-                          effectiveServices.forEach((s) => {
-                            const cat = s.category || 'Dịch vụ khác';
-                            if (!categoryMap.has(cat)) categoryMap.set(cat, []);
-                            categoryMap.get(cat)!.push(s.name);
-                          });
-
-                          return Array.from(categoryMap.entries()).map(
-                            ([catName, serviceNames], idx) => (
-                              <span
-                                key={idx}
-                                title={`Chi tiết: ${serviceNames.join(', ')}`}
-                                className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-[#0050cd]"
-                              >
-                                {catName}
-                              </span>
-                            )
-                          );
-                        })()}
+                        {serviceBadges.length === 0 ? (
+                          <span className="text-xs text-slate-400 italic">Chưa xác định</span>
+                        ) : (
+                          serviceBadges.map((badge, idx) => (
+                            <span
+                              key={idx}
+                              title={`Chi tiết: ${badge.serviceNames.join(', ')}`}
+                              className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-[#0050cd]"
+                            >
+                              {badge.category}
+                            </span>
+                          ))
+                        )}
                       </div>
                     </td>
 
-                    <td className="py-4 px-4 hidden sm:table-cell">
-                      <div className="min-w-0">
+                    <td className="py-4 px-2 sm:px-3 lg:px-4 hidden sm:table-cell">
+                      <div className="min-w-0 max-w-[150px] lg:max-w-[200px]">
                         <div className="font-bold text-zinc-900 truncate" title={item.customer.full_name}>
                           {item.customer.full_name}
                         </div>
@@ -499,7 +525,7 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                       </div>
                     </td>
 
-                    <td className="py-4 px-4 whitespace-nowrap">
+                    <td className="py-3.5 sm:py-4 px-2 sm:px-3 lg:px-4 whitespace-nowrap">
                       <div>
                         <div className="flex items-center gap-1.5">
                           <span
@@ -525,7 +551,7 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                       </div>
                     </td>
 
-                    <td className="py-4 pl-2 pr-4 text-right">
+                    <td className="py-3.5 sm:py-4 pl-2 pr-2 sm:pr-3 lg:pr-4 text-right">
                       <div className="flex justify-end gap-2 shrink-0">
                         <button
                           type="button"
