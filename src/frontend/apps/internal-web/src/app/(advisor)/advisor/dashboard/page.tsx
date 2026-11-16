@@ -9,18 +9,7 @@ import { DashboardStatusBreakdown } from '@/components/dashboard/DashboardStatus
 import { DashboardStageBars } from '@/components/dashboard/DashboardStageBars';
 import { DashboardTelemetryMiniBars } from '@/components/dashboard/DashboardTelemetryMiniBars';
 import { DashboardActionTable, TableColumn } from '@/components/dashboard/DashboardActionTable';
-
-const SA_STATUS_MAP: Record<string, { label: string; badgeCls: string; dotColor: string }> = {
-  DRAFT: { label: 'Tiếp nhận', badgeCls: 'bg-slate-100 text-slate-700', dotColor: '#64748b' },
-  IN_PLANNING: { label: 'Lập kế hoạch', badgeCls: 'bg-blue-50 text-[#0050cd]', dotColor: '#0050cd' },
-  PENDING_APPROVAL: { label: 'Chờ duyệt giá', badgeCls: 'bg-amber-50 text-amber-700', dotColor: '#f59e0b' },
-  APPROVED: { label: 'Đã duyệt giá', badgeCls: 'bg-indigo-50 text-indigo-700', dotColor: '#6366f1' },
-  IN_PROGRESS: { label: 'Đang sửa chữa', badgeCls: 'bg-sky-50 text-sky-700', dotColor: '#0ea5e9' },
-  BILLING_REQUESTED: { label: 'Chờ thanh toán', badgeCls: 'bg-purple-50 text-purple-700', dotColor: '#8b5cf6' },
-  FINANCIAL_CLEARED: { label: 'Chờ giao xe', badgeCls: 'bg-emerald-50 text-emerald-700', dotColor: '#10b981' },
-  RELEASED: { label: 'Đã giao xe', badgeCls: 'bg-teal-50 text-teal-700', dotColor: '#14b8a6' },
-  CLOSED: { label: 'Đã đóng lệnh', badgeCls: 'bg-slate-200 text-slate-800', dotColor: '#475569' },
-};
+import { WO_STATUS_META } from '@/components/advisor/work-order/work-order.constants';
 
 const SA_PERIOD_MAP: Record<
   string,
@@ -141,15 +130,16 @@ export default function SADashboardAnalyticsPage() {
       headerClassName: 'whitespace-nowrap',
       cellClassName: 'whitespace-nowrap',
       render: (row) => {
-        const conf = SA_STATUS_MAP[row.status] || {
+        const conf = WO_STATUS_META[row.status] || {
           label: row.status,
-          badgeCls: 'bg-slate-100 text-slate-700',
+          bg: 'bg-slate-100',
+          text: 'text-slate-700',
           dotColor: '#94a3b8',
         };
         return (
           <div className="flex flex-col items-start gap-1">
             <span
-              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap ${conf.badgeCls}`}
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap ${conf.bg} ${conf.text}`}
             >
               <span
                 className="w-1.5 h-1.5 rounded-full shrink-0"
@@ -205,7 +195,7 @@ export default function SADashboardAnalyticsPage() {
   ];
 
   const donutData = (data?.charts?.distribution || []).map((item: any) => {
-    const conf = SA_STATUS_MAP[item.category] || { label: item.category, dotColor: undefined };
+    const conf = WO_STATUS_META[item.category] || { label: item.category, dotColor: undefined };
     return {
       category: item.category,
       label: conf.label,
@@ -419,7 +409,7 @@ export default function SADashboardAnalyticsPage() {
       <div>
         {selectedStatus && (
           <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
-            <span>Đang lọc theo: <strong>{SA_STATUS_MAP[selectedStatus]?.label || selectedStatus}</strong></span>
+            <span>Đang lọc theo: <strong>{WO_STATUS_META[selectedStatus]?.label || selectedStatus}</strong></span>
             <button
               onClick={() => setSelectedStatus('')}
               className="text-red-500 hover:text-red-700 ml-1 font-bold"

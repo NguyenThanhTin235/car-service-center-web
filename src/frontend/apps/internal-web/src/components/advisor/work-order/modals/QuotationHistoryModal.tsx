@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Quotation, QuotationLine, exportOrPrintQuotationPdf } from '@/lib/api/quotation.api';
 import { WorkOrder } from '@/lib/api/work-order.api';
+import { formatVND } from '@/lib/utils/formatters';
 import toast from 'react-hot-toast';
 
 interface QuotationHistoryModalProps {
@@ -82,10 +83,6 @@ export default function QuotationHistoryModal({
     }
   };
 
-  const formatVnd = (val: number) => {
-    return Number(val || 0).toLocaleString('vi-VN') + ' đ';
-  };
-
   const formatDateTime = (val?: string | null) => {
     if (!val) return '—';
     try {
@@ -152,7 +149,7 @@ export default function QuotationHistoryModal({
                     </span>
                   </div>
                   <div className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
-                    Gửi lúc {formatDateTime(latestSentQuotation.sentAt)} • Tổng thanh toán: <b className="font-mono">{formatVnd(latestSentQuotation.grandTotal)}</b>
+                    Gửi lúc {formatDateTime(latestSentQuotation.sentAt)} • Tổng thanh toán: <b className="font-mono">{formatVND(latestSentQuotation.grandTotal)}</b>
                   </div>
                 </div>
               </div>
@@ -338,20 +335,20 @@ export default function QuotationHistoryModal({
                   <div className="p-4 sm:p-5 bg-surface-container-lowest grid grid-cols-2 sm:grid-cols-4 gap-4 text-body-xs">
                     <div>
                       <span className="text-on-surface-variant block text-[11px]">Tiền dịch vụ & VT:</span>
-                      <span className="font-mono font-semibold text-on-surface">{formatVnd(q.subtotal)}</span>
+                      <span className="font-mono font-semibold text-on-surface">{formatVND(q.subtotal)}</span>
                     </div>
 
                     <div>
                       <span className="text-on-surface-variant block text-[11px]">Chiết khấu:</span>
                       <span className={`font-mono font-semibold ${q.discountAmount > 0 ? 'text-amber-600' : 'text-on-surface'}`}>
-                        {q.discountAmount > 0 ? `-${formatVnd(q.discountAmount)}` : '0 đ'}
+                        {q.discountAmount > 0 ? `-${formatVND(q.discountAmount)}` : '0 đ'}
                       </span>
                     </div>
 
                     <div>
                       <span className="text-on-surface-variant block text-[11px]">Tổng thanh toán:</span>
                       <span className="font-mono font-bold text-sm text-primary">
-                        {formatVnd(q.grandTotal)}
+                        {formatVND(q.grandTotal)}
                       </span>
                     </div>
 
@@ -432,12 +429,12 @@ export default function QuotationHistoryModal({
                                   {Number(line.quantity || 0)}
                                 </td>
                                 <td className="py-2 px-3 text-right font-mono text-on-surface-variant hidden md:table-cell tabular-nums">
-                                  {formatVnd(line.snapshotUnitPrice)}
+                                  {formatVND(line.snapshotUnitPrice)}
                                 </td>
                                 <td className="py-2 px-3 text-right font-mono font-bold text-on-surface tabular-nums whitespace-nowrap">
-                                  <div>{formatVnd(line.amount)}</div>
+                                  <div>{formatVND(line.amount)}</div>
                                   <div className="md:hidden text-[10px] font-normal text-on-surface-variant mt-0.5">
-                                    {Number(line.quantity || 0)} × {formatVnd(line.snapshotUnitPrice)}
+                                    {Number(line.quantity || 0)} × {formatVND(line.snapshotUnitPrice)}
                                   </div>
                                 </td>
                               </tr>

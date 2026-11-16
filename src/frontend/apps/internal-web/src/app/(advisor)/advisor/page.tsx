@@ -9,72 +9,7 @@ import {
   getWorkOrders,
   getIntakeQueue,
 } from '@/lib/api/work-order.api';
-
-const STATUS_META: Record<
-  string,
-  { label: string; shortLabel: string; textClass: string; badgeBg: string }
-> = {
-  DRAFT: {
-    label: 'Tiếp nhận',
-    shortLabel: 'Tiếp nhận',
-    textClass: 'text-slate-600',
-    badgeBg: 'bg-slate-100 text-slate-700',
-  },
-  IN_PLANNING: {
-    label: 'Lập kế hoạch',
-    shortLabel: 'Kế hoạch',
-    textClass: 'text-[#0050cd]',
-    badgeBg: 'bg-blue-50 text-[#0050cd]',
-  },
-  PENDING_APPROVAL: {
-    label: 'Chờ duyệt báo giá',
-    shortLabel: 'Chờ duyệt',
-    textClass: 'text-amber-600',
-    badgeBg: 'bg-amber-50 text-amber-700',
-  },
-  APPROVED: {
-    label: 'Đã duyệt',
-    shortLabel: 'Đã duyệt',
-    textClass: 'text-indigo-600',
-    badgeBg: 'bg-indigo-50 text-indigo-700',
-  },
-  IN_PROGRESS: {
-    label: 'Đang sửa chữa',
-    shortLabel: 'Đang sửa',
-    textClass: 'text-[#0050cd]',
-    badgeBg: 'bg-blue-50 text-[#0050cd]',
-  },
-  BILLING_REQUESTED: {
-    label: 'Chờ thanh toán',
-    shortLabel: 'Chờ TT',
-    textClass: 'text-purple-600',
-    badgeBg: 'bg-purple-50 text-purple-700',
-  },
-  FINANCIAL_CLEARED: {
-    label: 'Chờ giao xe',
-    shortLabel: 'Chờ giao',
-    textClass: 'text-emerald-600',
-    badgeBg: 'bg-emerald-50 text-emerald-700',
-  },
-  RELEASED: {
-    label: 'Đã giao xe',
-    shortLabel: 'Đã giao',
-    textClass: 'text-emerald-600',
-    badgeBg: 'bg-emerald-50 text-emerald-700',
-  },
-  CLOSED: {
-    label: 'Đã đóng',
-    shortLabel: 'Đã đóng',
-    textClass: 'text-emerald-700',
-    badgeBg: 'bg-emerald-100 text-emerald-800',
-  },
-  CANCELLED: {
-    label: 'Đã hủy',
-    shortLabel: 'Đã hủy',
-    textClass: 'text-rose-600',
-    badgeBg: 'bg-rose-50 text-rose-700',
-  },
-};
+import { WO_STATUS_META } from '@/components/advisor/work-order/work-order.constants';
 
 export default function SADashboardPage() {
   const router = useRouter();
@@ -601,11 +536,10 @@ export default function SADashboardPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
                     {displayedWorkOrders.map((wo) => {
-                      const st = STATUS_META[wo.status] || {
+                      const st = WO_STATUS_META[wo.status] || {
                         label: wo.status,
-                        shortLabel: wo.status,
-                        textClass: 'text-slate-700',
-                        badgeBg: 'bg-slate-100 text-slate-700',
+                        bg: 'bg-slate-100',
+                        text: 'text-slate-700',
                       };
                       const vehicleLabel =
                         [wo.vehicle?.make, wo.vehicle?.model].filter(Boolean).join(' ') ||
@@ -656,7 +590,7 @@ export default function SADashboardPage() {
                           {/* Status */}
                           <td className="py-3.5 px-3 whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${st.badgeBg}`}
+                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${st.bg} ${st.text}`}
                             >
                               {st.label}
                             </span>

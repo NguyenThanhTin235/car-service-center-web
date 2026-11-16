@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { WorkOrder, completeVehicleHandover } from '@/lib/api/work-order.api';
+import { FUEL_LEVEL_OPTIONS } from '../work-order.constants';
 import toast from 'react-hot-toast';
 
 interface StandardVehicleHandoverModalProps {
@@ -10,14 +11,6 @@ interface StandardVehicleHandoverModalProps {
   workOrder: WorkOrder;
   refetchWO: () => void;
 }
-
-const FUEL_LEVEL_OPTIONS = [
-  { value: 'EMPTY', label: 'Bình cạn (E)' },
-  { value: 'QUARTER', label: '1/4 bình' },
-  { value: 'HALF', label: '1/2 bình' },
-  { value: 'THREE_QUARTER', label: '3/4 bình' },
-  { value: 'FULL', label: 'Đầy bình (F)' },
-];
 
 export default function StandardVehicleHandoverModal({
   isOpen,
@@ -74,6 +67,21 @@ export default function StandardVehicleHandoverModal({
     }
   }, [isOpen]);
 
+  const getCanvasCoords = (
+    canvas: HTMLCanvasElement,
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
+  ) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    };
+  };
+
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -82,9 +90,7 @@ export default function StandardVehicleHandoverModal({
 
     setIsDrawing(true);
     setHasSignature(true);
-    const rect = canvas.getBoundingClientRect();
-    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+    const { x, y } = getCanvasCoords(canvas, e);
 
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -97,9 +103,7 @@ export default function StandardVehicleHandoverModal({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+    const { x, y } = getCanvasCoords(canvas, e);
 
     ctx.lineTo(x, y);
     ctx.stroke();
@@ -424,7 +428,7 @@ export default function StandardVehicleHandoverModal({
                 onTouchStart={startDrawing}
                 onTouchMove={draw}
                 onTouchEnd={stopDrawing}
-                className="w-full h-[120px] cursor-crosshair touch-none"
+                className="w-full h-[120px] cursor-crosshair touch-none select-none"
               />
               {!hasSignature && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-on-surface-variant/40 text-xs">

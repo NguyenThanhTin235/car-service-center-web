@@ -453,7 +453,8 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                 return (
                   <tr
                     key={item.id}
-                    className={`hover:bg-slate-50/90 transition-colors ${
+                    onClick={() => setSelectedIntake(item)}
+                    className={`hover:bg-slate-50/90 transition-colors cursor-pointer ${
                       isUrgent ? 'bg-rose-50/30' : ''
                     }`}
                   >
@@ -555,7 +556,10 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                       <div className="flex justify-end gap-2 shrink-0">
                         <button
                           type="button"
-                          onClick={() => setSelectedIntake(item)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedIntake(item);
+                          }}
                           className="w-10 h-10 flex items-center justify-center rounded-xl bg-[#f2f4f8] hover:bg-slate-200 text-zinc-700 transition-colors cursor-pointer shadow-2xs"
                           title="Xem chi tiết"
                         >
@@ -564,7 +568,10 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                         {item.status === 'QUEUED' && (
                           <button
                             type="button"
-                            onClick={() => handleCreateWorkOrder(item.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCreateWorkOrder(item.id);
+                            }}
                             disabled={isLoading}
                             className="w-10 h-10 flex items-center justify-center bg-[#0050cd] hover:bg-[#0866ff] text-white rounded-xl transition-all shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer"
                             title="Tạo phiếu công việc"
@@ -581,7 +588,10 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                         {item.status === 'CONVERTED' && item.work_order && (
                           <button
                             type="button"
-                            onClick={() => router.push(`/advisor/work-orders/${item.work_order?.id}`)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/advisor/work-orders/${item.work_order?.id}`);
+                            }}
                             className="w-10 h-10 flex items-center justify-center bg-[#0c2340] hover:bg-[#07172c] text-white rounded-xl transition-all shadow-xs active:scale-95 cursor-pointer"
                             title={`Xem phiếu công việc ${item.work_order.wo_number}`}
                           >

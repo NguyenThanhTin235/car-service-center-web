@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
 import {
   WorkOrder,
   WoService,
@@ -101,6 +101,10 @@ const getInitials = (name?: string | null) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
+const CACHE_TTL_MS = 2 * 60 * 1000;
+let techniciansCache: { data: EmployeeData[]; expiresAt: number } | null = null;
+let serviceCatalogCache: { data: ServiceTemplateOption[]; expiresAt: number } | null = null;
+
 export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setActiveTab }: TabJobProps) {
   const services = workOrder?.services || [];
   const isWOClosed = isReadOnly || ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '');
@@ -129,6 +133,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
 
   // Tìm kiếm theo tên hạng mục hoặc công việc
   const [filterQuery, setFilterQuery] = useState('');
+  const deferredFilterQuery = useDeferredValue(filterQuery);
 
   // Tự động mở rộng tất cả các hạng mục khi mới load dữ liệu
   useEffect(() => {
@@ -157,6 +162,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
   const [catalog, setCatalog] = useState<ServiceTemplateOption[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [submitting, setSubmitting] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -225,17 +231,21 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
     }
   };
 
-  // Load danh sách nhân viên kỹ thuật
+  // Load danh sách nhân viên kỹ thuật (cache 2 phút)
   useEffect(() => {
+    if (techniciansCache && Date.now() < techniciansCache.expiresAt) {
+      setTechnicians(techniciansCache.data);
+      return;
+    }
     let mounted = true;
     employeeApi
       .getAll({ limit: 100, position: 'TECHNICIAN', status: 'active' })
       .then((res) => {
         if (!mounted) return;
         const list: EmployeeData[] = res.data?.data || res.data || [];
-        setTechnicians(
-          list.filter((e) => Boolean(e.isActive) && e.position === 'TECHNICIAN')
-        );
+        const activeTechs = list.filter((e) => Boolean(e.isActive) && e.position === 'TECHNICIAN');
+        techniciansCache = { data: activeTechs, expiresAt: Date.now() + CACHE_TTL_MS };
+        setTechnicians(activeTechs);
       })
       .catch((err) => {
         console.error('Lỗi khi tải danh sách kỹ thuật viên:', err);
@@ -349,10 +359,16 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
   }, []);
 
   const loadCatalog = async () => {
+    if (serviceCatalogCache && Date.now() < serviceCatalogCache.expiresAt) {
+      setCatalog(serviceCatalogCache.data);
+      return;
+    }
     try {
       setLoadingCatalog(true);
       const data = await getServiceCatalog();
-      setCatalog(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      serviceCatalogCache = { data: list, expiresAt: Date.now() + CACHE_TTL_MS };
+      setCatalog(list);
     } catch {
       toast.error('Không thể tải danh mục dịch vụ');
     } finally {
@@ -423,8 +439,8 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
 
   const filteredCatalog = catalog.filter((t) => {
     if (existingTemplateIds.includes(t.id)) return false;
-    if (!searchTerm.trim()) return true;
-    const q = searchTerm.toLowerCase().trim();
+    if (!deferredSearchTerm.trim()) return true;
+    const q = deferredSearchTerm.toLowerCase().trim();
     const matchName = t.name.toLowerCase().includes(q);
     const matchCategory = ((t as any).category?.name || '').toLowerCase().includes(q);
     return matchName || matchCategory;
@@ -458,13 +474,13 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
 
   // Lọc theo tìm kiếm
   const displayedServices = useMemo(() => {
-    if (!filterQuery.trim()) return services;
-    const q = filterQuery.toLowerCase().trim();
+    if (!deferredFilterQuery.trim()) return services;
+    const q = deferredFilterQuery.toLowerCase().trim();
     return services.filter((s) => {
       if (s.name.toLowerCase().includes(q)) return true;
       return (s.jobs || []).some((j) => j.name.toLowerCase().includes(q));
     });
-  }, [services, filterQuery]);
+  }, [services, deferredFilterQuery]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -1306,7 +1322,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
       )}
 
       {/* MODAL AI JOB PLANNER */}
-      {workOrder && (
+      {workOrder && isAIModalOpen && (
         <AIJobPlannerModal
           isOpen={isAIModalOpen}
           onClose={() => {

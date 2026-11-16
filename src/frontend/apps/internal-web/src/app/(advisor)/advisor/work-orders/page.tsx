@@ -4,76 +4,8 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { WorkOrder, getWorkOrders } from '@/lib/api/work-order.api';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
-
-interface StatusConfig {
-  label: string;
-  bg: string;
-  text: string;
-  dot: string;
-}
-
-const WO_STATUS_CONFIG: Record<string, StatusConfig> = {
-  DRAFT: {
-    label: 'Tiếp nhận',
-    bg: 'bg-slate-100',
-    text: 'text-slate-700',
-    dot: 'bg-slate-500',
-  },
-  IN_PLANNING: {
-    label: 'Lập kế hoạch',
-    bg: 'bg-blue-50',
-    text: 'text-[#0050cd]',
-    dot: 'bg-[#0050cd]',
-  },
-  PENDING_APPROVAL: {
-    label: 'Chờ duyệt',
-    bg: 'bg-amber-50',
-    text: 'text-amber-800',
-    dot: 'bg-amber-500',
-  },
-  APPROVED: {
-    label: 'Đã duyệt',
-    bg: 'bg-indigo-50',
-    text: 'text-indigo-700',
-    dot: 'bg-indigo-500',
-  },
-  IN_PROGRESS: {
-    label: 'Đang sửa chữa',
-    bg: 'bg-blue-50',
-    text: 'text-[#0050cd]',
-    dot: 'bg-[#0050cd]',
-  },
-  BILLING_REQUESTED: {
-    label: 'Chờ thanh toán',
-    bg: 'bg-purple-50',
-    text: 'text-purple-700',
-    dot: 'bg-purple-500',
-  },
-  FINANCIAL_CLEARED: {
-    label: 'Chờ giao xe',
-    bg: 'bg-teal-50',
-    text: 'text-teal-700',
-    dot: 'bg-teal-500',
-  },
-  RELEASED: {
-    label: 'Đã giao xe',
-    bg: 'bg-emerald-50',
-    text: 'text-emerald-700',
-    dot: 'bg-emerald-500',
-  },
-  CLOSED: {
-    label: 'Đã đóng',
-    bg: 'bg-emerald-100',
-    text: 'text-emerald-800',
-    dot: 'bg-emerald-600',
-  },
-  CANCELLED: {
-    label: 'Đã hủy',
-    bg: 'bg-rose-50',
-    text: 'text-rose-700',
-    dot: 'bg-rose-500',
-  },
-};
+import TablePagination from '@/components/shared/TablePagination';
+import { WO_STATUS_META } from '@/components/advisor/work-order/work-order.constants';
 
 const STATUS_FILTER_OPTIONS = [
   { value: 'ALL', label: 'Tất cả' },
@@ -89,19 +21,6 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'CANCELLED', label: 'Đã hủy' },
 ];
 
-function getPageNumbers(current: number, total: number): (number | string)[] {
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, i) => i + 1);
-  }
-  if (current <= 4) {
-    return [1, 2, 3, 4, 5, '...', total];
-  }
-  if (current >= total - 3) {
-    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
-  }
-  return [1, '...', current - 1, current, current + 1, '...', total];
-}
-
 export default function WorkOrdersPage() {
   const router = useRouter();
 
@@ -115,15 +34,28 @@ export default function WorkOrdersPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [searchInitialized, setSearchInitialized] = useState(false);
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const initialSearch = params.get('search')?.trim() || '';
+    if (initialSearch) {
+      setSearchQuery(initialSearch);
+      setDebouncedSearch(initialSearch);
+    }
+    setSearchInitialized(true);
+  }, []);
+
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (trimmed === debouncedSearch) return;
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery.trim());
+      setDebouncedSearch(trimmed);
       setCurrentPage(1);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, debouncedSearch]);
 
   const fetchWOs = useCallback(async () => {
     try {
@@ -153,8 +85,9 @@ export default function WorkOrdersPage() {
   }, [currentPage, limit, debouncedSearch, statusFilter]);
 
   useEffect(() => {
+    if (!searchInitialized) return;
     fetchWOs();
-  }, [fetchWOs]);
+  }, [fetchWOs, searchInitialized]);
 
   const pageStats = useMemo(() => {
     const inWork = items.filter((i) =>
@@ -345,235 +278,178 @@ export default function WorkOrdersPage() {
         </div>
 
         {/* Table Content */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center h-56 gap-3 text-slate-500">
-            <span className="material-symbols-outlined animate-spin text-[36px] text-[#0050cd]">
-              progress_activity
-            </span>
-            <span className="text-xs font-semibold">Đang tải danh sách phiếu công việc...</span>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="table-auto w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400">
-                  <th className="py-3 pr-2 lg:pr-3">Phương tiện & Biển số</th>
-                  <th className="py-3 px-2 lg:px-3">Mã phiếu (RO)</th>
-                  <th className="py-3 px-2 lg:px-3">Trạng thái</th>
-                  <th className="py-3 px-2 lg:px-3 hidden sm:table-cell">Khách hàng</th>
-                  <th className="py-3 px-2 lg:px-3 hidden lg:table-cell">Cố vấn</th>
-                  <th className="py-3 pl-2 lg:pl-3 text-right hidden sm:table-cell">Ngày tạo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
-                {items.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-5 py-14 text-center text-slate-500">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <span className="material-symbols-outlined text-[40px] text-slate-300">
-                          content_paste_off
-                        </span>
-                        <span className="text-sm font-bold text-zinc-800">
-                          Không có phiếu công việc nào
-                        </span>
-                        <span className="text-xs text-slate-500 max-w-sm">
-                          {debouncedSearch || statusFilter !== 'ALL'
-                            ? 'Thử điều chỉnh lại từ khóa tìm kiếm hoặc bỏ chọn bộ lọc trạng thái.'
-                            : 'Hiện tại chưa có phiếu công việc nào được tạo trong hệ thống.'}
-                        </span>
+        <div className="overflow-x-auto">
+          <table className="table-auto w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400">
+                <th className="py-3 pr-2 lg:pr-3">Phương tiện & Biển số</th>
+                <th className="py-3 px-2 lg:px-3">Mã phiếu (RO)</th>
+                <th className="py-3 px-2 lg:px-3">Trạng thái</th>
+                <th className="py-3 px-2 lg:px-3 hidden sm:table-cell">Khách hàng</th>
+                <th className="py-3 px-2 lg:px-3 hidden lg:table-cell">Cố vấn</th>
+                <th className="py-3 pl-2 lg:pl-3 text-right hidden sm:table-cell">Ngày tạo</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
+              {loading ? (
+                Array.from({ length: 6 }).map((_, idx) => (
+                  <tr key={`skeleton-${idx}`} className="animate-pulse">
+                    <td className="py-3.5 pr-2 lg:pr-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="hidden sm:flex w-10 h-10 rounded-xl bg-slate-200 shrink-0" />
+                        <div className="min-w-0 flex flex-col gap-1.5">
+                          <div className="h-4 w-24 bg-slate-200 rounded" />
+                          <div className="h-3 w-32 bg-slate-100 rounded" />
+                          <div className="h-3 w-28 bg-slate-100 rounded sm:hidden" />
+                        </div>
                       </div>
                     </td>
+                    <td className="py-3.5 px-2 lg:px-3 whitespace-nowrap">
+                      <div className="h-4 w-24 bg-slate-200 rounded" />
+                    </td>
+                    <td className="py-3.5 px-2 lg:px-3 whitespace-nowrap">
+                      <div className="h-6 w-24 bg-slate-200 rounded-full" />
+                    </td>
+                    <td className="py-3.5 px-2 lg:px-3 hidden sm:table-cell whitespace-nowrap">
+                      <div className="h-4 w-28 bg-slate-200 rounded" />
+                    </td>
+                    <td className="py-3.5 px-2 lg:px-3 hidden lg:table-cell whitespace-nowrap">
+                      <div className="h-4 w-24 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-3.5 pl-2 lg:pl-3 text-right hidden sm:table-cell whitespace-nowrap">
+                      <div className="h-4 w-28 bg-slate-100 rounded ml-auto" />
+                    </td>
                   </tr>
-                ) : (
-                  items.map((item) => {
-                    const statusConfig = WO_STATUS_CONFIG[item.status] || {
-                      label: item.status,
-                      bg: 'bg-slate-100',
-                      text: 'text-slate-700',
-                      dot: 'bg-slate-400',
-                    };
+                ))
+              ) : items.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-14 text-center text-slate-500">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-[40px] text-slate-300">
+                        content_paste_off
+                      </span>
+                      <span className="text-sm font-bold text-zinc-800">
+                        Không có phiếu công việc nào
+                      </span>
+                      <span className="text-xs text-slate-500 max-w-sm">
+                        {debouncedSearch || statusFilter !== 'ALL'
+                          ? 'Thử điều chỉnh lại từ khóa tìm kiếm hoặc bỏ chọn bộ lọc trạng thái.'
+                          : 'Hiện tại chưa có phiếu công việc nào được tạo trong hệ thống.'}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                items.map((item) => {
+                  const statusConfig = WO_STATUS_META[item.status] || {
+                    label: item.status,
+                    bg: 'bg-slate-100',
+                    text: 'text-slate-700',
+                    dot: 'bg-slate-400',
+                  };
 
-                    const vehicleName =
-                      [item.vehicle?.make, item.vehicle?.model].filter(Boolean).join(' ') ||
-                      'Phương tiện';
+                  const vehicleName =
+                    [item.vehicle?.make, item.vehicle?.model].filter(Boolean).join(' ') ||
+                    'Phương tiện';
 
-                    return (
-                      <tr
-                        key={item.id}
-                        className="hover:bg-slate-50/90 transition-colors cursor-pointer group"
-                        onClick={() => router.push(`/advisor/work-orders/${item.id}`)}
-                      >
-                        {/* Vehicle Thumbnail + License Plate */}
-                        <td className="py-3.5 pr-2 lg:pr-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="hidden sm:flex w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-[#0050cd] items-center justify-center shrink-0 group-hover:bg-[#0050cd] group-hover:text-white transition-colors">
-                              <span className="material-symbols-outlined text-[20px]">
-                                directions_car
+                  return (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-slate-50/90 transition-colors cursor-pointer group"
+                      onClick={() => router.push(`/advisor/work-orders/${item.id}`)}
+                    >
+                      {/* Vehicle Thumbnail + License Plate */}
+                      <td className="py-3.5 pr-2 lg:pr-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="hidden sm:flex w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-[#0050cd] items-center justify-center shrink-0 group-hover:bg-[#0050cd] group-hover:text-white transition-colors">
+                            <span className="material-symbols-outlined text-[20px]">
+                              directions_car
+                            </span>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-mono font-extrabold text-zinc-900 uppercase">
+                              {item.vehicle?.license_plate || 'N/A'}
+                            </div>
+                            <div className="text-xs text-slate-500 font-medium truncate">{vehicleName}</div>
+                            {/* Mobile (<sm) consolidated Customer name + compact created date */}
+                            <div className="sm:hidden mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-slate-500">
+                              <span className="font-semibold text-zinc-800 truncate">
+                                {item.customer?.full_name || 'N/A'}
+                              </span>
+                              <span className="text-slate-300">•</span>
+                              <span className="font-mono tabular-nums">
+                                {new Date(item.created_at).toLocaleString('vi-VN', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
                               </span>
                             </div>
-                            <div className="min-w-0">
-                              <div className="font-mono font-extrabold text-zinc-900 uppercase">
-                                {item.vehicle?.license_plate || 'N/A'}
-                              </div>
-                              <div className="text-xs text-slate-500 font-medium truncate">{vehicleName}</div>
-                              {/* Mobile (<sm) consolidated Customer name + compact created date */}
-                              <div className="sm:hidden mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-slate-500">
-                                <span className="font-semibold text-zinc-800 truncate">
-                                  {item.customer?.full_name || 'N/A'}
-                                </span>
-                                <span className="text-slate-300">•</span>
-                                <span className="font-mono tabular-nums">
-                                  {new Date(item.created_at).toLocaleString('vi-VN', {
-                                    day: '2-digit',
-                                    month: '2-digit',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })}
-                                </span>
-                              </div>
-                            </div>
                           </div>
-                        </td>
+                        </div>
+                      </td>
 
-                        {/* RO Number */}
-                        <td className="py-3.5 px-2 lg:px-3 font-mono font-bold text-[#0050cd] group-hover:underline whitespace-nowrap tabular-nums">
-                          {item.wo_number}
-                        </td>
+                      {/* RO Number */}
+                      <td className="py-3.5 px-2 lg:px-3 font-mono font-bold text-[#0050cd] group-hover:underline whitespace-nowrap tabular-nums">
+                        {item.wo_number}
+                      </td>
 
-                        {/* Status */}
-                        <td className="py-3.5 px-2 lg:px-3 whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold ${statusConfig.bg} ${statusConfig.text}`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusConfig.dot}`} />
-                            <span>{statusConfig.label}</span>
-                          </span>
-                        </td>
+                      {/* Status */}
+                      <td className="py-3.5 px-2 lg:px-3 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold ${statusConfig.bg} ${statusConfig.text}`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusConfig.dot}`} />
+                          <span>{statusConfig.label}</span>
+                        </span>
+                      </td>
 
-                        {/* Customer */}
-                        <td className="py-3.5 px-2 lg:px-3 text-zinc-900 font-bold hidden sm:table-cell whitespace-nowrap">
-                          {item.customer?.full_name || 'N/A'}
-                        </td>
+                      {/* Customer */}
+                      <td className="py-3.5 px-2 lg:px-3 text-zinc-900 font-bold hidden sm:table-cell whitespace-nowrap">
+                        {item.customer?.full_name || 'N/A'}
+                      </td>
 
-                        {/* Advisor */}
-                        <td className="py-3.5 px-2 lg:px-3 text-slate-600 hidden lg:table-cell whitespace-nowrap">
-                          {item.advisor?.full_name || 'N/A'}
-                        </td>
+                      {/* Advisor */}
+                      <td className="py-3.5 px-2 lg:px-3 text-slate-600 hidden lg:table-cell whitespace-nowrap">
+                        {item.advisor?.full_name || 'N/A'}
+                      </td>
 
-                        {/* Created Date */}
-                        <td className="py-3.5 pl-2 lg:pl-3 text-right font-mono text-xs text-slate-500 hidden sm:table-cell whitespace-nowrap tabular-nums">
-                          {new Date(item.created_at).toLocaleString('vi-VN', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+                      {/* Created Date */}
+                      <td className="py-3.5 pl-2 lg:pl-3 text-right font-mono text-xs text-slate-500 hidden sm:table-cell whitespace-nowrap tabular-nums">
+                        {new Date(item.created_at).toLocaleString('vi-VN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* 4. PAGINATION FOOTER */}
-        {!loading && totalRecords > 0 && (
-          <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 select-none">
-            <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
-              <span>
-                Hiển thị{' '}
-                <strong className="text-zinc-900 font-bold">
-                  {(currentPage - 1) * limit + 1} – {Math.min(currentPage * limit, totalRecords)}
-                </strong>{' '}
-                trong <strong className="text-zinc-900 font-bold">{totalRecords}</strong> phiếu
-              </span>
-
-              <div className="flex items-center gap-1.5 border-l border-slate-200 pl-4">
-                <span>Số lượng / trang:</span>
-                <select
-                  value={limit}
-                  onChange={(e) => {
-                    setLimit(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="px-2.5 py-1 bg-[#f2f4f8] rounded-xl text-xs text-zinc-900 font-bold outline-none cursor-pointer"
-                >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
-              </div>
-            </div>
-
-            {totalPages > 1 && (
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1 || loading}
-                  className="w-9 h-9 rounded-xl bg-[#f2f4f8] hover:bg-slate-200 text-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors cursor-pointer"
-                  title="Trang đầu"
-                >
-                  <span className="material-symbols-outlined text-[18px]">first_page</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1 || loading}
-                  className="w-9 h-9 rounded-xl bg-[#f2f4f8] hover:bg-slate-200 text-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors cursor-pointer"
-                  title="Trang trước"
-                >
-                  <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-                </button>
-
-                {getPageNumbers(currentPage, totalPages).map((p, idx) =>
-                  p === '...' ? (
-                    <span key={`ellipsis-${idx}`} className="px-2 text-slate-400 font-mono text-xs">
-                      ...
-                    </span>
-                  ) : (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setCurrentPage(Number(p))}
-                      disabled={loading}
-                      className={`min-w-[36px] h-9 px-2.5 rounded-xl text-xs font-extrabold font-mono transition-colors cursor-pointer ${
-                        p === currentPage
-                          ? 'bg-[#0050cd] text-white shadow-xs'
-                          : 'bg-[#f2f4f8] hover:bg-slate-200 text-zinc-800'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  )
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages || loading}
-                  className="w-9 h-9 rounded-xl bg-[#f2f4f8] hover:bg-slate-200 text-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors cursor-pointer"
-                  title="Trang sau"
-                >
-                  <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage === totalPages || loading}
-                  className="w-9 h-9 rounded-xl bg-[#f2f4f8] hover:bg-slate-200 text-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors cursor-pointer"
-                  title="Trang cuối"
-                >
-                  <span className="material-symbols-outlined text-[18px]">last_page</span>
-                </button>
-              </div>
-            )}
-          </div>
+        {totalRecords > 0 && (
+          <TablePagination
+            totalRecords={totalRecords}
+            totalPages={totalPages}
+            currentPage={currentPage}
+            currentCount={items.length}
+            recordLabel="phiếu"
+            onPageChange={setCurrentPage}
+            pageSize={limit}
+            pageSizeOptions={[10, 20, 50]}
+            onPageSizeChange={(size) => {
+              setLimit(size);
+              setCurrentPage(1);
+            }}
+            className="px-0 pt-4 pb-0 bg-transparent border-slate-100"
+          />
         )}
       </div>
     </div>

@@ -12,7 +12,6 @@ interface TabCheckinProps {
 }
 
 export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly: propIsReadOnly = false }: TabCheckinProps) {
-  const [jobTypes, setJobTypes] = useState<string[]>([]);
   const [customerReported, setCustomerReported] = useState<string[]>([]);
 
   // Danh sách dịch vụ khách hàng yêu cầu: Tổng hợp đầy đủ từ workOrder.services và intake_record.services
@@ -141,18 +140,6 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
     return 'Dự kiến trong ngày';
   }, [workOrder]);
 
-  useEffect(() => {
-    if (workOrder?.intake_record?.services) {
-      const uniqueCategories = Array.from(
-        new Set(workOrder.intake_record.services.map((s: any) => s.service?.category?.name).filter(Boolean))
-      ) as string[];
-      setJobTypes(uniqueCategories);
-    }
-  }, [workOrder]);
-
-  const toggleJobType = (type: string) => {
-    setJobTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
-  };
   const toggleCustomerReported = (type: string) => {
     if (!type.trim()) return;
     setCustomerReported(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);

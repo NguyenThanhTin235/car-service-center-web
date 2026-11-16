@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, useDeferredValue } from 'react';
 import {
   WorkOrder,
   WoJobPart,
@@ -8,6 +8,7 @@ import {
   deleteJobPart,
 } from '@/lib/api/work-order.api';
 import AddPartModal from '../modals/AddPartModal';
+import TablePagination from '@/components/shared/TablePagination';
 import toast from 'react-hot-toast';
 
 interface TabPartsProps {
@@ -50,28 +51,20 @@ const getEffectivePartStatus = (part: WoJobPart) => {
 
 const ITEMS_PER_PAGE = 5;
 
-function getPageNumbers(current: number, total: number): (number | string)[] {
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, i) => i + 1);
-  }
-  if (current <= 4) {
-    return [1, 2, 3, 4, 5, '...', total];
-  }
-  if (current >= total - 3) {
-    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
-  }
-  return [1, '...', current - 1, current, current + 1, '...', total];
-}
-
 export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: TabPartsProps) {
-  const [parts, setParts] = useState<WoJobPart[]>([]);
+  const [parts, setParts] = useState<WoJobPart[]>(
+    () => workOrder?.services?.flatMap((s) => s.jobs?.flatMap((j) => j.parts || []) || []) || []
+  );
   const [loading, setLoading] = useState(false);
+  const hasPartsRef = useRef(parts.length > 0);
+  hasPartsRef.current = parts.length > 0;
 
   // Pagination state (5 items per page)
   const [currentPage, setCurrentPage] = useState(1);
 
   // Filters & search
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [selectedJobFilter, setSelectedJobFilter] = useState<string>('ALL');
   const [stockFilter, setStockFilter] = useState<'ALL' | 'IN_STOCK' | 'OUT_OF_STOCK'>('ALL');
 
@@ -88,7 +81,9 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
   const fetchParts = useCallback(async () => {
     if (!workOrder?.id) return;
     try {
-      setLoading(true);
+      if (!hasPartsRef.current) {
+        setLoading(true);
+      }
       const res = await getWorkOrderParts(workOrder.id);
       if (res.success && res.data) {
         setParts(res.data);
@@ -152,7 +147,7 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
       const name = part.item?.part_category?.name?.toLowerCase() || '';
       const brand = part.item?.brand?.name?.toLowerCase() || '';
       const jobName = part.job?.name?.toLowerCase() || '';
-      const query = search.trim().toLowerCase();
+      const query = deferredSearch.trim().toLowerCase();
 
       const matchesSearch = !query || sku.includes(query) || name.includes(query) || brand.includes(query) || jobName.includes(query);
       const matchesJob = selectedJobFilter === 'ALL' || String(part.job_id) === selectedJobFilter;
@@ -168,12 +163,12 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
 
       return matchesSearch && matchesJob && matchesStock;
     });
-  }, [parts, search, selectedJobFilter, stockFilter]);
+  }, [parts, deferredSearch, selectedJobFilter, stockFilter]);
 
   // Reset to page 1 on filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selectedJobFilter, stockFilter]);
+  }, [deferredSearch, selectedJobFilter, stockFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredParts.length / ITEMS_PER_PAGE));
 
@@ -525,105 +520,34 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
 
           {/* Pagination Footer (5 items per page) */}
           {!loading && filteredParts.length > 0 && (
-            <div className="px-5 py-3 border-t border-outline-variant/50 bg-surface-container-low/30 flex flex-col sm:flex-row items-center justify-between gap-3 select-none">
-              {/* Left: Summary */}
-              <div className="text-body-xs text-on-surface-variant">
-                Hiển thị{' '}
-                <strong className="text-on-surface font-semibold">
-                  {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredParts.length)}
-                </strong>{' '}
-                trong <strong className="text-on-surface font-semibold">{filteredParts.length}</strong> phụ tùng
-              </div>
-
-              {/* Right: Page Buttons */}
-              {totalPages > 1 && (
-                <div className="flex items-center gap-1">
-                  {/* First Page */}
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    className="p-1.5 rounded-lg border border-outline-variant/60 bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-                    title="Trang đầu"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">first_page</span>
-                  </button>
-
-                  {/* Prev Page */}
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="p-1.5 rounded-lg border border-outline-variant/60 bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-                    title="Trang trước"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-                  </button>
-
-                  {/* Page Numbers */}
-                  {getPageNumbers(currentPage, totalPages).map((p, idx) =>
-                    p === '...' ? (
-                      <span key={`ellipsis-${idx}`} className="px-1.5 text-on-surface-variant font-mono text-body-xs">
-                        ...
-                      </span>
-                    ) : (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setCurrentPage(Number(p))}
-                        className={`min-w-[30px] h-7 px-2 rounded-lg text-label-xs font-bold font-mono transition-colors cursor-pointer ${
-                          p === currentPage
-                            ? 'bg-primary text-white shadow-2xs'
-                            : 'border border-outline-variant/60 bg-surface-container-lowest hover:bg-surface-container text-on-surface'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    )
-                  )}
-
-                  {/* Next Page */}
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="p-1.5 rounded-lg border border-outline-variant/60 bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-                    title="Trang sau"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                  </button>
-
-                  {/* Last Page */}
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                    className="p-1.5 rounded-lg border border-outline-variant/60 bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-                    title="Trang cuối"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">last_page</span>
-                  </button>
-                </div>
-              )}
-            </div>
+            <TablePagination
+              totalRecords={filteredParts.length}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+              currentCount={paginatedParts.length}
+              recordLabel="phụ tùng"
+            />
           )}
         </>
       )}
     </div>
 
       {/* 4. Modal Add/Edit Part */}
-      <AddPartModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingPart(null);
-          setPreselectedJobId(null);
-        }}
-        workOrder={workOrder}
-        preselectedJobId={preselectedJobId}
-        editingPart={editingPart}
-        onSuccess={handleModalSuccess}
-      />
+      {isModalOpen && (
+        <AddPartModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingPart(null);
+            setPreselectedJobId(null);
+          }}
+          workOrder={workOrder}
+          preselectedJobId={preselectedJobId}
+          editingPart={editingPart}
+          onSuccess={handleModalSuccess}
+        />
+      )}
     </div>
   );
 }

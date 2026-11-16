@@ -11,6 +11,8 @@ import {
   InspectionFinding,
 } from '@/lib/api/inspection.api';
 import CreateDispatchJobModal from '../modals/CreateDispatchJobModal';
+import { PhotoLibraryModal, InspectionLogModal } from '../modals/InspectionSubModals';
+import ConfirmModal from '@/components/shared/ConfirmModal';
 import toast from 'react-hot-toast';
 
 interface VehicleInspectionPanelProps {
@@ -70,8 +72,10 @@ export default function VehicleInspectionPanel({
   refetchWO,
 }: VehicleInspectionPanelProps) {
   const [selectedTool, setSelectedTool] = useState<MarkerType | null>(null);
-  const [inspection, setInspection] = useState<any>(null);
-  const [findings, setFindings] = useState<InspectionFinding[]>([]);
+  const [inspection, setInspection] = useState<any>(() => workOrder?.inspections?.[0] || null);
+  const [findings, setFindings] = useState<InspectionFinding[]>(
+    () => (workOrder?.inspections?.[0]?.findings as unknown as InspectionFinding[]) || []
+  );
   const [loading, setLoading] = useState(false);
   const [highlightedFindingId, setHighlightedFindingId] = useState<number | null>(null);
 
@@ -141,7 +145,9 @@ export default function VehicleInspectionPanel({
 
   const loadInspection = async () => {
     try {
-      setLoading(true);
+      if (findings.length === 0) {
+        setLoading(true);
+      }
       const res = await getInspection(workOrder.id);
       if (res.success && res.data) {
         setInspection(res.data);
@@ -394,17 +400,6 @@ export default function VehicleInspectionPanel({
     return list.length > 0 ? list : [{ id: 0, name: workOrder?.advisor?.full_name || 'Cố vấn dịch vụ' }];
   }, [workOrder, inspection, findings]);
 
-  // Danh sách log sắp xếp mới nhất lên đầu tiên (theo updated_at hoặc created_at)
-  const sortedLogFindings = React.useMemo(() => {
-    return findings
-      .map((f, originalIndex) => ({
-        ...f,
-        originalIndex: originalIndex + 1,
-        latestTime: new Date(f.updated_at || f.created_at || 0).getTime(),
-      }))
-      .sort((a, b) => b.latestTime - a.latestTime);
-  }, [findings]);
-
   // Tính toán thời gian cập nhật/sửa chữa lần cuối
   const lastModifiedTime = React.useMemo(() => {
     const dates: number[] = [];
@@ -556,7 +551,14 @@ export default function VehicleInspectionPanel({
             selectedTool={isReadOnly ? null : selectedTool}
             onAddFinding={handleAddFinding}
             highlightedFindingId={highlightedFindingId}
-            onSelectFinding={(id) => setHighlightedFindingId(Number(id))}
+            onSelectFinding={(id) => {
+              if (id === '' || id === null || id === undefined) {
+                setHighlightedFindingId(null);
+                return;
+              }
+              const numericId = Number(id);
+              setHighlightedFindingId((prev) => (prev === numericId ? null : numericId));
+            }}
             isReadOnly={isReadOnly}
           />
 
@@ -844,238 +846,26 @@ export default function VehicleInspectionPanel({
       </div>
 
       {/* Photo Library Modal */}
-      {showPhotoLibrary && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/40">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#2563EB] text-[22px]">photo_library</span>
-                <h4 className="text-[14px] font-bold text-on-surface">
-                  Thư viện ảnh kiểm tra xe ({totalPhotos} ảnh)
-                </h4>
-              </div>
-              <button
-                onClick={() => setShowPhotoLibrary(false)}
-                className="text-on-surface-variant hover:text-on-surface p-1 rounded-full hover:bg-surface-container transition-colors"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto styled-scrollbar flex-1">
-              {totalPhotos === 0 ? (
-                <div className="text-center py-12 text-on-surface-variant text-[12px] italic">
-                  Chưa có hình ảnh minh chứng nào được tải lên.
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {findings.flatMap((finding, fIndex) =>
-                    (finding.evidence_urls || []).map((url, imgIndex) => (
-                      <div
-                        key={`${finding.id}-${imgIndex}`}
-                        className="group relative border border-outline-variant/60 rounded-lg overflow-hidden bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => setPreviewImage(url)}
-                      >
-                        <img
-                          src={url}
-                          alt={finding.part_name}
-                          className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
-                        />
-                        <div className="p-2 text-[10px] bg-white border-t border-outline-variant/30 flex flex-col gap-0.5">
-                          <span className="font-bold text-primary truncate">
-                            #{fIndex + 1} - {finding.part_name}
-                          </span>
-                          <span className="text-slate-600 font-medium">
-                            {tools.find(t => t.type === finding.marker_type)?.label || finding.marker_type}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="px-6 py-3 border-t border-outline-variant/40 bg-surface-container-lowest flex justify-end">
-              <button
-                onClick={() => setShowPhotoLibrary(false)}
-                className="px-4 py-1.5 rounded-md bg-secondary-container text-on-secondary-container font-semibold text-[11px] hover:bg-secondary-container/80 transition-colors cursor-pointer"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PhotoLibraryModal
+        isOpen={showPhotoLibrary}
+        onClose={() => setShowPhotoLibrary(false)}
+        findings={findings}
+        totalPhotos={totalPhotos}
+        tools={tools}
+        onPreviewImage={setPreviewImage}
+      />
 
       {/* Log Modal (Nhật ký kiểm tra xe chi tiết) */}
-      {showLogModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-surface rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden border border-outline-variant">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-outline-variant/60 flex items-center justify-between bg-surface-container-lowest">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[20px]">history</span>
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-on-surface">
-                    Nhật ký kiểm tra xe
-                  </h3>
-                  <p className="text-[11px] text-on-surface-variant">
-                    Lịch sử chi tiết người ghi nhận và thời gian cập nhật từng điểm kiểm tra trên xe (mới nhất ở trên cùng)
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowLogModal(false)}
-                className="text-on-surface-variant hover:text-on-surface p-1 rounded-full hover:bg-surface-container transition-colors"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            {/* Modal Summary Bar */}
-            <div className="px-6 py-3 bg-[#F8F9FA] border-b border-outline-variant/40 flex flex-wrap items-center justify-between text-[11px] gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-600 font-medium">Người tham gia ({inspectors.length}):</span>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {inspectors.map((insp) => (
-                    <span
-                      key={insp.id}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white border border-outline-variant/60 font-semibold text-on-surface"
-                    >
-                      <span className="w-3.5 h-3.5 bg-[#20B2AA] text-white rounded-full flex items-center justify-center text-[8px] font-bold">
-                        {insp.name[0].toUpperCase()}
-                      </span>
-                      {insp.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center gap-4 text-on-surface-variant">
-                <span>Tổng số điểm: <strong className="text-primary">{findings.length}</strong></span>
-                <span>Tổng số ảnh: <strong className="text-[#2563EB]">{totalPhotos}</strong></span>
-              </div>
-            </div>
-
-            {/* Modal Body: Timeline list */}
-            <div className="p-6 overflow-y-auto styled-scrollbar flex-1">
-              {sortedLogFindings.length === 0 ? (
-                <div className="text-center py-12 text-on-surface-variant text-[12px] italic">
-                  Chưa có lịch sử ghi nhận nào cho xe này.
-                </div>
-              ) : (
-                <div className="relative border-l-2 border-outline-variant/60 ml-3 pl-5 space-y-6">
-                  {sortedLogFindings.map((f, logIdx) => {
-                    const toolDef = tools.find((t) => t.type === f.marker_type);
-                    const creatorName = f.created_by?.full_name || workOrder?.advisor?.full_name || 'Cố vấn / KTV';
-                    const createdAtStr = f.created_at
-                      ? new Date(f.created_at).toLocaleString('vi-VN')
-                      : '—';
-                    const updatedAtStr = f.updated_at
-                      ? new Date(f.updated_at).toLocaleString('vi-VN')
-                      : createdAtStr;
-                    const linkedJob = f.job_findings?.[0]?.job;
-
-                    return (
-                      <div key={f.id} className="relative group">
-                        {/* Timeline dot */}
-                        <div className={`absolute -left-[27px] top-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center text-[8px] text-white font-bold shadow-xs ${toolDef?.bgColor || 'bg-primary'}`}>
-                          {toolDef?.icon || f.originalIndex}
-                        </div>
-
-                        {/* Card Content */}
-                        <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-lg p-3.5 hover:shadow-sm transition-shadow">
-                          <div className="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b border-outline-variant/30">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-[12px] text-primary">
-                                Điểm #{f.originalIndex} - {f.part_name}
-                              </span>
-                              {logIdx === 0 && (
-                                <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300 text-[9px] font-bold">
-                                  Mới nhất
-                                </span>
-                              )}
-                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${toolDef?.lightBg} ${toolDef?.color}`}>
-                                {toolDef?.label || f.marker_type}
-                              </span>
-                              {linkedJob && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                  <span className="material-symbols-outlined text-[11px]">link</span>
-                                  {linkedJob.name}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[11px] text-on-surface-variant">
-                              <span className="material-symbols-outlined text-[13px]">schedule</span>
-                              <span>Tạo: {createdAtStr}</span>
-                              {updatedAtStr !== createdAtStr && (
-                                <span className="text-outline">| Sửa: {updatedAtStr}</span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
-                            <div className="flex flex-col gap-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-slate-600 font-medium">Người ghi nhận:</span>
-                                <span className="inline-flex items-center gap-1 font-semibold text-on-surface">
-                                  <span className="w-4 h-4 bg-[#20B2AA] text-white rounded-full flex items-center justify-center text-[8px] font-bold">
-                                    {creatorName[0]?.toUpperCase()}
-                                  </span>
-                                  {creatorName}
-                                </span>
-                              </div>
-                              <div className="flex items-start gap-1.5">
-                                <span className="text-slate-600 font-medium shrink-0">Mô tả chi tiết:</span>
-                                <span className="text-on-surface italic">
-                                  {f.description ? `"${f.description}"` : 'Không có ghi chú thêm'}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Evidence thumbnails */}
-                            <div>
-                              {f.evidence_urls && f.evidence_urls.length > 0 ? (
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-slate-600 font-medium">Ảnh minh chứng:</span>
-                                  {f.evidence_urls.map((imgUrl, i) => (
-                                    <img
-                                      key={i}
-                                      src={imgUrl}
-                                      alt="Minh chứng"
-                                      className="w-10 h-10 object-cover rounded border border-outline-variant hover:scale-105 transition-transform cursor-pointer"
-                                      onClick={() => setPreviewImage(imgUrl)}
-                                      title="Bấm để xem ảnh phóng to"
-                                    />
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-outline italic">Chưa đính kèm ảnh</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-3 border-t border-outline-variant/40 bg-surface-container-lowest flex justify-end">
-              <button
-                onClick={() => setShowLogModal(false)}
-                className="px-4 py-1.5 rounded-md bg-secondary-container text-on-secondary-container font-semibold text-[11px] hover:bg-secondary-container/80 transition-colors cursor-pointer"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <InspectionLogModal
+        isOpen={showLogModal}
+        onClose={() => setShowLogModal(false)}
+        findings={findings}
+        inspectors={inspectors}
+        totalPhotos={totalPhotos}
+        tools={tools}
+        advisorName={workOrder?.advisor?.full_name}
+        onPreviewImage={setPreviewImage}
+      />
 
       {/* Image Preview Modal */}
       {previewImage && (
@@ -1102,75 +892,43 @@ export default function VehicleInspectionPanel({
       )}
 
       {/* Modal Tạo / Xem chi tiết công việc điều phối */}
-      <CreateDispatchJobModal
-        isOpen={isJobModalOpen}
-        onClose={() => {
-          setIsJobModalOpen(false);
-          setSelectedJobForModal(null);
-          setSelectedFindingForJobModal(null);
-        }}
-        workOrder={workOrder}
-        finding={selectedFindingForJobModal}
-        job={selectedJobForModal}
-        onSuccess={() => {
-          loadInspection();
-          if (refetchWO) refetchWO();
-        }}
-      />
+      {isJobModalOpen && (
+        <CreateDispatchJobModal
+          isOpen={isJobModalOpen}
+          onClose={() => {
+            setIsJobModalOpen(false);
+            setSelectedJobForModal(null);
+            setSelectedFindingForJobModal(null);
+          }}
+          workOrder={workOrder}
+          finding={selectedFindingForJobModal}
+          job={selectedJobForModal}
+          onSuccess={() => {
+            loadInspection();
+            if (refetchWO) refetchWO();
+          }}
+        />
+      )}
 
       {/* Modal xác nhận xóa công việc chuyên nghiệp thay cho alert/confirm */}
-      {deleteJobConfirm && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-surface rounded-2xl shadow-2xl border border-outline-variant max-w-md w-full overflow-hidden flex flex-col animate-scale-in">
-            <div className="p-6">
-              <div className="w-12 h-12 rounded-full bg-error-container text-on-error-container flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-[26px]">delete_forever</span>
-              </div>
-              <h3 className="text-title-md font-bold text-on-surface mb-2">
-                Xác nhận xóa công việc
-              </h3>
-              <p className="text-body-sm text-on-surface-variant leading-relaxed mb-4">
-                Bạn có chắc chắn muốn xóa công việc{' '}
-                <strong className="text-on-surface font-semibold">"{deleteJobConfirm.jobName}"</strong>{' '}
-                khỏi phiếu sửa chữa?
-              </p>
-              <div className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/40 text-xs text-on-surface-variant flex items-start gap-2">
-                <span className="material-symbols-outlined text-[16px] text-amber-600 shrink-0 mt-0.5">info</span>
-                <span>Công việc sẽ được gỡ khỏi danh sách hạng mục và hủy liên kết với các điểm đánh dấu trên xe.</span>
-              </div>
-            </div>
-
-            <div className="p-4 bg-surface-container-lowest flex items-center justify-end gap-3 border-t border-outline-variant">
-              <button
-                type="button"
-                onClick={() => setDeleteJobConfirm(null)}
-                disabled={isDeletingJob}
-                className="px-4 py-2 text-label-md font-semibold text-secondary hover:bg-surface-container rounded-xl transition-colors border border-outline-variant disabled:opacity-50"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleExecuteDeleteJob}
-                disabled={isDeletingJob}
-                className="px-5 py-2 text-label-md font-bold text-white bg-error hover:bg-error/90 rounded-xl transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50"
-              >
-                {isDeletingJob ? (
-                  <>
-                    <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
-                    Đang xóa...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-[16px]">delete</span>
-                    Xác nhận xóa
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={!!deleteJobConfirm}
+        title="Xác nhận xóa công việc"
+        message={
+          deleteJobConfirm
+            ? `Bạn có chắc chắn muốn xóa công việc "${deleteJobConfirm.jobName}" khỏi phiếu sửa chữa? Công việc sẽ được gỡ khỏi danh sách hạng mục và hủy liên kết với các điểm đánh dấu trên xe.`
+            : ''
+        }
+        confirmText={isDeletingJob ? 'Đang xóa...' : 'Xác nhận xóa'}
+        cancelText="Hủy bỏ"
+        isDestructive
+        onConfirm={() => {
+          if (!isDeletingJob) handleExecuteDeleteJob();
+        }}
+        onCancel={() => {
+          if (!isDeletingJob) setDeleteJobConfirm(null);
+        }}
+      />
     </div>
   );
 }

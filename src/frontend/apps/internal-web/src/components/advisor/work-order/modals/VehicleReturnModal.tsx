@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { WorkOrder, cancelAndReleaseWorkOrder } from '@/lib/api/work-order.api';
+import { FUEL_LEVEL_LABELS } from '../work-order.constants';
 import toast from 'react-hot-toast';
 
 interface VehicleReturnModalProps {
@@ -11,14 +12,6 @@ interface VehicleReturnModalProps {
   refetchWO: () => void;
   initialReason?: string;
 }
-
-const FUEL_LEVEL_LABELS: Record<string, string> = {
-  EMPTY: 'Bình cạn (E)',
-  QUARTER: '1/4 bình',
-  HALF: '1/2 bình',
-  THREE_QUARTER: '3/4 bình',
-  FULL: 'Đầy bình (F)',
-};
 
 export default function VehicleReturnModal({
   isOpen,

@@ -374,7 +374,7 @@ export default function AddPartModal({
                               }}
                               className={`p-3 cursor-pointer transition-colors ${
                                 isSelected
-                                  ? 'bg-primary/10 border-l-4 border-l-primary'
+                                  ? 'bg-primary/10 ring-1 ring-inset ring-primary/30'
                                   : 'hover:bg-surface-container-low'
                               }`}
                             >
@@ -621,7 +621,7 @@ export default function AddPartModal({
                         onClick={() => handleSelectItem(item)}
                         className={`p-3 flex items-center justify-between cursor-pointer transition-colors ${
                           isSelected
-                            ? 'bg-primary/10 border-l-4 border-l-primary'
+                            ? 'bg-primary/10 ring-1 ring-inset ring-primary/30'
                             : 'hover:bg-surface-container-low'
                         }`}
                       >

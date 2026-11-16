@@ -10,6 +10,7 @@ import EditCustomerModal from '@/components/advisor/work-order/modals/EditCustom
 import { getWorkOrderById, getWorkOrders, WorkOrder } from '@/lib/api/work-order.api';
 import { getWOQuotations } from '@/lib/api/quotation.api';
 import toast from 'react-hot-toast';
+import { WO_STATUS_META } from '@/components/advisor/work-order/work-order.constants';
 
 const STATUS_PIPELINE = [
   'Tiếp nhận',
@@ -21,32 +22,6 @@ const STATUS_PIPELINE = [
   'Chờ giao xe',
   'Đóng',
 ];
-
-const STATUS_MAP: Record<string, string> = {
-  DRAFT: 'Tiếp nhận',
-  IN_PLANNING: 'Lập kế hoạch',
-  PENDING_APPROVAL: 'Chờ duyệt',
-  APPROVED: 'Đã duyệt',
-  IN_PROGRESS: 'Đang sửa',
-  BILLING_REQUESTED: 'Chờ thanh toán',
-  FINANCIAL_CLEARED: 'Chờ giao xe',
-  RELEASED: 'Đóng',
-  CLOSED: 'Đóng',
-  CANCELLED: 'Đã hủy',
-};
-
-const WO_STATUS_BADGE: Record<string, { label: string; bg: string; text: string; dot: string }> = {
-  DRAFT: { label: 'Tiếp nhận', bg: 'bg-slate-200', text: 'text-slate-800', dot: 'bg-slate-600' },
-  IN_PLANNING: { label: 'Lập kế hoạch', bg: 'bg-blue-50', text: 'text-[#0050cd]', dot: 'bg-[#0050cd]' },
-  PENDING_APPROVAL: { label: 'Chờ duyệt báo giá', bg: 'bg-amber-50', text: 'text-amber-800', dot: 'bg-amber-500' },
-  APPROVED: { label: 'Đã duyệt báo giá', bg: 'bg-indigo-50', text: 'text-indigo-800', dot: 'bg-indigo-600' },
-  IN_PROGRESS: { label: 'Đang sửa chữa', bg: 'bg-blue-50', text: 'text-[#0050cd]', dot: 'bg-[#0050cd]' },
-  BILLING_REQUESTED: { label: 'Chờ thanh toán', bg: 'bg-purple-50', text: 'text-purple-800', dot: 'bg-purple-600' },
-  FINANCIAL_CLEARED: { label: 'Chờ giao xe', bg: 'bg-teal-50', text: 'text-teal-800', dot: 'bg-teal-600' },
-  RELEASED: { label: 'Đã giao xe', bg: 'bg-emerald-50', text: 'text-emerald-800', dot: 'bg-emerald-600' },
-  CLOSED: { label: 'Đã đóng hồ sơ', bg: 'bg-emerald-100', text: 'text-emerald-900', dot: 'bg-emerald-700' },
-  CANCELLED: { label: 'Đã hủy', bg: 'bg-rose-50', text: 'text-rose-800', dot: 'bg-rose-600' },
-};
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
@@ -67,13 +42,21 @@ export default function WorkOrderDetailPage() {
 
   const initialLoadDone = useRef(false);
 
+  useEffect(() => {
+    initialLoadDone.current = false;
+  }, [id]);
+
   const fetchWO = useCallback(async () => {
     if (!id) return;
     try {
       if (!initialLoadDone.current) {
         setLoading(true);
       }
-      const res = await getWorkOrderById(id);
+      const [res, quoRes] = await Promise.all([
+        getWorkOrderById(id),
+        getWOQuotations(id).catch(() => null),
+      ]);
+
       if (res.success && res.data) {
         setWorkOrder(res.data);
         initialLoadDone.current = true;
@@ -83,8 +66,6 @@ export default function WorkOrderDetailPage() {
         return;
       }
 
-      // Fetch quotations stats
-      const quoRes = await getWOQuotations(id).catch(() => null);
       if (quoRes && quoRes.success && quoRes.data) {
         let qTotal = 0;
         let qApproved = 0;
@@ -101,19 +82,6 @@ export default function WorkOrderDetailPage() {
           pending: qPending,
         });
       }
-
-      // Fetch all WOs to determine index and prev/next
-      const listRes = await getWorkOrders({ limit: 100 }).catch(() => null);
-      if (listRes && listRes.success && listRes.data) {
-        const list = listRes.data;
-        setTotalCount(list.length);
-        const idx = list.findIndex((wo) => wo.id === id);
-        if (idx !== -1) {
-          setCurrentIndex(idx + 1);
-          setPrevId(idx > 0 ? list[idx - 1].id : null);
-          setNextId(idx < list.length - 1 ? list[idx + 1].id : null);
-        }
-      }
     } catch {
       toast.error('Lỗi khi tải phiếu công việc');
       router.push('/advisor/intake-queue');
@@ -126,12 +94,150 @@ export default function WorkOrderDetailPage() {
     fetchWO();
   }, [fetchWO]);
 
+  // Separate Prev/Next navigation list fetch so refetchWO() never re-fetches 100 WOs
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+
+    const applyNavList = (ids: number[]) => {
+      setTotalCount(ids.length);
+      const idx = ids.indexOf(id);
+      if (idx !== -1) {
+        setCurrentIndex(idx + 1);
+        setPrevId(idx > 0 ? ids[idx - 1] : null);
+        setNextId(idx < ids.length - 1 ? ids[idx + 1] : null);
+      } else {
+        setCurrentIndex(0);
+        setPrevId(null);
+        setNextId(null);
+      }
+    };
+
+    try {
+      const cached = sessionStorage.getItem('wo_nav_ids');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.includes(id)) {
+          applyNavList(parsed);
+          return;
+        }
+      }
+    } catch {
+      // Ignore sessionStorage errors
+    }
+
+    getWorkOrders({ limit: 100 })
+      .then((listRes) => {
+        if (cancelled) return;
+        if (listRes && listRes.success && listRes.data) {
+          const ids = listRes.data.map((wo) => wo.id);
+          try {
+            sessionStorage.setItem('wo_nav_ids', JSON.stringify(ids));
+          } catch {
+            // Ignore sessionStorage errors
+          }
+          applyNavList(ids);
+        }
+      })
+      .catch(() => null);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
   if (loading) {
     return (
-      <div className="flex h-[70vh] items-center justify-center">
-        <span className="material-symbols-outlined animate-spin text-[40px] text-[#0050cd]">
-          progress_activity
-        </span>
+      <div className="flex flex-col gap-5 px-4 sm:px-6 py-3 max-w-[1440px] mx-auto w-full animate-pulse">
+        {/* Sticky Top Bar Skeleton */}
+        <div className="sticky top-16 z-20 py-1 bg-[#f2f4f8]/95 backdrop-blur-md -my-1">
+          <div className="flex flex-wrap xl:flex-nowrap items-center justify-between gap-x-3 gap-y-2 bg-white rounded-[24px] px-4 sm:px-5 py-2 sm:py-2.5 shadow-xs border border-slate-200/80">
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-slate-200" />
+              <div className="h-5 w-32 rounded-lg bg-slate-200" />
+            </div>
+            <div className="hidden xl:flex flex-1 justify-center gap-2 px-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-7 w-24 rounded-full bg-slate-100" />
+              ))}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="h-4 w-12 rounded bg-slate-200" />
+              <div className="w-9 h-9 rounded-xl bg-slate-200" />
+              <div className="w-9 h-9 rounded-xl bg-slate-200" />
+            </div>
+          </div>
+        </div>
+
+        {/* 4 Hero Bento Card Skeletons */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-[#edf4fe] border border-blue-200/60 rounded-[28px] p-5 min-h-[190px] flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="h-8 w-28 rounded-xl bg-blue-200/60" />
+                <div className="w-7 h-7 rounded-lg bg-blue-200/60" />
+              </div>
+              <div className="h-7 w-36 rounded-lg bg-blue-200/70" />
+              <div className="h-3.5 w-44 rounded bg-blue-200/50" />
+            </div>
+            <div className="pt-3 border-t border-blue-200/50 flex justify-between">
+              <div className="h-4 w-20 rounded bg-blue-200/50" />
+              <div className="h-5 w-24 rounded-lg bg-blue-200/60" />
+            </div>
+          </div>
+
+          <div className="bg-[#0050cd]/85 rounded-[28px] p-5 min-h-[190px] flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="h-4 w-32 rounded bg-white/25" />
+              <div className="h-8 w-28 rounded-lg bg-white/30" />
+              <div className="h-3.5 w-40 rounded bg-white/20" />
+            </div>
+            <div className="h-11 w-full rounded-2xl bg-[#0c2340]/50" />
+          </div>
+
+          <div className="bg-[#f4f6fa] border border-slate-200/80 rounded-[28px] p-5 min-h-[190px] flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="h-8 w-28 rounded-xl bg-slate-200" />
+                <div className="h-6 w-16 rounded-lg bg-slate-200" />
+              </div>
+              <div className="h-6 w-40 rounded-lg bg-slate-200" />
+              <div className="h-4 w-28 rounded bg-slate-200/80" />
+            </div>
+            <div className="pt-3 border-t border-slate-200/80 flex justify-between">
+              <div className="h-4 w-16 rounded bg-slate-200" />
+              <div className="h-7 w-24 rounded-xl bg-slate-300/70" />
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200/80 rounded-[28px] p-5 min-h-[190px] flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="h-8 w-32 rounded-xl bg-slate-100" />
+                <div className="h-5 w-14 rounded-lg bg-slate-100" />
+              </div>
+              <div className="h-7 w-36 rounded-lg bg-slate-200" />
+              <div className="h-3.5 w-32 rounded bg-slate-100" />
+            </div>
+            <div className="pt-3 border-t border-slate-200/80 flex justify-between">
+              <div className="h-4 w-16 rounded bg-slate-100" />
+              <div className="h-4 w-20 rounded bg-slate-200" />
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Workspace Skeleton */}
+        <div className="bg-white rounded-[28px] p-4 sm:p-6 shadow-xs border border-slate-200/70 space-y-5">
+          <div className="bg-[#f2f4f8] p-1.5 rounded-2xl flex items-center gap-2 overflow-hidden">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-11 w-36 rounded-xl bg-white/80 shrink-0" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <div className="lg:col-span-7 h-72 rounded-2xl bg-slate-100" />
+            <div className="lg:col-span-5 h-72 rounded-2xl bg-slate-100" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -168,13 +274,6 @@ export default function WorkOrderDetailPage() {
   const progressPct = jobsTotal > 0 ? Math.round((jobsActive / jobsTotal) * 100) : 25;
   const remainingPct = 100 - progressPct;
 
-  const statusInfo = WO_STATUS_BADGE[workOrder.status] || {
-    label: workOrder.status,
-    bg: 'bg-slate-200',
-    text: 'text-slate-800',
-    dot: 'bg-slate-500',
-  };
-
   const displayQuotationValue =
     quoStats.approved > 0
       ? quoStats.approved
@@ -182,7 +281,7 @@ export default function WorkOrderDetailPage() {
       ? quoStats.total
       : (workOrder.check_in as any)?.intake_cost_estimate || 0;
 
-  const mappedStatus = STATUS_MAP[workOrder.status] || workOrder.status;
+  const mappedStatus = WO_STATUS_META[workOrder.status]?.pipelineLabel || workOrder.status;
 
   return (
     <div className="flex flex-col gap-5 px-4 sm:px-6 py-3 max-w-[1440px] mx-auto w-full">

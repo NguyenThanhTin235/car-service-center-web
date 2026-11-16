@@ -14,6 +14,7 @@ import {
   exportOrPrintQuotationPdf,
 } from '@/lib/api/quotation.api';
 import { WorkOrder } from '@/lib/api/work-order.api';
+import { formatVND } from '@/lib/utils/formatters';
 import toast from 'react-hot-toast';
 import QuotationHistoryModal from '../modals/QuotationHistoryModal';
 import VehicleReturnModal from '../modals/VehicleReturnModal';
@@ -52,10 +53,12 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isVehicleReturnModalOpen, setIsVehicleReturnModalOpen] = useState(false);
 
-  const fetchQuotations = useCallback(async () => {
+  const fetchQuotations = useCallback(async (silent = false) => {
     if (!workOrder?.id) return;
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       const res = await getWOQuotations(workOrder.id);
       if (res.success && res.data) {
         setQuotations(res.data);
@@ -132,7 +135,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
         } else {
           toast.success(`Đã tạo ${type === 'PRIMARY' ? 'báo giá chính' : 'báo giá bổ sung'} thành công`);
         }
-        await fetchQuotations();
+        await fetchQuotations(true);
         setActiveQuotationId(res.data.id);
         refetchWO();
       } else {
@@ -153,7 +156,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
       const res = await sendQuotation(activeQuotation.id);
       if (res.success) {
         toast.success('Đã gửi báo giá đến khách hàng thành công');
-        await fetchQuotations();
+        await fetchQuotations(true);
         refetchWO();
       } else {
         toast.error(res.message || 'Lỗi khi gửi báo giá');
@@ -173,7 +176,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
       const res = await approveQuotation(activeQuotation.id);
       if (res.success) {
         toast.success('Báo giá đã được phê duyệt thành công! Phụ tùng đã chuyển sang trạng thái Giữ hàng.');
-        await fetchQuotations();
+        await fetchQuotations(true);
         refetchWO();
       } else {
         toast.error(res.message || 'Lỗi khi duyệt báo giá');
@@ -199,7 +202,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
         toast.success('Đã ghi nhận từ chối báo giá. Phiếu công việc chuyển về Lập kế hoạch.');
         setIsRejectModalOpen(false);
         setRejectReason('');
-        await fetchQuotations();
+        await fetchQuotations(true);
         refetchWO();
       } else {
         toast.error(res.message || 'Lỗi khi từ chối báo giá');
@@ -220,7 +223,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
       if (res.success) {
         toast.success('Đã hủy báo giá nháp thành công');
         setIsConfirmCancelOpen(false);
-        await fetchQuotations();
+        await fetchQuotations(true);
         refetchWO();
       } else {
         toast.error(res.message || 'Lỗi khi hủy báo giá');
@@ -246,7 +249,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
       if (res.success) {
         toast.success('Đã cập nhật chiết khấu thành công');
         setIsDiscountModalOpen(false);
-        await fetchQuotations();
+        await fetchQuotations(true);
       } else {
         toast.error(res.message || 'Lỗi khi cập nhật chiết khấu');
       }
@@ -269,10 +272,6 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
     } finally {
       setIsExportingPdf(false);
     }
-  };
-
-  const formatVnd = (val: number) => {
-    return Number(val || 0).toLocaleString('vi-VN') + ' đ';
   };
 
   const normalizeVehicleSizeDescription = (text: string) => {
@@ -583,7 +582,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                               {lines.length} hạng mục
                             </span>
                             <span className="text-sm font-bold font-mono text-[#0050cd]">
-                              {formatVnd(groupSubtotal)}
+                              {formatVND(groupSubtotal)}
                             </span>
                           </div>
                         </div>
@@ -645,12 +644,12 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                             {line.quantity}
                           </td>
                           <td className="py-3 px-4 text-right font-mono text-xs text-on-surface-variant tabular-nums hidden md:table-cell">
-                            {formatVnd(line.snapshotUnitPrice)}
+                            {formatVND(line.snapshotUnitPrice)}
                           </td>
                           <td className="py-3 px-4 text-right font-mono font-bold text-xs text-on-surface tabular-nums whitespace-nowrap">
-                            <div>{formatVnd(line.amount)}</div>
+                            <div>{formatVND(line.amount)}</div>
                             <div className="md:hidden text-[11px] font-normal text-on-surface-variant mt-0.5">
-                              {line.quantity} × {formatVnd(line.snapshotUnitPrice)}
+                              {line.quantity} × {formatVND(line.snapshotUnitPrice)}
                             </div>
                           </td>
                         </tr>
@@ -674,7 +673,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
           <div className="w-full sm:w-80 space-y-2.5 bg-slate-50/80 p-4.5 rounded-2xl border border-slate-200/80">
             <div className="flex justify-between text-xs text-on-surface-variant">
               <span>Tổng tiền hạng mục (Subtotal):</span>
-              <span className="font-mono font-bold text-on-surface">{formatVnd(activeQuotation?.subtotal || 0)}</span>
+              <span className="font-mono font-bold text-on-surface">{formatVND(activeQuotation?.subtotal || 0)}</span>
             </div>
 
             <div className="flex justify-between text-xs items-center">
@@ -693,7 +692,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                 )}
               </span>
               <span className="font-mono font-bold text-rose-600">
-                - {formatVnd(activeQuotation?.discountAmount || 0)}
+                - {formatVND(activeQuotation?.discountAmount || 0)}
               </span>
             </div>
 
@@ -705,7 +704,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
             <div className="pt-2 border-t border-outline-variant/60 flex justify-between items-baseline">
               <span className="text-sm font-bold text-on-surface">TỔNG THANH TOÁN:</span>
               <span className="font-mono text-lg font-extrabold text-primary">
-                {formatVnd(activeQuotation?.grandTotal || 0)}
+                {formatVND(activeQuotation?.grandTotal || 0)}
               </span>
             </div>
           </div>
@@ -1016,23 +1015,27 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
       )}
 
       {/* MODAL LỊCH SỬ BÁO GIÁ */}
-      <QuotationHistoryModal
-        isOpen={isHistoryModalOpen}
-        onClose={() => setIsHistoryModalOpen(false)}
-        quotations={quotations}
-        activeQuotationId={activeQuotationId}
-        onSelectQuotation={(id) => setActiveQuotationId(id)}
-        workOrder={workOrder}
-      />
+      {isHistoryModalOpen && (
+        <QuotationHistoryModal
+          isOpen={isHistoryModalOpen}
+          onClose={() => setIsHistoryModalOpen(false)}
+          quotations={quotations}
+          activeQuotationId={activeQuotationId}
+          onSelectQuotation={(id) => setActiveQuotationId(id)}
+          workOrder={workOrder}
+        />
+      )}
 
       {/* MODAL BÀN GIAO & XUẤT TRẢ XE */}
-      <VehicleReturnModal
-        isOpen={isVehicleReturnModalOpen}
-        onClose={() => setIsVehicleReturnModalOpen(false)}
-        workOrder={workOrder}
-        refetchWO={refetchWO}
-        initialReason={parsedReject?.reason}
-      />
+      {isVehicleReturnModalOpen && (
+        <VehicleReturnModal
+          isOpen={isVehicleReturnModalOpen}
+          onClose={() => setIsVehicleReturnModalOpen(false)}
+          workOrder={workOrder}
+          refetchWO={refetchWO}
+          initialReason={parsedReject?.reason}
+        />
+      )}
     </div>
   );
 }
