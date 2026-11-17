@@ -1,4 +1,4 @@
-## I. TỔNG QUAN ĐỘ BAO PHỦ HIỆN TẠI CỦA CÁC BỘ TEST CASE (8 BỘ TEST CASE)
+## I. TỔNG QUAN ĐỘ BAO PHỦ HIỆN TẠI CỦA CÁC BỘ TEST CASE (9 BỘ TEST CASE)
 
 | STT | Bộ Test Case | Số lượng TC hiện tại | Đối tượng & Phân hệ bao phủ | Trạng thái |
 |:---:|---|:---:|---|:---:|
@@ -9,8 +9,9 @@
 | 5 | [TC_Manager_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Manager_Process.md) | **60 TCs** | Danh mục & SKU phụ tùng, Nhập/Xuất/Trả kho, Thẻ kho, Bảng giám sát xưởng, Báo cáo vận hành. | Cần thêm 2 TC nhập kho |
 | 6 | [TC_WorkOrder_SA_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_WorkOrder_SA_Process.md) | **64 TCs** | Khởi tạo lệnh, Check-in, Khám xe 2D, Lập việc, Báo giá, Thi công xưởng, KCS, Bàn giao xe. | Cần thêm 4 TC thi công |
 | 7 | [TC_Dashboard_Report_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Dashboard_Report_Process.md) | **50 TCs** | Bảng điều hành đa vai trò (Khách, Quầy, SA, Quản lý, Admin) & Báo cáo phân tích quản trị. | Hoàn thành tạo mới |
-| 8 | [TC_Billing_Invoice_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Billing_Invoice_Process.md) | **30 TCs** | Quản lý thu ngân, 4 tab hàng đợi, tạo hóa đơn nháp, chiết khấu quầy, thanh toán đa phương thức, nợ từng phần, in PDF. | **Mới hoàn thành** |
-| | **TỔNG CỘNG** | **377 TCs** | | |
+| 8 | [TC_Billing_Invoice_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Billing_Invoice_Process.md) | **30 TCs** | Quản lý thu ngân, 4 tab hàng đợi, tạo hóa đơn nháp, chiết khấu quầy, thanh toán đa phương thức, nợ từng phần, in PDF. | Hoàn thành tạo mới |
+| 9 | [TC_Warranty_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Warranty_Process.md) | **25 TCs** | Vòng đời bảo hành E2E: Tra cứu hạn, Đặt lịch online, Tiếp nhận quầy, Duyệt thiện chí, Báo giá 0đ, Hóa đơn 0đ, Cấp bảo hành mới. | **Mới hoàn thành** |
+| | **TỔNG CỘNG** | **402 TCs** | | |
 
 ---
 
@@ -31,16 +32,18 @@
 
 ---
 
-### 2. Phân hệ Quản lý Bảo hành sau sửa chữa (`Warranty Management Process` – UC-81 đến UC-87)
-* **Trạng thái:** ⏳ **ĐANG CHỜ THỰC HIỆN TIẾP THEO (Ưu tiên 2)**
-* **Thực tế trong source code & Prisma:** Cơ sở dữ liệu đã có đầy đủ trường nghiệp vụ bảo hành: `WorkOrderType: WARRANTY`, `is_warranty`, `warranty_months`, `warranty_mileage`, `child_warranty_orders`, `approved_warranty_claims`.
-* **Hiện trạng kiểm thử:** Hiện tại mới chỉ có 2 test case cho Quản lý duyệt bảo hành thiện chí trong `TC_Manager_Process.md` và báo cáo chi phí bảo hành.
-* **Các luồng nghiệp vụ bảo hành còn thiếu cần viết bộ test case chuyên biệt (`TC_Warranty_Process.md` khoảng 20 - 24 TCs):**
-  1. **Tra cứu thời hạn bảo hành (`UC-81`):** Khách hàng hoặc Lễ tân tra cứu phụ tùng/hạng mục đã thay thế ở các lần sửa chữa trước xem còn trong thời hạn bảo hành hay không (theo số tháng hoặc theo số km ODO).
-  2. **Đặt lịch hẹn bảo hành trực tuyến (`UC-82`):** Khách hàng chủ động đặt lịch hẹn bảo hành xe dựa trên các hạng mục còn hạn bảo hành hợp lệ.
-  3. **Tiếp nhận xe bảo hành tại quầy (`UC-83`):** Lễ tân tiếp nhận xe vào xưởng với lý do bảo hành, đối chiếu ODO và liên kết với mã Phiếu công việc gốc trước đó.
-  4. **Lập Work Order loại bảo hành (`UC-84`):** Cố vấn dịch vụ mở phiếu sửa chữa bảo hành với đơn giá phụ tùng và công thợ tính **0 đồng** cho khách hàng theo đúng chính sách bảo hành.
-  5. **Xử lý hóa đơn bảo hành 0đ & Financial Clearance (`UC-85`):** Xuất hóa đơn dịch vụ bảo hành với số tiền khách cần trả là **0 đồng**; hệ thống tự động cấp Financial Clearance cho phép xe xuất xưởng.
+### 2. Phân hệ Quản lý Bảo hành sau sửa chữa (`TC_Warranty_Process.md`)
+* **Trạng thái:** ✅ **ĐÃ HOÀN THÀNH XÂY DỰNG TOÀN DIỆN FULL FLOW E2E (25 TEST CASES)**
+* **File tài liệu:** [TC_Warranty_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Warranty_Process.md)
+* **Các nghiệp vụ đã bao phủ 100% full flow:**
+  1. **Tra cứu hạn bảo hành (`UC-81`):** Đối chiếu số km ODO và số ngày sử dụng; đánh dấu xanh *"Còn bảo hành"* (kèm số ngày/km còn lại) hoặc xám *"Hết hạn bảo hành"*; tra cứu theo Biển số xe hoặc số VIN.
+  2. **Đặt lịch hẹn bảo hành online (`UC-82`):** Tích chọn hạng mục còn hạn, nhập mô tả triệu chứng, đính kèm ảnh lỗi; chặn đặt hẹn khi chọn mục đã hết hạn; chặn bỏ trống mô tả sự cố.
+  3. **Tiếp nhận xe bảo hành tại quầy (`UC-83`):** Tiếp nhận theo hẹn hoặc đột xuất Walk-in; đối chiếu điều kiện bảo hành; chặn ODO tua lùi nhỏ hơn ODO xuất xưởng phiếu gốc; chuyển luồng đề xuất thiện chí khi quá hạn nhẹ.
+  4. **Thẩm định & Phê duyệt Bảo hành thiện chí (`UC-86`):** Quản lý duyệt 3 phương án: Hỗ trợ 100%, Miễn phí tiền công, Giảm trừ %; từ chối kèm lý do; bắt buộc nhập lý do giải trình.
+  5. **Lập Phiếu công việc & Báo giá 0 đồng (`UC-84`):** Khởi tạo phiếu việc bảo hành liên kết phiếu cha; áp dụng đơn giá 0đ cho công và phụ tùng bảo hành; hỗ trợ phiếu việc kết hợp tính phí + bảo hành; cảnh báo thiếu phụ tùng tồn kho.
+  6. **Thi công, Nghiệm thu KCS & Hóa đơn 0 đồng (`UC-85`):** KCS nghiệm thu đạt 100%; phát hành hóa đơn 0đ $\to$ Tự động chuyển PAID và tự động cấp xác nhận tài chính (`Financial Clearance`) mở cổng xuất xưởng không cần thu tiền mặt.
+  7. **Bàn giao xe & Kích hoạt bảo hành mới (`UC-81`):** Bàn giao xe xuất xưởng; hệ thống tự động kích hoạt chu kỳ bảo hành độc lập mới cho linh kiện thay thế trong Sổ bảo dưỡng điện tử.
+  8. **Báo cáo quản trị chi phí vốn bảo hành (`UC-87`):** Báo cáo chi phí vốn bảo hành nội bộ theo Moving WAC; thống kê tỷ lệ lỗi lặp lại; phân quyền bảo mật báo cáo.
 
 ---
 
@@ -70,7 +73,7 @@
 ### 4. Bổ sung vào [TC_Appointment_Intake_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Appointment_Intake_Process.md)
 - **Bổ sung 2 luồng:**
   1. **Khách vãng lai xem bảng giá trang chủ & Đặt hẹn nhanh (`UC-01`):** Khách chưa đăng nhập bấm Đặt hẹn ngay từ trang chủ $\to$ chuyển hướng đăng nhập rồi giữ lại thông tin dịch vụ đã chọn.
-  2. **Ghi nhận biên bản bàn giao tài sản khi Tiếp nhận:** Ghi nhận đồ đạc có giá trị và mức xăng ban đầu vào biên bản bàn giao tạm thời trước khi chuyển giao cho SA.
+  2. **Biên bản bàn giao tài sản khi Tiếp nhận:** Ghi nhận đồ đạc có giá trị và mức xăng ban đầu vào biên bản bàn giao tạm thời trước khi chuyển giao cho SA.
 
 ### 5. Bổ sung vào [TC_Manager_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Manager_Process.md)
 - **Bổ sung 2 luồng:**
@@ -85,11 +88,11 @@
 [ĐÃ HOÀN THÀNH - Ưu tiên 1] 
 └── TC_Billing_Invoice_Process.md (30 TCs cho phân hệ Thu ngân, Hóa đơn & Thanh toán)
 
-[Ưu tiên 2 - Tiếp theo] 
-└── Viết bộ test case mới: TC_Warranty_Process.md (khoảng 20-24 TCs cho phân hệ Bảo hành UC-81 -> UC-85)
+[ĐÃ HOÀN THÀNH - Ưu tiên 2] 
+└── TC_Warranty_Process.md (25 TCs cho phân hệ Quản lý Bảo hành full flow E2E)
 
-[Ưu tiên 3] 
-└── Làm sạch TC_Auth_Profile_Process.md (loại bỏ 4 test case API/Security, thay bằng Đổi mật khẩu chủ động, Remember Me, Ẩn/Hiện mật khẩu)
+[Ưu tiên 3 - Tiếp theo] 
+└── Làm sạch TC_Auth_Profile_Process.md (loại bỏ 4 test case API/Security, thay bằng Đổi mật khẩu chủ động, Remember Me, Ẩn/Hiện mật khẩu, Brute-force lockout)
 
 [Ưu tiên 4] 
 └── Bổ sung các kịch bản còn thiếu vào TC_WorkOrder_SA_Process.md, TC_Customer_Profile_Process.md, TC_Appointment_Intake_Process.md, TC_Manager_Process.md
