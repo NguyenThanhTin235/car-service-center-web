@@ -3,9 +3,9 @@
 > **Dự án:** Car Service Center Management Platform  
 > **Nhánh triển khai:** `feat/deploy-aws` (tách trực tiếp từ **`main` @ `8eefc3e` — Release `v1.0.0`**)  
 > **Phiên bản triển khai đầu tiên:** **Release `v1.0.0`** trên nhánh `main` (chỉ bổ sung hạ tầng Deploy/CI-CD/AWS SDK, **không merge** các tính năng chưa release từ `develop`).  
-> **Giải pháp hạ tầng đã chốt:** **Gói 1** — EC2 (`t3.small`/`t3.medium`) + Docker Compose + Nginx SSL + Cloudflare DNS + RDS MySQL (`db.t4g.micro`) + Amazon ECR + SSM Parameter Store + CloudWatch/SNS + AWS SDK (`S3`, `SES`) + AWS CDK (`infra/`).  
+> **Giải pháp hạ tầng đã chốt:** **Gói 1** — EC2 (`t3.small`/`t3.medium`) + Docker Compose + Nginx SSL + **Amazon Route 53 DNS** + RDS MySQL (`db.t4g.micro`) + Amazon ECR + SSM Parameter Store + CloudWatch/SNS + AWS SDK (`S3`, `SES`) + AWS CDK (`infra/`).  
 > **Sơ đồ kiến trúc tham chiếu:**
-> - [aws-architecture-v1.drawio](diagrams/aws-architecture-v1.drawio)
+> - [aws-architecture-v2.drawio](diagrams/aws-architecture-v2.drawio) *(Cập nhật dùng Amazon Route 53)*
 > - [cicd-pipeline-v1.drawio](diagrams/cicd-pipeline-v1.drawio)
 
 ---
@@ -31,34 +31,29 @@ Qua kiểm tra trực tiếp mã nguồn trên nhánh `feat/deploy-aws` (mốc R
 
 ## Phần B: Kế Hoạch Triển Khai Theo 7 Phases (`v1.0.0` First)
 
-### Phase 0: Khóa Baseline `v1.0.0` & Chuẩn bị Tài nguyên Ngoài (Prerequisites)
-**Mục tiêu:** Giữ nguyên phạm vi nghiệp vụ bản Release `v1.0.0` trên `feat/deploy-aws` (từ `main` `8eefc3e`) và chuẩn bị tài khoản nền tảng.
+### Phase 0: Khóa Baseline `v1.0.0` & Chuẩn bị Tài khoản AWS (`✅ DONE`)
+**Mục tiêu:** Giữ nguyên phạm vi nghiệp vụ bản Release `v1.0.0` trên `feat/deploy-aws` (từ `main` `8eefc3e`) và chuẩn bị tài khoản AWS.
 - **Công việc:**
-  1. Xác nhận `feat/deploy-aws` đứng đúng trên base `main` (`8eefc3e`), **không merge `develop`** vào nhánh này để đảm bảo bản deploy đầu tiên sạch sẽ là `v1.0.0`.
-  2. Kiểm tra `src/backend/prisma/schema.prisma` và migration `20260909021150_init` (nếu có sai lệch schema do trước đây dùng `db push`, tạo 1 baseline/sync migration sạch cho `v1.0.0`).
-  3. Chuẩn bị tài nguyên ngoài code:
-     - AWS Account (region `ap-southeast-1`), bật IAM / Billing Alert (\$10, \$25, \$40).
-     - Tên miền riêng trỏ DNS qua Cloudflare (chuẩn bị các subdomain: `staging-api.<domain>`, `staging.<domain>`, `staging-admin.<domain>` cho Staging và `api.<domain>`, `<domain>`, `admin.<domain>` cho Production `v1.0.0`).
-     - Chuẩn bị bộ biến môi trường `v1.0.0`: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `GMAIL_*`, `CLOUDINARY_*`, `GEMINI_API_KEYS`.
-- **Tiêu chí hoàn thành (Gate):** `cd src/backend && npm run build && npm test` và `cd src/frontend && npm run build` xanh trên nền `v1.0.0`.
+  1. [x] Xác nhận `feat/deploy-aws` đứng đúng trên base `main` (`8eefc3e`), **không merge `develop`** vào nhánh này để đảm bảo bản deploy đầu tiên sạch sẽ là `v1.0.0`.
+  2. [x] Đồng bộ `prisma/migrations/20260909021150_init/migration.sql` khớp hoàn toàn với `schema.prisma` của `v1.0.0` bằng `prisma migrate diff`.
+  3. [x] Chuẩn bị tài khoản AWS (`ap-southeast-1`), bật AWS Budgets Alert, tạo IAM `car-service-deployer`, cài đặt & xác thực AWS CLI v2 (`aws sts get-caller-identity`). *(Lưu ý bảo mật: xoay Access Key mới & bật MFA trước khi chạy Phase 4; phần Tên miền & Route 53 DNS được chuyển sang **Phase 4**).*
+- **Tiêu chí hoàn thành (Gate):** ✅ `prisma validate`, `npm run build`, `npm test` và `aws sts get-caller-identity` thành công.
 
 ---
 
-### Phase 1: Chuẩn hóa Ứng dụng `v1.0.0` cho Production & Quality Gates
+### Phase 1: Chuẩn hóa Ứng dụng `v1.0.0` cho Production & Quality Gates (`✅ DONE`)
 **Mục tiêu:** Đáp ứng đầy đủ Chặng 1–3 (Build, Lint, Test) và yêu cầu Proxy / Health Check / Log tập trung / CORS production.
 - **Backend (`src/backend`):**
-  1. Bật `app.set('trust proxy', true)` trong `src/backend/src/app.ts` để nhận đúng IP/protocol từ Nginx HTTPS.
-  2. Tạo `GET /health` (và giữ `GET /`): kiểm tra `await prisma.$queryRaw\`SELECT 1\`` và `redisClient.ping()`, trả JSON `{ status: 'ok', version: '1.0.0', db: 'up', redis: 'up', uptime }` với HTTP `200` (hoặc `503` khi DB lỗi).
-  3. Cập nhật `CORS` trong `src/backend/src/app.ts` hỗ trợ `process.env.CORS_ORIGINS` (danh sách domain cách nhau bởi dấu phẩy) bên cạnh `FRONTEND_URL`.
-  4. Tạo `src/backend/src/loggers/logger.ts` bằng `winston` (xuất JSON ra `stdout` khi `NODE_ENV=production`, tích hợp stream với `morgan` bỏ qua route `/health` để giảm chi phí CloudWatch Logs).
-  5. Bổ sung `src/backend/eslint.config.mjs` và script `"lint": "eslint src"` trong `src/backend/package.json`.
-  6. Viết unit test cho `/health` endpoint.
+  1. [x] Bật `app.set('trust proxy', true)` trong `src/backend/src/app.ts` để nhận đúng IP/protocol từ Nginx HTTPS.
+  2. [x] Tạo `GET /health` (`src/backend/src/services/health.service.ts`): kiểm tra `prisma.$queryRaw\`SELECT 1\`` và Redis `PING`, trả chuẩn API envelope (`200` ok/degraded, `503` unhealthy).
+  3. [x] Cập nhật `CORS` trong `src/backend/src/app.ts` hỗ trợ `process.env.CORS_ORIGINS` + `INTERNAL_FRONTEND_URL` + `FRONTEND_URL`.
+  4. [x] Tạo `src/backend/src/loggers/logger.ts` bằng `winston` (JSON stdout trên `NODE_ENV=production`, tích hợp Morgan skip `/health`).
+  5. [x] Bổ sung `src/backend/eslint.config.mjs`, cài `@eslint/js` + `typescript-eslint`, thêm `"lint"` & `"typecheck"` vào `src/backend/package.json`.
+  6. [x] Thêm unit test `src/backend/tests/unit/health.spec.ts`.
 - **Frontend (`src/frontend`):**
-  1. Cập nhật `next.config.ts` của `customer-web` và `internal-web` thêm `output: 'standalone'`.
-  2. Đảm bảo `npm run lint` và `npx tsc --noEmit` chạy sạch trên cả 2 workspace (`customer-web` & `internal-web`), bổ sung minimal smoke/unit test gate nếu chưa có.
-- **Tiêu chí hoàn thành (Gate):**
-  - `cd src/backend && npm run lint && npx tsc --noEmit && npm run build && npm test` → Exit code `0`.
-  - `cd src/frontend && npm run build` và `lint` cả 2 apps → Exit code `0`.
+  1. [x] Cập nhật `next.config.ts` của `customer-web` và `internal-web` thêm `output: 'standalone'`.
+  2. [x] Sửa lỗi `rules-of-hooks` trong `register/page.tsx`, cấu hình `eslint.config.mjs`, thêm `"lint"` ở `src/frontend/package.json`.
+- **Tiêu chí hoàn thành (Gate):** ✅ Backend (`prisma validate`, `typecheck`, `build`, `lint` 0 errors, `vitest` 4/4 files 19/19 tests) & Frontend (`lint` 0 errors, `next build` standalone, `tsc --noEmit`) đều Exit code `0`.
 
 ---
 
@@ -95,19 +90,23 @@ Qua kiểm tra trực tiếp mã nguồn trên nhánh `feat/deploy-aws` (mốc R
 
 ---
 
-### Phase 4: Xây dựng Hạ tầng AWS bằng AWS CDK (`infra/`)
-**Mục tiêu:** Toàn bộ hạ tầng Gói 1 được quản lý bằng code (IaC), có thể kiểm tra bảo mật & ước tính chi phí trước khi `cdk deploy`.
+### Phase 4: Xây dựng Hạ tầng AWS bằng AWS CDK (`infra/`) & Route 53 DNS
+**Mục tiêu:** Toàn bộ hạ tầng Gói 1 (bao gồm DNS Route 53) được quản lý bằng code (IaC), có thể kiểm tra bảo mật & ước tính chi phí trước khi `cdk deploy`.
 - **Công việc:**
-  1. Khởi tạo AWS CDK TypeScript trong `infra/` (`cdk init app --language typescript`).
-  2. Thiết kế & triển khai các CDK Stacks:
+  1. **Chuẩn bị Tên miền & Route 53 Hosted Zone (thủ công trước khi `cdk deploy`):**
+     - Mua tên miền trực tiếp trên **Route 53 Registered Domains** (hoặc tạo **Public Hosted Zone** ~\$0.50/tháng rồi trỏ 4 Nameserver về từ nhà đăng ký tên miền ngoài).
+     - Ghi nhận `Domain Name` và `Hosted Zone ID` truyền vào context/env của AWS CDK (cũng chuẩn bị bộ giá trị secrets `v1.0.0` để nạp SSM ở Phase 6).
+  2. Khởi tạo AWS CDK TypeScript trong `infra/` (`cdk init app --language typescript`).
+  3. Thiết kế & triển khai các CDK Stacks:
      - **`NetworkStack`**: VPC `10.0.0.0/16` (Public Subnets + Private Isolated Subnets, **0 NAT Gateway**), Security Groups (EC2 SG chỉ mở `80/443`; RDS SG chỉ mở `3306` từ EC2 SG).
      - **`DataStack`**: RDS MySQL `db.t4g.micro` (20GB gp3, backup retention 7 ngày), S3 Bucket (Block Public Access, Encryption S3-managed, Lifecycle rule cho backups).
      - **`RegistryAuthStack`**: 3 ECR Repositories (`car-service/backend`, `car-service/customer-web`, `car-service/internal-web`) với Lifecycle Policy giữ tối đa 10 images; GitHub OIDC Identity Provider + IAM Role cho GitHub Actions (chỉ được push ECR & gửi SSM Run Command tới EC2 có tag dự án).
      - **`ComputeStack`**: EC2 `t3.small`/`t3.medium` (Elastic IP, IAM Instance Profile quyền SSM + ECR Pull + S3 + SES + CloudWatch Agent), UserData tự động cài Docker, Compose plugin, AWS CLI, CloudWatch Agent, Nginx & Certbot.
+     - **`DnsStack` (Route 53):** Dùng Hosted Zone ID đã tạo để tự động tạo các bản ghi `A` trỏ về Elastic IP của EC2 (`staging-api`, `staging`, `staging-admin`, `api`, `@`, `admin`).
      - **`ObservabilityStack`**: CloudWatch Log Groups (`/car-service/staging/*`, `/car-service/prod/*`, retention 14 ngày), CloudWatch Alarms (`EC2 CPU > 80%`, `StatusCheckFailed`, `RDS CPU > 80%`, `RDS FreeStorage < 2GB`), Amazon SNS Topic + Email subscription.
-  3. Chạy kiểm tra tuân thủ skill `security-scan` (`npx cdk synth` + kiểm tra IAM least-privilege / không lộ secret).
-  4. Chạy `npx cdk bootstrap` và `npx cdk deploy --all` lên AWS `ap-southeast-1`.
-- **Tiêu chí hoàn thành (Gate):** `npx tsc --noEmit && npx cdk synth` không lỗi; các tài nguyên AWS (EC2, RDS, ECR, S3, SNS, OIDC Role) hoạt động trên AWS Console.
+  4. Chạy kiểm tra tuân thủ skill `security-scan` (`npx cdk synth` + kiểm tra IAM least-privilege / không lộ secret).
+  5. Chạy `npx cdk bootstrap` và `npx cdk deploy --all` lên AWS `ap-southeast-1`.
+- **Tiêu chí hoàn thành (Gate):** `npx tsc --noEmit && npx cdk synth` không lỗi; các tài nguyên AWS (EC2, RDS, ECR, S3, Route 53 A-records, SNS, OIDC Role) hoạt động trên AWS Console.
 
 ---
 
@@ -135,7 +134,7 @@ Qua kiểm tra trực tiếp mã nguồn trên nhánh `feat/deploy-aws` (mốc R
 **Mục tiêu:** Đưa bản **Release `v1.0.0`** lên Production/Staging ổn định đầu tiên, sau đó mở luồng auto-deploy cho các đợt cập nhật tiếp theo để đạt 100% KPI.
 - **Công việc:**
   1. Nạp bộ biến secret của `v1.0.0` vào SSM Parameter Store (`/car-service/staging/*`, `/car-service/prod/*`).
-  2. Trỏ DNS Cloudflare về Elastic IP của EC2, chạy Certbot cấp SSL HTTPS cho các subdomain.
+  2. Trỏ bản ghi `A` trên **Amazon Route 53** (có thể quản lý trực tiếp trong CDK) về Elastic IP của EC2, chạy Certbot cấp SSL HTTPS cho các subdomain.
   3. **Cutover Đợt 1 (Release `v1.0.0`):** Merge `feat/deploy-aws` vào `main` và gắn tag `v1.0.0` → Pipeline 6 chặng tự động deploy phiên bản **v1.0.0** lên Production (và đồng bộ cấu hình CI/CD về `develop` để không mất pipeline ở các PR sau).
   4. **Diễn tập Rollback:** Deploy thử bản test (hoặc dùng `rollback.yml`) quay lại tag trước đó và kiểm tra log khôi phục thành công.
   5. **Diễn tập Giám sát & Cảnh báo:** Kiểm tra log từ Winston + Nginx hiển thị trên CloudWatch Logs; kích hoạt thử 1 CloudWatch Alarm (`aws cloudwatch set-alarm-state`) để xác nhận nhận thông báo từ SNS.
@@ -146,12 +145,12 @@ Qua kiểm tra trực tiếp mã nguồn trên nhánh `feat/deploy-aws` (mốc R
 
 ## Phần C: Bảng Tổng Hợp Checkpoint Kiểm Chứng Theo Phase
 
-| Phase | Đầu ra chính (Artifacts / Code) | Lệnh / Bằng chứng kiểm chứng |
-| :---: | :--- | :--- |
-| **Phase 0** | Baseline `v1.0.0` trên `feat/deploy-aws` (từ `main` `8eefc3e`, **không merge `develop`**) | `npm run build && npm test` (Exit 0) |
-| **Phase 1** | `trust proxy`, `/health`, CORS multi-origin, Winston JSON, `eslint`, `next standalone` | `npm run lint && npx tsc --noEmit && npm test` (Backend + FE) |
-| **Phase 2** | `aws-s3.service.ts`, `aws-ses.service.ts` + unit tests | `npm test` (Vitest mock AWS SDK pass) |
-| **Phase 3** | 3x `Dockerfile`, `nginx.conf`, `docker-compose*.yml` | `docker compose build && curl localhost:5000/health` (200 OK) |
-| **Phase 4** | `infra/` (AWS CDK TypeScript Stacks) | `npx cdk synth` + `cdk deploy` thành công trên `ap-southeast-1` |
-| **Phase 5** | `.github/workflows/ci.yml`, `cd.yml`, `rollback.yml`, `deploy.sh` | Pipeline 6 chặng xanh trên GitHub Actions, tổng thời gian ≤ 15 phút |
-| **Phase 6** | Release `v1.0.0` live HTTPS + CloudWatch Alarms + Rollback drill + ≥ 10 deploys | Tag `v1.0.0` live, Email SNS Alarm, log rollback, ≥ 10 deploys & ≥ 90% green |
+| Phase | Trạng thái | Đầu ra chính (Artifacts / Code) | Lệnh / Bằng chứng kiểm chứng |
+| :---: | :---: | :--- | :--- |
+| **Phase 0** | ✅ DONE | Baseline `v1.0.0` + `init` migration sync + AWS CLI (`145443242997`) | `prisma validate`, `aws sts get-caller-identity` (Exit 0) |
+| **Phase 1** | ✅ DONE | `trust proxy`, `/health`, CORS multi-origin, Winston JSON, `eslint`, `next standalone` | Backend (`lint` 0 err, 19/19 tests) & FE (`lint` 0 err, `next build` pass) |
+| **Phase 2** | ⏳ NEXT | `aws-s3.service.ts`, `aws-ses.service.ts` + unit tests | `npm test` (Vitest mock AWS SDK pass) |
+| **Phase 3** | ⏳ TODO | 3x `Dockerfile`, `nginx.conf`, `docker-compose*.yml` | `docker compose build && curl localhost:5000/health` (200 OK) |
+| **Phase 4** | ⏳ TODO | Route 53 Hosted Zone + `infra/` (AWS CDK TypeScript Stacks + `DnsStack`) | `npx cdk synth` + `cdk deploy` thành công trên `ap-southeast-1` |
+| **Phase 5** | ⏳ TODO | `.github/workflows/ci.yml`, `cd.yml`, `rollback.yml`, `deploy.sh` | Pipeline 6 chặng xanh trên GitHub Actions, tổng thời gian ≤ 15 phút |
+| **Phase 6** | ⏳ TODO | Release `v1.0.0` live HTTPS + CloudWatch Alarms + Rollback drill + ≥ 10 deploys | Tag `v1.0.0` live, Email SNS Alarm, log rollback, ≥ 10 deploys & ≥ 90% green |
