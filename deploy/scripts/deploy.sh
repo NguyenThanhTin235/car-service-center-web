@@ -97,7 +97,7 @@ echo "==> [${ENV_NAME}] Pulling images for tag ${IMAGE_TAG}..."
 docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" pull
 
 echo "==> [${ENV_NAME}] Running Prisma database migrations..."
-docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" run --rm --no-deps backend npx prisma migrate deploy
+docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" run --rm --no-deps backend node ./node_modules/prisma/build/index.js migrate deploy
 
 PROFILE_ARGS=()
 if [[ "${ENV_NAME}" == "prod" ]]; then

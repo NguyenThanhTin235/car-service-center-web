@@ -31,7 +31,7 @@ services:
       NODE_ENV: production
       PORT: 5000
       REDIS_URL: redis://redis:6379
-    command: ["sh", "-c", "npx prisma migrate deploy && node dist/src/server.js"]
+    command: ["sh", "-c", "node ./node_modules/prisma/build/index.js migrate deploy && node dist/src/server.js"]
     depends_on:
       redis:
         condition: service_healthy
