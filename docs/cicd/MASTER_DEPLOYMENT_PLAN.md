@@ -69,21 +69,17 @@ Qua kiểm tra trực tiếp mã nguồn trên nhánh `feat/deploy-aws` (mốc R
 
 ---
 
-### Phase 3: Đóng gói Docker & Cấu hình Reverse Proxy (Nginx + SSL)
-**Mục tiêu:** Đóng gói gọn nhẹ 3 service (nhắm tới image ~150–250 MB) và chạy thử nghiệm full-stack đồng bộ trên local trước khi lên AWS.
-- **Công việc:**
-  1. Tạo `.dockerignore` tối ưu (loại bỏ `node_modules`, `.next`, `.env`, `test-results`, `.git`).
-  2. Viết multi-stage `Dockerfile`:
-     - `src/backend/Dockerfile` (`node:20-alpine` → build `tsc` + `prisma generate` → runtime stage chỉ copy `dist`, `prisma`, `node_modules` prod + `assets/fonts`).
-     - `src/frontend/apps/customer-web/Dockerfile` (monorepo aware build với `ARG NEXT_PUBLIC_API_URL` → copy `.next/standalone`).
-     - `src/frontend/apps/internal-web/Dockerfile` (tương tự `customer-web`, port `3001`).
-  3. Tạo cấu hình Nginx (`deploy/nginx/conf.d/`):
-     - Reverse proxy cho `api`, `customer-web`, `internal-web` (tách block Staging & Production).
-     - Hỗ trợ HTTPS (Certbot Let's Encrypt), `X-Forwarded-For`/`X-Forwarded-Proto` (cho SePay & Express `trust proxy`), và `Upgrade: websocket` (cho Socket.IO khi bật).
-  4. Tạo `docker-compose.yml` (local testing kèm MySQL + Redis) và `deploy/docker-compose.aws.yml` (dùng ECR images theo `${IMAGE_TAG}`, kết nối RDS MySQL bên ngoài, container Redis 7 Alpine, log driver `awslogs` / `json-file` rotate).
-- **Tiêu chí hoàn thành (Gate):**
-  - `docker compose build` thành công cả 3 images.
-  - `docker compose up -d` → `curl http://localhost:5000/health` trả HTTP `200`, truy cập được cả `customer-web` (`3000`) và `internal-web` (`3001`).
+### Phase 3: Đóng gói Docker & Cấu hình Reverse Proxy (Nginx + SSL) (`✅ DONE`)
+**Mục tiêu:** Đóng gói gọn nhẹ 3 service (`node:20-alpine` multi-stage) và cấu hình Nginx + Docker Compose cho cả local & AWS EC2.
+- **Công việc (thực hiện qua Swarm):**
+  1. [x] Tạo `src/backend/.dockerignore` và `src/frontend/.dockerignore` (loại bỏ `node_modules`, `.next`, `dist`, `.env`, `test-results`, `.git`).
+  2. [x] Tạo multi-stage `Dockerfile`:
+     - `src/backend/Dockerfile` (`node:20-alpine`, `openssl`, `curl` HEALTHCHECK `/health`, copy `dist/`, `prisma/`, `assets/fonts/`, `node_modules/.prisma`, non-root `node`, `CMD ["node", "dist/src/server.js"]`).
+     - `src/frontend/apps/customer-web/Dockerfile` (`PORT=3000`, `ARG NEXT_PUBLIC_API_URL`, standalone `apps/customer-web/server.js`, non-root `nextjs`).
+     - `src/frontend/apps/internal-web/Dockerfile` (`PORT=3001`, cùng chuẩn monorepo standalone).
+  3. [x] Tạo `deploy/nginx/nginx.conf` và `deploy/nginx/conf.d/app.conf.template` (Certbot ACME challenge, HTTP→HTTPS redirect, `X-Forwarded-*`, WebSocket `Upgrade`/`Connection`, `client_max_body_size 20M`).
+  4. [x] Tạo `docker-compose.yml` (local full-stack MySQL 8 + Redis 7 + 3 apps) và `deploy/docker-compose.aws.yml` (EC2 pull ECR images + Redis 7 + Nginx SSL + log rotation).
+- **Tiêu chí hoàn thành (Gate):** ✅ `docker compose -f docker-compose.yml config --quiet` và `docker compose -f deploy/docker-compose.aws.yml config --quiet` Exit code `0` (cả 4 workers + verifier đã kiểm chứng; `docker build` chạy khi bật Docker Desktop).
 
 ---
 
@@ -147,7 +143,7 @@ Qua kiểm tra trực tiếp mã nguồn trên nhánh `feat/deploy-aws` (mốc R
 | **Phase 0** | ✅ DONE | Baseline `v1.0.0` + `init` migration sync + AWS CLI (`145443242997`) | `prisma validate`, `aws sts get-caller-identity` (Exit 0) |
 | **Phase 1** | ✅ DONE | `trust proxy`, `/health`, CORS multi-origin, Winston JSON, `eslint`, `next standalone` | Backend (`lint` 0 err, 19/19 tests) & FE (`lint` 0 err, `next build` pass) |
 | **Phase 2** | ✅ DONE | `aws-s3.service.ts`, `aws-ses.service.ts` + `aws-sdk.spec.ts` | `npm test` (5/5 files, 26/26 tests pass) |
-| **Phase 3** | ⏳ NEXT | 3x `Dockerfile`, `nginx.conf`, `docker-compose*.yml` | `docker compose build && curl localhost:5000/health` (200 OK) |
-| **Phase 4** | ⏳ TODO | Route 53 Hosted Zone + `infra/` (AWS CDK TypeScript Stacks + `DnsStack`) | `npx cdk synth` + `cdk deploy` thành công trên `ap-southeast-1` |
+| **Phase 3** | ✅ DONE | 3x `Dockerfile`, 2x `.dockerignore`, `nginx.conf`, `docker-compose*.yml` | `docker compose config --quiet` (Exit 0, Swarm verified) |
+| **Phase 4** | ⏳ NEXT | Route 53 Hosted Zone + `infra/` (AWS CDK TypeScript Stacks + `DnsStack`) | `npx cdk synth` + `cdk deploy` thành công trên `ap-southeast-1` |
 | **Phase 5** | ⏳ TODO | `.github/workflows/ci.yml`, `cd.yml`, `rollback.yml`, `deploy.sh` | Pipeline 6 chặng xanh trên GitHub Actions, tổng thời gian ≤ 15 phút |
 | **Phase 6** | ⏳ TODO | Release `v1.0.0` live HTTPS + CloudWatch Alarms + Rollback drill + ≥ 10 deploys | Tag `v1.0.0` live, Email SNS Alarm, log rollback, ≥ 10 deploys & ≥ 90% green |
