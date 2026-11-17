@@ -207,7 +207,7 @@ jobs:
         run: npm audit --audit-level=high
 
       - name: Trivy Filesystem Vulnerability Scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: "fs"
           scan-ref: "."
@@ -293,7 +293,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=internal-web-${{ needs.prepare.outputs.env_name }}
 
       - name: Trivy Image Scan (Backend)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: "${{ steps.login-ecr.outputs.registry }}/car-service/backend:${{ needs.prepare.outputs.image_tag }}"
           format: "table"
@@ -302,7 +302,7 @@ jobs:
           severity: "CRITICAL"
 
       - name: Trivy Image Scan (Customer Web)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: "${{ steps.login-ecr.outputs.registry }}/car-service/customer-web:${{ needs.prepare.outputs.image_tag }}"
           format: "table"
@@ -311,7 +311,7 @@ jobs:
           severity: "CRITICAL"
 
       - name: Trivy Image Scan (Internal Web)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: "${{ steps.login-ecr.outputs.registry }}/car-service/internal-web:${{ needs.prepare.outputs.image_tag }}"
           format: "table"
