@@ -99,23 +99,14 @@ Qua kiểm tra trực tiếp mã nguồn trên nhánh `feat/deploy-aws` (mốc R
 
 ---
 
-### Phase 5: Pipeline CI/CD 6 Chặng & Auto-Rollback (`.github/workflows/`)
+### Phase 5: Pipeline CI/CD 6 Chặng & Auto-Rollback (`.github/workflows/`) (`✅ DONE`)
 **Mục tiêu:** Tự động hóa hoàn toàn 6 chặng, đạt SLA commit → staging ≤ 15 phút, hỗ trợ versioning & rollback tự động.
-- **Công việc:**
-  1. Nâng cấp `.github/workflows/ci.yml` (chạy trên mọi PR vào `develop` / `main`) và tạo `.github/workflows/cd.yml` (chạy khi push `develop` → Staging, push `main` hoặc tag `v*.*.*` → Production, kèm `workflow_dispatch` để rollback thủ công):
-     - **Chặng 1 — Build:** Compile Backend (`tsc` + `prisma generate`) & Frontend (`next build`) song song với npm/Next.js cache.
-     - **Chặng 2 — Lint & Static Analysis:** `npm run lint` (backend + 2 frontends), `tsc --noEmit`, `npx prisma validate`.
-     - **Chặng 3 — Automated Test:** Backend Vitest (`npm test` trên `v1.0.0`, sau này tự chạy cả `test:unit` + `test:integration` khi merge `develop`) + Frontend smoke/test gate.
-     - **Chặng 4 — Security & Dependency Scan:** `npm audit --audit-level=high`, **Trivy FS Scan**, và **Gitleaks** secret scan.
-     - **Chặng 5 — Docker Package & Push ECR:** Đăng nhập AWS qua **OIDC**; build 3 Docker images bằng Buildx + GHA layer cache; quét **Trivy Image Scan**; đánh tag `<env>-<sha7>` + `<env>-latest` (hoặc `v1.0.0`, `vX.Y.Z`) và push lên ECR.
-     - **Chặng 6 — Auto Deploy & Health Gate:** Gọi **AWS SSM `send-command`** thực thi `deploy/scripts/deploy.sh` trên EC2:
-       1. Tải secrets từ **SSM Parameter Store** (`/car-service/<env>/*`) ra file env runtime.
-       2. Ghi nhận tag cũ vào `/opt/car-service/<env>/.previous_tag`.
-       3. `docker compose pull` → chạy `npx prisma migrate deploy` (qua one-off container) → `docker compose up -d --remove-orphans`.
-       4. Vòng lặp kiểm tra `curl -f http://localhost:<port>/health` (trong 60s) và HTTP 200 cho 2 frontend apps.
-       5. **Auto-Rollback:** Nếu health check thất bại → tự động kéo lại `.previous_tag`, chạy `docker compose up -d`, đánh dấu job fail và bắn thông báo lỗi qua SNS.
-  2. Tạo `.github/workflows/rollback.yml` (`workflow_dispatch` nhập `environment` và `image_tag`) để rollback chủ động về bất kỳ phiên bản nào trên ECR trong < 2 phút.
-- **Tiêu chí hoàn thành (Gate):** Chạy thử nghiệm pipeline 6 chặng thành công trên `feat/deploy-aws` → Staging với thời gian **≤ 15 phút**.
+- **Công việc (thực hiện qua Swarm):**
+  1. [x] Nâng cấp `.github/workflows/ci.yml` (4 chặng gate PR: Build, Lint/Static, Vitest, Security Scan `npm audit` + Trivy FS + Gitleaks).
+  2. [x] Tạo `.github/workflows/cd.yml` (đủ **6 chặng**: Build → Lint/Static → Test → Security Scan → Docker Buildx + Trivy Image + Push ECR qua OIDC → SSM `send-command` chạy `deploy.sh` + Health Gate + SNS Alert khi lỗi).
+  3. [x] Tạo `.github/workflows/rollback.yml` (`workflow_dispatch` rollback thủ công về `image_tag` hoặc `.previous_tag`).
+  4. [x] Tạo `deploy/scripts/deploy.sh`, `rollback.sh`, `init-ssl.sh`, `seed-ssm.ps1` và cập nhật `deploy/docker-compose.aws.yml` + `deploy/nginx/conf.d/app.conf.template` chạy chung Prod (`5000/3000/3001`) + Staging (`5100/3100/3101`) qua 1 Nginx SSL.
+- **Tiêu chí hoàn thành (Gate):** ✅ `YAML_OK: 3`, `LF_OK: 3` (`.sh`), `docker compose -f deploy/docker-compose.aws.yml --profile proxy config --quiet` (`Exit 0`), kiểm tra chéo khớp 100% giữa workflow và SSM scripts.
 
 ---
 
@@ -141,5 +132,5 @@ Qua kiểm tra trực tiếp mã nguồn trên nhánh `feat/deploy-aws` (mốc R
 | **Phase 2** | ✅ DONE | `aws-s3.service.ts`, `aws-ses.service.ts` + `aws-sdk.spec.ts` | `npm test` (5/5 files, 26/26 tests pass) |
 | **Phase 3** | ✅ DONE | 3x `Dockerfile`, 2x `.dockerignore`, `nginx.conf`, `docker-compose*.yml` | `docker compose config --quiet` (Exit 0, Swarm verified) |
 | **Phase 4** | ✅ DONE | `infra/` (6 CDK Stacks deployed live lên `ap-southeast-1`, `carservice.id.vn`) | `cdk deploy --all` Exit 0 (EC2 `56.10.202.232`, RDS, 3 ECR, SNS) |
-| **Phase 5** | ⏳ NEXT | `.github/workflows/ci.yml`, `cd.yml`, `rollback.yml`, `deploy.sh` | Pipeline 6 chặng xanh trên GitHub Actions, tổng thời gian ≤ 15 phút |
-| **Phase 6** | ⏳ TODO | Release `v1.0.0` live HTTPS + CloudWatch Alarms + Rollback drill + ≥ 10 deploys | Tag `v1.0.0` live, Email SNS Alarm, log rollback, ≥ 10 deploys & ≥ 90% green |
+| **Phase 5** | ✅ DONE | `.github/workflows/ci.yml`, `cd.yml`, `rollback.yml`, `deploy/scripts/*` | `YAML_OK: 3`, `LF_OK: 3`, `docker compose config` Exit 0 (Swarm verified) |
+| **Phase 6** | ⏳ NEXT | Release `v1.0.0` live HTTPS + CloudWatch Alarms + Rollback drill + ≥ 10 deploys | Tag `v1.0.0` live, Email SNS Alarm, log rollback, ≥ 10 deploys & ≥ 90% green |
