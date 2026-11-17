@@ -11,6 +11,7 @@
     "dev:customer": "npm run dev -w @car-service-center/customer-web",
     "dev:internal": "npm run dev -w @car-service-center/internal-web",
     "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces --if-present",
     "install:all": "npm install"
   },
   "devDependencies": {

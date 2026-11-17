@@ -6,7 +6,6 @@ CREATE TABLE `users` (
     `password_hash` VARCHAR(255) NOT NULL,
     `full_name` VARCHAR(150) NOT NULL,
     `address` TEXT NULL,
-    `user_type` ENUM('CUSTOMER', 'STAFF') NOT NULL,
     `is_active` BOOLEAN NOT NULL DEFAULT true,
     `otp_hash` VARCHAR(255) NULL,
     `otp_attempts` INTEGER NOT NULL DEFAULT 0,
@@ -24,7 +23,6 @@ CREATE TABLE `users` (
 CREATE TABLE `roles` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(50) NOT NULL,
-    `description` VARCHAR(255) NULL,
 
     UNIQUE INDEX `roles_name_key`(`name`),
     PRIMARY KEY (`id`)
@@ -103,7 +101,7 @@ CREATE TABLE `service_categories` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `service_templates` (
+CREATE TABLE `services` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `category_id` INTEGER NOT NULL,
     `name` VARCHAR(150) NOT NULL,
@@ -120,11 +118,11 @@ CREATE TABLE `service_templates` (
 -- CreateTable
 CREATE TABLE `vehicle_size_prices` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `service_template_id` INTEGER NOT NULL,
+    `service_id` INTEGER NOT NULL,
     `vehicle_size` ENUM('SMALL', 'MEDIUM', 'LARGE', 'SUV', 'TRUCK') NOT NULL,
     `price` DECIMAL(12, 2) NOT NULL,
 
-    UNIQUE INDEX `vehicle_size_prices_service_template_id_vehicle_size_key`(`service_template_id`, `vehicle_size`),
+    UNIQUE INDEX `vehicle_size_prices_service_id_vehicle_size_key`(`service_id`, `vehicle_size`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -133,7 +131,6 @@ CREATE TABLE `job_types` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(150) NOT NULL,
     `description` TEXT NULL,
-    `hourly_rate` DECIMAL(12, 2) NOT NULL,
     `is_active` BOOLEAN NOT NULL DEFAULT true,
 
     PRIMARY KEY (`id`)
@@ -143,9 +140,10 @@ CREATE TABLE `job_types` (
 CREATE TABLE `job_templates` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `job_type_id` INTEGER NOT NULL,
-    `service_template_id` INTEGER NULL,
+    `service_id` INTEGER NULL,
     `name` VARCHAR(150) NOT NULL,
-    `estimated_hours` DECIMAL(5, 2) NOT NULL,
+    `price` DECIMAL(12, 2) NOT NULL,
+    `estimated_hours` DECIMAL(5, 2) NULL,
     `requires_qc` BOOLEAN NOT NULL DEFAULT true,
 
     PRIMARY KEY (`id`)
@@ -164,7 +162,7 @@ CREATE TABLE `job_template_parts` (
 -- CreateTable
 CREATE TABLE `inspection_templates` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `service_template_id` INTEGER NULL,
+    `service_id` INTEGER NULL,
     `template_type` ENUM('INSPECTION', 'QC') NOT NULL,
     `name` VARCHAR(150) NOT NULL,
     `is_active` BOOLEAN NOT NULL DEFAULT true,
@@ -190,7 +188,7 @@ CREATE TABLE `appointments` (
     `vehicle_id` INTEGER NOT NULL,
     `scheduled_date` DATE NOT NULL,
     `scheduled_time` TIME NOT NULL,
-    `status` ENUM('REQUESTED', 'CONFIRMED', 'ARRIVED', 'CANCELLED') NOT NULL DEFAULT 'REQUESTED',
+    `status` ENUM('REQUESTED', 'CONFIRMED', 'RESCHEDULED', 'ARRIVED', 'CANCELLED') NOT NULL DEFAULT 'REQUESTED',
     `cancel_reason` TEXT NULL,
     `notes` TEXT NULL,
     `created_by_id` INTEGER NULL,
@@ -204,7 +202,7 @@ CREATE TABLE `appointments` (
 CREATE TABLE `appointment_services` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `appointment_id` INTEGER NOT NULL,
-    `service_template_id` INTEGER NOT NULL,
+    `service_id` INTEGER NOT NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -214,13 +212,22 @@ CREATE TABLE `intake_records` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `customer_id` INTEGER NOT NULL,
     `vehicle_id` INTEGER NOT NULL,
-    `intake_type` ENUM('WALK_IN', 'TOW_IN') NOT NULL,
+    `intake_type` ENUM('WALK_IN', 'TOW_IN', 'APPOINTMENT') NOT NULL,
     `status` ENUM('QUEUED', 'CONVERTED', 'CANCELLED') NOT NULL DEFAULT 'QUEUED',
     `arrived_at` DATETIME(3) NOT NULL,
     `tow_company` VARCHAR(255) NULL,
     `notes` TEXT NULL,
     `created_by_id` INTEGER NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `intake_services` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `intake_id` INTEGER NOT NULL,
+    `service_id` INTEGER NOT NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -235,7 +242,7 @@ CREATE TABLE `work_orders` (
     `source_type` ENUM('APPOINTMENT', 'WALK_IN', 'TOW_IN') NOT NULL,
     `appointment_id` INTEGER NULL,
     `intake_record_id` INTEGER NULL,
-    `status` ENUM('OPEN', 'IN_PROGRESS', 'PENDING_PAYMENT', 'RELEASED', 'CLOSED') NOT NULL DEFAULT 'OPEN',
+    `status` ENUM('DRAFT', 'IN_PLANNING', 'PENDING_APPROVAL', 'APPROVED', 'IN_PROGRESS', 'BILLING_REQUESTED', 'FINANCIAL_CLEARED', 'RELEASED', 'CLOSED', 'CANCELLED') NOT NULL DEFAULT 'DRAFT',
     `created_by_id` INTEGER NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -272,7 +279,7 @@ CREATE TABLE `check_ins` (
 CREATE TABLE `wo_services` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `work_order_id` INTEGER NOT NULL,
-    `service_template_id` INTEGER NULL,
+    `service_id` INTEGER NULL,
     `name` VARCHAR(255) NOT NULL,
     `pricing_type` ENUM('FIXED', 'VEHICLE_SIZE', 'LABOUR_PARTS') NOT NULL,
     `status` ENUM('PENDING', 'IN_PROGRESS', 'COMPLETED') NOT NULL DEFAULT 'PENDING',
@@ -313,6 +320,7 @@ CREATE TABLE `inspection_results` (
 CREATE TABLE `findings` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `inspection_id` INTEGER NOT NULL,
+    `status` ENUM('NEW', 'LINKED_TO_JOB', 'RESOLVED') NOT NULL DEFAULT 'NEW',
     `description` TEXT NOT NULL,
     `severity` ENUM('LOW', 'MEDIUM', 'HIGH', 'CRITICAL') NOT NULL DEFAULT 'MEDIUM',
     `recommendation` TEXT NULL,
@@ -338,7 +346,7 @@ CREATE TABLE `jobs` (
     `description` TEXT NULL,
     `estimated_hours` DECIMAL(5, 2) NULL,
     `actual_hours` DECIMAL(5, 2) NULL,
-    `status` ENUM('PLANNED', 'IN_PROGRESS', 'COMPLETED') NOT NULL DEFAULT 'PLANNED',
+    `status` ENUM('PLANNED', 'IN_PROGRESS', 'COMPLETED', 'REWORK', 'PASSED') NOT NULL DEFAULT 'PLANNED',
     `result_notes` TEXT NULL,
     `is_rework` BOOLEAN NOT NULL DEFAULT false,
     `parent_job_id` INTEGER NULL,
@@ -369,9 +377,8 @@ CREATE TABLE `job_labours` (
     `job_type_id` INTEGER NOT NULL,
     `description` TEXT NULL,
     `employee_id` INTEGER NULL,
-    `estimated_hours` DECIMAL(5, 2) NOT NULL,
-    `billable_hours` DECIMAL(5, 2) NULL,
-    `hourly_rate` DECIMAL(12, 2) NOT NULL,
+    `estimated_hours` DECIMAL(5, 2) NULL,
+    `price` DECIMAL(12, 2) NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
@@ -383,6 +390,7 @@ CREATE TABLE `job_parts` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `job_id` INTEGER NOT NULL,
     `item_id` INTEGER NOT NULL,
+    `status` ENUM('PLANNED', 'RESERVED', 'ISSUED', 'USED', 'RETURNED') NOT NULL DEFAULT 'PLANNED',
     `planned_quantity` DECIMAL(10, 2) NOT NULL,
     `issued_quantity` DECIMAL(10, 2) NOT NULL DEFAULT 0,
     `returned_quantity` DECIMAL(10, 2) NOT NULL DEFAULT 0,
@@ -479,19 +487,34 @@ CREATE TABLE `suppliers` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `inventory_items` (
+CREATE TABLE `part_categories` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `sku` VARCHAR(50) NOT NULL,
+    `code` VARCHAR(50) NOT NULL,
     `name` VARCHAR(255) NOT NULL,
     `item_type` ENUM('PART', 'CONSUMABLE', 'CHEMICAL', 'ACCESSORY') NOT NULL,
     `uom_id` INTEGER NOT NULL,
-    `selling_price` DECIMAL(12, 2) NOT NULL,
-    `average_cost` DECIMAL(12, 4) NOT NULL DEFAULT 0,
-    `on_hand` DECIMAL(10, 2) NOT NULL DEFAULT 0,
-    `reorder_level` DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    `description` TEXT NULL,
     `is_active` BOOLEAN NOT NULL DEFAULT true,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `part_categories_code_key`(`code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `inventory_items` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `part_category_id` INTEGER NOT NULL,
+    `sku` VARCHAR(50) NOT NULL,
+    `brand_id` INTEGER NULL,
+    `selling_price` DECIMAL(15, 2) NOT NULL,
+    `average_cost` DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    `on_hand` INTEGER NOT NULL DEFAULT 0,
+    `reorder_level` INTEGER NOT NULL DEFAULT 0,
+    `is_active` BOOLEAN NOT NULL DEFAULT true,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `inventory_items_sku_key`(`sku`),
     PRIMARY KEY (`id`)
@@ -561,23 +584,11 @@ CREATE TABLE `stock_adjustments` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `billing_requests` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `work_order_id` INTEGER NOT NULL,
-    `status` ENUM('PENDING', 'PROCESSED') NOT NULL DEFAULT 'PENDING',
-    `requested_by_id` INTEGER NOT NULL,
-    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-
-    UNIQUE INDEX `billing_requests_work_order_id_key`(`work_order_id`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
 CREATE TABLE `invoices` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `work_order_id` INTEGER NOT NULL,
     `invoice_number` VARCHAR(30) NOT NULL,
-    `status` ENUM('DRAFT', 'ISSUED', 'PAID') NOT NULL DEFAULT 'DRAFT',
+    `status` ENUM('DRAFT', 'ISSUED', 'PAID', 'CANCELLED') NOT NULL DEFAULT 'DRAFT',
     `subtotal` DECIMAL(12, 2) NOT NULL,
     `discount_amount` DECIMAL(12, 2) NOT NULL DEFAULT 0,
     `tax_amount` DECIMAL(12, 2) NOT NULL DEFAULT 0,
@@ -645,7 +656,7 @@ CREATE TABLE `vehicle_releases` (
 -- CreateTable
 CREATE TABLE `system_catalogs` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `catalog_type` ENUM('UOM', 'CANCEL_REASON', 'ADJUST_REASON', 'TERMS') NOT NULL,
+    `catalog_type` ENUM('UOM', 'CANCEL_REASON', 'ADJUST_REASON', 'TERMS', 'BRAND') NOT NULL,
     `name` VARCHAR(150) NOT NULL,
     `description` TEXT NULL,
     `is_active` BOOLEAN NOT NULL DEFAULT true,
@@ -706,16 +717,16 @@ ALTER TABLE `employee_skills` ADD CONSTRAINT `employee_skills_skill_id_fkey` FOR
 ALTER TABLE `vehicles` ADD CONSTRAINT `vehicles_customer_id_fkey` FOREIGN KEY (`customer_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `service_templates` ADD CONSTRAINT `service_templates_category_id_fkey` FOREIGN KEY (`category_id`) REFERENCES `service_categories`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `services` ADD CONSTRAINT `services_category_id_fkey` FOREIGN KEY (`category_id`) REFERENCES `service_categories`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `vehicle_size_prices` ADD CONSTRAINT `vehicle_size_prices_service_template_id_fkey` FOREIGN KEY (`service_template_id`) REFERENCES `service_templates`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `vehicle_size_prices` ADD CONSTRAINT `vehicle_size_prices_service_id_fkey` FOREIGN KEY (`service_id`) REFERENCES `services`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `job_templates` ADD CONSTRAINT `job_templates_job_type_id_fkey` FOREIGN KEY (`job_type_id`) REFERENCES `job_types`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `job_templates` ADD CONSTRAINT `job_templates_service_template_id_fkey` FOREIGN KEY (`service_template_id`) REFERENCES `service_templates`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `job_templates` ADD CONSTRAINT `job_templates_service_id_fkey` FOREIGN KEY (`service_id`) REFERENCES `services`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `job_template_parts` ADD CONSTRAINT `job_template_parts_job_template_id_fkey` FOREIGN KEY (`job_template_id`) REFERENCES `job_templates`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -724,7 +735,7 @@ ALTER TABLE `job_template_parts` ADD CONSTRAINT `job_template_parts_job_template
 ALTER TABLE `job_template_parts` ADD CONSTRAINT `job_template_parts_item_id_fkey` FOREIGN KEY (`item_id`) REFERENCES `inventory_items`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `inspection_templates` ADD CONSTRAINT `inspection_templates_service_template_id_fkey` FOREIGN KEY (`service_template_id`) REFERENCES `service_templates`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `inspection_templates` ADD CONSTRAINT `inspection_templates_service_id_fkey` FOREIGN KEY (`service_id`) REFERENCES `services`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `inspection_template_items` ADD CONSTRAINT `inspection_template_items_template_id_fkey` FOREIGN KEY (`template_id`) REFERENCES `inspection_templates`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -742,7 +753,7 @@ ALTER TABLE `appointments` ADD CONSTRAINT `appointments_vehicle_id_fkey` FOREIGN
 ALTER TABLE `appointment_services` ADD CONSTRAINT `appointment_services_appointment_id_fkey` FOREIGN KEY (`appointment_id`) REFERENCES `appointments`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `appointment_services` ADD CONSTRAINT `appointment_services_service_template_id_fkey` FOREIGN KEY (`service_template_id`) REFERENCES `service_templates`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `appointment_services` ADD CONSTRAINT `appointment_services_service_id_fkey` FOREIGN KEY (`service_id`) REFERENCES `services`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `intake_records` ADD CONSTRAINT `intake_records_customer_id_fkey` FOREIGN KEY (`customer_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -752,6 +763,12 @@ ALTER TABLE `intake_records` ADD CONSTRAINT `intake_records_created_by_id_fkey` 
 
 -- AddForeignKey
 ALTER TABLE `intake_records` ADD CONSTRAINT `intake_records_vehicle_id_fkey` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `intake_services` ADD CONSTRAINT `intake_services_intake_id_fkey` FOREIGN KEY (`intake_id`) REFERENCES `intake_records`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `intake_services` ADD CONSTRAINT `intake_services_service_id_fkey` FOREIGN KEY (`service_id`) REFERENCES `services`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `work_orders` ADD CONSTRAINT `work_orders_customer_id_fkey` FOREIGN KEY (`customer_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -784,7 +801,7 @@ ALTER TABLE `check_ins` ADD CONSTRAINT `check_ins_created_by_id_fkey` FOREIGN KE
 ALTER TABLE `wo_services` ADD CONSTRAINT `wo_services_work_order_id_fkey` FOREIGN KEY (`work_order_id`) REFERENCES `work_orders`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `wo_services` ADD CONSTRAINT `wo_services_service_template_id_fkey` FOREIGN KEY (`service_template_id`) REFERENCES `service_templates`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `wo_services` ADD CONSTRAINT `wo_services_service_id_fkey` FOREIGN KEY (`service_id`) REFERENCES `services`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `inspections` ADD CONSTRAINT `inspections_work_order_id_fkey` FOREIGN KEY (`work_order_id`) REFERENCES `work_orders`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -892,7 +909,13 @@ ALTER TABLE `qc_items` ADD CONSTRAINT `qc_items_qc_record_id_fkey` FOREIGN KEY (
 ALTER TABLE `qc_items` ADD CONSTRAINT `qc_items_template_item_id_fkey` FOREIGN KEY (`template_item_id`) REFERENCES `inspection_template_items`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `inventory_items` ADD CONSTRAINT `inventory_items_uom_id_fkey` FOREIGN KEY (`uom_id`) REFERENCES `system_catalogs`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `part_categories` ADD CONSTRAINT `part_categories_uom_id_fkey` FOREIGN KEY (`uom_id`) REFERENCES `system_catalogs`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `inventory_items` ADD CONSTRAINT `inventory_items_part_category_id_fkey` FOREIGN KEY (`part_category_id`) REFERENCES `part_categories`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `inventory_items` ADD CONSTRAINT `inventory_items_brand_id_fkey` FOREIGN KEY (`brand_id`) REFERENCES `system_catalogs`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `goods_receipts` ADD CONSTRAINT `goods_receipts_supplier_id_fkey` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
@@ -929,12 +952,6 @@ ALTER TABLE `stock_adjustments` ADD CONSTRAINT `stock_adjustments_requested_by_i
 
 -- AddForeignKey
 ALTER TABLE `stock_adjustments` ADD CONSTRAINT `stock_adjustments_approved_by_id_fkey` FOREIGN KEY (`approved_by_id`) REFERENCES `users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `billing_requests` ADD CONSTRAINT `billing_requests_work_order_id_fkey` FOREIGN KEY (`work_order_id`) REFERENCES `work_orders`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `billing_requests` ADD CONSTRAINT `billing_requests_requested_by_id_fkey` FOREIGN KEY (`requested_by_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `invoices` ADD CONSTRAINT `invoices_work_order_id_fkey` FOREIGN KEY (`work_order_id`) REFERENCES `work_orders`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
