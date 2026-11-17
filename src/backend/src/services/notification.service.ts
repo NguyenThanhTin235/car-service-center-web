@@ -1,11 +1,15 @@
 import * as nodemailer from 'nodemailer';
+import logger from '../loggers/logger';
+import { sendSesEmail } from './aws-ses.service';
 
 class NotificationService {
   private transporter: nodemailer.Transporter | null = null;
   private testAccount: nodemailer.TestAccount | null = null;
 
   constructor() {
-    this.init();
+    if (process.env.EMAIL_PROVIDER !== 'ses') {
+      this.init();
+    }
   }
 
   private async init() {
@@ -48,6 +52,15 @@ class NotificationService {
   }
 
   async sendEmail(to: string, subject: string, html: string) {
+    if (process.env.EMAIL_PROVIDER === 'ses') {
+      try {
+        await sendSesEmail({ to, subject, html });
+      } catch (err) {
+        logger.error('Error sending email via SES', { error: (err as Error).message });
+      }
+      return;
+    }
+
     if (!this.transporter) {
       console.warn('Transporter not initialized yet.');
       return;
