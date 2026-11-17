@@ -23,7 +23,7 @@ services:
     image: ${ECR_REGISTRY:-localhost}/car-service/backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${BACKEND_PORT:-5000}:5000"
+      - "${BACKEND_PORT:-5000}:5000"
     env_file:
       - path: ${ENV_FILE:-.env.runtime}
         required: false
@@ -47,7 +47,7 @@ services:
     image: ${ECR_REGISTRY:-localhost}/car-service/customer-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${CUSTOMER_PORT:-3000}:3000"
+      - "${CUSTOMER_PORT:-3000}:3000"
     env_file:
       - path: ${ENV_FILE:-.env.runtime}
         required: false
@@ -64,7 +64,7 @@ services:
     image: ${ECR_REGISTRY:-localhost}/car-service/internal-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${INTERNAL_PORT:-3001}:3001"
+      - "${INTERNAL_PORT:-3001}:3001"
     env_file:
       - path: ${ENV_FILE:-.env.runtime}
         required: false
