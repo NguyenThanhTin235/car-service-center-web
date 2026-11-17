@@ -1,0 +1,82 @@
+<mxfile host="app.diagrams.net" modified="2026-11-17T13:06:00.000Z" agent="AWS-Solutions-Architect-Skill" version="24.0.0" type="device">
+  <diagram id="cicd_pipeline_v1" name="6-Stage CI/CD Pipeline v1">
+    <mxGraphModel dx="2400" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1000" background="#FFFFFF" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="bg" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8F9FA;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="2200" height="1000" as="geometry" />
+        </mxCell>
+        <mxCell id="title" value="&lt;b&gt;CAR SERVICE CENTER — 6-STAGE CI/CD PIPELINE (SLA &amp;le; 15 PHÚT)&lt;/b&gt;&lt;br&gt;Trigger: PR &amp;amp; Merge (develop -&amp;gt; Staging | main -&amp;gt; Production) | Phiên bản: v1.0" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#232F3E;spacingLeft=15;" vertex="1" parent="1">
+          <mxGeometry x="40" y="30" width="900" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ci_zone" value="&lt;b&gt;CONTINUOUS INTEGRATION (CI) — Chạy song song Backend &amp;amp; Frontend (~3-5 phút)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#147EBA;strokeWidth=2;dashed=1;verticalAlign=top;align=left;spacingLeft=15;spacingTop=10;fontSize=12;fontColor=#147EBA;" vertex="1" parent="1">
+          <mxGeometry x="60" y="130" width="1280" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="cd_zone" value="&lt;b&gt;CONTINUOUS DELIVERY (CD) — Chỉ chạy khi merge develop / main (~5-8 phút)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#ED7100;strokeWidth=2;dashed=1;verticalAlign=top;align=left;spacingLeft=15;spacingTop=10;fontSize=12;fontColor=#ED7100;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="130" width="760" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="obs_zone" value="&lt;b&gt;POST-DEPLOY VERIFICATION, ROLLBACK &amp;amp; OBSERVABILITY&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#7AA116;strokeWidth=2;dashed=1;verticalAlign=top;align=left;spacingLeft=15;spacingTop=10;fontSize=12;fontColor=#7AA116;" vertex="1" parent="1">
+          <mxGeometry x="60" y="550" width="2080" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="stage_1" value="&lt;b&gt;1. BUILD&lt;/b&gt;&lt;br&gt;Backend: tsc + prisma generate&lt;br&gt;Frontend: next build (2 apps)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#147EBA;strokeWidth=2;fontSize=12;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="100" y="250" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="stage_2" value="&lt;b&gt;2. LINT &amp;amp; STATIC&lt;/b&gt;&lt;br&gt;ESLint + tsc --noEmit&lt;br&gt;prisma validate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#147EBA;strokeWidth=2;fontSize=12;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="410" y="250" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="stage_3" value="&lt;b&gt;3. AUTOMATED TEST&lt;/b&gt;&lt;br&gt;Backend: Vitest (unit/int)&lt;br&gt;Frontend: Smoke/Unit Gate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#147EBA;strokeWidth=2;fontSize=12;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="720" y="250" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="stage_4" value="&lt;b&gt;4. SECURITY SCAN&lt;/b&gt;&lt;br&gt;npm audit + Trivy FS&lt;br&gt;Gitleaks Secret Scan" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#DD344C;strokeWidth=2;fontSize=12;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="250" width="250" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="stage_5" value="&lt;b&gt;5. DOCKER &amp;amp; ECR&lt;/b&gt;&lt;br&gt;Multi-stage Buildx Cache&lt;br&gt;Trivy Image + Push ECR (SHA)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#ED7100;strokeWidth=2;fontSize=12;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="250" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="stage_6" value="&lt;b&gt;6. AUTO DEPLOY&lt;/b&gt;&lt;br&gt;AWS OIDC -&amp;gt; SSM Run Command&lt;br&gt;Prisma Migrate + Compose Up" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#ED7100;strokeWidth=2;fontSize=12;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="1800" y="250" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="post_health" value="&lt;b&gt;Health Check Gate&lt;/b&gt;&lt;br&gt;GET /health (DB + Redis)&lt;br&gt;HTTP 200 on 3 Apps" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7AA116;strokeWidth=2;fontSize=12;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="1800" y="640" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="post_rollback" value="&lt;b&gt;Auto Rollback&lt;/b&gt;&lt;br&gt;Revert to prev ECR Tag&lt;br&gt;if Health Check Fails" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#DD344C;strokeWidth=2;fontSize=12;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="640" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="post_cw" value="&lt;b&gt;CloudWatch &amp;amp; SNS&lt;/b&gt;&lt;br&gt;Centralized Logs (14d)&lt;br&gt;Alarms -&amp;gt; Email / Discord" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E7157B;strokeWidth=2;fontSize=12;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="640" width="250" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="post_secrets" value="&lt;b&gt;SSM Parameter Store&lt;/b&gt;&lt;br&gt;KMS SecureString Secrets&lt;br&gt;Zero Plaintext in Repo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#232F3E;strokeWidth=2;fontSize=12;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="100" y="640" width="250" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="Pass" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#232F3E;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="stage_1" target="stage_2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="Pass" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#232F3E;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="stage_2" target="stage_3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="Pass" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#232F3E;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="stage_3" target="stage_4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="Merge Gate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#ED7100;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="stage_4" target="stage_5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="Tag SHA" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#ED7100;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="stage_5" target="stage_6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="Verify" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#7AA116;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="stage_6" target="post_health">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="Fail" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#DD344C;dashed=1;labelBackgroundColor=#FFFFFF;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="post_health" target="post_rollback">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="Alert" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#E7157B;dashed=1;labelBackgroundColor=#FFFFFF;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="post_rollback" target="post_cw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="Inject Env" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=1;strokeColor=#7D8998;dashed=1;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="post_secrets" target="post_cw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
