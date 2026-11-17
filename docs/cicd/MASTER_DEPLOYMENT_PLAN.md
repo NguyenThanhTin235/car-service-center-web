@@ -83,23 +83,19 @@ Qua kiểm tra trực tiếp mã nguồn trên nhánh `feat/deploy-aws` (mốc R
 
 ---
 
-### Phase 4: Xây dựng Hạ tầng AWS bằng AWS CDK (`infra/`) & Route 53 DNS
+### Phase 4: Xây dựng Hạ tầng AWS bằng AWS CDK (`infra/`) & Route 53 DNS (`✅ DONE — Deployed Live`)
 **Mục tiêu:** Toàn bộ hạ tầng Gói 1 (bao gồm DNS Route 53) được quản lý bằng code (IaC), có thể kiểm tra bảo mật & ước tính chi phí trước khi `cdk deploy`.
 - **Công việc:**
-  1. **Chuẩn bị Tên miền & Route 53 Hosted Zone (thủ công trước khi `cdk deploy`):**
-     - Mua tên miền trực tiếp trên **Route 53 Registered Domains** (hoặc tạo **Public Hosted Zone** ~\$0.50/tháng rồi trỏ 4 Nameserver về từ nhà đăng ký tên miền ngoài).
-     - Ghi nhận `Domain Name` và `Hosted Zone ID` truyền vào context/env của AWS CDK (cũng chuẩn bị bộ giá trị secrets `v1.0.0` để nạp SSM ở Phase 6).
-  2. Khởi tạo AWS CDK TypeScript trong `infra/` (`cdk init app --language typescript`).
-  3. Thiết kế & triển khai các CDK Stacks:
-     - **`NetworkStack`**: VPC `10.0.0.0/16` (Public Subnets + Private Isolated Subnets, **0 NAT Gateway**), Security Groups (EC2 SG chỉ mở `80/443`; RDS SG chỉ mở `3306` từ EC2 SG).
-     - **`DataStack`**: RDS MySQL `db.t4g.micro` (20GB gp3, backup retention 7 ngày), S3 Bucket (Block Public Access, Encryption S3-managed, Lifecycle rule cho backups).
-     - **`RegistryAuthStack`**: 3 ECR Repositories (`car-service/backend`, `car-service/customer-web`, `car-service/internal-web`) với Lifecycle Policy giữ tối đa 10 images; GitHub OIDC Identity Provider + IAM Role cho GitHub Actions (chỉ được push ECR & gửi SSM Run Command tới EC2 có tag dự án).
-     - **`ComputeStack`**: EC2 `t3.small`/`t3.medium` (Elastic IP, IAM Instance Profile quyền SSM + ECR Pull + S3 + SES + CloudWatch Agent), UserData tự động cài Docker, Compose plugin, AWS CLI, CloudWatch Agent, Nginx & Certbot.
-     - **`DnsStack` (Route 53):** Dùng Hosted Zone ID đã tạo để tự động tạo các bản ghi `A` trỏ về Elastic IP của EC2 (`staging-api`, `staging`, `staging-admin`, `api`, `@`, `admin`).
-     - **`ObservabilityStack`**: CloudWatch Log Groups (`/car-service/staging/*`, `/car-service/prod/*`, retention 14 ngày), CloudWatch Alarms (`EC2 CPU > 80%`, `StatusCheckFailed`, `RDS CPU > 80%`, `RDS FreeStorage < 2GB`), Amazon SNS Topic + Email subscription.
-  4. Chạy kiểm tra tuân thủ skill `security-scan` (`npx cdk synth` + kiểm tra IAM least-privilege / không lộ secret).
-  5. Chạy `npx cdk bootstrap` và `npx cdk deploy --all` lên AWS `ap-southeast-1`.
-- **Tiêu chí hoàn thành (Gate):** `npx tsc --noEmit && npx cdk synth` không lỗi; các tài nguyên AWS (EC2, RDS, ECR, S3, Route 53 A-records, SNS, OIDC Role) hoạt động trên AWS Console.
+  1. [x] Khởi tạo AWS CDK TypeScript trong `infra/` (`aws-cdk-lib`, `constructs`, `vitest`).
+  2. [x] Thiết kế & triển khai 6 CDK Stacks:
+     - `NetworkStack`: VPC `10.0.0.0/16` (0 NAT Gateway, EC2 SG chỉ mở 80/443 — không SSH 22, RDS SG chỉ nhận 3306 từ EC2 SG).
+     - `DataStack`: RDS MySQL 8.0 (`db.t4g.micro`, private isolated, 20–40GB GP3, backup 7d), S3 `AssetsBucket` (block public, SSE-S3, lifecycle 30d).
+     - `RegistryAuthStack`: 3 ECR Repos (lifecycle giữ 10 images), GitHub OIDC Role (`NguyenThanhTin235/car-service-center-web`), EC2 IAM Role (SSM + CW + ECR + S3 + SES).
+     - `ComputeStack`: EC2 `t3.small` (AL2023, Elastic IP `56.10.202.232`, `i-05bd24fa2d142dd06`, 30GB GP3, `ec2-userdata.sh` cài Docker, Compose, 2GB swap, CloudWatch Agent).
+     - `DnsStack` (Route 53 `carservice.id.vn`): đã tạo 6 bản ghi `A` trỏ về `56.10.202.232`.
+     - `ObservabilityStack`: 3 CloudWatch LogGroups (retention 14d), SNS Topic `car-service-alerts` + Email `tinthanhn81@gmail.com`, 4 CloudWatch Alarms (EC2 & RDS).
+  3. [x] Viết CDK Assertions Test `infra/test/infra.test.ts` (6/6 tests pass), `npx cdk bootstrap` & `npx cdk deploy --all` thành công lên `ap-southeast-1`.
+  4. [ ] **Lưu ý:** Bấm **Confirm subscription** trong email `tinthanhn81@gmail.com` để kích hoạt SNS Alert.
 
 ---
 
@@ -144,6 +140,6 @@ Qua kiểm tra trực tiếp mã nguồn trên nhánh `feat/deploy-aws` (mốc R
 | **Phase 1** | ✅ DONE | `trust proxy`, `/health`, CORS multi-origin, Winston JSON, `eslint`, `next standalone` | Backend (`lint` 0 err, 19/19 tests) & FE (`lint` 0 err, `next build` pass) |
 | **Phase 2** | ✅ DONE | `aws-s3.service.ts`, `aws-ses.service.ts` + `aws-sdk.spec.ts` | `npm test` (5/5 files, 26/26 tests pass) |
 | **Phase 3** | ✅ DONE | 3x `Dockerfile`, 2x `.dockerignore`, `nginx.conf`, `docker-compose*.yml` | `docker compose config --quiet` (Exit 0, Swarm verified) |
-| **Phase 4** | ⏳ NEXT | Route 53 Hosted Zone + `infra/` (AWS CDK TypeScript Stacks + `DnsStack`) | `npx cdk synth` + `cdk deploy` thành công trên `ap-southeast-1` |
-| **Phase 5** | ⏳ TODO | `.github/workflows/ci.yml`, `cd.yml`, `rollback.yml`, `deploy.sh` | Pipeline 6 chặng xanh trên GitHub Actions, tổng thời gian ≤ 15 phút |
+| **Phase 4** | ✅ DONE | `infra/` (6 CDK Stacks deployed live lên `ap-southeast-1`, `carservice.id.vn`) | `cdk deploy --all` Exit 0 (EC2 `56.10.202.232`, RDS, 3 ECR, SNS) |
+| **Phase 5** | ⏳ NEXT | `.github/workflows/ci.yml`, `cd.yml`, `rollback.yml`, `deploy.sh` | Pipeline 6 chặng xanh trên GitHub Actions, tổng thời gian ≤ 15 phút |
 | **Phase 6** | ⏳ TODO | Release `v1.0.0` live HTTPS + CloudWatch Alarms + Rollback drill + ≥ 10 deploys | Tag `v1.0.0` live, Email SNS Alarm, log rollback, ≥ 10 deploys & ≥ 90% green |

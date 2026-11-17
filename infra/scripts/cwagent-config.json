@@ -1,0 +1,65 @@
+{
+  "agent": {
+    "metrics_collection_interval": 60,
+    "run_as_user": "root"
+  },
+  "metrics": {
+    "namespace": "CarService/EC2",
+    "append_dimensions": {
+      "InstanceId": "${aws:InstanceId}"
+    },
+    "metrics_collected": {
+      "mem": {
+        "measurement": [
+          "mem_used_percent"
+        ]
+      },
+      "swap": {
+        "measurement": [
+          "swap_used_percent"
+        ]
+      },
+      "disk": {
+        "measurement": [
+          "used_percent"
+        ],
+        "resources": [
+          "/"
+        ],
+        "ignore_file_system_types": [
+          "sysfs",
+          "devtmpfs",
+          "tmpfs"
+        ]
+      }
+    }
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/nginx/access.log",
+            "log_group_name": "/car-service/nginx",
+            "log_stream_name": "{instance_id}-nginx-access"
+          },
+          {
+            "file_path": "/var/log/nginx/error.log",
+            "log_group_name": "/car-service/nginx",
+            "log_stream_name": "{instance_id}-nginx-error"
+          },
+          {
+            "file_path": "/opt/car-service/staging/logs/*.log",
+            "log_group_name": "/car-service/staging/app",
+            "log_stream_name": "{instance_id}-staging-app"
+          },
+          {
+            "file_path": "/opt/car-service/prod/logs/*.log",
+            "log_group_name": "/car-service/prod/app",
+            "log_stream_name": "{instance_id}-prod-app"
+          }
+        ]
+      }
+    }
+  }
+}
