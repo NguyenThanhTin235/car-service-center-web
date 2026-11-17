@@ -46,6 +46,8 @@ export class RegistryAuthStack extends cdk.Stack {
       clientIds: ['sts.amazonaws.com'],
     });
 
+    const [repoOwner, repoName] = props.githubRepo.split('/');
+
     this.githubDeployRole = new iam.Role(this, 'GitHubDeployRole', {
       roleName: 'car-service-github-deploy-role',
       assumedBy: new iam.FederatedPrincipal(
@@ -55,7 +57,10 @@ export class RegistryAuthStack extends cdk.Stack {
             'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
           },
           StringLike: {
-            'token.actions.githubusercontent.com:sub': `repo:${props.githubRepo}:*`,
+            'token.actions.githubusercontent.com:sub': [
+              `repo:${props.githubRepo}:*`,
+              `repo:${repoOwner}@*/${repoName}@*:*`,
+            ],
           },
         },
         'sts:AssumeRoleWithWebIdentity',
