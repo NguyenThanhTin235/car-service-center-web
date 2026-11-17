@@ -57,18 +57,15 @@ Qua kiểm tra trực tiếp mã nguồn trên nhánh `feat/deploy-aws` (mốc R
 
 ---
 
-### Phase 2: Tích hợp AWS SDK v3 (`S3` & `SES`)
+### Phase 2: Tích hợp AWS SDK v3 (`S3` & `SES`) (`✅ DONE`)
 **Mục tiêu:** Ứng dụng sử dụng trực tiếp dịch vụ AWS qua AWS SDK v3 chính thức, có test kiểm chứng bằng mock.
 - **Công việc:**
-  1. Cài đặt trong `src/backend`: `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `@aws-sdk/client-ses`.
-  2. Tạo `src/backend/src/services/aws-s3.service.ts`:
-     - Upload buffer/PDF hóa đơn hoặc ảnh lên S3 Bucket (`AWS_S3_BUCKET`).
-     - Sinh Presigned URL tải xuống an toàn có thời hạn (không public bucket).
-  3. Tạo `src/backend/src/services/aws-ses.service.ts` (hoặc tích hợp vào email service hiện có):
-     - Hỗ trợ gửi email qua Amazon SES khi `EMAIL_PROVIDER=ses` (fallback về Nodemailer SMTP/Gmail hiện tại nếu chưa cấu hình SES production access).
-  4. Cập nhật `.env.example` với các biến `AWS_REGION`, `AWS_S3_BUCKET`, `EMAIL_PROVIDER`, `SES_FROM_EMAIL`.
-  5. Viết unit test bằng Vitest mock `@aws-sdk/client-s3` và `@aws-sdk/client-ses`.
-- **Tiêu chí hoàn thành (Gate):** `cd src/backend && npm test` chạy toàn bộ unit tests (bao gồm S3/SES) đạt 100% pass.
+  1. [x] Cài đặt trong `src/backend`: `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `@aws-sdk/client-ses`.
+  2. [x] Tạo `src/backend/src/services/aws-s3.service.ts` (upload buffer, sinh Presigned URL bảo mật, delete object) và tích hợp vào `UploadService` khi `STORAGE_PROVIDER=s3` (giữ fallback Cloudinary).
+  3. [x] Tạo `src/backend/src/services/aws-ses.service.ts` (UTF-8 HTML/Text) và tích hợp vào `email.util.ts` & `NotificationService` khi `EMAIL_PROVIDER=ses` (giữ fallback SMTP).
+  4. [x] Cập nhật `.env.example` với `AWS_REGION`, `STORAGE_PROVIDER`, `AWS_S3_BUCKET`, `EMAIL_PROVIDER`, `SES_FROM_EMAIL`.
+  5. [x] Viết unit test `src/backend/tests/unit/aws-sdk.spec.ts` (Vitest mock S3/SES clients).
+- **Tiêu chí hoàn thành (Gate):** ✅ `cd src/backend && npm run typecheck && npm run build && npm run lint && npm test` (5/5 files, 26/26 tests pass).
 
 ---
 
@@ -149,8 +146,8 @@ Qua kiểm tra trực tiếp mã nguồn trên nhánh `feat/deploy-aws` (mốc R
 | :---: | :---: | :--- | :--- |
 | **Phase 0** | ✅ DONE | Baseline `v1.0.0` + `init` migration sync + AWS CLI (`145443242997`) | `prisma validate`, `aws sts get-caller-identity` (Exit 0) |
 | **Phase 1** | ✅ DONE | `trust proxy`, `/health`, CORS multi-origin, Winston JSON, `eslint`, `next standalone` | Backend (`lint` 0 err, 19/19 tests) & FE (`lint` 0 err, `next build` pass) |
-| **Phase 2** | ⏳ NEXT | `aws-s3.service.ts`, `aws-ses.service.ts` + unit tests | `npm test` (Vitest mock AWS SDK pass) |
-| **Phase 3** | ⏳ TODO | 3x `Dockerfile`, `nginx.conf`, `docker-compose*.yml` | `docker compose build && curl localhost:5000/health` (200 OK) |
+| **Phase 2** | ✅ DONE | `aws-s3.service.ts`, `aws-ses.service.ts` + `aws-sdk.spec.ts` | `npm test` (5/5 files, 26/26 tests pass) |
+| **Phase 3** | ⏳ NEXT | 3x `Dockerfile`, `nginx.conf`, `docker-compose*.yml` | `docker compose build && curl localhost:5000/health` (200 OK) |
 | **Phase 4** | ⏳ TODO | Route 53 Hosted Zone + `infra/` (AWS CDK TypeScript Stacks + `DnsStack`) | `npx cdk synth` + `cdk deploy` thành công trên `ap-southeast-1` |
 | **Phase 5** | ⏳ TODO | `.github/workflows/ci.yml`, `cd.yml`, `rollback.yml`, `deploy.sh` | Pipeline 6 chặng xanh trên GitHub Actions, tổng thời gian ≤ 15 phút |
 | **Phase 6** | ⏳ TODO | Release `v1.0.0` live HTTPS + CloudWatch Alarms + Rollback drill + ≥ 10 deploys | Tag `v1.0.0` live, Email SNS Alarm, log rollback, ≥ 10 deploys & ≥ 90% green |
