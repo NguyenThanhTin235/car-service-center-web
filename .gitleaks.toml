@@ -1,0 +1,11 @@
+title = "Car Service Center Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow CI test-only dummy secrets and SSM template placeholders"
+regexes = [
+  '''ci_jwt_secret_key_123456789''',
+  '''REPLACE_WITH_.*''',
+]

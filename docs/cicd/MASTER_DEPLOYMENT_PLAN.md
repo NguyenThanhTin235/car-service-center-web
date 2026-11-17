@@ -1,0 +1,136 @@
+# KẾ HOẠCH TRIỂN KHAI CHI TIẾT TOÀN BỘ HỆ THỐNG CI/CD & AWS (MASTER DEPLOYMENT PLAN)
+
+> **Dự án:** Car Service Center Management Platform  
+> **Nhánh triển khai:** `feat/deploy-aws` (tách trực tiếp từ **`main` @ `8eefc3e` — Release `v1.0.0`**)  
+> **Phiên bản triển khai đầu tiên:** **Release `v1.0.0`** trên nhánh `main` (chỉ bổ sung hạ tầng Deploy/CI-CD/AWS SDK, **không merge** các tính năng chưa release từ `develop`).  
+> **Giải pháp hạ tầng đã chốt:** **Gói 1** — EC2 (`t3.small`/`t3.medium`) + Docker Compose + Nginx SSL + **Amazon Route 53 DNS** + RDS MySQL (`db.t4g.micro`) + Amazon ECR + SSM Parameter Store + CloudWatch/SNS + AWS SDK (`S3`, `SES`) + AWS CDK (`infra/`).  
+> **Sơ đồ kiến trúc tham chiếu:**
+> - [aws-architecture-v2.drawio](diagrams/aws-architecture-v2.drawio) *(Cập nhật dùng Amazon Route 53)*
+> - [cicd-pipeline-v1.drawio](diagrams/cicd-pipeline-v1.drawio)
+
+---
+
+## Phần A: Kết Quả Rà Soát Hiện Trạng Codebase (`main` v1.0.0 @ `8eefc3e`)
+
+Qua kiểm tra trực tiếp mã nguồn trên nhánh `feat/deploy-aws` (mốc Release `v1.0.0` của `main`), hệ thống hiện có **8 điểm cần xử lý** để sẵn sàng đóng gói và triển khai lên AWS:
+
+| # | Phát hiện thực tế trong Codebase (`v1.0.0`) | Mức độ | Hành động xử lý |
+| :-: | :--- | :---: | :--- |
+| 1 | **Thiếu `app.set('trust proxy', true)`**: `src/backend/src/app.ts` trên `main` (`v1.0.0`) chưa bật `trust proxy` khi đứng sau Nginx HTTPS reverse proxy. | Cao | Bổ sung `app.set('trust proxy', true)` ở **Phase 1**. |
+| 2 | **CORS chỉ hỗ trợ 1 `FRONTEND_URL`**: `src/backend/src/app.ts` chỉ whitelist `process.env.FRONTEND_URL` và `localhost:3000/3001`. Khi deploy 2 domain riêng (`app.*` và `admin.*`), frontend thứ 2 sẽ bị lỗi CORS. | Cao | Nâng cấp `app.ts` đọc danh sách `CORS_ORIGINS` (phân tách bằng dấu phẩy) ở **Phase 1**. |
+| 3 | **Chưa có endpoint `/health` đúng chuẩn**: `app.ts` mới chỉ có `GET /` trả message tĩnh, chưa kiểm tra kết nối thật tới MySQL và Redis. | Cao | Thêm `GET /health` kiểm tra `prisma.$queryRaw` + Redis `PING` ở **Phase 1**. |
+| 4 | **Backend thiếu script `lint` & cấu hình ESLint**: `src/backend/package.json` đã cài `eslint` và `prettier` trong `devDependencies` nhưng chưa có script `"lint"` và file config để chạy ở Chặng 2 Pipeline. | Trung bình | Bổ sung `eslint.config.mjs` + script `"lint"` trong `src/backend/package.json` ở **Phase 1**. |
+| 5 | **Logging chưa chuẩn hóa JSON cho CloudWatch**: `winston` đã cài trong `package.json` nhưng `app.ts` vẫn dùng `morgan('dev')` và `server.ts` dùng `console.log`. | Trung bình | Cấu hình Winston structured JSON stdout + Morgan stream ở **Phase 1**. |
+| 6 | **Next.js chưa bật `output: 'standalone'`**: Cả `customer-web/next.config.ts` và `internal-web/next.config.ts` đều đang rỗng `{}`. Ngoài ra `NEXT_PUBLIC_API_URL` là biến duy nhất được frontend đọc lúc build. | Cao | Thêm `output: 'standalone'` và truyền `NEXT_PUBLIC_API_URL` qua Docker `ARG/ENV` ở **Phase 1 & 3**. |
+| 7 | **Kiểm soát Prisma Migration cho `v1.0.0`**: Trên `main` hiện có migration `20260909021150_init`. Cần đối chiếu `schema.prisma` khớp hoàn toàn trước khi chạy `prisma migrate deploy` trên RDS. | Cao | Kiểm tra `prisma migrate status`/`diff` ở **Phase 0**, tuyệt đối không dùng `--accept-data-loss` trong CD. |
+| 8 | **Chưa có AWS SDK & IaC**: Chưa cài `@aws-sdk/*`, chưa có thư mục `infra/` (AWS CDK), chưa có `Dockerfile` / `docker-compose`. | Cao | Thực hiện ở **Phase 2, 3, 4**. |
+
+*(Ghi chú thêm: Ở mốc `v1.0.0`, backend chưa bật `sepay-pg-node` và `socket.io` chưa gắn vào `server.ts`, nhưng hạ tầng Nginx SSL + WebSocket + Secret SSM vẫn được thiết kế sẵn để tương thích khi các bản `v1.1.0+` từ `develop` được merge lên sau này. `node-cron` chạy `startAppointmentReminderJob()` trong `server.ts` nên mỗi môi trường chỉ chạy 1 container backend.)*
+
+---
+
+## Phần B: Kế Hoạch Triển Khai Theo 7 Phases (`v1.0.0` First)
+
+### Phase 0: Khóa Baseline `v1.0.0` & Chuẩn bị Tài khoản AWS (`✅ DONE`)
+**Mục tiêu:** Giữ nguyên phạm vi nghiệp vụ bản Release `v1.0.0` trên `feat/deploy-aws` (từ `main` `8eefc3e`) và chuẩn bị tài khoản AWS.
+- **Công việc:**
+  1. [x] Xác nhận `feat/deploy-aws` đứng đúng trên base `main` (`8eefc3e`), **không merge `develop`** vào nhánh này để đảm bảo bản deploy đầu tiên sạch sẽ là `v1.0.0`.
+  2. [x] Đồng bộ `prisma/migrations/20260909021150_init/migration.sql` khớp hoàn toàn với `schema.prisma` của `v1.0.0` bằng `prisma migrate diff`.
+  3. [x] Chuẩn bị tài khoản AWS (`ap-southeast-1`), bật AWS Budgets Alert, tạo IAM `car-service-deployer`, cài đặt & xác thực AWS CLI v2 (`aws sts get-caller-identity`). *(Lưu ý bảo mật: xoay Access Key mới & bật MFA trước khi chạy Phase 4; phần Tên miền & Route 53 DNS được chuyển sang **Phase 4**).*
+- **Tiêu chí hoàn thành (Gate):** ✅ `prisma validate`, `npm run build`, `npm test` và `aws sts get-caller-identity` thành công.
+
+---
+
+### Phase 1: Chuẩn hóa Ứng dụng `v1.0.0` cho Production & Quality Gates (`✅ DONE`)
+**Mục tiêu:** Đáp ứng đầy đủ Chặng 1–3 (Build, Lint, Test) và yêu cầu Proxy / Health Check / Log tập trung / CORS production.
+- **Backend (`src/backend`):**
+  1. [x] Bật `app.set('trust proxy', true)` trong `src/backend/src/app.ts` để nhận đúng IP/protocol từ Nginx HTTPS.
+  2. [x] Tạo `GET /health` (`src/backend/src/services/health.service.ts`): kiểm tra `prisma.$queryRaw\`SELECT 1\`` và Redis `PING`, trả chuẩn API envelope (`200` ok/degraded, `503` unhealthy).
+  3. [x] Cập nhật `CORS` trong `src/backend/src/app.ts` hỗ trợ `process.env.CORS_ORIGINS` + `INTERNAL_FRONTEND_URL` + `FRONTEND_URL`.
+  4. [x] Tạo `src/backend/src/loggers/logger.ts` bằng `winston` (JSON stdout trên `NODE_ENV=production`, tích hợp Morgan skip `/health`).
+  5. [x] Bổ sung `src/backend/eslint.config.mjs`, cài `@eslint/js` + `typescript-eslint`, thêm `"lint"` & `"typecheck"` vào `src/backend/package.json`.
+  6. [x] Thêm unit test `src/backend/tests/unit/health.spec.ts`.
+- **Frontend (`src/frontend`):**
+  1. [x] Cập nhật `next.config.ts` của `customer-web` và `internal-web` thêm `output: 'standalone'`.
+  2. [x] Sửa lỗi `rules-of-hooks` trong `register/page.tsx`, cấu hình `eslint.config.mjs`, thêm `"lint"` ở `src/frontend/package.json`.
+- **Tiêu chí hoàn thành (Gate):** ✅ Backend (`prisma validate`, `typecheck`, `build`, `lint` 0 errors, `vitest` 4/4 files 19/19 tests) & Frontend (`lint` 0 errors, `next build` standalone, `tsc --noEmit`) đều Exit code `0`.
+
+---
+
+### Phase 2: Tích hợp AWS SDK v3 (`S3` & `SES`) (`✅ DONE`)
+**Mục tiêu:** Ứng dụng sử dụng trực tiếp dịch vụ AWS qua AWS SDK v3 chính thức, có test kiểm chứng bằng mock.
+- **Công việc:**
+  1. [x] Cài đặt trong `src/backend`: `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `@aws-sdk/client-ses`.
+  2. [x] Tạo `src/backend/src/services/aws-s3.service.ts` (upload buffer, sinh Presigned URL bảo mật, delete object) và tích hợp vào `UploadService` khi `STORAGE_PROVIDER=s3` (giữ fallback Cloudinary).
+  3. [x] Tạo `src/backend/src/services/aws-ses.service.ts` (UTF-8 HTML/Text) và tích hợp vào `email.util.ts` & `NotificationService` khi `EMAIL_PROVIDER=ses` (giữ fallback SMTP).
+  4. [x] Cập nhật `.env.example` với `AWS_REGION`, `STORAGE_PROVIDER`, `AWS_S3_BUCKET`, `EMAIL_PROVIDER`, `SES_FROM_EMAIL`.
+  5. [x] Viết unit test `src/backend/tests/unit/aws-sdk.spec.ts` (Vitest mock S3/SES clients).
+- **Tiêu chí hoàn thành (Gate):** ✅ `cd src/backend && npm run typecheck && npm run build && npm run lint && npm test` (5/5 files, 26/26 tests pass).
+
+---
+
+### Phase 3: Đóng gói Docker & Cấu hình Reverse Proxy (Nginx + SSL) (`✅ DONE`)
+**Mục tiêu:** Đóng gói gọn nhẹ 3 service (`node:20-alpine` multi-stage) và cấu hình Nginx + Docker Compose cho cả local & AWS EC2.
+- **Công việc (thực hiện qua Swarm):**
+  1. [x] Tạo `src/backend/.dockerignore` và `src/frontend/.dockerignore` (loại bỏ `node_modules`, `.next`, `dist`, `.env`, `test-results`, `.git`).
+  2. [x] Tạo multi-stage `Dockerfile`:
+     - `src/backend/Dockerfile` (`node:20-alpine`, `openssl`, `curl` HEALTHCHECK `/health`, copy `dist/`, `prisma/`, `assets/fonts/`, `node_modules/.prisma`, non-root `node`, `CMD ["node", "dist/src/server.js"]`).
+     - `src/frontend/apps/customer-web/Dockerfile` (`PORT=3000`, `ARG NEXT_PUBLIC_API_URL`, standalone `apps/customer-web/server.js`, non-root `nextjs`).
+     - `src/frontend/apps/internal-web/Dockerfile` (`PORT=3001`, cùng chuẩn monorepo standalone).
+  3. [x] Tạo `deploy/nginx/nginx.conf` và `deploy/nginx/conf.d/app.conf.template` (Certbot ACME challenge, HTTP→HTTPS redirect, `X-Forwarded-*`, WebSocket `Upgrade`/`Connection`, `client_max_body_size 20M`).
+  4. [x] Tạo `docker-compose.yml` (local full-stack MySQL 8 + Redis 7 + 3 apps) và `deploy/docker-compose.aws.yml` (EC2 pull ECR images + Redis 7 + Nginx SSL + log rotation).
+- **Tiêu chí hoàn thành (Gate):** ✅ `docker compose -f docker-compose.yml config --quiet` và `docker compose -f deploy/docker-compose.aws.yml config --quiet` Exit code `0` (cả 4 workers + verifier đã kiểm chứng; `docker build` chạy khi bật Docker Desktop).
+
+---
+
+### Phase 4: Xây dựng Hạ tầng AWS bằng AWS CDK (`infra/`) & Route 53 DNS (`✅ DONE — Deployed Live`)
+**Mục tiêu:** Toàn bộ hạ tầng Gói 1 (bao gồm DNS Route 53) được quản lý bằng code (IaC), có thể kiểm tra bảo mật & ước tính chi phí trước khi `cdk deploy`.
+- **Công việc:**
+  1. [x] Khởi tạo AWS CDK TypeScript trong `infra/` (`aws-cdk-lib`, `constructs`, `vitest`).
+  2. [x] Thiết kế & triển khai 6 CDK Stacks:
+     - `NetworkStack`: VPC `10.0.0.0/16` (0 NAT Gateway, EC2 SG chỉ mở 80/443 — không SSH 22, RDS SG chỉ nhận 3306 từ EC2 SG).
+     - `DataStack`: RDS MySQL 8.0 (`db.t4g.micro`, private isolated, 20–40GB GP3, backup 7d), S3 `AssetsBucket` (block public, SSE-S3, lifecycle 30d).
+     - `RegistryAuthStack`: 3 ECR Repos (lifecycle giữ 10 images), GitHub OIDC Role (`NguyenThanhTin235/car-service-center-web`), EC2 IAM Role (SSM + CW + ECR + S3 + SES).
+     - `ComputeStack`: EC2 `t3.small` (AL2023, Elastic IP `56.10.202.232`, `i-05bd24fa2d142dd06`, 30GB GP3, `ec2-userdata.sh` cài Docker, Compose, 2GB swap, CloudWatch Agent).
+     - `DnsStack` (Route 53 `carservice.id.vn`): đã tạo 6 bản ghi `A` trỏ về `56.10.202.232`.
+     - `ObservabilityStack`: 3 CloudWatch LogGroups (retention 14d), SNS Topic `car-service-alerts` + Email `tinthanhn81@gmail.com`, 4 CloudWatch Alarms (EC2 & RDS).
+  3. [x] Viết CDK Assertions Test `infra/test/infra.test.ts` (6/6 tests pass), `npx cdk bootstrap` & `npx cdk deploy --all` thành công lên `ap-southeast-1`.
+  4. [ ] **Lưu ý:** Bấm **Confirm subscription** trong email `tinthanhn81@gmail.com` để kích hoạt SNS Alert.
+
+---
+
+### Phase 5: Pipeline CI/CD 6 Chặng & Auto-Rollback (`.github/workflows/`) (`✅ DONE`)
+**Mục tiêu:** Tự động hóa hoàn toàn 6 chặng, đạt SLA commit → staging ≤ 15 phút, hỗ trợ versioning & rollback tự động.
+- **Công việc (thực hiện qua Swarm):**
+  1. [x] Nâng cấp `.github/workflows/ci.yml` (4 chặng gate PR: Build, Lint/Static, Vitest, Security Scan `npm audit` + Trivy FS + Gitleaks).
+  2. [x] Tạo `.github/workflows/cd.yml` (đủ **6 chặng**: Build → Lint/Static → Test → Security Scan → Docker Buildx + Trivy Image + Push ECR qua OIDC → SSM `send-command` chạy `deploy.sh` + Health Gate + SNS Alert khi lỗi).
+  3. [x] Tạo `.github/workflows/rollback.yml` (`workflow_dispatch` rollback thủ công về `image_tag` hoặc `.previous_tag`).
+  4. [x] Tạo `deploy/scripts/deploy.sh`, `rollback.sh`, `init-ssl.sh`, `seed-ssm.ps1` và cập nhật `deploy/docker-compose.aws.yml` + `deploy/nginx/conf.d/app.conf.template` chạy chung Prod (`5000/3000/3001`) + Staging (`5100/3100/3101`) qua 1 Nginx SSL.
+- **Tiêu chí hoàn thành (Gate):** ✅ `YAML_OK: 3`, `LF_OK: 3` (`.sh`), `docker compose -f deploy/docker-compose.aws.yml --profile proxy config --quiet` (`Exit 0`), kiểm tra chéo khớp 100% giữa workflow và SSM scripts.
+
+---
+
+### Phase 6: Cutover Release `v1.0.0`, Diễn tập & Vận hành KPI Trong Kỳ
+**Mục tiêu:** Đưa bản **Release `v1.0.0`** lên Production/Staging ổn định đầu tiên, sau đó mở luồng auto-deploy cho các đợt cập nhật tiếp theo để đạt 100% KPI.
+- **Công việc:**
+  1. Nạp bộ biến secret của `v1.0.0` vào SSM Parameter Store (`/car-service/staging/*`, `/car-service/prod/*`).
+  2. Trỏ bản ghi `A` trên **Amazon Route 53** (có thể quản lý trực tiếp trong CDK) về Elastic IP của EC2, chạy Certbot cấp SSL HTTPS cho các subdomain.
+  3. **Cutover Đợt 1 (Release `v1.0.0`):** Merge `feat/deploy-aws` vào `main` và gắn tag `v1.0.0` → Pipeline 6 chặng tự động deploy phiên bản **v1.0.0** lên Production (và đồng bộ cấu hình CI/CD về `develop` để không mất pipeline ở các PR sau).
+  4. **Diễn tập Rollback:** Deploy thử bản test (hoặc dùng `rollback.yml`) quay lại tag trước đó và kiểm tra log khôi phục thành công.
+  5. **Diễn tập Giám sát & Cảnh báo:** Kiểm tra log từ Winston + Nginx hiển thị trên CloudWatch Logs; kích hoạt thử 1 CloudWatch Alarm (`aws cloudwatch set-alarm-state`) để xác nhận nhận thông báo từ SNS.
+  6. **Vận hành các đợt tiếp theo trong kỳ (`v1.0.1`, `v1.1.0`... từ `develop` → `main`):** Khi các tính năng mới (như SePay, Staff Portal...) được cập nhật dần, duy trì **≥ 10 lần triển khai tự động** trải đều theo tiến độ, đảm bảo **tỉ lệ build xanh ≥ 90%** và thời gian commit → staging **≤ 15 phút**.
+- **Tiêu chí hoàn thành (Definition of Done):** Release `v1.0.0` chạy live HTTPS ổn định + đầy đủ bằng chứng rollback, CloudWatch Alert SNS, ≥ 10 deploys và ≥ 90% build xanh.
+
+---
+
+## Phần C: Bảng Tổng Hợp Checkpoint Kiểm Chứng Theo Phase
+
+| Phase | Trạng thái | Đầu ra chính (Artifacts / Code) | Lệnh / Bằng chứng kiểm chứng |
+| :---: | :---: | :--- | :--- |
+| **Phase 0** | ✅ DONE | Baseline `v1.0.0` + `init` migration sync + AWS CLI (`145443242997`) | `prisma validate`, `aws sts get-caller-identity` (Exit 0) |
+| **Phase 1** | ✅ DONE | `trust proxy`, `/health`, CORS multi-origin, Winston JSON, `eslint`, `next standalone` | Backend (`lint` 0 err, 19/19 tests) & FE (`lint` 0 err, `next build` pass) |
+| **Phase 2** | ✅ DONE | `aws-s3.service.ts`, `aws-ses.service.ts` + `aws-sdk.spec.ts` | `npm test` (5/5 files, 26/26 tests pass) |
+| **Phase 3** | ✅ DONE | 3x `Dockerfile`, 2x `.dockerignore`, `nginx.conf`, `docker-compose*.yml` | `docker compose config --quiet` (Exit 0, Swarm verified) |
+| **Phase 4** | ✅ DONE | `infra/` (6 CDK Stacks deployed live lên `ap-southeast-1`, `carservice.id.vn`) | `cdk deploy --all` Exit 0 (EC2 `56.10.202.232`, RDS, 3 ECR, SNS) |
+| **Phase 5** | ✅ DONE | `.github/workflows/ci.yml`, `cd.yml`, `rollback.yml`, `deploy/scripts/*` | `YAML_OK: 3`, `LF_OK: 3`, `docker compose config` Exit 0 (Swarm verified) |
+| **Phase 6** | ⏳ NEXT | Release `v1.0.0` live HTTPS + CloudWatch Alarms + Rollback drill + ≥ 10 deploys | Tag `v1.0.0` live, Email SNS Alarm, log rollback, ≥ 10 deploys & ≥ 90% green |

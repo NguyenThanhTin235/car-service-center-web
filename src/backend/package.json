@@ -7,6 +7,8 @@
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
     "test": "vitest run",
     "seed:massive": "tsx prisma/seed-massive.ts",
     "postinstall": "prisma skills sync || exit 0"
@@ -19,6 +21,9 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1170.0",
+    "@aws-sdk/client-ses": "^3.1170.0",
+    "@aws-sdk/s3-request-presigner": "^3.1170.0",
     "@google/genai": "^2.30.0",
     "@prisma/client": "^5.22.0",
     "@types/node-cron": "^3.0.11",
@@ -43,6 +48,7 @@
     "winston": "^3.19.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.10",
@@ -62,6 +68,7 @@
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.23.13",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.73.0",
     "vitest": "^5.0.3",
     "vitest-mock-extended": "^5.1.1"
   }

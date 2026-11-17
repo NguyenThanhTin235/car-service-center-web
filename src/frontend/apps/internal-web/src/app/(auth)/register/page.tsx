@@ -24,11 +24,6 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-
-  if (isAuthenticated) {
-    return null;
-  }
-
   const [form, setForm] = useState({
     fullName: '',
     phone: '',
@@ -36,6 +31,10 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
   });
+
+  if (isAuthenticated) {
+    return null;
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
