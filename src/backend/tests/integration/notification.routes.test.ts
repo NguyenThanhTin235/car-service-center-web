@@ -151,6 +151,139 @@ describe('Integration API - Notification Routes (/api/notifications)', () => {
         },
       });
     });
+
+    it('supports types and search query filters', async () => {
+      const createdAt = new Date('2026-11-18T10:30:00.000Z');
+      vi.mocked(prisma.notification.findMany).mockResolvedValue([
+        {
+          id: 25,
+          user_id: 101,
+          notification_type: NotificationType.PAYMENT_SUCCESS,
+          title: 'Thanh toán test',
+          message: 'Giao dịch thành công.',
+          entity_type: 'PAYMENT',
+          entity_id: 50,
+          is_read: false,
+          read_at: null,
+          created_at: createdAt,
+        },
+      ]);
+      vi.mocked(prisma.notification.count).mockResolvedValue(1);
+
+      const res = await request(app)
+        .get('/api/notifications?types=APPOINTMENT_CONFIRMED,PAYMENT_SUCCESS&search=test')
+        .set('Authorization', `Bearer ${userAToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({
+        success: true,
+        code: 200,
+        data: [
+          {
+            id: 25,
+            userId: 101,
+            type: NotificationType.PAYMENT_SUCCESS,
+            title: 'Thanh toán test',
+            message: 'Giao dịch thành công.',
+            entityType: 'PAYMENT',
+            entityId: 50,
+            isRead: false,
+            readAt: null,
+            createdAt: createdAt.toISOString(),
+          },
+        ],
+        meta: {
+          page: 1,
+          limit: 20,
+          total: 1,
+          totalPages: 1,
+        },
+      });
+
+      const expectedWhere = {
+        user_id: 101,
+        notification_type: {
+          in: [NotificationType.APPOINTMENT_CONFIRMED, NotificationType.PAYMENT_SUCCESS],
+        },
+        OR: [
+          { title: { contains: 'test' } },
+          { message: { contains: 'test' } },
+        ],
+      };
+
+      expect(prisma.notification.findMany).toHaveBeenCalledWith({
+        where: expectedWhere,
+        orderBy: { created_at: 'desc' },
+        skip: 0,
+        take: 20,
+      });
+      expect(prisma.notification.count).toHaveBeenCalledWith({
+        where: expectedWhere,
+      });
+    });
+  });
+
+  describe('GET /api/notifications/:id', () => {
+    it('returns 200 with notification DTO for owner', async () => {
+      const createdAt = new Date('2026-11-18T11:00:00.000Z');
+      vi.mocked(prisma.notification.findFirst).mockResolvedValue({
+        id: 42,
+        user_id: 101,
+        notification_type: NotificationType.APPOINTMENT_CONFIRMED,
+        title: 'Lịch hẹn đã xác nhận',
+        message: 'Lịch hẹn #42 đã được xác nhận.',
+        entity_type: 'APPOINTMENT',
+        entity_id: 42,
+        is_read: false,
+        read_at: null,
+        created_at: createdAt,
+      });
+
+      const res = await request(app)
+        .get('/api/notifications/42')
+        .set('Authorization', `Bearer ${userAToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({
+        success: true,
+        code: 200,
+        data: {
+          id: 42,
+          userId: 101,
+          type: NotificationType.APPOINTMENT_CONFIRMED,
+          title: 'Lịch hẹn đã xác nhận',
+          message: 'Lịch hẹn #42 đã được xác nhận.',
+          entityType: 'APPOINTMENT',
+          entityId: 42,
+          isRead: false,
+          readAt: null,
+          createdAt: createdAt.toISOString(),
+        },
+      });
+      expect(prisma.notification.findFirst).toHaveBeenCalledWith({
+        where: { id: 42, user_id: 101 },
+      });
+    });
+
+    it('returns 404 when notification is owned by another user or non-existent', async () => {
+      vi.mocked(prisma.notification.findFirst).mockResolvedValue(null);
+
+      const res = await request(app)
+        .get('/api/notifications/999')
+        .set('Authorization', `Bearer ${userAToken}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body).toMatchObject({
+        success: false,
+        code: 404,
+        error: {
+          code: 'NOTIFICATION_NOT_FOUND',
+        },
+      });
+      expect(prisma.notification.findFirst).toHaveBeenCalledWith({
+        where: { id: 999, user_id: 101 },
+      });
+    });
   });
 
   describe('GET /api/notifications/unread-count', () => {

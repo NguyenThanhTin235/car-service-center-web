@@ -6,6 +6,7 @@ vi.mock('../../src/repositories/notification.repository', () => ({
     create: vi.fn(),
     createMany: vi.fn(),
     findByUser: vi.fn(),
+    findByIdForUser: vi.fn(),
     countUnread: vi.fn(),
     markAsRead: vi.fn(),
     markAllAsRead: vi.fn(),
@@ -291,6 +292,108 @@ describe('Unit - NotificationService', () => {
       });
       expect(noUsersRes).toEqual({ count: 0, userIds: [] });
       expect(notificationRepository.createMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getUserNotifications (listForUser)', () => {
+    it('forwards types and search filters to notificationRepository.findByUser and maps items to DTOs', async () => {
+      const now = new Date('2026-11-18T11:00:00.000Z');
+      vi.mocked(notificationRepository.findByUser).mockResolvedValue({
+        items: [
+          {
+            id: 71,
+            user_id: 101,
+            notification_type: NotificationType.PAYMENT_SUCCESS,
+            title: 'Thanh toán thành công',
+            message: 'Test payment message',
+            entity_type: 'PAYMENT',
+            entity_id: 301,
+            is_read: false,
+            read_at: null,
+            created_at: now,
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      });
+
+      const filters = {
+        page: 1,
+        limit: 10,
+        types: [NotificationType.APPOINTMENT_CONFIRMED, NotificationType.PAYMENT_SUCCESS],
+        search: 'test',
+      };
+
+      const result = await notificationService.getUserNotifications(101, filters);
+
+      expect(notificationRepository.findByUser).toHaveBeenCalledWith(101, filters);
+      expect(result).toEqual({
+        items: [
+          {
+            id: 71,
+            userId: 101,
+            type: NotificationType.PAYMENT_SUCCESS,
+            title: 'Thanh toán thành công',
+            message: 'Test payment message',
+            entityType: 'PAYMENT',
+            entityId: 301,
+            isRead: false,
+            readAt: null,
+            createdAt: now,
+          },
+        ],
+        meta: {
+          page: 1,
+          limit: 10,
+          total: 1,
+          totalPages: 1,
+        },
+      });
+    });
+  });
+
+  describe('getByIdForUser', () => {
+    it('returns mapped NotificationDto when notification is owned by user', async () => {
+      const now = new Date('2026-11-18T11:15:00.000Z');
+      vi.mocked(notificationRepository.findByIdForUser).mockResolvedValue({
+        id: 88,
+        user_id: 101,
+        notification_type: NotificationType.APPOINTMENT_CONFIRMED,
+        title: 'Lịch hẹn đã xác nhận',
+        message: 'Lịch hẹn #88 đã được xác nhận.',
+        entity_type: 'APPOINTMENT',
+        entity_id: 88,
+        is_read: true,
+        read_at: now,
+        created_at: now,
+      });
+
+      const dto = await notificationService.getByIdForUser(88, 101);
+
+      expect(notificationRepository.findByIdForUser).toHaveBeenCalledWith(88, 101);
+      expect(dto).toEqual({
+        id: 88,
+        userId: 101,
+        type: NotificationType.APPOINTMENT_CONFIRMED,
+        title: 'Lịch hẹn đã xác nhận',
+        message: 'Lịch hẹn #88 đã được xác nhận.',
+        entityType: 'APPOINTMENT',
+        entityId: 88,
+        isRead: true,
+        readAt: now,
+        createdAt: now,
+      });
+    });
+
+    it('returns null when notification is not found or not owned by user', async () => {
+      vi.mocked(notificationRepository.findByIdForUser).mockResolvedValue(null);
+
+      const dto = await notificationService.getByIdForUser(999, 101);
+
+      expect(notificationRepository.findByIdForUser).toHaveBeenCalledWith(999, 101);
+      expect(dto).toBeNull();
     });
   });
 });
