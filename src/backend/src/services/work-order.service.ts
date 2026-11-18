@@ -110,7 +110,7 @@ export class WorkOrderService {
         created_by_id: advisorId,
       });
 
-      // 7.5. Copy dịch vụ yêu cầu từ Intake -> WoService
+      // 7.5. Copy dịch vụ yêu cầu từ Intake -> WoService (Snapshot warranty)
       if (intake.services && intake.services.length > 0) {
         let sortOrder = 0;
         for (const is of intake.services) {
@@ -123,6 +123,8 @@ export class WorkOrderService {
                 pricing_type: is.service.pricing_type,
                 status: 'PENDING',
                 sort_order: ++sortOrder,
+                warranty_months: is.service.warranty_months ?? 0,
+                warranty_mileage: is.service.warranty_mileage ?? 0,
               }
             });
           }
@@ -249,7 +251,7 @@ export class WorkOrderService {
     });
     const nextSortOrder = (maxSort._max.sort_order ?? 0) + 1;
 
-    // 6. Tạo WoService
+    // 6. Tạo WoService (Snapshot warranty từ Service catalog)
     const woService = await prisma.woService.create({
       data: {
         work_order_id: workOrderId,
@@ -258,6 +260,8 @@ export class WorkOrderService {
         pricing_type: template.pricing_type,
         status: 'PENDING',
         sort_order: nextSortOrder,
+        warranty_months: template.warranty_months ?? 0,
+        warranty_mileage: template.warranty_mileage ?? 0,
       },
       include: {
         service: {
@@ -594,6 +598,8 @@ export class WorkOrderService {
       technician_id?: number | null;
       description?: string | null;
       estimated_hours?: number | null;
+      is_warranty?: boolean;
+      original_job_id?: number | null;
       labours?: Array<{
         task_name?: string;
         employee_id?: number | null;
@@ -607,6 +613,7 @@ export class WorkOrderService {
         item_id: number;
         quantity: number;
         unit_price?: number;
+        is_warranty?: boolean;
       }>;
     }
   ) {
@@ -749,6 +756,8 @@ export class WorkOrderService {
           description: data.description?.trim() || null,
           estimated_hours: totalEstHours,
           status: 'PLANNED',
+          is_warranty: data.is_warranty ?? false,
+          original_job_id: data.original_job_id ?? null,
           created_by_id: advisorUserId,
         },
       });
@@ -814,10 +823,14 @@ export class WorkOrderService {
         });
       }
 
-      // 7. Gắn Part lines
+      // 7. Gắn Part lines (Snapshot warranty từ InventoryItem)
       if (data.parts && data.parts.length > 0) {
         for (const p of data.parts) {
           if (p.item_id) {
+            const itemObj = await tx.inventoryItem.findUnique({
+              where: { id: p.item_id },
+              select: { warranty_months: true, warranty_mileage: true },
+            });
             await tx.jobPart.create({
               data: {
                 job_id: newJob.id,
@@ -825,6 +838,9 @@ export class WorkOrderService {
                 planned_quantity: Number(p.quantity) || 1,
                 unit_price: Number(p.unit_price) || 0,
                 status: 'PLANNED',
+                is_warranty: p.is_warranty ?? false,
+                warranty_months: itemObj?.warranty_months ?? 0,
+                warranty_mileage: itemObj?.warranty_mileage ?? 0,
               },
             });
           }
@@ -864,6 +880,7 @@ export class WorkOrderService {
       description?: string | null;
       estimated_hours?: number | null;
       price?: number | null;
+      is_warranty?: boolean;
     }
   ) {
     const job = await prisma.job.findUnique({
@@ -918,6 +935,7 @@ export class WorkOrderService {
           description: data.description !== undefined ? data.description?.trim() || null : undefined,
           estimated_hours:
             data.estimated_hours !== undefined ? Number(data.estimated_hours) || 1.0 : undefined,
+          is_warranty: data.is_warranty !== undefined ? data.is_warranty : undefined,
         },
         include: {
           job_type: true,
@@ -1757,6 +1775,7 @@ export class WorkOrderService {
     item_id: number;
     planned_quantity: number;
     unit_price?: number;
+    is_warranty?: boolean;
   }, userId?: number) {
     // 1. Kiểm tra Work Order
     const wo = await prisma.workOrder.findUnique({
@@ -1807,7 +1826,7 @@ export class WorkOrderService {
       initialPartStatus = 'RESERVED';
     }
 
-    // Tạo JobPart record
+    // Tạo JobPart record (Snapshot warranty từ InventoryItem)
     const jobPart = await prisma.jobPart.create({
       data: {
         job_id: jobId,
@@ -1816,6 +1835,9 @@ export class WorkOrderService {
         issued_quantity: initialIssuedQty,
         unit_price: unitPrice,
         status: initialPartStatus,
+        is_warranty: data.is_warranty ?? false,
+        warranty_months: item.warranty_months ?? 0,
+        warranty_mileage: item.warranty_mileage ?? 0,
       },
       include: {
         job: {
@@ -1881,6 +1903,7 @@ export class WorkOrderService {
     planned_quantity?: number;
     unit_price?: number;
     status?: any;
+    is_warranty?: boolean;
   }) {
     const wo = await prisma.workOrder.findUnique({
       where: { id: workOrderId },
@@ -1910,6 +1933,7 @@ export class WorkOrderService {
         ...(data.planned_quantity !== undefined && { planned_quantity: data.planned_quantity }),
         ...(data.unit_price !== undefined && { unit_price: data.unit_price }),
         ...(data.status !== undefined && { status: data.status }),
+        ...(data.is_warranty !== undefined && { is_warranty: data.is_warranty }),
       },
       include: {
         job: {
@@ -2828,7 +2852,7 @@ export class WorkOrderService {
             if (part.status === 'RESERVED' || part.status === 'PLANNED') {
               await tx.jobPart.update({
                 where: { id: part.id },
-                data: { status: 'RETURNED', issued_quantity: 0 },
+                data: { status: 'RETURNED' },
               });
             } else if (part.status === 'ISSUED') {
               const qtyToReturn = Number(part.issued_quantity) || Number(part.planned_quantity) || 0;
@@ -2880,16 +2904,20 @@ export class WorkOrderService {
         notes += ` [Mức xăng lúc trả: ${data.fuelLevel}]`;
       }
 
+      const releaseOdo = data.mileage ? Number(data.mileage) : (wo.check_in?.mileage || null);
+
       const releaseRecord = await tx.vehicleRelease.upsert({
         where: { work_order_id: workOrderId },
         update: {
           release_notes: notes,
+          odometer_at_release: releaseOdo,
           released_by_id: userId,
           released_at: new Date(),
         },
         create: {
           work_order_id: workOrderId,
           release_notes: notes,
+          odometer_at_release: releaseOdo,
           released_by_id: userId,
           released_at: new Date(),
         },
@@ -3011,8 +3039,10 @@ export class WorkOrderService {
         throw new Error(`Số ODO xuất xưởng (${data.returnMileage} km) không được nhỏ hơn ODO tiếp nhận (${wo.check_in.mileage} km).`);
       }
 
+      const returnMileageVal = data.returnMileage ? Number(data.returnMileage) : (wo.check_in?.mileage || null);
+
       const structuredNotes = JSON.stringify({
-        returnMileage: data.returnMileage ? Number(data.returnMileage) : (wo.check_in?.mileage || null),
+        returnMileage: returnMileageVal,
         returnFuel: data.returnFuel || wo.check_in?.fuel_level || 'HALF',
         oldPartsAction: data.oldPartsAction || 'RETURNED_TO_CUSTOMER',
         carWashCompleted: data.carWashCompleted !== false,
@@ -3020,13 +3050,14 @@ export class WorkOrderService {
         notes: data.notes?.trim() || '',
         customerSignature: data.customerSignature || null,
         warrantyTerms: data.warrantyTerms || 'Bảo hành 06 tháng hoặc 10.000 km cho các hạng mục sửa chữa và phụ tùng chính hãng.',
-        summary: `Bàn giao xe thành công sau sửa chữa. ODO: ${data.returnMileage || 'N/A'} km. Xăng: ${data.returnFuel || 'N/A'}. ${data.notes?.trim() ? `Ghi chú: ${data.notes.trim()}` : ''}`
+        summary: `Bàn giao xe thành công sau sửa chữa. ODO: ${returnMileageVal || 'N/A'} km. Xăng: ${data.returnFuel || 'N/A'}. ${data.notes?.trim() ? `Ghi chú: ${data.notes.trim()}` : ''}`
       });
 
       const releaseRecord = await tx.vehicleRelease.upsert({
         where: { work_order_id: workOrderId },
         update: {
           release_notes: structuredNotes,
+          odometer_at_release: returnMileageVal,
           released_by_id: userId,
           released_at: new Date(),
           confirmed_by_customer_id: wo.customer_id,
@@ -3035,6 +3066,7 @@ export class WorkOrderService {
         create: {
           work_order_id: workOrderId,
           release_notes: structuredNotes,
+          odometer_at_release: returnMileageVal,
           released_by_id: userId,
           released_at: new Date(),
           confirmed_by_customer_id: wo.customer_id,
