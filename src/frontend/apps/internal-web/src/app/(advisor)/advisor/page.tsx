@@ -297,14 +297,14 @@ export default function SADashboardPage() {
 
               {/* 2-Tone Split Bar Inside Dark Container (Exact Match to Reference Card 2) */}
               <div className="mt-4">
-                <div className="bg-[#0c2340] rounded-2xl p-1.5 flex items-stretch h-14 gap-1.5">
+                <div className="bg-[#0c2340] rounded-xl p-1 flex items-stretch h-7 gap-1">
                   <div
                     style={{ width: `${Math.max(25, Math.min(75, metrics.queuedPct))}%` }}
-                    className="bg-white text-zinc-900 rounded-xl px-2.5 py-1.5 flex items-end font-mono font-extrabold text-xs tabular-nums transition-all"
+                    className="bg-white text-zinc-900 rounded-lg px-2.5 flex items-center font-mono font-extrabold text-[11px] leading-none tabular-nums transition-all"
                   >
                     {metrics.queuedPct}%
                   </div>
-                  <div className="flex-1 text-white px-2.5 py-1.5 flex items-end font-mono font-extrabold text-xs tabular-nums">
+                  <div className="flex-1 text-white px-2.5 flex items-center font-mono font-extrabold text-[11px] leading-none tabular-nums">
                     {metrics.convertedPct}%
                   </div>
                 </div>

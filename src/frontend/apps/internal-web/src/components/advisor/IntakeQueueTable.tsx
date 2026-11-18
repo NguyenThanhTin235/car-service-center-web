@@ -440,6 +440,7 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                 <th className="py-3.5 px-2 sm:px-3 lg:px-4">Thông tin xe & Biển số</th>
                 <th className="py-3.5 px-3 lg:px-4 hidden lg:table-cell">Loại dịch vụ</th>
                 <th className="py-3.5 px-2 sm:px-3 lg:px-4 hidden sm:table-cell">Khách hàng</th>
+                <th className="py-3.5 px-2 sm:px-3 lg:px-4 hidden md:table-cell whitespace-nowrap">Giờ đến</th>
                 <th className="py-3.5 px-2 sm:px-3 lg:px-4 whitespace-nowrap">Thời gian chờ</th>
                 <th className="py-3.5 pl-2 pr-2 sm:pr-3 lg:pr-4 text-right whitespace-nowrap">Hành động</th>
               </tr>
@@ -524,6 +525,22 @@ export default function IntakeQueueTable({ items, onWorkOrderCreated }: IntakeQu
                         <div className="text-xs text-slate-500 font-mono mt-0.5 truncate">
                           {item.customer.phone}
                         </div>
+                      </div>
+                    </td>
+
+                    <td className="py-3.5 sm:py-4 px-2 sm:px-3 lg:px-4 hidden md:table-cell whitespace-nowrap">
+                      <div className="font-mono font-semibold text-zinc-900 tabular-nums">
+                        {new Date(item.arrived_at).toLocaleTimeString('vi-VN', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-mono tabular-nums mt-0.5">
+                        {new Date(item.arrived_at).toLocaleDateString('vi-VN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                        })}
                       </div>
                     </td>
 

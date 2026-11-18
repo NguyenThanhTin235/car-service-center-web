@@ -259,33 +259,53 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(!workOrder?.check_in);
 
-  // Initialize from workOrder if check_in exists
-  useEffect(() => {
-    if (workOrder?.check_in) {
-      const ci = workOrder.check_in;
+  const resetCheckInFields = (wo?: WorkOrder) => {
+    if (wo?.check_in) {
+      const ci = wo.check_in;
       setMileage((ci.mileage ?? '').toString());
       setFuelLevel(ci.fuel_level);
       setExteriorCondition(ci.exterior_condition);
       setBelongings(ci.belongings || '');
       setEvidenceUrls(ci.evidence_urls || []);
-      
+
       try {
         const parsed = JSON.parse(ci.complaint);
-        if (parsed.tags) setCustomerReported(parsed.tags);
-        if (parsed.notes) setComplaint(parsed.notes);
+        setCustomerReported(Array.isArray(parsed.tags) ? parsed.tags : []);
+        setComplaint(parsed.notes || '');
       } catch {
-        setComplaint(ci.complaint);
+        setCustomerReported([]);
+        setComplaint(ci.complaint || '');
       }
-      
+    } else {
+      setMileage('');
+      setFuelLevel('EMPTY');
+      setExteriorCondition('');
+      setBelongings('');
+      setEvidenceUrls([]);
+      setCustomerReported([]);
+      setComplaint(wo?.intake_record?.notes || '');
+    }
+  };
+
+  // Initialize from workOrder if check_in exists
+  useEffect(() => {
+    resetCheckInFields(workOrder);
+    if (workOrder?.check_in) {
       // If it's already confirmed or pending confirmation, show read-only view by default
-      if (ci.status === 'CONFIRMED' || ci.status === 'PENDING_CONFIRMATION') {
+      if (workOrder.check_in.status === 'CONFIRMED' || workOrder.check_in.status === 'PENDING_CONFIRMATION') {
         setIsEditing(false);
       }
     } else if (workOrder?.intake_record?.notes) {
-      setComplaint(workOrder.intake_record.notes);
       setIsEditing(true);
     }
   }, [workOrder]);
+
+  const handleCancelEdit = () => {
+    resetCheckInFields(workOrder);
+    if (workOrder?.check_in) {
+      setIsEditing(false);
+    }
+  };
 
   const fuelOptions = [
     { value: 'EMPTY', label: 'E', percentage: 0 },
@@ -364,22 +384,49 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
           <div>
             <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-3">YÊU CẦU / LOẠI CÔNG VIỆC</h3>
             <div className="flex flex-wrap gap-2 items-center">
-              {workOrder?.services?.map(svc => (
+              {workOrder?.services?.map(svc => {
+                const hasApprovedQuotation =
+                  ((workOrder as any)?.quotations as Array<{ status: string }> | undefined)?.some(
+                    (q) => q.status === 'APPROVED'
+                  ) ?? false;
+                const isServiceDeleteLocked =
+                  isCustomerApproved ||
+                  hasApprovedQuotation ||
+                  svc.status === 'IN_PROGRESS' ||
+                  (svc.jobs?.some((j: any) => j.status === 'IN_PROGRESS') ?? false);
+
+                return (
                 <div key={svc.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-surface-container-high border-outline text-on-surface text-body-sm font-medium transition-colors hover:bg-surface-container-highest">
                   <span className="material-symbols-outlined text-[16px] text-primary">build</span>
                   {svc.name}
                   {!isReadOnly && (
                     <button
-                      onClick={() => handleRemoveService(svc.id)}
+                      onClick={() => {
+                        if (isServiceDeleteLocked) {
+                          toast.error('Không thể xóa dịch vụ khi báo giá đã được phê duyệt hoặc dịch vụ đang thực hiện.');
+                          return;
+                        }
+                        handleRemoveService(svc.id);
+                      }}
                       disabled={removingServiceId === svc.id}
-                      className="flex items-center justify-center text-on-surface-variant hover:text-error transition-colors disabled:opacity-50 ml-1"
-                      title="Xóa dịch vụ"
+                      aria-disabled={isServiceDeleteLocked}
+                      className={`flex items-center justify-center transition-colors disabled:opacity-50 ml-1 ${
+                        isServiceDeleteLocked
+                          ? 'text-slate-300 opacity-60 cursor-not-allowed'
+                          : 'text-on-surface-variant hover:text-error'
+                      }`}
+                      title={
+                        isServiceDeleteLocked
+                          ? 'Không thể xóa dịch vụ khi báo giá đã được phê duyệt hoặc dịch vụ đang thực hiện.'
+                          : 'Xóa dịch vụ'
+                      }
                     >
                       <span className="material-symbols-outlined text-[16px]">{removingServiceId === svc.id ? 'progress_activity' : 'close'}</span>
                     </button>
                   )}
                 </div>
-              ))}
+                );
+              })}
               
               {!isReadOnly && (
                 <div className="relative" ref={dropdownRef}>
@@ -736,15 +783,14 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
 
               {!isReadOnly && (
                 <div className="md:col-span-2 flex justify-end gap-3 mt-4">
-                  {workOrder?.check_in && (
-                    <button
-                      type="button"
-                      onClick={() => setIsEditing(false)}
-                      className="px-4 py-2.5 rounded-xl font-bold text-xs border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors"
-                    >
-                      Hủy bỏ
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                    className="px-4 py-2.5 rounded-xl font-bold text-xs border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
+                  >
+                    Hủy
+                  </button>
                   <button
                     onClick={handleSave}
                     disabled={isSaving}
