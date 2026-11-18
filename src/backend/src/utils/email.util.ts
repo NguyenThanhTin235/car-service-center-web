@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { sendSesEmail } from '../services/aws-ses.service';
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -87,6 +88,11 @@ export const sendOtpEmail = async (to: string, otp: string, purpose: 'register' 
     </body>
     </html>
   `;
+
+  if (process.env.EMAIL_PROVIDER === 'ses') {
+    await sendSesEmail({ to, subject, html });
+    return;
+  }
 
   await transporter.sendMail({
     from: `"AutoCare Pro" <${process.env.GMAIL_USER || process.env.EMAIL_USER}>`,

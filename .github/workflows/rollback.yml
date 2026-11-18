@@ -1,0 +1,123 @@
+name: Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment to roll back"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - prod
+      image_tag:
+        description: "Optional target image tag (defaults to .previous_tag on EC2)"
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  rollback:
+    name: Rollback EC2 (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-southeast-1' }}
+
+      - name: Execute rollback.sh on EC2 via AWS SSM
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          AWS_REGION: ${{ vars.AWS_REGION || 'ap-southeast-1' }}
+          ENV_NAME: ${{ inputs.environment }}
+          TARGET_TAG: ${{ inputs.image_tag }}
+          DOMAIN_NAME: ${{ vars.DOMAIN_NAME || 'carservice.id.vn' }}
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+          PARAMS_FILE="$(mktemp)"
+          jq -n \
+            --arg env_name "$ENV_NAME" \
+            --arg target_tag "$TARGET_TAG" \
+            --arg ecr_registry "$ECR_REGISTRY" \
+            --arg aws_region "$AWS_REGION" \
+            --arg domain_name "$DOMAIN_NAME" \
+            '{
+              commands: [
+                "set -euo pipefail",
+                ("export ENV_NAME=\"" + $env_name + "\" TARGET_TAG=\"" + $target_tag + "\" ECR_REGISTRY=\"" + $ecr_registry + "\" AWS_REGION=\"" + $aws_region + "\" DOMAIN_NAME=\"" + $domain_name + "\""),
+                "/opt/car-service/deploy/scripts/rollback.sh"
+              ]
+            }' > "$PARAMS_FILE"
+
+          COMMAND_ID="$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Rollback ${ENV_NAME} (target: ${TARGET_TAG:-previous})" \
+            --timeout-seconds 300 \
+            --parameters "file://${PARAMS_FILE}" \
+            --query "Command.CommandId" \
+            --output text)"
+
+          echo "SSM Command ID: ${COMMAND_ID}"
+
+          STATUS="Pending"
+          for _ in $(seq 1 60); do
+            sleep 5
+            STATUS="$(aws ssm get-command-invocation \
+              --region "$AWS_REGION" \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "Status" \
+              --output text || echo "Pending")"
+            echo "SSM status: ${STATUS}"
+            if [[ "$STATUS" != "Pending" && "$STATUS" != "InProgress" && "$STATUS" != "Delayed" ]]; then
+              break
+            fi
+          done
+
+          echo "--- SSM StandardOutputContent ---"
+          aws ssm get-command-invocation \
+            --region "$AWS_REGION" \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query "StandardOutputContent" \
+            --output text || true
+
+          echo "--- SSM StandardErrorContent ---"
+          aws ssm get-command-invocation \
+            --region "$AWS_REGION" \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query "StandardErrorContent" \
+            --output text || true
+
+          if [[ "$STATUS" != "Success" ]]; then
+            echo "Rollback failed with SSM status: ${STATUS}"
+            exit 1
+          fi
+
+      - name: Send SNS Alert on Rollback Failure
+        if: failure() && vars.SNS_ALERT_TOPIC_ARN != ''
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION || 'ap-southeast-1' }}
+          SNS_TOPIC_ARN: ${{ vars.SNS_ALERT_TOPIC_ARN }}
+          ENV_NAME: ${{ inputs.environment }}
+          TARGET_TAG: ${{ inputs.image_tag }}
+        run: |
+          aws sns publish \
+            --region "$AWS_REGION" \
+            --topic-arn "$SNS_TOPIC_ARN" \
+            --subject "[ALERT] Car Service Center Rollback Failed (${ENV_NAME})" \
+            --message "Rollback failed for environment=${ENV_NAME}, target_tag=${TARGET_TAG:-previous}. Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
