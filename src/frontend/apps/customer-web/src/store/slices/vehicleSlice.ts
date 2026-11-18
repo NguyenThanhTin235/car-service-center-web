@@ -10,6 +10,11 @@ export interface Vehicle {
   color: string | null;
   vehicleSize: 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL' | null;
   isActive: boolean;
+  activeWorkOrder?: {
+    id: number;
+    woNumber: string;
+    status: string;
+  } | null;
   createdAt: string;
 }
 
