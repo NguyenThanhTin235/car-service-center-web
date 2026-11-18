@@ -46,7 +46,7 @@ export default function IntakeQueuePage() {
   const avgWaitMinutes = totalQueue > 0 ? Math.floor(totalWaitMinutes / totalQueue) : 0;
 
   return (
-    <div className="flex flex-col gap-5 px-4 sm:px-6 py-3 max-w-[1440px] mx-auto w-full">
+    <div className="flex flex-col gap-5 px-3 sm:px-5 lg:px-6 py-3 max-w-[1440px] mx-auto w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -59,7 +59,7 @@ export default function IntakeQueuePage() {
           type="button"
           onClick={fetchQueue}
           disabled={loading}
-          className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-slate-50 border border-slate-200/80 text-xs font-bold text-zinc-800 shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+          className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2.5 min-h-[40px] rounded-full bg-white hover:bg-slate-50 border border-slate-200/80 text-xs font-bold text-zinc-800 shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
         >
           <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin' : ''}`}>
             sync
@@ -77,7 +77,7 @@ export default function IntakeQueuePage() {
       />
 
       {/* Main Bento Table Workspace */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-200/70 shadow-xs flex flex-col gap-5">
+      <div className="bg-white rounded-[28px] p-4 sm:p-5 lg:p-6 border border-slate-200/70 shadow-xs flex flex-col gap-5">
         {/* Segmented Pill Switcher */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="bg-[#f2f4f8] p-1.5 rounded-2xl inline-flex items-center gap-1 flex-wrap">
@@ -114,10 +114,62 @@ export default function IntakeQueuePage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center h-48">
-            <span className="material-symbols-outlined animate-spin text-[32px] text-[#0050cd]">
-              progress_activity
-            </span>
+          <div className="flex flex-col" aria-busy="true" aria-label="Đang tải danh sách xe đang chờ">
+            <div className="overflow-x-auto">
+              <table className="table-auto w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    <th className="py-3.5 pl-2 pr-1.5 sm:pl-3 sm:pr-2 lg:pl-4 w-10 sm:w-12 text-center">#</th>
+                    <th className="py-3.5 px-2 sm:px-3 lg:px-4">Thông tin xe & Biển số</th>
+                    <th className="py-3.5 px-3 lg:px-4 hidden lg:table-cell">Loại dịch vụ</th>
+                    <th className="py-3.5 px-2 sm:px-3 lg:px-4 hidden sm:table-cell">Khách hàng</th>
+                    <th className="py-3.5 px-2 sm:px-3 lg:px-4 whitespace-nowrap">Thời gian chờ</th>
+                    <th className="py-3.5 pl-2 pr-2 sm:pr-3 lg:pr-4 text-right whitespace-nowrap">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
+                  {Array.from({ length: 5 }).map((_, idx) => (
+                    <tr key={idx} className="animate-pulse">
+                      <td className="py-3.5 sm:py-4 pl-2 pr-1.5 sm:pl-3 sm:pr-2 lg:pl-4 text-center align-top sm:align-middle">
+                        <div className="h-4 w-5 bg-slate-200 rounded mx-auto" />
+                      </td>
+                      <td className="py-3.5 sm:py-4 px-2 sm:px-3 lg:px-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 min-w-0">
+                          <div className="h-7 w-24 bg-slate-200 rounded-xl shrink-0" />
+                          <div className="min-w-0 flex-1 flex flex-col gap-1.5">
+                            <div className="h-4 w-32 bg-slate-200 rounded" />
+                            <div className="h-3 w-28 bg-slate-100 rounded sm:hidden" />
+                            <div className="h-5 w-20 bg-slate-100 rounded-full lg:hidden" />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-3 lg:px-4 hidden lg:table-cell">
+                        <div className="h-6 w-28 bg-slate-200 rounded-full" />
+                      </td>
+                      <td className="py-4 px-2 sm:px-3 lg:px-4 hidden sm:table-cell">
+                        <div className="flex flex-col gap-1.5">
+                          <div className="h-4 w-28 bg-slate-200 rounded" />
+                          <div className="h-3 w-20 bg-slate-100 rounded" />
+                        </div>
+                      </td>
+                      <td className="py-3.5 sm:py-4 px-2 sm:px-3 lg:px-4 whitespace-nowrap">
+                        <div className="h-5 w-20 bg-slate-200 rounded" />
+                      </td>
+                      <td className="py-3.5 sm:py-4 pl-2 pr-2 sm:pr-3 lg:pr-4 text-right">
+                        <div className="flex justify-end gap-2 shrink-0">
+                          <div className="w-10 h-10 bg-slate-200 rounded-xl" />
+                          <div className="w-10 h-10 bg-slate-200 rounded-xl" />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="pt-4 mt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 animate-pulse">
+              <div className="h-4 w-40 bg-slate-100 rounded" />
+              <div className="h-8 w-28 bg-slate-100 rounded-xl" />
+            </div>
           </div>
         ) : (
           <IntakeQueueTable

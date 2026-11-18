@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 type Props = {
   statuses: string[];
@@ -10,6 +10,18 @@ type Props = {
 export default function ChevronPipeline({ statuses, currentStatus, compact = false }: Props) {
   const currentIndex = statuses.indexOf(currentStatus);
   const arrowCut = compact ? 8 : 12;
+  const activeStepRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const activeEl = activeStepRef.current;
+    if (activeEl && typeof activeEl.scrollIntoView === 'function') {
+      activeEl.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    }
+  }, [currentStatus, currentIndex]);
 
   return (
     <div
@@ -50,7 +62,8 @@ export default function ChevronPipeline({ statuses, currentStatus, compact = fal
         return (
           <div
             key={status}
-            className={`relative flex items-center h-full ${
+            ref={isCurrent ? activeStepRef : undefined}
+            className={`relative flex items-center h-full shrink-0 ${
               !isFirst ? (compact ? '-ml-[8px]' : '-ml-[12px]') : ''
             }`}
             style={{ zIndex: statuses.length - index }}

@@ -956,7 +956,7 @@ export const updateJobStatus = async (req: Request, res: Response): Promise<void
   try {
     const workOrderId = Number(req.params.id);
     const jobId = Number(req.params.jobId);
-    const { status } = req.body;
+    const { status, partsUsage } = req.body;
 
     if (!['PLANNED', 'IN_PROGRESS', 'COMPLETED', 'REWORK', 'PASSED'].includes(status)) {
       res.status(400).json({
@@ -969,7 +969,7 @@ export const updateJobStatus = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const updated = await workOrderService.updateJobStatus(workOrderId, jobId, status);
+    const updated = await workOrderService.updateJobStatus(workOrderId, jobId, status, partsUsage);
     res.json({
       success: true,
       code: 200,

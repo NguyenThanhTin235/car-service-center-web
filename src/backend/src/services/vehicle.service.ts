@@ -26,6 +26,20 @@ export class VehicleService {
   async getMyVehicles(customerId: number) {
     const vehicles = await prisma.vehicle.findMany({
       where: { customer_id: customerId },
+      include: {
+        work_orders: {
+          where: {
+            status: { notIn: ['CLOSED', 'CANCELLED'] },
+          },
+          select: {
+            id: true,
+            wo_number: true,
+            status: true,
+          },
+          orderBy: { created_at: 'desc' },
+          take: 1,
+        },
+      },
       orderBy: { created_at: 'desc' },
     });
 
@@ -38,6 +52,13 @@ export class VehicleService {
       color: v.color,
       vehicleSize: v.vehicle_size,
       isActive: v.status === 'ACTIVE',
+      activeWorkOrder: v.work_orders[0]
+        ? {
+            id: v.work_orders[0].id,
+            woNumber: v.work_orders[0].wo_number,
+            status: v.work_orders[0].status,
+          }
+        : null,
       createdAt: v.created_at,
     }));
   }
@@ -132,6 +153,22 @@ export class VehicleService {
     }
     if (vehicle.customer_id !== customerId) {
       throw new Error('Bạn không có quyền xóa xe này.');
+    }
+
+    // Chặn xóa nếu xe đang có Phiếu công việc đang mở tại xưởng
+    const activeWorkOrder = await prisma.workOrder.findFirst({
+      where: {
+        vehicle_id: vehicleId,
+        status: { notIn: ['CLOSED', 'CANCELLED'] },
+      },
+      select: { id: true, wo_number: true },
+      orderBy: { created_at: 'desc' },
+    });
+
+    if (activeWorkOrder) {
+      throw new Error(
+        `Phương tiện đang có Phiếu công việc đang xử lý tại xưởng (${activeWorkOrder.wo_number}). Không thể xóa phương tiện này.`
+      );
     }
 
     // Kiểm tra xem xe đã có lịch hẹn, phiếu tiếp nhận hoặc lệnh sửa chữa chưa

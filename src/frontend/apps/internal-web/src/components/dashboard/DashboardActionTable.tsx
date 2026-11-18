@@ -6,6 +6,8 @@ export interface TableColumn<T> {
   key: string;
   label: string;
   sortable?: boolean;
+  headerClassName?: string;
+  cellClassName?: string;
   render?: (row: T) => React.ReactNode;
 }
 
@@ -141,7 +143,7 @@ export function DashboardActionTable<T extends Record<string, any>>({
                   onClick={() => col.sortable && handleSort(col.key)}
                   className={`py-2.5 px-3 font-semibold uppercase text-slate-500 dark:text-slate-400 tracking-wider text-[11px] select-none ${
                     col.sortable ? 'cursor-pointer hover:text-slate-900 dark:hover:text-white' : ''
-                  }`}
+                  } ${col.headerClassName || ''}`}
                 >
                   <div className="flex items-center gap-1">
                     <span>{col.label}</span>
@@ -161,7 +163,10 @@ export function DashboardActionTable<T extends Record<string, any>>({
                   className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
                 >
                   {columns.map((col) => (
-                    <td key={col.key} className="py-2.5 px-3 text-slate-700 dark:text-slate-300">
+                    <td
+                      key={col.key}
+                      className={`py-2.5 px-3 text-slate-700 dark:text-slate-300 ${col.cellClassName || ''}`}
+                    >
                       {col.render ? col.render(row) : row[col.key]}
                     </td>
                   ))}

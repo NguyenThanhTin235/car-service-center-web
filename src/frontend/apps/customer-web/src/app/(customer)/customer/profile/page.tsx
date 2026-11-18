@@ -975,25 +975,34 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {vehicles.map((v) => {
                     const sizeText = VEHICLE_SIZES.find((s) => s.value === v.vehicleSize)?.label?.split(' ')[0] || v.vehicleSize;
+                    const activeWO = v.activeWorkOrder;
                     return (
                       <div
                         key={v.id}
                         className="p-5 rounded-2xl border border-slate-200/90 bg-white hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between gap-4"
                       >
                         <div>
-                          <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
                             <span className="px-3 py-1 bg-slate-900 text-white font-mono font-bold text-xs rounded-lg tracking-wider shadow-sm">
                               {v.licensePlate}
                             </span>
-                            <span
-                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                v.isActive
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : 'bg-slate-100 text-slate-500'
-                              }`}
-                            >
-                              {v.isActive ? 'Hoạt động' : 'Tạm dừng'}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {activeWO && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                  Đang làm dịch vụ tại xưởng
+                                </span>
+                              )}
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                  v.isActive
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-slate-100 text-slate-500'
+                                }`}
+                              >
+                                {v.isActive ? 'Hoạt động' : 'Tạm dừng'}
+                              </span>
+                            </div>
                           </div>
 
                           <h3 className="font-bold text-base text-slate-900 leading-snug">
@@ -1024,8 +1033,27 @@ export default function ProfilePage() {
                           {v.isActive ? (
                             <button
                               type="button"
-                              onClick={() => setVehicleDeleteConfirm(v)}
-                              className="flex items-center gap-1 px-3 py-1.5 border border-red-100 text-red-600 hover:bg-red-50 rounded-xl text-xs font-semibold transition-all"
+                              aria-disabled={!!activeWO}
+                              title={
+                                activeWO
+                                  ? `Phương tiện đang có Phiếu công việc đang xử lý tại xưởng (${activeWO.woNumber}). Không thể xóa phương tiện này.`
+                                  : 'Xóa phương tiện'
+                              }
+                              onClick={() => {
+                                if (activeWO) {
+                                  setVehicleToast({
+                                    message: `Phương tiện đang có Phiếu công việc đang xử lý tại xưởng (${activeWO.woNumber}). Không thể xóa phương tiện này.`,
+                                    type: 'error',
+                                  });
+                                  return;
+                                }
+                                setVehicleDeleteConfirm(v);
+                              }}
+                              className={`flex items-center gap-1 px-3 py-1.5 border rounded-xl text-xs font-semibold transition-all ${
+                                activeWO
+                                  ? 'border-slate-200 bg-slate-50 text-slate-400 opacity-50 cursor-not-allowed'
+                                  : 'border-red-100 text-red-600 hover:bg-red-50'
+                              }`}
                             >
                               <span className="material-symbols-outlined text-[15px]">delete</span>
                               Xóa

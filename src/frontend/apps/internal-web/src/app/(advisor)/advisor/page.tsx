@@ -9,72 +9,7 @@ import {
   getWorkOrders,
   getIntakeQueue,
 } from '@/lib/api/work-order.api';
-
-const STATUS_META: Record<
-  string,
-  { label: string; shortLabel: string; textClass: string; badgeBg: string }
-> = {
-  DRAFT: {
-    label: 'Tiếp nhận',
-    shortLabel: 'Tiếp nhận',
-    textClass: 'text-slate-600',
-    badgeBg: 'bg-slate-100 text-slate-700',
-  },
-  IN_PLANNING: {
-    label: 'Lập kế hoạch',
-    shortLabel: 'Kế hoạch',
-    textClass: 'text-[#0050cd]',
-    badgeBg: 'bg-blue-50 text-[#0050cd]',
-  },
-  PENDING_APPROVAL: {
-    label: 'Chờ duyệt báo giá',
-    shortLabel: 'Chờ duyệt',
-    textClass: 'text-amber-600',
-    badgeBg: 'bg-amber-50 text-amber-700',
-  },
-  APPROVED: {
-    label: 'Đã duyệt',
-    shortLabel: 'Đã duyệt',
-    textClass: 'text-indigo-600',
-    badgeBg: 'bg-indigo-50 text-indigo-700',
-  },
-  IN_PROGRESS: {
-    label: 'Đang sửa chữa',
-    shortLabel: 'Đang sửa',
-    textClass: 'text-[#0050cd]',
-    badgeBg: 'bg-blue-50 text-[#0050cd]',
-  },
-  BILLING_REQUESTED: {
-    label: 'Chờ thanh toán',
-    shortLabel: 'Chờ TT',
-    textClass: 'text-purple-600',
-    badgeBg: 'bg-purple-50 text-purple-700',
-  },
-  FINANCIAL_CLEARED: {
-    label: 'Chờ giao xe',
-    shortLabel: 'Chờ giao',
-    textClass: 'text-emerald-600',
-    badgeBg: 'bg-emerald-50 text-emerald-700',
-  },
-  RELEASED: {
-    label: 'Đã giao xe',
-    shortLabel: 'Đã giao',
-    textClass: 'text-emerald-600',
-    badgeBg: 'bg-emerald-50 text-emerald-700',
-  },
-  CLOSED: {
-    label: 'Đã đóng',
-    shortLabel: 'Đã đóng',
-    textClass: 'text-emerald-700',
-    badgeBg: 'bg-emerald-100 text-emerald-800',
-  },
-  CANCELLED: {
-    label: 'Đã hủy',
-    shortLabel: 'Đã hủy',
-    textClass: 'text-rose-600',
-    badgeBg: 'bg-rose-50 text-rose-700',
-  },
-};
+import { WO_STATUS_META } from '@/components/advisor/work-order/work-order.constants';
 
 export default function SADashboardPage() {
   const router = useRouter();
@@ -238,7 +173,7 @@ export default function SADashboardPage() {
   }, [intakeItems, queueFilter]);
 
   return (
-    <div className="px-4 sm:px-6 py-3 max-w-[1440px] mx-auto w-full">
+    <div className="py-3 max-w-[1440px] mx-auto w-full">
       {error && (
         <div className="mb-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs font-semibold">
@@ -281,19 +216,19 @@ export default function SADashboardPage() {
                   <span className="font-mono text-3xl font-extrabold tracking-tight tabular-nums">
                     {loading ? '—' : metrics.totalWOs}
                   </span>
-                  <span className="text-[11px] font-bold text-[#60a5fa] flex items-center gap-0.5">
+                  <span className="text-[11px] font-bold text-[#60a5fa] flex items-center gap-0.5 tabular-nums">
                     <span className="material-symbols-outlined text-[13px]">trending_up</span>
                     {metrics.activeWOs} đang mở
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400 mt-0.5">
+                <p className="text-[11px] text-zinc-400 mt-0.5 tabular-nums">
                   {metrics.waitingApprovalWOs} phiếu đang lập kế hoạch / chờ duyệt
                 </p>
               </div>
 
               {/* Wave Sparkline & Callout Pill */}
               <div className="mt-4 relative pt-5">
-                <div className="absolute right-6 top-0 bg-white text-zinc-900 px-2.5 py-0.5 rounded-lg text-[11px] font-mono font-extrabold shadow-md">
+                <div className="absolute right-6 top-0 bg-white text-zinc-900 px-2.5 py-0.5 rounded-lg text-[11px] font-mono font-extrabold shadow-md tabular-nums">
                   {metrics.activeWOs} đang mở
                 </div>
 
@@ -323,7 +258,7 @@ export default function SADashboardPage() {
                   <circle cx="195" cy="14" r="3.5" fill="#0050cd" stroke="#ffffff" strokeWidth="2" />
                 </svg>
 
-                <div className="flex items-center justify-between text-[10px] text-zinc-400 font-mono mt-1">
+                <div className="flex items-center justify-between text-[11px] text-zinc-400 font-mono mt-1">
                   <span>Tiếp nhận</span>
                   <span>Kế hoạch</span>
                   <span>Thi công</span>
@@ -350,31 +285,31 @@ export default function SADashboardPage() {
                   <span className="font-mono text-3xl font-extrabold tracking-tight tabular-nums">
                     {loading ? '—' : metrics.queuedCount}
                   </span>
-                  <span className="text-[11px] font-bold text-emerald-300 flex items-center gap-0.5">
+                  <span className="text-[11px] font-bold text-emerald-300 flex items-center gap-0.5 tabular-nums">
                     <span className="material-symbols-outlined text-[13px]">north_east</span>
                     +{metrics.totalIntake} xe hôm nay
                   </span>
                 </div>
-                <p className="text-[11px] text-blue-100/80 mt-0.5">
+                <p className="text-[11px] text-blue-100/80 mt-0.5 tabular-nums">
                   {metrics.convertedCount} xe đã chuyển thành Phiếu công việc
                 </p>
               </div>
 
               {/* 2-Tone Split Bar Inside Dark Container (Exact Match to Reference Card 2) */}
               <div className="mt-4">
-                <div className="bg-[#0c2340] rounded-2xl p-1.5 flex items-stretch h-14 gap-1.5">
+                <div className="bg-[#0c2340] rounded-xl p-1 flex items-stretch h-7 gap-1">
                   <div
                     style={{ width: `${Math.max(25, Math.min(75, metrics.queuedPct))}%` }}
-                    className="bg-white text-zinc-900 rounded-xl px-2.5 py-1.5 flex items-end font-mono font-extrabold text-xs tabular-nums transition-all"
+                    className="bg-white text-zinc-900 rounded-lg px-2.5 flex items-center font-mono font-extrabold text-[11px] leading-none tabular-nums transition-all"
                   >
                     {metrics.queuedPct}%
                   </div>
-                  <div className="flex-1 text-white px-2.5 py-1.5 flex items-end font-mono font-extrabold text-xs tabular-nums">
+                  <div className="flex-1 text-white px-2.5 flex items-center font-mono font-extrabold text-[11px] leading-none tabular-nums">
                     {metrics.convertedPct}%
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-blue-100 font-medium mt-2 px-1">
+                <div className="flex items-center justify-between text-[11px] text-blue-100 font-medium mt-2 px-1 tabular-nums">
                   <span className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-white" />
                     Chờ xử lý ({metrics.queuedCount})
@@ -404,7 +339,7 @@ export default function SADashboardPage() {
                   <span className="font-mono text-3xl font-extrabold tracking-tight tabular-nums text-zinc-900">
                     {loading ? '—' : metrics.completedOrReadyWOs}
                   </span>
-                  <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-0.5">
+                  <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-0.5 tabular-nums">
                     <span className="material-symbols-outlined text-[13px]">trending_up</span>
                     +{metrics.completionRate}%
                   </span>
@@ -416,7 +351,7 @@ export default function SADashboardPage() {
 
               {/* Micro-Block Matrix Grid with Dark Callout Pill (Exact Match to Reference Card 3) */}
               <div className="mt-3 relative pt-5">
-                <div className="absolute right-8 top-0 bg-[#0c2340] text-white px-2.5 py-0.5 rounded-lg text-[11px] font-mono font-extrabold shadow-sm">
+                <div className="absolute right-8 top-0 bg-[#0c2340] text-white px-2.5 py-0.5 rounded-lg text-[11px] font-mono font-extrabold shadow-sm tabular-nums">
                   {metrics.totalWOs} phiếu
                 </div>
 
@@ -441,7 +376,7 @@ export default function SADashboardPage() {
                             />
                           ))}
                         </div>
-                        <span className="text-[10px] text-slate-600 font-mono mt-0.5">{day}</span>
+                        <span className="text-[11px] text-slate-600 font-mono mt-0.5">{day}</span>
                       </div>
                     );
                   })}
@@ -467,7 +402,7 @@ export default function SADashboardPage() {
                   <span className="w-2.5 h-2.5 rounded-full border border-slate-400 bg-diagonal-stripes inline-block" />
                   Định mức xưởng
                 </span>
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5 tabular-nums">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#0c2340] inline-block" />
                   Thực tế ({metrics.totalWOs})
                 </span>
@@ -479,7 +414,8 @@ export default function SADashboardPage() {
             </div>
 
             {/* Bar Chart Area */}
-            <div className="grid grid-cols-8 gap-2 sm:gap-4 items-end h-44 pt-6 px-1 sm:px-3 border-b border-slate-100 pb-3 relative">
+            <div className="overflow-x-auto no-scrollbar -mx-1 px-1">
+              <div className="grid grid-cols-8 gap-2 sm:gap-4 items-end h-44 pt-6 px-1 sm:px-3 border-b border-slate-100 pb-3 relative min-w-[540px] md:min-w-0">
               {stageBars.map((bar) => {
                 if (bar.highlight) {
                   return (
@@ -489,7 +425,7 @@ export default function SADashboardPage() {
                       className="col-span-2 flex flex-col items-center h-full justify-end relative cursor-pointer group"
                     >
                       {/* Floating Dark Callout Tooltip */}
-                      <div className="absolute -top-4 right-0 sm:-right-4 z-10 bg-[#0c2340] text-white rounded-2xl px-3 py-2 text-[11px] shadow-lg pointer-events-none">
+                      <div className="absolute -top-4 right-0 sm:-right-4 z-10 bg-[#0c2340] text-white rounded-2xl px-3 py-2 text-[11px] shadow-lg pointer-events-none tabular-nums">
                         <div className="font-bold text-zinc-200">{bar.label}</div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-white" />
@@ -502,7 +438,7 @@ export default function SADashboardPage() {
                       </div>
 
                       <div className="w-full max-w-[120px] flex flex-col rounded-xl overflow-hidden border border-slate-300 shadow-xs h-[85%]">
-                        <div className="bg-white flex-1 p-2 flex items-start text-[11px] font-mono font-bold text-slate-700">
+                        <div className="bg-white flex-1 p-2 flex items-start text-[11px] font-mono font-bold text-slate-700 tabular-nums">
                           {bar.count} phiếu
                         </div>
                         <div className="bg-[#0050cd] text-white h-[42%] p-2 flex items-start text-[11px] font-mono font-bold">
@@ -533,12 +469,13 @@ export default function SADashboardPage() {
                         className="w-full bg-[#0c2340] group-hover:bg-[#0050cd] rounded-b-sm transition-colors"
                       />
                     </div>
-                    <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium mt-2 truncate max-w-full">
+                    <span className="text-[11px] text-slate-500 font-medium mt-2 truncate max-w-full">
                       {bar.label}
                     </span>
                   </div>
                 );
               })}
+              </div>
             </div>
           </div>
 
@@ -590,20 +527,19 @@ export default function SADashboardPage() {
                   <thead>
                     <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400">
                       <th className="pb-3 pr-3 font-medium">Phương tiện & Biển số</th>
-                      <th className="pb-3 px-3 font-medium">Mã phiếu</th>
+                      <th className="pb-3 px-3 font-medium hidden sm:table-cell">Mã phiếu</th>
                       <th className="pb-3 px-3 font-medium hidden sm:table-cell">Khách hàng</th>
                       <th className="pb-3 px-3 font-medium">Trạng thái</th>
-                      <th className="pb-3 px-3 font-medium hidden md:table-cell">Cố vấn</th>
+                      <th className="pb-3 px-3 font-medium hidden xl:table-cell">Cố vấn</th>
                       <th className="pb-3 pl-3 font-medium text-right">Tiếp nhận</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
                     {displayedWorkOrders.map((wo) => {
-                      const st = STATUS_META[wo.status] || {
+                      const st = WO_STATUS_META[wo.status] || {
                         label: wo.status,
-                        shortLabel: wo.status,
-                        textClass: 'text-slate-700',
-                        badgeBg: 'bg-slate-100 text-slate-700',
+                        bg: 'bg-slate-100',
+                        text: 'text-slate-700',
                       };
                       const vehicleLabel =
                         [wo.vehicle?.make, wo.vehicle?.model].filter(Boolean).join(' ') ||
@@ -628,12 +564,21 @@ export default function SADashboardPage() {
                                   {wo.vehicle?.license_plate || 'N/A'}
                                 </div>
                                 <div className="text-xs text-slate-500 truncate">{vehicleLabel}</div>
+                                <div className="sm:hidden flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-[11px]">
+                                  <span className="font-mono font-bold text-[#0050cd] tabular-nums">
+                                    {wo.wo_number}
+                                  </span>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="text-slate-600 font-medium truncate">
+                                    {wo.customer?.full_name || 'Khách vãng lai'}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </td>
 
                           {/* WO Number */}
-                          <td className="py-3.5 px-3 font-mono font-bold text-zinc-800 group-hover:text-[#0050cd] whitespace-nowrap tabular-nums">
+                          <td className="py-3.5 px-3 font-mono font-bold text-zinc-800 group-hover:text-[#0050cd] hidden sm:table-cell whitespace-nowrap tabular-nums">
                             {wo.wo_number}
                           </td>
 
@@ -645,14 +590,14 @@ export default function SADashboardPage() {
                           {/* Status */}
                           <td className="py-3.5 px-3 whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${st.badgeBg}`}
+                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${st.bg} ${st.text}`}
                             >
                               {st.label}
                             </span>
                           </td>
 
                           {/* Advisor */}
-                          <td className="py-3.5 px-3 text-slate-500 hidden md:table-cell whitespace-nowrap">
+                          <td className="py-3.5 px-3 text-slate-500 hidden xl:table-cell whitespace-nowrap">
                             {wo.advisor?.full_name || 'Cố vấn DV'}
                           </td>
 
@@ -674,7 +619,7 @@ export default function SADashboardPage() {
         </div>
 
         {/* ==================== RIGHT STACKED BENTO WIDGETS COLUMN (4/12 on lg, 3/12 on xl) ==================== */}
-        <div className="lg:col-span-4 xl:col-span-3 flex flex-col gap-4 sm:gap-5">
+        <div className="lg:col-span-4 xl:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-5">
           {/* WIDGET 1: Service Category Donut/Pie + 3-Pill Switcher (Matches "Top categories" in Reference) */}
           <div className="bg-white rounded-[28px] p-5 shadow-xs border border-slate-200/70 flex flex-col justify-between">
             <div className="flex items-center justify-between">
@@ -738,10 +683,10 @@ export default function SADashboardPage() {
               </svg>
 
               {/* Floating Percentage Badges */}
-              <span className="absolute top-2 left-8 bg-white border border-slate-200 shadow-xs px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold text-zinc-900">
+              <span className="absolute top-2 left-8 bg-white border border-slate-200 shadow-xs px-2 py-0.5 rounded-full text-[11px] font-mono font-extrabold text-zinc-900 tabular-nums">
                 {metrics.totalWOs} phiếu
               </span>
-              <span className="absolute bottom-2 right-6 bg-white border border-slate-200 shadow-xs px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold text-[#0050cd]">
+              <span className="absolute bottom-2 right-6 bg-white border border-slate-200 shadow-xs px-2 py-0.5 rounded-full text-[11px] font-mono font-extrabold text-[#0050cd] tabular-nums">
                 {metrics.queuedCount} chờ
               </span>
             </div>
@@ -810,7 +755,7 @@ export default function SADashboardPage() {
                 const barH = Math.max(25, Math.min(95, item.pct || 30));
                 return (
                   <div key={item.label} className="flex flex-col items-center h-full justify-end">
-                    <span className="text-[10px] font-mono font-bold text-slate-700 mb-1 tabular-nums">
+                    <span className="text-[11px] font-mono font-bold text-slate-700 mb-1 tabular-nums">
                       {item.pct}%
                     </span>
                     <div
@@ -819,7 +764,7 @@ export default function SADashboardPage() {
                     >
                       <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[#0050cd]" />
                     </div>
-                    <span className="text-[10px] text-slate-500 font-medium mt-2 truncate max-w-full">
+                    <span className="text-[11px] text-slate-500 font-medium mt-2 truncate max-w-full">
                       {item.label}
                     </span>
                   </div>
@@ -855,7 +800,7 @@ export default function SADashboardPage() {
           {/* BOTTOM SOLID DARK ACTION BUTTON (Matches "Export statistics" in Reference & Preserves E2E `text=Xem hàng đợi`) */}
           <Link
             href="/advisor/intake-queue"
-            className="w-full py-4 px-5 rounded-[22px] bg-[#0c2340] hover:bg-[#07172c] text-white font-bold text-sm flex items-center justify-center gap-2.5 shadow-md transition-all active:scale-[0.99]"
+            className="md:col-span-2 lg:col-span-1 w-full py-4 px-5 rounded-[22px] bg-[#0c2340] hover:bg-[#07172c] text-white font-bold text-sm flex items-center justify-center gap-2.5 shadow-md transition-all active:scale-[0.99]"
           >
             <span className="material-symbols-outlined text-[20px]">inbox</span>
             <span>Xem hàng đợi</span>

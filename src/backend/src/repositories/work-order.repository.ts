@@ -106,6 +106,51 @@ const workOrderInclude = {
   },
 } satisfies Prisma.WorkOrderInclude;
 
+const workOrderListInclude = {
+  customer: { select: { id: true, full_name: true, phone: true, email: true } },
+  vehicle: { select: { id: true, license_plate: true, make: true, model: true, year: true, color: true, vehicle_size: true } },
+  advisor: { select: { id: true, full_name: true, phone: true } },
+  created_by: { select: { id: true, full_name: true } },
+  closed_by: { select: { id: true, full_name: true } },
+  intake_record: {
+    select: {
+      id: true,
+      intake_type: true,
+      arrived_at: true,
+      notes: true,
+      services: { include: { service: { select: { id: true, name: true, category: { select: { name: true } } } } } },
+    },
+  },
+  appointment: { select: { id: true, scheduled_date: true, scheduled_time: true } },
+  check_in: {
+    select: {
+      id: true,
+      status: true,
+      mileage: true,
+      fuel_level: true,
+    },
+  },
+  services: {
+    select: {
+      id: true,
+      name: true,
+      status: true,
+      pricing_type: true,
+      service: {
+        select: {
+          id: true,
+          name: true,
+          category_id: true,
+          pricing_type: true,
+          fixed_price: true,
+          category: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: { sort_order: 'asc' as const },
+  },
+} satisfies Prisma.WorkOrderInclude;
+
 
 export interface WorkOrderFilters {
   status?: WorkOrderStatus;
@@ -215,7 +260,7 @@ export class WorkOrderRepository {
         where,
         skip,
         take: limit,
-        include: workOrderInclude,
+        include: workOrderListInclude,
         orderBy: { created_at: 'desc' },
       }),
     ]);

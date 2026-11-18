@@ -379,6 +379,27 @@ export class QcService {
   }
 
   /**
+   * Chặn nghiệm thu KCS nếu trong phiếu vẫn còn công việc chưa hoàn thành (PLANNED / IN_PROGRESS / REWORK)
+   */
+  private ensureAllJobsCompletedForQc(workOrder: any) {
+    const incompleteJobs: string[] = [];
+    for (const svc of workOrder.services || []) {
+      for (const job of svc.jobs || []) {
+        if (job.status !== JobStatus.COMPLETED && job.status !== JobStatus.PASSED) {
+          incompleteJobs.push(job.name);
+        }
+      }
+    }
+    if (incompleteJobs.length > 0) {
+      const preview = incompleteJobs.slice(0, 3).join(', ');
+      const suffix = incompleteJobs.length > 3 ? '...' : '';
+      throw new Error(
+        `Không thể thực hiện nghiệm thu chất lượng vì trong phiếu vẫn còn ${incompleteJobs.length} công việc thi công dở dang (${preview}${suffix}).`
+      );
+    }
+  }
+
+  /**
    * Lưu kết quả đánh giá kiểm định chất lượng (QC / KCS) và tự động xử lý Rework nếu có lỗi
    */
   async submitQcEvaluation(workOrderId: number, inspectorId: number, dto: SubmitQcDto) {
@@ -386,7 +407,7 @@ export class QcService {
       // 1. Kiểm tra Work Order hợp lệ
       const workOrder = await tx.workOrder.findUnique({
         where: { id: workOrderId },
-        include: { services: true },
+        include: { services: { include: { jobs: true } } },
       });
 
       if (!workOrder) {
@@ -401,6 +422,8 @@ export class QcService {
           `Phiếu công việc đang ở trạng thái ${workOrder.status}, chỉ có thể kiểm định QC khi đang thi công (IN_PROGRESS).`
         );
       }
+
+      this.ensureAllJobsCompletedForQc(workOrder);
 
       const defaultJobType = await tx.jobType.findFirst({ select: { id: true } });
       return await this.evaluateSingleService(tx, workOrder, inspectorId, dto, defaultJobType);
@@ -418,7 +441,7 @@ export class QcService {
     return await prisma.$transaction(async (tx) => {
       const workOrder = await tx.workOrder.findUnique({
         where: { id: workOrderId },
-        include: { services: true },
+        include: { services: { include: { jobs: true } } },
       });
 
       if (!workOrder) {
@@ -433,6 +456,8 @@ export class QcService {
           `Phiếu công việc đang ở trạng thái ${workOrder.status}, chỉ có thể kiểm định QC khi đang thi công (IN_PROGRESS).`
         );
       }
+
+      this.ensureAllJobsCompletedForQc(workOrder);
 
       const defaultJobType = await tx.jobType.findFirst({ select: { id: true } });
 

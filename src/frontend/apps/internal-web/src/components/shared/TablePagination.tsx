@@ -8,6 +8,9 @@ export interface TablePaginationProps {
   currentCount?: number;
   recordLabel?: string;
   className?: string;
+  pageSize?: number;
+  pageSizeOptions?: number[];
+  onPageSizeChange?: (size: number) => void;
 }
 
 function getPageNumbers(currentPage: number, totalPages: number): (number | string)[] {
@@ -31,6 +34,9 @@ export default function TablePagination({
   currentCount,
   recordLabel = 'bản ghi',
   className = '',
+  pageSize,
+  pageSizeOptions = [10, 20, 50],
+  onPageSizeChange,
 }: TablePaginationProps) {
   const pages = getPageNumbers(currentPage, totalPages);
 
@@ -38,20 +44,40 @@ export default function TablePagination({
     <div
       className={`px-5 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200/80 bg-slate-50/40 ${className}`}
     >
-      <span className="text-xs text-slate-500">
-        {currentCount !== undefined ? (
-          <>
-            Hiển thị <span className="font-mono font-bold text-slate-700">{currentCount}</span>{' '}
-            trong <span className="font-mono font-bold text-slate-700">{totalRecords}</span>{' '}
-            {recordLabel}
-          </>
-        ) : (
-          <>
-            Tổng <span className="font-mono font-bold text-slate-700">{totalRecords}</span>{' '}
-            {recordLabel}
-          </>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-xs text-slate-500">
+          {currentCount !== undefined ? (
+            <>
+              Hiển thị <span className="font-mono font-bold text-slate-700">{currentCount}</span>{' '}
+              trong <span className="font-mono font-bold text-slate-700">{totalRecords}</span>{' '}
+              {recordLabel}
+            </>
+          ) : (
+            <>
+              Tổng <span className="font-mono font-bold text-slate-700">{totalRecords}</span>{' '}
+              {recordLabel}
+            </>
+          )}
+        </span>
+
+        {onPageSizeChange && pageSize !== undefined && (
+          <label className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+            <span>Mỗi trang</span>
+            <select
+              aria-label="Số bản ghi mỗi trang"
+              value={pageSize}
+              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0866ff]/20 focus:border-[#0866ff] cursor-pointer"
+            >
+              {pageSizeOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
-      </span>
+      </div>
 
       {totalPages > 1 && (
         <nav aria-label="Phân trang" className="flex items-center gap-1">

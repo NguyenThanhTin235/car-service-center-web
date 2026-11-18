@@ -9,18 +9,7 @@ import { DashboardStatusBreakdown } from '@/components/dashboard/DashboardStatus
 import { DashboardStageBars } from '@/components/dashboard/DashboardStageBars';
 import { DashboardTelemetryMiniBars } from '@/components/dashboard/DashboardTelemetryMiniBars';
 import { DashboardActionTable, TableColumn } from '@/components/dashboard/DashboardActionTable';
-
-const SA_STATUS_MAP: Record<string, { label: string; badgeCls: string; dotColor: string }> = {
-  DRAFT: { label: 'Tiếp nhận', badgeCls: 'bg-slate-100 text-slate-700', dotColor: '#64748b' },
-  IN_PLANNING: { label: 'Lập kế hoạch', badgeCls: 'bg-blue-50 text-[#0050cd]', dotColor: '#0050cd' },
-  PENDING_APPROVAL: { label: 'Chờ duyệt giá', badgeCls: 'bg-amber-50 text-amber-700', dotColor: '#f59e0b' },
-  APPROVED: { label: 'Đã duyệt giá', badgeCls: 'bg-indigo-50 text-indigo-700', dotColor: '#6366f1' },
-  IN_PROGRESS: { label: 'Đang sửa chữa', badgeCls: 'bg-sky-50 text-sky-700', dotColor: '#0ea5e9' },
-  BILLING_REQUESTED: { label: 'Chờ thanh toán', badgeCls: 'bg-purple-50 text-purple-700', dotColor: '#8b5cf6' },
-  FINANCIAL_CLEARED: { label: 'Chờ giao xe', badgeCls: 'bg-emerald-50 text-emerald-700', dotColor: '#10b981' },
-  RELEASED: { label: 'Đã giao xe', badgeCls: 'bg-teal-50 text-teal-700', dotColor: '#14b8a6' },
-  CLOSED: { label: 'Đã đóng lệnh', badgeCls: 'bg-slate-200 text-slate-800', dotColor: '#475569' },
-};
+import { WO_STATUS_META } from '@/components/advisor/work-order/work-order.constants';
 
 const SA_PERIOD_MAP: Record<
   string,
@@ -102,8 +91,10 @@ export default function SADashboardAnalyticsPage() {
       key: 'woNumber',
       label: 'Mã hồ sơ',
       sortable: true,
+      headerClassName: 'whitespace-nowrap',
+      cellClassName: 'whitespace-nowrap',
       render: (row) => (
-        <span className="font-mono font-bold text-[#0050cd] dark:text-blue-400">
+        <span className="font-mono font-bold text-[#0050cd] dark:text-blue-400 whitespace-nowrap tabular-nums">
           {row.woNumber}
         </span>
       ),
@@ -115,7 +106,7 @@ export default function SADashboardAnalyticsPage() {
       render: (row) => (
         <div>
           <div className="font-semibold text-slate-900 dark:text-white">{row.customerName}</div>
-          <div className="text-[11px] text-slate-400 font-mono">{row.customerPhone}</div>
+          <div className="text-[11px] text-slate-400 font-mono tabular-nums">{row.customerPhone}</div>
         </div>
       ),
     },
@@ -136,22 +127,37 @@ export default function SADashboardAnalyticsPage() {
       key: 'status',
       label: 'Trạng thái',
       sortable: true,
+      headerClassName: 'whitespace-nowrap',
+      cellClassName: 'whitespace-nowrap',
       render: (row) => {
-        const conf = SA_STATUS_MAP[row.status] || {
+        const conf = WO_STATUS_META[row.status] || {
           label: row.status,
-          badgeCls: 'bg-slate-100 text-slate-700',
+          bg: 'bg-slate-100',
+          text: 'text-slate-700',
           dotColor: '#94a3b8',
         };
         return (
-          <span
-            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${conf.badgeCls}`}
-          >
+          <div className="flex flex-col items-start gap-1">
             <span
-              className="w-1.5 h-1.5 rounded-full shrink-0"
-              style={{ backgroundColor: conf.dotColor }}
-            ></span>
-            {conf.label}
-          </span>
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap ${conf.bg} ${conf.text}`}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0"
+                style={{ backgroundColor: conf.dotColor }}
+              ></span>
+              {conf.label}
+            </span>
+            {row.updatedAt && (
+              <span className="md:hidden text-slate-400 text-[11px] font-mono whitespace-nowrap tabular-nums">
+                {new Date(row.updatedAt).toLocaleTimeString('vi-VN', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  day: '2-digit',
+                  month: '2-digit',
+                })}
+              </span>
+            )}
+          </div>
         );
       },
     },
@@ -159,8 +165,10 @@ export default function SADashboardAnalyticsPage() {
       key: 'updatedAt',
       label: 'Cập nhật',
       sortable: true,
+      headerClassName: 'hidden md:table-cell whitespace-nowrap',
+      cellClassName: 'hidden md:table-cell whitespace-nowrap',
       render: (row) => (
-        <span className="text-slate-400 text-[11px] font-mono">
+        <span className="text-slate-400 text-[11px] font-mono whitespace-nowrap tabular-nums">
           {new Date(row.updatedAt).toLocaleTimeString('vi-VN', {
             hour: '2-digit',
             minute: '2-digit',
@@ -173,10 +181,12 @@ export default function SADashboardAnalyticsPage() {
     {
       key: 'action',
       label: 'Thao tác',
+      headerClassName: 'whitespace-nowrap',
+      cellClassName: 'whitespace-nowrap',
       render: (row) => (
         <Link
           href={`/advisor?woId=${row.id}`}
-          className="text-xs font-semibold text-[#0050cd] hover:underline"
+          className="text-xs font-semibold text-[#0050cd] hover:underline whitespace-nowrap"
         >
           Xử lý hồ sơ →
         </Link>
@@ -185,7 +195,7 @@ export default function SADashboardAnalyticsPage() {
   ];
 
   const donutData = (data?.charts?.distribution || []).map((item: any) => {
-    const conf = SA_STATUS_MAP[item.category] || { label: item.category, dotColor: undefined };
+    const conf = WO_STATUS_META[item.category] || { label: item.category, dotColor: undefined };
     return {
       category: item.category,
       label: conf.label,
@@ -229,7 +239,7 @@ export default function SADashboardAnalyticsPage() {
   }, [data?.charts?.appointmentsVolume]);
 
   return (
-    <div className="flex flex-col min-w-0 w-full space-y-6 p-4 sm:p-6">
+    <div className="flex flex-col min-w-0 w-full space-y-6 py-4 sm:py-6 max-w-[1440px] mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -399,7 +409,7 @@ export default function SADashboardAnalyticsPage() {
       <div>
         {selectedStatus && (
           <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
-            <span>Đang lọc theo: <strong>{SA_STATUS_MAP[selectedStatus]?.label || selectedStatus}</strong></span>
+            <span>Đang lọc theo: <strong>{WO_STATUS_META[selectedStatus]?.label || selectedStatus}</strong></span>
             <button
               onClick={() => setSelectedStatus('')}
               className="text-red-500 hover:text-red-700 ml-1 font-bold"
