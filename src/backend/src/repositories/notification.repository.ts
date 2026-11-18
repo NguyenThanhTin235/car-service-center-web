@@ -15,6 +15,8 @@ export interface FindByUserOptions {
   limit?: number;
   unreadOnly?: boolean;
   since?: Date | string;
+  types?: NotificationType[];
+  search?: string;
 }
 
 export interface PaginatedNotifications {
@@ -75,6 +77,18 @@ export const notificationRepository = {
       }
     }
 
+    if (options.types && options.types.length > 0) {
+      where.notification_type = { in: options.types };
+    }
+
+    const search = options.search?.trim();
+    if (search) {
+      where.OR = [
+        { title: { contains: search } },
+        { message: { contains: search } },
+      ];
+    }
+
     const [items, total] = await Promise.all([
       prisma.notification.findMany({
         where,
@@ -92,6 +106,15 @@ export const notificationRepository = {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  },
+
+  async findByIdForUser(id: number, userId: number): Promise<Notification | null> {
+    return prisma.notification.findFirst({
+      where: {
+        id,
+        user_id: userId,
+      },
+    });
   },
 
   async countUnread(userId: number): Promise<number> {

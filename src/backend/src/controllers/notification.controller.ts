@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { NotificationType } from '@prisma/client';
 import { notificationService } from '../services/notification.service';
 
 function sendSuccess<T>(
@@ -61,17 +62,73 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
       return;
     }
 
+    let types: NotificationType[] | undefined;
+    if (typeof req.query.types === 'string' && req.query.types.trim().length > 0) {
+      const validTypes = new Set<string>(Object.values(NotificationType));
+      const parsedTypes = req.query.types
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+
+      const invalidTypes = parsedTypes.filter((t) => !validTypes.has(t));
+      if (invalidTypes.length > 0) {
+        sendError(
+          res,
+          400,
+          'INVALID_QUERY_PARAM',
+          `Loại thông báo không hợp lệ: ${invalidTypes.join(', ')}`
+        );
+        return;
+      }
+
+      if (parsedTypes.length > 0) {
+        types = parsedTypes as NotificationType[];
+      }
+    }
+
+    const rawSearch = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const search = rawSearch.length > 0 ? rawSearch : undefined;
+
     const result = await notificationService.getUserNotifications(userId, {
       page,
       limit,
       unreadOnly,
       since,
+      types,
+      search,
     });
 
     sendSuccess(res, result.items, 'Lấy danh sách thông báo thành công', result.meta);
   } catch (error) {
     console.error('[NotificationController] getNotifications error:', error);
     sendError(res, 500, 'INTERNAL_SERVER_ERROR', 'Lỗi khi lấy danh sách thông báo');
+  }
+};
+
+export const getNotificationById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      sendError(res, 401, 'UNAUTHORIZED', 'Chưa xác thực người dùng');
+      return;
+    }
+
+    const id = parsePositiveInt(req.params.id);
+    if (!id) {
+      sendError(res, 400, 'INVALID_NOTIFICATION_ID', 'Mã thông báo không hợp lệ');
+      return;
+    }
+
+    const notification = await notificationService.getByIdForUser(id, userId);
+    if (!notification) {
+      sendError(res, 404, 'NOTIFICATION_NOT_FOUND', 'Không tìm thấy thông báo');
+      return;
+    }
+
+    sendSuccess(res, notification, 'Lấy chi tiết thông báo thành công');
+  } catch (error) {
+    console.error('[NotificationController] getNotificationById error:', error);
+    sendError(res, 500, 'INTERNAL_SERVER_ERROR', 'Lỗi khi lấy chi tiết thông báo');
   }
 };
 

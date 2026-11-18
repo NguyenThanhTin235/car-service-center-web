@@ -226,6 +226,11 @@ class NotificationService {
     };
   }
 
+  async getByIdForUser(id: number, userId: number): Promise<NotificationDto | null> {
+    const record = await notificationRepository.findByIdForUser(id, userId);
+    return record ? toNotificationDto(record) : null;
+  }
+
   async getUnreadCount(userId: number): Promise<number> {
     return notificationRepository.countUnread(userId);
   }
