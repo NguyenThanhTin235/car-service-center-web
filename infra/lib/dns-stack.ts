@@ -19,7 +19,7 @@ export class DnsStack extends cdk.Stack {
     });
 
     const target = route53.RecordTarget.fromIpAddresses(props.elasticIp.ref);
-    const subdomains = ['', 'api', 'admin', 'staging', 'staging-api', 'staging-admin'];
+    const subdomains = ['', 'api', 'ops', 'staging', 'staging-api', 'staging-ops'];
 
     for (const sub of subdomains) {
       const constructId =

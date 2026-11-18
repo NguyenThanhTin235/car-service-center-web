@@ -28,7 +28,7 @@ upstream staging_admin_upstream {
 server {
     listen 80;
     listen [::]:80;
-    server_name ${DOMAIN_NAME} api.${DOMAIN_NAME} admin.${DOMAIN_NAME} staging.${DOMAIN_NAME} staging-api.${DOMAIN_NAME} staging-admin.${DOMAIN_NAME};
+    server_name ${DOMAIN_NAME} api.${DOMAIN_NAME} ops.${DOMAIN_NAME} staging.${DOMAIN_NAME} staging-api.${DOMAIN_NAME} staging-ops.${DOMAIN_NAME};
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -96,7 +96,7 @@ server {
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
-    server_name admin.${DOMAIN_NAME};
+    server_name ops.${DOMAIN_NAME};
 
     ssl_certificate /etc/letsencrypt/live/${CERT_DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${CERT_DOMAIN}/privkey.pem;
@@ -174,7 +174,7 @@ server {
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
-    server_name staging-admin.${DOMAIN_NAME};
+    server_name staging-ops.${DOMAIN_NAME};
 
     ssl_certificate /etc/letsencrypt/live/${CERT_DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${CERT_DOMAIN}/privkey.pem;

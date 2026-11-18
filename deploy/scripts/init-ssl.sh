@@ -8,10 +8,10 @@ WEBROOT_DIR="/var/www/certbot"
 DOMAINS=(
   "${DOMAIN_NAME}"
   "api.${DOMAIN_NAME}"
-  "admin.${DOMAIN_NAME}"
+  "ops.${DOMAIN_NAME}"
   "staging.${DOMAIN_NAME}"
   "staging-api.${DOMAIN_NAME}"
-  "staging-admin.${DOMAIN_NAME}"
+  "staging-ops.${DOMAIN_NAME}"
 )
 
 DOMAIN_ARGS=()
