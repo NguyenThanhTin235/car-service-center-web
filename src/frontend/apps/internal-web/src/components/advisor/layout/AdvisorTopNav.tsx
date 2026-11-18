@@ -5,6 +5,7 @@ import { useAppSelector } from '@/store';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import LogoutButton from '@/components/shared/LogoutButton';
+import NotificationBell from '@/components/notifications/NotificationBell';
 import toast from 'react-hot-toast';
 
 export interface NavItemConfig {
@@ -222,19 +223,8 @@ export default function AdvisorTopNav() {
               )}
             </form>
 
-            {/* Notification Pill with Dark Counter Badge */}
-            <button
-              type="button"
-              onClick={() => router.push('/advisor/intake-queue')}
-              title="Hàng đợi & Thông báo xưởng"
-              aria-label="Thông báo"
-              className="relative w-11 h-11 rounded-full bg-white hover:bg-slate-50 border border-slate-200/80 flex items-center justify-center text-zinc-700 shadow-2xs transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40"
-            >
-              <span className="material-symbols-outlined text-[20px]">mail</span>
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-md bg-[#0c2340] text-white text-[11px] font-extrabold tabular-nums flex items-center justify-center shadow-xs">
-                2
-              </span>
-            </button>
+            {/* Real-time Notification Bell Pill */}
+            <NotificationBell variant="pill" />
 
             {/* User Avatar Pill & Dropdown */}
             <div className="relative" ref={dropdownRef}>

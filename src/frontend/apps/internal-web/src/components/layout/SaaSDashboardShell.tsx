@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAppSelector } from '@/store';
 import LogoutButton from '@/components/shared/LogoutButton';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 export interface SaaSNavChildItem {
   label: string;
@@ -732,6 +733,8 @@ export default function SaaSDashboardShell({
               <span className="w-2 h-2 rounded-full bg-[#0866ff]" />
               <span>Ca trực • Hệ thống ổn định</span>
             </div>
+
+            <NotificationBell variant="default" />
 
             <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
