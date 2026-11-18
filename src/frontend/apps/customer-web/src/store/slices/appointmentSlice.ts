@@ -150,7 +150,7 @@ const appointmentSlice = createSlice({
       .addCase(fetchAppointments.fulfilled, (state, action) => {
         state.loading = false;
         state.appointments = action.payload.data;
-        state.pagination.total = action.payload.pagination.totalRecords;
+        state.pagination.total = action.payload?.pagination?.totalRecords ?? 0;
       })
       .addCase(fetchAppointments.rejected, (state, action) => {
         state.loading = false;

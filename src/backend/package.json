@@ -10,8 +10,12 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "db:push": "prisma db push --accept-data-loss",
+    "db:generate": "prisma generate",
     "seed:massive": "tsx prisma/seed-massive.ts",
-    "postinstall": "prisma skills sync || exit 0"
+    "postinstall": "echo Ready"
   },
   "keywords": [],
   "author": "",
@@ -47,6 +51,7 @@
     "nodemailer": "^10.0.10",
     "pdfkit": "^0.20.2",
     "redis": "^6.2.1",
+    "sepay-pg-node": "github:sepayvn/sepay-pg-node",
     "socket.io": "^4.8.3",
     "winston": "^3.19.0"
   },
@@ -64,9 +69,11 @@
     "@types/node": "^26.5.0",
     "@types/nodemailer": "^8.0.2",
     "@types/pdfkit": "^0.17.6",
+    "@types/supertest": "^7.2.1",
     "eslint": "^10.10.0",
     "prettier": "^3.9.6",
     "prisma": "^5.22.0",
+    "supertest": "^7.3.1",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.23.13",

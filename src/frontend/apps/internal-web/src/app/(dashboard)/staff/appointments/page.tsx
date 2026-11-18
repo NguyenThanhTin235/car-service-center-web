@@ -351,160 +351,236 @@ export default function AppointmentsPage() {
   };
 
   return (
-    <>
-      {/* A. TOP CONTROL HEADER BAR */}
-      <div className="bg-surface-container-lowest rounded-lg border border-outline-variant p-4 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
-        {/* Left Column: Calendar Navigation Controls */}
-        <div className="flex flex-col xl:flex-row xl:items-center gap-4">
-          
-          {/* Controls Cluster */}
-          <div className="flex flex-wrap items-center gap-4">
-            {/* Date Navigation Cluster */}
-            <div className="flex items-center gap-2">
-              <button onClick={handleToday} className="h-9 px-3 rounded-lg border border-outline-variant bg-surface-container-lowest hover:bg-surface-container-low text-label-md font-label-md text-on-surface font-medium transition-colors flex items-center justify-center">
-                Hôm nay
-              </button>
-              <div className="inline-flex h-9 items-center rounded-lg border border-outline-variant bg-surface-container-lowest p-0.5 shadow-2xs">
-                <button onClick={handlePrev} className="p-1 text-secondary hover:text-on-surface hover:bg-surface-container-low rounded transition-colors flex items-center justify-center" title="Trước">
-                  <span className="material-symbols-outlined text-base" data-icon="chevron_left">chevron_left</span>
-                </button>
-                <button onClick={handleNext} className="p-1 text-secondary hover:text-on-surface hover:bg-surface-container-low rounded transition-colors flex items-center justify-center" title="Tiếp">
-                  <span className="material-symbols-outlined text-base" data-icon="chevron_right">chevron_right</span>
-                </button>
-              </div>
-              <div className="flex items-center gap-1.5 h-9 px-3 bg-surface-container-low rounded-lg text-title-sm font-title-sm text-primary">
-                <span className="material-symbols-outlined text-base text-primary" data-icon="event">event</span>
-                <span className="font-semibold whitespace-nowrap">{formatDateStr(startOfWeek)} - {formatDateStr(endOfWeek)}</span>
-              </div>
-            </div>
-            {/* View Mode Switcher */}
-            <div className="inline-flex h-9 items-center p-1 bg-surface-container-low rounded-lg border border-outline-variant/60">
-              <button 
-                onClick={() => setViewMode('DAY')}
-                className={`px-3 py-1 rounded text-label-md font-label-md whitespace-nowrap transition-colors ${viewMode === 'DAY' ? 'bg-surface-container-lowest text-primary font-semibold shadow-xs' : 'text-secondary hover:text-on-surface'}`}
-              >Ngày</button>
-              <button 
-                onClick={() => setViewMode('WEEK')}
-                className={`px-3 py-1 rounded text-label-md font-label-md whitespace-nowrap transition-colors ${viewMode === 'WEEK' ? 'bg-surface-container-lowest text-primary font-semibold shadow-xs' : 'text-secondary hover:text-on-surface'}`}
-              >Tuần</button>
-              <button 
-                onClick={() => setViewMode('MONTH')}
-                className={`px-3 py-1 rounded text-label-md font-label-md whitespace-nowrap transition-colors ${viewMode === 'MONTH' ? 'bg-surface-container-lowest text-primary font-semibold shadow-xs' : 'text-secondary hover:text-on-surface'}`}
-              >Tháng</button>
-            </div>
-          </div>
-        </div>
-        {/* Right Column: Quick Filters & Primary CTA Button */}
+    <div className="space-y-5">
+      {/* 1. SaaS Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
+          Lịch hẹn khách hàng
+        </h1>
+
         <div className="flex flex-wrap items-center gap-2.5">
-          <button onClick={handleDownloadExcel} className="h-9 px-3 bg-surface-container-lowest border border-outline-variant hover:bg-surface-container-low text-on-surface text-label-md font-label-md font-medium rounded-lg flex items-center gap-1.5 transition-colors">
-            <span className="material-symbols-outlined text-base text-secondary" data-icon="download">download</span>
-            <span>Tải xuống Excel</span>
+          <button
+            onClick={handleDownloadExcel}
+            className="h-10 px-3.5 bg-white border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[17px] text-emerald-700">download</span>
+            <span>Xuất Excel</span>
           </button>
-          <button onClick={handlePrint} className="h-9 px-3 bg-surface-container-lowest border border-outline-variant hover:bg-surface-container-low text-on-surface text-label-md font-label-md font-medium rounded-lg flex items-center gap-1.5 transition-colors">
-            <span className="material-symbols-outlined text-base text-secondary" data-icon="print">print</span>
+          <button
+            onClick={handlePrint}
+            className="h-10 px-3.5 bg-white border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[17px] text-[#0866ff]">print</span>
             <span>In lịch</span>
           </button>
-          <button 
+          <button
             onClick={() => setShowCreateModal(true)}
-            className="h-9 px-4 bg-primary-container hover:bg-primary text-on-primary text-label-md font-label-md font-bold rounded-lg flex items-center gap-1.5 shadow-sm active:scale-[0.98] transition-all"
+            className="h-10 px-4 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs active:scale-[0.98] transition-all cursor-pointer"
           >
+            <span className="material-symbols-outlined text-[18px]">add_circle</span>
             <span>+ Thêm lịch hẹn mới</span>
           </button>
         </div>
       </div>
 
-      {/* B. SUMMARY STATS & LEGEND BAR */}
-      <div className="bg-surface-container-lowest rounded-lg border border-outline-variant px-4 py-2.5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
-        {/* Badges & Legend Indicators */}
-        <div className="flex flex-wrap items-center gap-4 text-label-md font-label-md">
-          <div className="flex items-center gap-2 bg-blue-50/80 px-2.5 py-1 rounded-full border border-blue-200">
-            <span className="w-2.5 h-2.5 rounded-full bg-primary-container"></span>
-            <span className="text-on-surface font-medium">Đã xác nhận:</span>
-            <span className="font-bold text-primary">
-              {appointments.filter(a => a.status === 'CONFIRMED' || a.status === 'RESCHEDULED').length} lịch
-            </span>
+      {/* 2. Asymmetrical Bento Summary & Navigation (5 + 7 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Hero Calendar Control Card (5 cols) */}
+        <div className="lg:col-span-5 rounded-2xl saas-hero-gradient text-white p-5 relative overflow-hidden flex flex-col justify-between">
+          <div className="absolute inset-0 saas-subtle-grid pointer-events-none" />
+          <div className="relative z-10 flex items-start justify-between gap-3">
+            <div>
+              <span className="text-xs font-medium text-white">Tổng lịch hẹn trong kỳ</span>
+              <div className="text-3xl font-mono font-extrabold tabular-nums tracking-tight mt-1 text-white">
+                {appointments.length}{' '}
+                <span className="text-sm font-sans font-medium text-white">lượt đặt</span>
+              </div>
+            </div>
+            {/* Unboxed View Mode Switcher (Avoids Nested Card) */}
+            <div className="inline-flex items-center gap-1.5">
+              {(['DAY', 'WEEK', 'MONTH'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    viewMode === mode
+                      ? 'bg-white text-[#0050cd] font-bold'
+                      : 'text-white hover:bg-white/15'
+                  }`}
+                >
+                  {mode === 'DAY' ? 'Ngày' : mode === 'WEEK' ? 'Tuần' : 'Tháng'}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center gap-2 bg-amber-50/80 px-2.5 py-1 rounded-full border border-amber-200">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-            <span className="text-on-surface font-medium">Chờ xác nhận:</span>
-            <span className="font-bold text-amber-700">
-              {appointments.filter(a => a.status === 'REQUESTED').length} lịch
-            </span>
-          </div>
-          <div className="flex items-center gap-2 bg-emerald-50/80 px-2.5 py-1 rounded-full border border-emerald-200">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-            <span className="text-on-surface font-medium">Đã tiếp nhận:</span>
-            <span className="font-bold text-emerald-700">
-              {appointments.filter(a => a.status === 'ARRIVED').length} lịch
-            </span>
-          </div>
-          <div className="flex items-center gap-2 pl-2 border-l border-outline-variant">
-            <span className="material-symbols-outlined text-base text-secondary" data-icon="filter_list">filter_list</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-8 px-2 bg-surface border border-outline-variant rounded-lg text-label-md focus:border-primary focus:ring-1 focus:ring-primary outline-none text-on-surface cursor-pointer"
-            >
-              <option value="ALL">Tất cả trạng thái</option>
-              <option value="REQUESTED">Chờ xác nhận</option>
-              <option value="CONFIRMED">Đã xác nhận</option>
-              <option value="ARRIVED">Đã tiếp nhận</option>
-              <option value="CANCELLED">Đã hủy</option>
-            </select>
+
+          <div className="relative z-10 mt-4 pt-3.5 border-t border-white/20 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleToday}
+                className="px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Hôm nay
+              </button>
+              <button
+                onClick={handlePrev}
+                className="px-2.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors cursor-pointer"
+                title="Trước"
+              >
+                <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+              </button>
+              <button
+                onClick={handleNext}
+                className="px-2.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors cursor-pointer"
+                title="Tiếp"
+              >
+                <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs font-mono text-white">
+              <span className="material-symbols-outlined text-[15px]">date_range</span>
+              <span>
+                {formatDateStr(startOfWeek)} - {formatDateStr(endOfWeek)}
+              </span>
+            </div>
           </div>
         </div>
-        {/* Search appointment in calendar */}
-        <div className="relative w-full md:w-72">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 text-secondary pointer-events-none">
-            <span className="material-symbols-outlined text-base" data-icon="search">search</span>
-          </span>
-          <input 
-            className="w-full h-8 pl-8 pr-3 bg-surface-container-lowest border border-outline-variant rounded-md text-body-sm placeholder:text-outline focus:outline-none focus:border-primary" 
-            placeholder="Lọc tên khách hoặc biển số..." 
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+
+        {/* Status Metric Tiles & Search Filter (7 cols) */}
+        <div className="lg:col-span-7 flex flex-col justify-between gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button
+              type="button"
+              onClick={() => setStatusFilter(statusFilter === 'CONFIRMED' ? 'ALL' : 'CONFIRMED')}
+              className={`text-left rounded-2xl p-4 border transition-all cursor-pointer ${
+                statusFilter === 'CONFIRMED'
+                  ? 'bg-blue-50/90 border-[#0866ff] shadow-xs'
+                  : 'bg-white border-slate-200/80 hover:border-blue-200'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-600">Đã xác nhận</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#0866ff]" />
+              </div>
+              <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
+                {appointments.filter((a) => a.status === 'CONFIRMED' || a.status === 'RESCHEDULED').length}
+              </div>
+              <span className="text-xs text-[#0050cd] font-medium">Sẵn sàng đón xe</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStatusFilter(statusFilter === 'REQUESTED' ? 'ALL' : 'REQUESTED')}
+              className={`text-left rounded-2xl p-4 border transition-all cursor-pointer ${
+                statusFilter === 'REQUESTED'
+                  ? 'bg-amber-50/90 border-amber-400 shadow-xs'
+                  : 'bg-white border-slate-200/80 hover:border-amber-200'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-600">Chờ xác nhận</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+              </div>
+              <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
+                {appointments.filter((a) => a.status === 'REQUESTED').length}
+              </div>
+              <span className="text-xs text-amber-800 font-medium">Cần gọi xác nhận</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStatusFilter(statusFilter === 'ARRIVED' ? 'ALL' : 'ARRIVED')}
+              className={`text-left rounded-2xl p-4 border transition-all cursor-pointer ${
+                statusFilter === 'ARRIVED'
+                  ? 'bg-emerald-50/90 border-emerald-400 shadow-xs'
+                  : 'bg-white border-slate-200/80 hover:border-emerald-200'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-600">Đã tiếp nhận</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+              </div>
+              <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
+                {appointments.filter((a) => a.status === 'ARRIVED').length}
+              </div>
+              <span className="text-xs text-emerald-800 font-medium">Đã vào xưởng</span>
+            </button>
+          </div>
+
+          {/* Search & Status Select Bar (Flex siblings so icon never overlaps input) */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex-1 flex items-center gap-2 h-9 px-3 bg-slate-50 border border-slate-200/80 rounded-xl focus-within:bg-white focus-within:border-[#0866ff]">
+              <span className="material-symbols-outlined text-[18px] text-slate-600 shrink-0">
+                search
+              </span>
+              <input
+                className="w-full bg-transparent text-xs text-slate-900 placeholder:text-slate-500 focus:outline-none"
+                placeholder="Lọc nhanh tên khách hàng, số điện thoại hoặc biển số xe..."
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px] text-slate-600">filter_list</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="h-9 px-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 focus:border-[#0866ff] focus:outline-none cursor-pointer"
+              >
+                <option value="ALL">Tất cả trạng thái</option>
+                <option value="REQUESTED">Chờ xác nhận</option>
+                <option value="CONFIRMED">Đã xác nhận</option>
+                <option value="ARRIVED">Đã tiếp nhận</option>
+                <option value="CANCELLED">Đã hủy</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* C. INTERACTIVE WEEKLY SCHEDULER GRID */}
+      {/* 3. Interactive Scheduler Grid Container */}
       {loading ? (
-        <div className="flex justify-center p-8"><p>Loading appointments...</p></div>
+        <div className="saas-card p-12 flex flex-col items-center justify-center text-slate-600 gap-2">
+          <span className="material-symbols-outlined text-[32px] text-[#0866ff] animate-spin">
+            progress_activity
+          </span>
+          <p className="text-xs font-medium">Đang đồng bộ dữ liệu lịch hẹn...</p>
+        </div>
       ) : (
         <div className="relative">
           {viewMode === 'DAY' && (
-            <DailyCalendarGrid 
-              appointments={appointmentsToDisplay} 
+            <DailyCalendarGrid
+              appointments={appointmentsToDisplay}
               currentDate={currentDate}
-              onAppointmentClick={handleAppointmentClick} 
-              onTimeSlotClick={(date, time) => {
+              onAppointmentClick={handleAppointmentClick}
+              onTimeSlotClick={() => {
                 setShowCreateModal(true);
               }}
             />
           )}
           {viewMode === 'WEEK' && (
-            <WeeklyCalendarGrid 
-              appointments={appointmentsToDisplay} 
+            <WeeklyCalendarGrid
+              appointments={appointmentsToDisplay}
               startOfWeek={startOfWeek}
-              onAppointmentClick={handleAppointmentClick} 
-              onTimeSlotClick={(date, time) => {
+              onAppointmentClick={handleAppointmentClick}
+              onTimeSlotClick={() => {
                 setShowCreateModal(true);
               }}
             />
           )}
           {viewMode === 'MONTH' && (
-            <MonthlyCalendarGrid 
-              appointments={appointmentsToDisplay} 
+            <MonthlyCalendarGrid
+              appointments={appointmentsToDisplay}
               currentDate={currentDate}
-              onAppointmentClick={handleAppointmentClick} 
-              onTimeSlotClick={(date, time) => {
+              onAppointmentClick={handleAppointmentClick}
+              onTimeSlotClick={() => {
                 setShowCreateModal(true);
               }}
             />
           )}
           {selectedAppointment && (
-            <AppointmentDetailPopover 
+            <AppointmentDetailPopover
               appointment={selectedAppointment}
               onClose={handleClosePopover}
               onConfirm={handleConfirmAppointment}
@@ -518,29 +594,31 @@ export default function AppointmentsPage() {
 
       {/* Modals */}
       {showCreateModal && (
-        <CreateAppointmentModal 
-          onClose={() => setShowCreateModal(false)} 
+        <CreateAppointmentModal
+          onClose={() => setShowCreateModal(false)}
           onSuccess={() => {
-            dispatch(fetchAppointments({ 
-              startDate: startOfWeek.toISOString(), 
-              endDate: endOfWeek.toISOString(),
-              search: searchQuery
-            }));
+            dispatch(
+              fetchAppointments({
+                startDate: startOfWeek.toISOString(),
+                endDate: endOfWeek.toISOString(),
+                search: searchQuery,
+              })
+            );
           }}
         />
       )}
-      
+
       {showRescheduleModal && selectedAppointment && (
-        <RescheduleModal 
-          appointment={selectedAppointment} 
-          onClose={() => setShowRescheduleModal(false)} 
+        <RescheduleModal
+          appointment={selectedAppointment}
+          onClose={() => setShowRescheduleModal(false)}
         />
       )}
 
       {showCancelModal && selectedAppointment && (
-        <CancelConfirmDialog 
-          appointment={selectedAppointment} 
-          onClose={() => setShowCancelModal(false)} 
+        <CancelConfirmDialog
+          appointment={selectedAppointment}
+          onClose={() => setShowCancelModal(false)}
         />
       )}
 
@@ -549,10 +627,10 @@ export default function AppointmentsPage() {
           title={confirmAction.title}
           message={confirmAction.message}
           isLoading={isConfirming}
-          onClose={() => setConfirmAction(prev => ({ ...prev, isOpen: false }))}
+          onClose={() => setConfirmAction((prev) => ({ ...prev, isOpen: false }))}
           onConfirm={executeConfirmAction}
         />
       )}
-    </>
+    </div>
   );
 }

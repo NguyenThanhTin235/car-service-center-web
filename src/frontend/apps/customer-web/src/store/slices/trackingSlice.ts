@@ -1,3 +1,34 @@
+export interface CustomerQuotationDto {
+  id: number;
+  quotationNumber: string;
+  quotationType: string;
+  version: number;
+  status: 'DRAFT' | 'SENT' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  subtotal: number;
+  discountAmount: number;
+  taxRate: number;
+  taxAmount: number;
+  grandTotal: number;
+  rejectReason?: string | null;
+  rejectDetails?: {
+    type: 'REVISE' | 'CANCEL';
+    reason: string;
+    createdAt?: string;
+  } | null;
+  sentAt?: string | null;
+  approvedAt?: string | null;
+  createdAt: string;
+  lines: Array<{
+    id: number;
+    lineType: 'PACKAGE' | 'LABOUR' | 'PART';
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    amount: number;
+    sortOrder: number;
+  }>;
+}
+
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/axios';
 
@@ -71,36 +102,30 @@ export interface WorkOrderTrackingDto {
   steps: WorkOrderStep[];
   currentStep: number;
   progressPercent: number;
-  activeQuotation?: {
-    id: number;
-    quotationNumber: string;
-    quotationType: string;
-    version: number;
-    status: 'DRAFT' | 'SENT' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
-    subtotal: number;
-    discountAmount: number;
-    taxRate: number;
-    taxAmount: number;
-    grandTotal: number;
-    rejectReason?: string | null;
-    rejectDetails?: {
-      type: 'REVISE' | 'CANCEL';
-      reason: string;
-      createdAt?: string;
-    } | null;
-    sentAt?: string | null;
-    approvedAt?: string | null;
-    createdAt: string;
-    lines: Array<{
+  qcReport?: {
+    hasQc: boolean;
+    isPassed: boolean;
+    totalItems: number;
+    passedItems: number;
+    failedItems: number;
+    inspectorName: string;
+    inspectedAt: string;
+    items: Array<{
       id: number;
-      lineType: 'LABOUR' | 'PART';
-      description: string;
-      quantity: number;
-      unitPrice: number;
-      amount: number;
-      sortOrder: number;
+      itemName: string;
+      serviceName: string;
+      result: string;
+      notes?: string;
     }>;
   } | null;
+  activeQuotation?: CustomerQuotationDto | null;
+  quotations?: CustomerQuotationDto[];
+  cumulativeSummary?: {
+    totalApprovedGrandTotal: number;
+    totalApprovedSubtotal: number;
+    totalApprovedDiscount: number;
+    approvedCount: number;
+  };
   release?: {
     id: number;
     releaseNotes?: string | null;

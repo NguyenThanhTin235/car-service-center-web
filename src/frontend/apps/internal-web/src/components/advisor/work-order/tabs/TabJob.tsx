@@ -25,12 +25,17 @@ interface TabJobProps {
   workOrder?: WorkOrder;
   refetchWO?: () => void;
   isReadOnly?: boolean;
+  setActiveTab?: (tabId: string) => void;
 }
 
-const SERVICE_STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: string }> = {
+export type ServiceDerivedStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'PASSED' | 'REWORK';
+
+const SERVICE_STATUS_MAP: Record<ServiceDerivedStatus, { label: string; color: string; bg: string; icon: string }> = {
   PENDING: { label: 'Chờ xử lý', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', icon: 'schedule' },
   IN_PROGRESS: { label: 'Đang thực hiện', color: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20', icon: 'autorenew' },
-  COMPLETED: { label: 'Hoàn thành', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', icon: 'check_circle' },
+  COMPLETED: { label: 'Hoàn thành thi công', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', icon: 'check_circle' },
+  REWORK: { label: 'Cần làm lại', color: 'text-rose-700 dark:text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20', icon: 'refresh' },
+  PASSED: { label: 'Đạt KCS', color: 'text-purple-700 dark:text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20', icon: 'verified' },
 };
 
 const getJobStatusInfo = (job: WoJob, currentEmployeeId: number | null) => {
@@ -96,10 +101,18 @@ const getInitials = (name?: string | null) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: TabJobProps) {
+export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setActiveTab }: TabJobProps) {
   const services = workOrder?.services || [];
   const isWOClosed = isReadOnly || ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '');
   const isExecutionActive = workOrder?.status === 'IN_PROGRESS';
+  const isApprovedOrBeyond = [
+    'APPROVED',
+    'IN_PROGRESS',
+    'BILLING_REQUESTED',
+    'FINANCIAL_CLEARED',
+    'RELEASED',
+    'CLOSED',
+  ].includes(workOrder?.status || '');
 
   // Trích xuất toàn bộ findings từ kiểm tra xe
   const allFindings = workOrder?.inspections?.flatMap((i) => i.findings) || [];
@@ -164,15 +177,32 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
   const [addPartJobId, setAddPartJobId] = useState<number | null>(null);
 
   // Trạng thái của hạng mục phụ thuộc hoàn toàn vào các job con
-  const getServiceDerivedStatus = (service: WoService): 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' => {
+  const getServiceDerivedStatus = (service: WoService): ServiceDerivedStatus => {
     const jobs = service.jobs || [];
-    if (jobs.length === 0) return (service.status as any) || 'PENDING';
-    const allPlanned = jobs.every((j) => j.status === 'PLANNED');
-    if (allPlanned) return 'PENDING';
+    if (jobs.length === 0) return (service.status as ServiceDerivedStatus) || 'PENDING';
+
+    // 1. Nếu có bất kỳ job nào REWORK (hoặc is_rework chưa hoàn thành/passed)
+    const hasRework = jobs.some(
+      (j) => j.status === 'REWORK' || (Boolean((j as any).is_rework) && j.status !== 'PASSED' && j.status !== 'COMPLETED')
+    );
+    if (hasRework) return 'REWORK';
+
+    // 2. Nếu tất cả jobs đã đạt kiểm định (PASSED)
+    const allPassed = jobs.every((j) => j.status === 'PASSED');
+    if (allPassed) return 'PASSED';
+
+    // 3. Nếu tất cả jobs đã hoàn thành (bao gồm COMPLETED hoặc PASSED)
     const allDone = jobs.every((j) => j.status === 'COMPLETED' || j.status === 'PASSED');
     if (allDone) return 'COMPLETED';
+
+    // 4. Nếu tất cả jobs mới chỉ lên kế hoạch (PLANNED)
+    const allPlanned = jobs.every((j) => j.status === 'PLANNED');
+    if (allPlanned) return 'PENDING';
+
     return 'IN_PROGRESS';
   };
+
+
 
   // Cập nhật trạng thái công việc trực tiếp (Trạng thái dịch vụ cha sẽ tự động đồng bộ theo các job)
   const [updatingJobId, setUpdatingJobId] = useState<number | null>(null);
@@ -247,6 +277,10 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
 
   const handleDeleteJob = async (job: WoJob) => {
     if (!workOrder || deletingJobId) return;
+    if (isApprovedOrBeyond) {
+      toast.error('Không thể xóa công việc khi báo giá đã được khách hàng phê duyệt.');
+      return;
+    }
     try {
       setDeletingJobId(job.id);
       const res = await deleteJob(workOrder.id, job.id);
@@ -434,45 +468,45 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 1. MINI KPI STATS BAR - Nắm bắt chỉ số trong 1 giây */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/60 shadow-2xs flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            {/* 1. MINI KPI STATS BAR - Nắm bắt chỉ số trong 1 giây */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#f8fafc] border border-slate-200/80 rounded-2xl p-2 sm:p-2.5">
+        <div className="flex items-center gap-3 px-3 py-1.5 sm:border-r border-slate-200/80">
+          <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#0050cd] flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[20px]">category</span>
           </div>
           <div>
-            <div className="text-label-xs text-on-surface-variant font-medium">Hạng mục</div>
-            <div className="text-title-sm font-bold text-on-surface">{services.length} mục</div>
+            <div className="text-xs text-slate-500 font-medium">Hạng mục</div>
+            <div className="text-sm font-bold text-zinc-900">{services.length} mục</div>
           </div>
         </div>
 
-        <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/60 shadow-2xs flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-700 dark:text-blue-400 flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-3 px-3 py-1.5 sm:border-r border-slate-200/80">
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[20px]">assignment</span>
           </div>
           <div>
-            <div className="text-label-xs text-on-surface-variant font-medium">Công việc con</div>
-            <div className="text-title-sm font-bold text-on-surface">{grandTotalJobs} việc</div>
+            <div className="text-xs text-slate-500 font-medium">Công việc con</div>
+            <div className="text-sm font-bold text-zinc-900">{grandTotalJobs} việc</div>
           </div>
         </div>
 
-        <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/60 shadow-2xs flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-3 px-3 py-1.5 sm:border-r border-slate-200/80">
+          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[20px]">schedule</span>
           </div>
           <div>
-            <div className="text-label-xs text-on-surface-variant font-medium">Định mức giờ</div>
-            <div className="text-title-sm font-bold text-on-surface font-mono">{grandTotalHours.toFixed(1)}h</div>
+            <div className="text-xs text-slate-500 font-medium">Định mức giờ</div>
+            <div className="text-sm font-bold text-zinc-900 font-mono">{grandTotalHours.toFixed(1)}h</div>
           </div>
         </div>
 
-        <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/60 shadow-2xs flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-3 px-3 py-1.5">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[20px]">how_to_reg</span>
           </div>
           <div>
-            <div className="text-label-xs text-on-surface-variant font-medium">Đã phân công KTV</div>
-            <div className="text-title-sm font-bold text-on-surface font-mono">
+            <div className="text-xs text-slate-500 font-medium">Đã phân công KTV</div>
+            <div className="text-sm font-bold text-zinc-900 font-mono">
               {grandAssignedJobs}/{grandTotalJobs}
             </div>
           </div>
@@ -482,23 +516,131 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
 
 
 
-      {workOrder?.status === 'IN_PROGRESS' && (
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-500/15 via-indigo-500/10 to-transparent border border-blue-500/30 flex items-center justify-between gap-3 shadow-xs">
+      {/* 2. DYNAMIC WORK ORDER EXECUTION BANNER */}
+      {workOrder?.status === 'IN_PROGRESS' && (() => {
+        // Nếu toàn bộ công việc đã kiểm định chất lượng (PASSED) -> Xóa / Ẩn tag này
+        const isAllQcPassed =
+          grandTotalJobs > 0 &&
+          services.every((s) => {
+            const jobs = s.jobs || [];
+            return jobs.length > 0 && jobs.every((j) => j.status === 'PASSED');
+          });
+
+        if (isAllQcPassed) {
+          return null;
+        }
+
+        const allServicesCompleted = services.length > 0 && services.every((s) => s.status === 'COMPLETED');
+        const allJobsCompleted = grandTotalJobs > 0 && grandCompletedJobs === grandTotalJobs;
+        const hasJobsWaitingQc = services.some((s) => (s.jobs || []).some((j) => j.status === 'COMPLETED'));
+        const hasReworkJobs = services.some((s) => (s.jobs || []).some((j) => j.status === 'REWORK'));
+
+        if ((allServicesCompleted || allJobsCompleted) && hasJobsWaitingQc && !hasReworkJobs) {
+          return (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fade-in">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <span className="material-symbols-outlined text-[20px]">task_alt</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-body-sm font-bold text-emerald-950 dark:text-emerald-200">
+                      Toàn bộ công việc thi công đã hoàn thành
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-600 text-white">
+                      HOÀN THÀNH 100%
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-emerald-800 dark:text-emerald-300">
+                    Tất cả {grandTotalJobs} công việc ({services.length} hạng mục) đã hoàn tất. Sẵn sàng chuyển sang Tab Kiểm tra chất lượng (KCS) hoặc gửi lệnh thanh toán.
+                  </p>
+                </div>
+              </div>
+
+              {setActiveTab && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('qc')}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 shrink-0 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[16px]">verified</span>
+                  <span>Kiểm tra chất lượng (KCS)</span>
+                </button>
+              )}
+            </div>
+          );
+        }
+
+        if (hasReworkJobs) {
+          return (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-rose-500/15 via-amber-500/10 to-transparent border border-rose-500/30 flex items-center justify-between gap-3 shadow-xs animate-fade-in">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <span className="material-symbols-outlined text-[20px]">build_circle</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-body-sm font-bold text-rose-950 dark:text-rose-200">
+                      Có công việc cần sửa lại (Rework)
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-rose-600 text-white">
+                      CẦN LÀM LẠI
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-rose-800 dark:text-rose-300">
+                    Kiểm định viên KCS đã phát hiện hạng mục chưa đạt. Vui lòng phân công KTV và khắc phục trước khi nghiệm thu lại.
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        if (allServicesCompleted || allJobsCompleted) {
+          return null;
+        }
+
+        return (
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-500/15 via-indigo-500/10 to-transparent border border-blue-500/30 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs animate-pulse">
+                <span className="material-symbols-outlined text-[20px]">engineering</span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-body-sm font-bold text-blue-950 dark:text-blue-200">
+                    Đang trong quá trình thi công
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-600 text-white">
+                    ĐANG THI CÔNG
+                  </span>
+                </div>
+                <p className="text-[12px] text-blue-800 dark:text-blue-300">
+                  Các hạng mục và KTV đang tiến hành theo kế hoạch ({grandCompletedJobs}/{grandTotalJobs} công việc hoàn thành). Khách hàng đang theo dõi tiến độ thời gian thực.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {workOrder?.status === 'BILLING_REQUESTED' && (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-500/15 via-indigo-500/10 to-transparent border border-purple-500/30 flex items-center justify-between gap-3 shadow-xs animate-fade-in">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs animate-pulse">
-              <span className="material-symbols-outlined text-[20px]">engineering</span>
+            <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <span className="material-symbols-outlined text-[20px]">receipt_long</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="text-body-sm font-bold text-blue-950 dark:text-blue-200">
-                  Đang trong quá trình thi công
+                <h4 className="text-body-sm font-bold text-purple-950 dark:text-purple-200">
+                  Đã hoàn tất nghiệm thu & Chờ thanh toán
                 </h4>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-600 text-white">
-                  ĐANG THI CÔNG
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-purple-600 text-white">
+                  CHỜ THANH TOÁN
                 </span>
               </div>
-              <p className="text-[12px] text-blue-800 dark:text-blue-300">
-                Các hạng mục và KTV đang tiến hành theo kế hoạch. Khách hàng đang theo dõi tiến độ thời gian thực.
+              <p className="text-[12px] text-purple-800 dark:text-purple-300">
+                Toàn bộ công việc thi công và kiểm định chất lượng KCS đã hoàn tất đạt chuẩn. Đang chờ thu ngân xác nhận thanh toán.
               </p>
             </div>
           </div>
@@ -506,7 +648,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
       )}
 
       {/* 3. UNIFIED ACTION TOOLBAR */}
-      <div className="p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/60 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Tìm kiếm & Thu gọn/Mở rộng */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="relative flex-1 max-w-sm">
@@ -518,7 +660,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
               placeholder="Tìm hạng mục hoặc công việc..."
-              className="w-full pl-9 pr-3 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-xl text-body-xs text-on-surface placeholder:text-on-surface-variant outline-none focus:border-primary focus:bg-surface-container-lowest transition-all"
+              className="w-full pl-9 pr-3 py-2 bg-white hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs text-zinc-900 placeholder:text-slate-400 outline-none focus:border-[#0050cd] transition-all shadow-2xs"
             />
             {filterQuery && (
               <button
@@ -657,7 +799,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                 {/* HEADER HẠNG MỤC (Thanh bar gọn gàng, rõ nét) */}
                 <div
                   onClick={() => toggleExpand(svc.id)}
-                  className="px-4 py-3 bg-surface-container-low/70 hover:bg-surface-container-low border-b border-outline-variant/30 flex items-center justify-between gap-3 cursor-pointer select-none transition-colors"
+                  className="px-4 sm:px-5 py-3.5 bg-surface-container-low/70 hover:bg-surface-container-low border-b border-outline-variant/30 flex items-center justify-between gap-3 cursor-pointer select-none transition-colors"
                 >
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     {/* Nút mở rộng chevron */}
@@ -688,13 +830,13 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                     </h4>
 
                     {/* Badge loại giá */}
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-container text-on-surface-variant shrink-0">
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-600 shrink-0 shadow-2xs">
                       {PRICING_TYPE_MAP[svc.pricing_type] || svc.pricing_type}
                     </span>
 
                     {/* Mini Progress Pill */}
                     {jobs.length > 0 && (
-                      <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container text-body-xs font-mono text-on-surface-variant shrink-0">
+                      <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-xs font-mono text-slate-700 shrink-0">
                         <span className="font-bold text-on-surface">{jobs.length} việc</span>
                         <span>•</span>
                         <span>{totalHours.toFixed(1)}h</span>
@@ -707,18 +849,18 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                       </div>
                     )}
 
-                    {/* Badge Trạng thái Hạng mục Dịch vụ (Tự động phụ thuộc vào các Job con) */}
+                    {/* Badge Trạng thái Hạng mục Dịch vụ (Chỉ hiện trạng thái, không phải comboBox) */}
                     {(() => {
                       const svcStatus = getServiceDerivedStatus(svc);
                       const statusInfo = SERVICE_STATUS_MAP[svcStatus] || SERVICE_STATUS_MAP.PENDING;
                       return (
                         <div
-                          className="relative inline-flex items-center shrink-0 ml-1"
+                          className="inline-flex items-center shrink-0 ml-1"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <span
                             className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border shadow-2xs ${statusInfo.bg} ${statusInfo.color}`}
-                            title={`Trạng thái hạng mục tự động phụ thuộc vào các công việc con (${statusInfo.label})`}
+                            title={`Trạng thái hạng mục: ${statusInfo.label}`}
                           >
                             <span
                               className={`material-symbols-outlined text-[13px] ${
@@ -741,19 +883,21 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                   >
                     {!isWOClosed && (
                       <>
-                        {/* Nút AI đề xuất riêng cho hạng mục */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAiTargetService({ id: svc.id, name: svc.name });
-                            setIsAIModalOpen(true);
-                          }}
-                          className="flex items-center gap-1 px-2.5 py-1 text-label-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors cursor-pointer"
-                          title="AI đề xuất các bước thi công cho hạng mục này"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
-                          <span className="hidden md:inline">AI gợi ý việc</span>
-                        </button>
+                        {/* Nút AI đề xuất riêng cho hạng mục (Chỉ khả dụng khi hạng mục ở trạng thái Chờ xử lý) */}
+                        {svc.status === 'PENDING' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAiTargetService({ id: svc.id, name: svc.name });
+                              setIsAIModalOpen(true);
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1 text-label-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors cursor-pointer"
+                            title="AI đề xuất các bước thi công cho hạng mục này"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
+                            <span>AI gợi ý việc</span>
+                          </button>
+                        )}
 
                         {/* Nút thêm việc con */}
                         <button
@@ -806,18 +950,18 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
 
                 {/* NỘI DUNG JOBS TRONG HẠNG MỤC */}
                 {isExpanded && (
-                  <div className="p-3">
+                  <div className="overflow-x-auto border-t border-slate-200/80">
                     {jobs.length > 0 ? (
-                      <div className="overflow-x-auto rounded-xl border border-outline-variant/40">
+                      <div className="w-full">
                         <table className="w-full text-left text-body-xs border-collapse">
                           <thead>
-                            <tr className="bg-surface-container-low/60 border-b border-outline-variant/40 text-[11px] text-on-surface-variant uppercase font-semibold">
-                              <th className="px-3 py-2 text-center w-12">#</th>
-                              <th className="px-3 py-2">Công việc & Loại thợ</th>
-                              <th className="px-3 py-2 w-56">Kỹ thuật viên phụ trách</th>
-                              <th className="px-3 py-2 text-center w-20">Định mức</th>
-                              <th className="px-3 py-2 text-center w-28">Trạng thái</th>
-                              {!isWOClosed && <th className="px-3 py-2 text-center w-20">Thao tác</th>}
+                            <tr className="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase font-bold tracking-wide">
+                              <th className="px-4 py-3 text-center w-12 font-mono">#</th>
+                              <th className="px-4 py-3">Công việc & Loại thợ</th>
+                              <th className="px-4 py-3 w-56">Kỹ thuật viên phụ trách</th>
+                              <th className="px-4 py-3 text-center w-20">Định mức</th>
+                              <th className="px-4 py-3 text-center w-28">Trạng thái</th>
+                              {!isWOClosed && <th className="px-4 py-3 text-center w-20">Thao tác</th>}
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-outline-variant/30">
@@ -841,7 +985,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                                   className="hover:bg-surface-container-low/40 transition-colors group"
                                 >
                                   {/* STT & Di chuyển */}
-                                  <td className="px-3 py-2.5 text-center">
+                                  <td className="px-4 py-3 text-center">
                                     <div className="flex items-center justify-center gap-0.5">
                                       <span className="font-mono text-on-surface-variant font-bold">
                                         {jIdx + 1}
@@ -872,22 +1016,19 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                                   </td>
 
                                   {/* Tên công việc & Phân loại */}
-                                  <td className="px-3 py-2.5">
+                                  <td className="px-4 py-3">
                                     <div
                                       onClick={() => {
                                         setManualJobTargetService(svc);
                                         setEditingJob(job);
                                         setManualJobModalOpen(true);
                                       }}
-                                      className="font-semibold text-body-xs text-on-surface hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5"
+                                      className="font-semibold text-body-xs text-on-surface hover:text-primary transition-colors cursor-pointer"
                                     >
                                       <span>{job.name}</span>
-                                      <span className="material-symbols-outlined text-[13px] opacity-0 group-hover:opacity-100 text-primary">
-                                        edit
-                                      </span>
                                     </div>
                                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                      <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-surface-container text-on-surface-variant">
+                                      <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700">
                                         {job.job_type?.name || 'Kỹ thuật'}
                                       </span>
                                       {job.parts && job.parts.length > 0 ? (
@@ -896,7 +1037,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                                             e.stopPropagation();
                                             if (!isWOClosed) setAddPartJobId(job.id);
                                           }}
-                                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20 ${!isWOClosed ? 'cursor-pointer hover:bg-primary/20' : ''}`}
+                                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-blue-50 text-[#0050cd] border border-blue-200/60 ${!isWOClosed ? 'cursor-pointer hover:bg-primary/20' : ''}`}
                                           title={!isWOClosed ? 'Nhấn để khai báo thêm phụ tùng' : ''}
                                         >
                                           <span className="material-symbols-outlined text-[11px]">construction</span>
@@ -909,7 +1050,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                                             e.stopPropagation();
                                             setAddPartJobId(job.id);
                                           }}
-                                          className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-medium text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors cursor-pointer"
+                                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium text-slate-600 hover:text-primary hover:bg-surface-container transition-colors cursor-pointer"
                                           title="Khai báo phụ tùng"
                                         >
                                           <span className="material-symbols-outlined text-[11px]">add</span>
@@ -917,7 +1058,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                                         </button>
                                       ) : null}
                                       {job.description && (
-                                        <span className="text-[11px] text-on-surface-variant truncate max-w-xs">
+                                        <span className="text-xs text-slate-600 truncate max-w-sm">
                                           {job.description}
                                         </span>
                                       )}
@@ -925,8 +1066,8 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                                   </td>
 
                                   {/* Kỹ thuật viên phụ trách (Select box với initials avatar) */}
-                                  <td className="px-3 py-2.5">
-                                    {!isWOClosed && job.status === 'PLANNED' ? (
+                                  <td className="px-4 py-3">
+                                    {!isWOClosed && (job.status === 'PLANNED' || job.status === 'REWORK') ? (
                                       <div className="relative flex items-center w-full min-w-[190px]">
                                         <div
                                           className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold absolute left-2 pointer-events-none ${
@@ -972,10 +1113,10 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                                       <div className="flex items-center gap-1.5 text-body-xs">
                                         {technicianName ? (
                                           <>
-                                            <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                            <div className="w-7 h-7 rounded-full bg-[#0c2340] text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-2xs">
                                               {getInitials(technicianName)}
                                             </div>
-                                            <span className="font-semibold text-on-surface truncate">{technicianName}</span>
+                                            <span className="font-bold text-zinc-900 truncate text-xs">{technicianName}</span>
                                           </>
                                         ) : (
                                           <span className="text-on-surface-variant italic">Chưa phân công</span>
@@ -985,18 +1126,18 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                                   </td>
 
                                   {/* Định mức giờ */}
-                                  <td className="px-3 py-2.5 text-center">
+                                  <td className="px-4 py-3 text-center">
                                     <span className="font-mono text-body-xs font-bold text-on-surface">
                                       {Number(job.estimated_hours || 0).toFixed(1)}h
                                     </span>
                                   </td>
 
                                   {/* Trạng thái */}
-                                  <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                                  <td className="px-4 py-3 text-center whitespace-nowrap">
                                     {!isWOClosed && (isExecutionActive || workOrder?.status === 'APPROVED') ? (
                                       <div className="relative inline-flex items-center group">
                                         <div
-                                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border transition-all shadow-2xs group-hover:shadow-xs group-hover:brightness-95 ${jobStatus.bg} ${jobStatus.text}`}
+                                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all shadow-2xs group-hover:shadow-xs group-hover:brightness-95 ${jobStatus.bg} ${jobStatus.text}`}
                                         >
                                           {updatingJobId === job.id ? (
                                             <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
@@ -1042,7 +1183,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
 
                                   {/* Thao tác */}
                                   {!isWOClosed && (
-                                    <td className="px-3 py-2.5 text-center">
+                                    <td className="px-4 py-3 text-center">
                                       {confirmDeleteJobId === job.id ? (
                                         <div className="inline-flex items-center gap-1 bg-surface-container px-1 py-0.5 rounded border border-error/30 animate-fade-in">
                                           <button
@@ -1083,7 +1224,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false }: Tab
                                           >
                                             <span className="material-symbols-outlined text-[15px]">construction</span>
                                           </button>
-                                          {job.status === 'PLANNED' && (
+                                          {job.status === 'PLANNED' && !isApprovedOrBeyond && (
                                             <button
                                               type="button"
                                               onClick={() => setConfirmDeleteJobId(job.id)}

@@ -122,6 +122,15 @@ export interface WorkOrder {
   };
   created_at: string;
   updated_at: string;
+  release?: {
+    id: number;
+    release_notes: string | null;
+    released_at: string;
+    released_by?: {
+      id: number;
+      full_name: string;
+    };
+  } | null;
   invoice?: {
     id: number;
     status: string;
@@ -411,6 +420,8 @@ export interface AISuggestedJob {
   assigned_technician_name?: string | null;
   assignment_reason?: string | null;
   match_score?: number;
+  is_already_exist?: boolean;
+  existing_job_id?: number | null;
 }
 
 export interface AISuggestedService {
@@ -713,8 +724,7 @@ export interface CancelAndReleasePayload {
 
 /**
  * Bàn giao xuất trả xe khi khách từ chối dịch vụ hoặc hủy lệnh
- */
-export async function cancelAndReleaseWorkOrder(
+ */export async function cancelAndReleaseWorkOrder(
   workOrderId: number,
   payload: CancelAndReleasePayload
 ): Promise<ApiResponse<any>> {
@@ -722,9 +732,76 @@ export async function cancelAndReleaseWorkOrder(
   return response.data;
 }
 
+export interface CompleteHandoverPayload {
+  returnMileage?: number;
+  returnFuel?: string;
+  oldPartsAction?: 'RETURNED_TO_CUSTOMER' | 'DISPOSED_BY_GARAGE';
+  carWashCompleted?: boolean;
+  belongingsReturned?: boolean;
+  notes?: string;
+  customerSignature?: string;
+  warrantyTerms?: string;
+}
 
+/**
+ * Bàn giao xe chuẩn sau khi hoàn tất sửa chữa và thanh toán
+ */
+export async function completeVehicleHandover(
+  workOrderId: number,
+  payload: CompleteHandoverPayload
+): Promise<ApiResponse<any>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/handover`, payload);
+  return response.data;
+}
 
+/**
+ * Tải file PDF Biên bản bàn giao xe
+ */
+export async function downloadHandoverPdfBlob(workOrderId: number): Promise<Blob> {
+  const response = await api.get(`/api/work-orders/${workOrderId}/handover-pdf`, {
+    responseType: 'blob',
+  });
+  return response.data;
+}
 
+/**
+ * Đóng hồ sơ phiếu công việc (RELEASED → CLOSED)
+ */
+export async function closeWorkOrder(workOrderId: number, notes?: string): Promise<ApiResponse<WorkOrder>> {
+  const response = await api.post(`/api/work-orders/${workOrderId}/close`, { notes });
+  return response.data;
+}
 
+/**
+ * Cập nhật thông tin phương tiện (Biển số, hãng, model, năm, màu, phân khúc)
+ */
+export async function updateVehicleInfo(
+  vehicleId: number,
+  data: {
+    licensePlate?: string;
+    make?: string;
+    model?: string;
+    year?: number;
+    color?: string;
+    vehicleSize?: string;
+  }
+): Promise<ApiResponse<any>> {
+  const response = await api.put(`/api/vehicles/${vehicleId}`, data);
+  return response.data;
+}
 
-
+/**
+ * Cập nhật thông tin khách hàng (Họ tên, SĐT, email, địa chỉ)
+ */
+export async function updateCustomerInfo(
+  customerId: number,
+  data: {
+    fullName?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+  }
+): Promise<ApiResponse<any>> {
+  const response = await api.put(`/api/customers/${customerId}`, data);
+  return response.data;
+}

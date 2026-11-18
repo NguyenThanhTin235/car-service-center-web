@@ -52,27 +52,31 @@ export default function WeeklyCalendarGrid({
   };
 
   return (
-    <div className="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-sm overflow-hidden flex flex-col relative">
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col relative">
       <div className="overflow-x-auto">
         <div className="min-w-[1100px]">
           {/* Header Row */}
-          <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-[#F8FAFC] border-b border-outline-variant divide-x divide-outline-variant">
-            <div className="p-3 text-center text-label-sm font-label-sm font-semibold text-secondary flex items-center justify-center">
+          <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-slate-50 border-b border-slate-200 divide-x divide-slate-200">
+            <div className="p-3 text-center text-xs font-bold text-slate-700 flex items-center justify-center">
               Giờ
             </div>
             
             {weekDays.map((day, idx) => (
               <div 
                 key={idx} 
-                className={`p-3 text-center ${day.isToday ? 'bg-blue-50/70 relative' : day.isWeekend ? 'bg-slate-50/60' : ''}`}
+                className={`p-3 text-center ${day.isToday ? 'bg-blue-50/70' : day.isWeekend ? 'bg-slate-50/60' : ''}`}
               >
-                {day.isToday && (
-                  <span className="absolute top-1 right-2 bg-primary text-on-primary text-[10px] font-bold px-1.5 py-0.2 rounded">Hôm nay</span>
-                )}
-                <div className={`text-label-sm font-label-sm font-medium uppercase tracking-wider ${day.isToday ? 'text-primary font-bold' : 'text-secondary'}`}>
-                  {day.name}
+                <div className="flex items-center justify-center gap-1.5">
+                  <span className={`text-xs uppercase tracking-wider ${day.isToday ? 'text-[#0050cd] font-bold' : 'text-slate-700 font-semibold'}`}>
+                    {day.name}
+                  </span>
+                  {day.isToday && (
+                    <span className="bg-[#0050cd] text-white text-xs font-bold px-2 py-0.5 rounded">
+                      Hôm nay
+                    </span>
+                  )}
                 </div>
-                <div className={`text-headline-md font-headline-md font-bold ${day.isToday ? 'text-primary' : 'text-on-surface'}`}>
+                <div className={`text-lg font-mono font-extrabold mt-0.5 ${day.isToday ? 'text-[#0050cd]' : 'text-slate-900'}`}>
                   {day.dateStr}
                 </div>
               </div>
@@ -80,11 +84,11 @@ export default function WeeklyCalendarGrid({
           </div>
 
           {/* Time Grid Body */}
-          <div className="relative divide-y divide-outline-variant/60">
+          <div className="relative divide-y divide-slate-200/70">
             {hours.map((hour, hIdx) => (
-              <div key={hIdx} className="grid grid-cols-[80px_repeat(7,1fr)] min-h-[92px] divide-x divide-outline-variant/50 relative">
+              <div key={hIdx} className="grid grid-cols-[80px_repeat(7,1fr)] min-h-[92px] divide-x divide-slate-200/70 relative">
                 {/* Time label */}
-                <div className="flex items-center justify-center font-code-mono text-xs text-secondary font-medium bg-[#FAFAFA]">
+                <div className="flex items-center justify-center font-mono text-xs text-slate-700 font-bold bg-slate-50/60">
                   {hour}
                 </div>
 

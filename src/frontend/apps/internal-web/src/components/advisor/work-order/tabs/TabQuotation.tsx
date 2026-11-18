@@ -322,7 +322,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
   return (
     <div className="space-y-6">
       {/* 1. Header Toolbar & Version Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container-lowest p-4 rounded-xl border border-outline-variant shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Version Switcher Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
           {/* Nút mở Lịch sử báo giá */}
@@ -332,7 +332,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-high hover:bg-surface-container-highest text-primary rounded-lg text-xs font-bold transition-all whitespace-nowrap border border-primary/20 shadow-2xs hover:shadow-xs cursor-pointer shrink-0"
             title="Xem lịch sử toàn bộ các phiên bản báo giá"
           >
-            <span className="material-symbols-outlined text-[16px]">history</span>
+            <span className="material-symbols-outlined text-[18px]">history</span>
             <span>Lịch sử ({quotations.length})</span>
           </button>
 
@@ -349,7 +349,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
             >
               <span className="font-mono">{mainQuotation.quotationNumber}</span>
               <span
-                className={`text-[10px] px-1.5 py-0.5 rounded font-extrabold flex items-center gap-0.5 ${
+                className={`text-xs px-2 py-0.5 rounded-md font-bold flex items-center gap-0.5 ${
                   activeQuotation?.id === mainQuotation.id
                     ? 'bg-emerald-500 text-white'
                     : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
@@ -360,7 +360,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                 <span>Chính</span>
               </span>
               <span
-                className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${
+                className={`text-xs px-2 py-0.5 rounded-md uppercase font-bold ${
                   activeQuotation?.id === mainQuotation.id
                     ? 'bg-white/20 text-white'
                     : 'bg-surface-container-highest text-on-surface'
@@ -400,7 +400,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
               className="inline-flex items-center gap-1 px-3 py-1.5 border border-dashed border-primary text-primary hover:bg-primary/5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer"
               title="Tạo báo giá bổ sung cho các hạng mục phát sinh"
             >
-              <span className="material-symbols-outlined text-[16px]">add</span>
+              <span className="material-symbols-outlined text-[18px]">add</span>
               Báo giá bổ sung
             </button>
           )}
@@ -465,7 +465,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                   className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-rose-900/40 hover:bg-rose-100 text-rose-900 dark:text-rose-100 rounded-xl text-xs font-semibold border border-rose-300 transition-colors shadow-2xs"
                   title="Gọi cho khách hàng"
                 >
-                  <span className="material-symbols-outlined text-[16px]">call</span>
+                  <span className="material-symbols-outlined text-[18px]">call</span>
                   <span>Gọi khách: {workOrder.customer.phone}</span>
                 </a>
               )}
@@ -510,7 +510,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                     onClick={() => setActiveTab('job')}
                     className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-amber-900/40 hover:bg-amber-100 text-amber-900 dark:text-amber-100 rounded-xl text-xs font-semibold border border-amber-300 transition-colors shadow-2xs cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-[16px]">handyman</span>
+                    <span className="material-symbols-outlined text-[18px]">handyman</span>
                     <span>Sửa dịch vụ (Tab 2)</span>
                   </button>
                   <button
@@ -518,7 +518,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                     onClick={() => setActiveTab('parts')}
                     className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-amber-900/40 hover:bg-amber-100 text-amber-900 dark:text-amber-100 rounded-xl text-xs font-semibold border border-amber-300 transition-colors shadow-2xs cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-[16px]">build_circle</span>
+                    <span className="material-symbols-outlined text-[18px]">build_circle</span>
                     <span>Sửa phụ tùng (Tab 3)</span>
                   </button>
                 </>
@@ -539,9 +539,9 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
       )}
 
       {/* 2. Bảng bóc tách chi tiết (Itemized Table) */}
-      <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-2xs">
+      <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden">
         <div className="px-5 py-3.5 border-b border-outline-variant bg-surface-container-low/40 flex items-center justify-between">
-          <div className="font-bold text-sm text-on-surface uppercase tracking-wider flex items-center gap-2">
+          <div className="font-extrabold text-sm text-zinc-900 flex items-center gap-2">
             <span className="material-symbols-outlined text-[18px] text-primary">list_alt</span>
             Bảng chi tiết hạng mục dịch vụ & phụ tùng
           </div>
@@ -553,11 +553,11 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="border-b border-outline-variant/60 text-xs text-on-surface-variant font-bold uppercase tracking-wider bg-surface-container-low/40">
+              <tr className="border-b border-slate-200 text-xs text-slate-500 font-bold tracking-wide bg-slate-50">
                 <th className="py-3 px-4 w-14 text-center">STT</th>
                 <th className="py-3 px-4">Hạng mục / Công việc / Phụ tùng</th>
                 <th className="py-3 px-4 w-36">Phân loại</th>
-                <th className="py-3 px-4 w-16 text-center">SL</th>
+                <th className="py-3.5 px-4 w-16 text-center">SL</th>
                 <th className="py-3 px-4 w-36 text-right">Đơn giá khoán</th>
                 <th className="py-3 px-4 w-40 text-right">Thành tiền</th>
               </tr>
@@ -570,19 +570,19 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                   <React.Fragment key={serviceName}>
                     {/* Service Group Header Row - Full 6 Columns Span */}
                     <tr className="bg-gradient-to-r from-blue-50/90 via-indigo-50/40 to-surface-container-low/30 dark:from-blue-950/40 dark:via-indigo-950/20 border-y border-blue-200/80 dark:border-blue-900/50">
-                      <td colSpan={6} className="py-2.5 px-4">
+                      <td colSpan={6} className="py-3.5 px-5">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wide">
-                            <span className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                              <span className="material-symbols-outlined text-[16px]">build</span>
+                          <div className="flex items-center gap-2 text-[#0050cd] font-bold text-xs sm:text-sm tracking-normal">
+                            <span className="w-7 h-7 rounded-lg bg-blue-50 text-[#0050cd] flex items-center justify-center shrink-0">
+                              <span className="material-symbols-outlined text-[18px]">build</span>
                             </span>
-                            <span>DỊCH VỤ {groupIdx + 1}: {serviceName}</span>
+                            <span>Dịch vụ {groupIdx + 1}: {serviceName}</span>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="text-[11px] font-medium text-on-surface-variant bg-surface-container-highest/60 px-2.5 py-0.5 rounded-full">
+                            <span className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3 py-1 rounded-full shadow-2xs">
                               {lines.length} hạng mục
                             </span>
-                            <span className="text-xs font-bold font-mono text-primary">
+                            <span className="text-sm font-bold font-mono text-[#0050cd]">
                               {formatVnd(groupSubtotal)}
                             </span>
                           </div>
@@ -625,7 +625,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                           </td>
                           <td className="py-3 px-4">
                             <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold border ${
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
                                 isLabour
                                   ? 'bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800'
                                   : isPart
@@ -668,7 +668,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
             <div>• Toàn bộ chi phí đã được niêm yết trọn gói, cam kết không phát sinh thuế hoặc phụ phí ẩn.</div>
           </div>
 
-          <div className="w-full sm:w-80 space-y-2 bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/80 shadow-2xs">
+          <div className="w-full sm:w-80 space-y-2.5 bg-slate-50/80 p-4.5 rounded-2xl border border-slate-200/80">
             <div className="flex justify-between text-xs text-on-surface-variant">
               <span>Tổng tiền hạng mục (Subtotal):</span>
               <span className="font-mono font-bold text-on-surface">{formatVnd(activeQuotation?.subtotal || 0)}</span>
@@ -770,7 +770,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
 
           {/* Trạng thái APPROVED: Đã khóa giá */}
           {activeQuotation?.status === 'APPROVED' && (
-            <div className="flex flex-wrap items-center justify-between gap-3 w-full bg-emerald-50 dark:bg-emerald-950/30 px-5 py-3 rounded-2xl border border-emerald-200 dark:border-emerald-800">
+            <div className="flex flex-wrap items-center justify-between gap-3 w-full bg-emerald-50 px-4 sm:px-5 py-3 rounded-xl border border-emerald-200/60">
               <div className="flex items-center gap-2.5 text-xs text-emerald-800 dark:text-emerald-300 font-semibold">
                 <span className="material-symbols-outlined text-[20px] text-emerald-600">verified</span>
                 <span>
@@ -784,7 +784,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                   className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
                 >
                   <span>Chuyển sang Tab Công việc để Bắt đầu</span>
-                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </button>
               )}
             </div>

@@ -72,14 +72,22 @@ export default function AIJobPlannerModal({
         const services = res.data.suggested_services || [];
         setEditableServices(services);
 
-        // Mặc định chọn tất cả các jobs của tất cả hạng mục
-        const allKeys = new Set<string>();
+        // Mặc định chỉ chọn các công việc MỚI (chưa có sẵn trên phiếu)
+        const initialKeys = new Set<string>();
+        let existingCount = 0;
         services.forEach((svc, sIdx) => {
-          svc.jobs.forEach((_, jIdx) => {
-            allKeys.add(`${sIdx}-${jIdx}`);
+          svc.jobs.forEach((job, jIdx) => {
+            if (!job.is_already_exist) {
+              initialKeys.add(`${sIdx}-${jIdx}`);
+            } else {
+              existingCount++;
+            }
           });
         });
-        setSelectedJobKeys(allKeys);
+        setSelectedJobKeys(initialKeys);
+        if (existingCount > 0) {
+          toast(`Đã phát hiện ${existingCount} công việc đã có trên phiếu (tự động bỏ chọn để tránh trùng)`, { icon: 'ℹ️' });
+        }
       } else {
         toast.error(res.message || 'Không thể tạo đề xuất công việc từ AI');
       }
@@ -529,8 +537,14 @@ export default function AIJobPlannerModal({
                       {/* DANH SÁCH JOBS CON TRONG HẠNG MỤC */}
                       <div className="p-3 space-y-2">
                         {svc.jobs.length === 0 ? (
-                          <div className="py-4 text-center text-on-surface-variant text-body-xs italic">
-                            Chưa có việc nào. Bấm &quot;Thêm việc&quot; để tạo bước kỹ thuật.
+                          <div className="py-6 px-4 text-center flex flex-col items-center justify-center gap-2 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
+                            <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[28px]">verified</span>
+                            <p className="text-body-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                              Các công việc hiện tại của hạng mục đã phù hợp và đầy đủ quy chuẩn kỹ thuật
+                            </p>
+                            <p className="text-body-xs text-on-surface-variant max-w-md">
+                              AI đánh giá quy trình đã đầy đủ, không cần bổ sung thêm công việc. Bạn có thể đóng cửa sổ hoặc bấm &quot;Thêm việc&quot; ở trên nếu muốn tạo thêm thủ công.
+                            </p>
                           </div>
                         ) : (
                           svc.jobs.map((job, jIdx) => {
@@ -653,6 +667,12 @@ export default function AIJobPlannerModal({
                                           {job.severity && (
                                             <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold border ${jobSeverity.bg} ${jobSeverity.text} ${jobSeverity.border}`}>
                                               {jobSeverity.label}
+                                            </span>
+                                          )}
+                                          {job.is_already_exist && (
+                                            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1 shrink-0">
+                                              <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                                              Đã có trên phiếu
                                             </span>
                                           )}
                                         </div>

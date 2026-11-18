@@ -9,13 +9,18 @@ type Props = {
 
 export default function ChevronPipeline({ statuses, currentStatus, compact = false }: Props) {
   const currentIndex = statuses.indexOf(currentStatus);
-  const arrowCut = compact ? 10 : 12;
+  const arrowCut = compact ? 8 : 12;
 
   return (
-    <div className={`flex items-center ${compact ? 'h-[28px] text-[11px]' : 'h-[34px] text-label-sm font-label-sm'}`}>
+    <div
+      data-testid="wo-chevron-pipeline"
+      className={`flex items-center rounded-xl overflow-hidden select-none ${
+        compact ? 'h-[30px] text-[11px]' : 'h-[34px] text-label-sm font-label-sm'
+      }`}
+    >
       {statuses.map((status, index) => {
         const isCurrent = index === currentIndex;
-        const isPast = index < currentIndex;
+        const isPast = currentIndex !== -1 && index < currentIndex;
         const isFirst = index === 0;
         const isLast = index === statuses.length - 1;
 
@@ -23,14 +28,14 @@ export default function ChevronPipeline({ statuses, currentStatus, compact = fal
         let textClass = '';
 
         if (isCurrent) {
-          bgClass = 'bg-primary';
-          textClass = 'text-white';
+          bgClass = 'bg-[#0050cd]';
+          textClass = 'text-white font-extrabold';
         } else if (isPast) {
-          bgClass = 'bg-primary-container';
-          textClass = 'text-on-primary-container';
+          bgClass = 'bg-[#0866ff]';
+          textClass = 'text-white font-bold';
         } else {
-          bgClass = 'bg-surface-container-high';
-          textClass = 'text-on-surface-variant hover:bg-surface-container-highest';
+          bgClass = 'bg-slate-100 hover:bg-slate-200';
+          textClass = 'text-slate-400 font-semibold';
         }
 
         // Polygon paths for the chevron shape
@@ -45,14 +50,18 @@ export default function ChevronPipeline({ statuses, currentStatus, compact = fal
         return (
           <div
             key={status}
-            className={`relative flex items-center h-full cursor-pointer ${!isFirst ? (compact ? '-ml-[10px]' : '-ml-[12px]') : ''}`}
+            className={`relative flex items-center h-full ${
+              !isFirst ? (compact ? '-ml-[8px]' : '-ml-[12px]') : ''
+            }`}
             style={{ zIndex: statuses.length - index }}
           >
-            <div 
-              className={`h-full flex items-center justify-center ${compact ? 'pl-3.5 pr-5' : 'pl-6 pr-8'} ${bgClass} ${textClass} transition-colors border-r-2 border-white`}
+            <div
+              className={`h-full flex items-center justify-center ${
+                compact ? 'pl-3 pr-4' : 'pl-5 pr-7'
+              } ${bgClass} ${textClass} transition-colors border-r border-white/60`}
               style={{ clipPath }}
             >
-              <span className="font-semibold uppercase tracking-wider whitespace-nowrap">
+              <span className="font-bold uppercase tracking-wider whitespace-nowrap text-[11px]">
                 {status}
               </span>
             </div>

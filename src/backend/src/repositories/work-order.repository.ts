@@ -6,6 +6,7 @@ const workOrderInclude = {
   vehicle: { select: { id: true, license_plate: true, make: true, model: true, year: true, color: true, vehicle_size: true } },
   advisor: { select: { id: true, full_name: true, phone: true } },
   created_by: { select: { id: true, full_name: true } },
+  closed_by: { select: { id: true, full_name: true } },
   intake_record: {
     select: {
       id: true,
@@ -17,6 +18,17 @@ const workOrderInclude = {
   },
   appointment: { select: { id: true, scheduled_date: true, scheduled_time: true } },
   check_in: true,
+  release: {
+    include: {
+      released_by: { select: { id: true, full_name: true } },
+      confirmed_by: { select: { id: true, full_name: true } },
+    },
+  },
+  invoices: {
+    include: {
+      payments: true,
+    },
+  },
   services: {
     include: {
       service: {

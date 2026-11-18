@@ -28,11 +28,32 @@ export class UserService {
     let whereClause: Prisma.UserWhereInput = {};
 
     if (role) {
+      const normalizedRoles = [role];
+      const rUpper = role.toUpperCase().trim().replace(/[\s-]+/g, '_');
+      if (rUpper === 'ADVISOR' || rUpper === 'SA' || rUpper === 'SERVICE_ADVISOR') {
+        normalizedRoles.push('ADVISOR', 'SA', 'advisor', 'sa', 'Service Advisor');
+      }
+      if (rUpper === 'FRONT_DESK' || rUpper === 'DESK_STAFF' || rUpper === 'DESKSTAFF') {
+        normalizedRoles.push('FRONT_DESK', 'DESK STAFF', 'DESK_STAFF', 'front_desk', 'desk staff');
+      }
+      if (rUpper === 'MANAGER') {
+        normalizedRoles.push('MANAGER', 'Manager', 'manager');
+      }
+      if (rUpper === 'ADMIN') {
+        normalizedRoles.push('ADMIN', 'Admin', 'admin');
+      }
+      if (rUpper === 'TECHNICIAN' || rUpper === 'TECH' || rUpper === 'KY_THUAT_VIEN') {
+        normalizedRoles.push('TECHNICIAN', 'technician', 'Tech', 'TECH');
+      }
+      if (rUpper === 'CUSTOMER') {
+        normalizedRoles.push('CUSTOMER', 'Customer', 'customer');
+      }
+
       whereClause = {
         ...whereClause,
         roles: {
           some: {
-            role: { name: role },
+            role: { name: { in: Array.from(new Set(normalizedRoles)) } },
           },
         },
       };
@@ -144,7 +165,24 @@ export class UserService {
     }
 
     // Kiểm tra role có hợp lệ không
-    const role = await prisma.role.findUnique({ where: { name: data.role } });
+    let role = await prisma.role.findUnique({ where: { name: data.role } });
+    if (!role) {
+      const rUpper = data.role.toUpperCase().trim().replace(/[\s-]+/g, '_');
+      const candidates =
+        rUpper === 'ADVISOR' || rUpper === 'SA'
+          ? ['SA', 'ADVISOR']
+          : rUpper === 'FRONT_DESK' || rUpper === 'DESK_STAFF'
+          ? ['DESK STAFF', 'FRONT_DESK', 'DESK_STAFF']
+          : rUpper === 'MANAGER'
+          ? ['MANAGER', 'Manager']
+          : rUpper === 'TECHNICIAN' || rUpper === 'TECH' || rUpper === 'KY_THUAT_VIEN'
+          ? ['TECHNICIAN', 'technician']
+          : [];
+      for (const c of candidates) {
+        role = await prisma.role.findUnique({ where: { name: c } });
+        if (role) break;
+      }
+    }
     if (!role) throw new Error(`Vai trò "${data.role}" không hợp lệ.`);
 
     const passwordHash = await bcrypt.hash(data.password, 10);
@@ -158,7 +196,7 @@ export class UserService {
         address: data.address,
         roles: {
           create: {
-            role: { connect: { name: data.role } },
+            role: { connect: { id: role.id } },
           },
         },
       },
@@ -207,7 +245,24 @@ export class UserService {
 
       // Thay đổi role nếu có
       if (data.role) {
-        const role = await tx.role.findUnique({ where: { name: data.role } });
+        let role = await tx.role.findUnique({ where: { name: data.role } });
+        if (!role) {
+          const rUpper = data.role.toUpperCase().trim().replace(/[\s-]+/g, '_');
+          const candidates =
+            rUpper === 'ADVISOR' || rUpper === 'SA'
+              ? ['SA', 'ADVISOR']
+              : rUpper === 'FRONT_DESK' || rUpper === 'DESK_STAFF'
+              ? ['DESK STAFF', 'FRONT_DESK', 'DESK_STAFF']
+              : rUpper === 'MANAGER'
+              ? ['MANAGER', 'Manager']
+              : rUpper === 'TECHNICIAN' || rUpper === 'TECH' || rUpper === 'KY_THUAT_VIEN'
+              ? ['TECHNICIAN', 'technician']
+              : [];
+          for (const c of candidates) {
+            role = await tx.role.findUnique({ where: { name: c } });
+            if (role) break;
+          }
+        }
         if (!role) throw new Error(`Vai trò "${data.role}" không hợp lệ.`);
 
         // Xóa role cũ (ngoại trừ CUSTOMER) và gán role mới

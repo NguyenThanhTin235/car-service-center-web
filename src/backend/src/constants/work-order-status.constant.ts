@@ -81,3 +81,25 @@ export const TERMINAL_WORK_ORDER_STATUSES: readonly WorkOrderStatus[] = [
 export const isTerminalWorkOrderStatus = (status: WorkOrderStatus): boolean => {
   return TERMINAL_WORK_ORDER_STATUSES.includes(status);
 };
+
+
+/**
+ * Tự động đóng hồ sơ ngay sau khi bàn giao xe thành công (mặc định bật)
+ */
+export const WO_AUTO_CLOSE_ON_HANDOVER = process.env.WO_AUTO_CLOSE_ON_HANDOVER !== 'false';
+
+/**
+ * Vị trí hiển thị WO RELEASED phía khách hàng: 'TRACKING' (mặc định) | 'HISTORY'
+ */
+export const RELEASED_DISPLAY_IN: 'TRACKING' | 'HISTORY' =
+  process.env.RELEASED_DISPLAY_IN === 'HISTORY' ? 'HISTORY' : 'TRACKING';
+
+/**
+ * Các trạng thái hiển thị ở trang "Lịch sử sửa chữa" của khách hàng.
+ * Trang "Tiến độ xe" hiển thị phần bù của tập này.
+ */
+export const CUSTOMER_HISTORY_STATUSES: WorkOrderStatus[] = [
+  WorkOrderStatus.CLOSED,
+  WorkOrderStatus.CANCELLED,
+  ...(RELEASED_DISPLAY_IN === 'HISTORY' ? [WorkOrderStatus.RELEASED] : []),
+];

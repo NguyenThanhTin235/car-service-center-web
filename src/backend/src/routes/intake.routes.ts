@@ -9,8 +9,8 @@ import {
 
 const router = Router();
 
-// Tất cả route đều yêu cầu đăng nhập + quyền DESK STAFF hoặc ADMIN
-router.use(authenticate, authorize('DESK STAFF', 'ADMIN'));
+// Tất cả route tiếp nhận yêu cầu đăng nhập và thuộc nhóm nhân viên vận hành xưởng
+router.use(authenticate, authorize('DESK STAFF', 'SA', 'ADVISOR', 'MANAGER', 'ADMIN'));
 
 // Lấy danh sách hàng đợi
 router.get('/', getIntakeQueue);

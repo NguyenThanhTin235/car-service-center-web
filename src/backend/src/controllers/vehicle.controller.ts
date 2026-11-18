@@ -30,8 +30,11 @@ export const createVehicle = async (req: Request, res: Response) => {
 export const updateVehicle = async (req: Request, res: Response) => {
   try {
     const customerId = req.user!.id;
+    const isStaff = req.user?.roles?.some((r: string) =>
+      ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA', 'STAFF', 'SERVICE_ADVISOR', 'TECHNICIAN'].includes(r.toUpperCase())
+    ) || false;
     const { id } = req.params;
-    const updated = await vehicleService.updateVehicle(Number(id), customerId, req.body);
+    const updated = await vehicleService.updateVehicle(Number(id), customerId, req.body, isStaff);
     res.json({ status: 'success', message: 'Cập nhật xe thành công.', data: updated });
   } catch (error: any) {
     const statusCode = error.message.includes('không có quyền') ? 403

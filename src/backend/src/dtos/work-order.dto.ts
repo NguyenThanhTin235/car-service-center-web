@@ -11,3 +11,13 @@ export const createWorkOrderSchema = Joi.object({
     'any.required': 'Vui lòng chọn phiếu tiếp nhận',
   }),
 });
+
+
+/**
+ * Schema validate cho việc đóng hồ sơ Work Order
+ */
+export const closeWorkOrderSchema = Joi.object({
+  notes: Joi.string().allow('', null).max(1000).messages({
+    'string.max': 'Ghi chú đóng hồ sơ tối đa 1000 ký tự',
+  }),
+});

@@ -24,6 +24,30 @@ const PART_STATUS_MAP: Record<string, { label: string; bg: string; text: string 
   RETURNED: { label: 'Đã trả kho', bg: 'bg-slate-500/10 border-slate-500/20', text: 'text-slate-700 dark:text-slate-400' },
 };
 
+// Đồng bộ trạng thái và SL xuất kho phụ tùng theo từng giai đoạn trạng thái công việc
+const getEffectivePartStatus = (part: WoJobPart) => {
+  const jStatus = part.job?.status;
+  if (jStatus === 'COMPLETED' || jStatus === 'PASSED') {
+    return {
+      status: 'USED',
+      issued: Number(part.planned_quantity),
+      ...PART_STATUS_MAP.USED,
+    };
+  }
+  if (jStatus === 'IN_PROGRESS' || jStatus === 'REWORK') {
+    return {
+      status: part.status === 'USED' ? 'USED' : 'ISSUED',
+      issued: Number(part.planned_quantity),
+      ...(part.status === 'USED' ? PART_STATUS_MAP.USED : PART_STATUS_MAP.ISSUED),
+    };
+  }
+  return {
+    status: part.status,
+    issued: Number(part.issued_quantity) || 0,
+    ...(PART_STATUS_MAP[part.status] || PART_STATUS_MAP.PLANNED),
+  };
+};
+
 const ITEMS_PER_PAGE = 5;
 
 function getPageNumbers(current: number, total: number): (number | string)[] {
@@ -358,15 +382,12 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                 {paginatedParts.map((part) => {
                   const onHand = part.item?.on_hand ?? 0;
                   const planned = Number(part.planned_quantity) || 0;
-                  const issued = Number(part.issued_quantity) || 0;
+                  const effective = getEffectivePartStatus(part);
+                  const issued = effective.issued;
                   const unitPrice = Number(part.unit_price) || 0;
                   const total = planned * unitPrice;
                   const isShortage = onHand < planned;
-                  const statusInfo = PART_STATUS_MAP[part.status] || {
-                    label: part.status,
-                    bg: 'bg-surface-container',
-                    text: 'text-on-surface-variant',
-                  };
+                  const statusInfo = effective;
 
                   return (
                     <tr key={part.id} className="hover:bg-surface-container-low/50 transition-colors">

@@ -7,7 +7,7 @@ import {
   renderAppointmentConfirmedTemplate
 } from '../utils/appointment-email.templates';
 
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
 
 export interface CreateAppointmentDto {
   customer_id: number;

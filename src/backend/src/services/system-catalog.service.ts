@@ -26,7 +26,7 @@ export class SystemCatalogService {
     if (catalogType) where.catalog_type = catalogType as CatalogType;
 
     const skip = (page - 1) * limit;
-    const [totalRecords, catalogs] = await Promise.all([
+    const [totalRecords, catalogs, groupCounts] = await Promise.all([
       prisma.systemCatalog.count({ where }),
       prisma.systemCatalog.findMany({
         where,
@@ -34,7 +34,21 @@ export class SystemCatalogService {
         take: limit,
         orderBy: [{ catalog_type: 'asc' }, { sort_order: 'asc' }],
       }),
+      prisma.systemCatalog.groupBy({
+        by: ['catalog_type'],
+        _count: { id: true },
+      }),
     ]);
+
+    const typeCounts: Record<string, number> = {
+      UOM: 0,
+      CANCEL_REASON: 0,
+      ADJUST_REASON: 0,
+      TERMS: 0,
+    };
+    for (const g of groupCounts) {
+      typeCounts[g.catalog_type] = g._count.id;
+    }
 
     const data = catalogs.map((c) => ({
       id: c.id,
@@ -53,6 +67,7 @@ export class SystemCatalogService {
         currentPage: page,
         limit,
       },
+      typeCounts,
     };
   }
 

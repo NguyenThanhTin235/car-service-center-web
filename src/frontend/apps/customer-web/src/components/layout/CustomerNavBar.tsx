@@ -12,6 +12,7 @@ const navLinks = [
   { href: '/customer', label: 'Tổng quan', icon: 'home' },
   { href: '/customer/vehicles', label: 'Xe của tôi', icon: 'directions_car' },
   { href: '/customer/tracking', label: 'Tiến độ xe', icon: 'timeline' },
+  { href: '/customer/history', label: 'Lịch sử sửa chữa', icon: 'history' },
   { href: '/customer/invoices', label: 'Hóa đơn', icon: 'receipt_long' },
   { href: '/customer/appointments', label: 'Đặt lịch', icon: 'calendar_today' },
   { href: '/customer/profile', label: 'Hồ sơ', icon: 'account_circle' },

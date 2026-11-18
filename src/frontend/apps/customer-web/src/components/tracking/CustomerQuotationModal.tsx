@@ -1,35 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { approveQuotation, rejectQuotation, downloadQuotationPdf } from '@/lib/api/quotation.api';
+import type { CustomerQuotationDto } from '@/store/slices/trackingSlice';
 
 interface CustomerQuotationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  quotation: {
-    id: number;
-    quotationNumber: string;
-    quotationType: string;
-    version: number;
-    status: 'DRAFT' | 'SENT' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
-    subtotal: number;
-    discountAmount: number;
-    taxRate: number;
-    taxAmount: number;
-    grandTotal: number;
-    rejectReason?: string | null;
-    sentAt?: string | null;
-    approvedAt?: string | null;
-    createdAt: string;
-    lines: Array<{
-      id: number;
-      lineType: 'LABOUR' | 'PART';
-      description: string;
-      quantity: number;
-      unitPrice: number;
-      amount: number;
-      sortOrder: number;
-    }>;
+  quotation: CustomerQuotationDto;
+  allQuotations?: CustomerQuotationDto[];
+  cumulativeSummary?: {
+    totalApprovedGrandTotal: number;
+    totalApprovedSubtotal: number;
+    totalApprovedDiscount: number;
+    approvedCount: number;
   };
   advisorName: string;
   vehiclePlate: string;
@@ -41,6 +25,8 @@ export default function CustomerQuotationModal({
   isOpen,
   onClose,
   quotation,
+  allQuotations = [],
+  cumulativeSummary,
   advisorName,
   vehiclePlate,
   vehicleModel,
@@ -56,13 +42,51 @@ export default function CustomerQuotationModal({
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState<boolean>(false);
   const [approveError, setApproveError] = useState<string>('');
 
+  // Danh sách toàn bộ báo giá
+  const quoteList = useMemo(() => {
+    if (allQuotations && allQuotations.length > 0) {
+      return allQuotations;
+    }
+    return [quotation];
+  }, [allQuotations, quotation]);
+
+  const [selectedQuoteId, setSelectedQuoteId] = useState<number>(quotation.id);
+  const [viewMode, setViewMode] = useState<'SINGLE' | 'COMBINED'>('SINGLE');
+
   if (!isOpen) return null;
 
-  const labourLines = quotation.lines.filter((l) => l.lineType === 'LABOUR');
-  const partLines = quotation.lines.filter((l) => l.lineType === 'PART');
+  // Báo giá đang xem chi tiết
+  const activeQuote = quoteList.find((q) => q.id === selectedQuoteId) || quotation;
 
+  // Thu thập toàn bộ các dòng nếu ở chế độ COMBINED
+  const combinedLines = quoteList
+    .filter((q) => q.status === 'APPROVED' || q.id === activeQuote.id)
+    .flatMap((q) =>
+      q.lines.map((l) => ({
+        ...l,
+        quoteNumber: q.quotationNumber,
+        isApproved: q.status === 'APPROVED',
+      }))
+    );
+
+  const displayLines = viewMode === 'COMBINED' ? combinedLines : activeQuote.lines;
+  const packageLines = displayLines.filter((l) => l.lineType === 'PACKAGE');
+  const labourLines = displayLines.filter((l) => l.lineType === 'LABOUR');
+  const partLines = displayLines.filter((l) => l.lineType === 'PART');
+
+  const totalPackage = packageLines.reduce((acc, l) => acc + l.amount, 0);
   const totalLabour = labourLines.reduce((acc, l) => acc + l.amount, 0);
   const totalParts = partLines.reduce((acc, l) => acc + l.amount, 0);
+
+  const displaySubtotal =
+    viewMode === 'COMBINED' ? totalPackage + totalLabour + totalParts : activeQuote.subtotal;
+  const displayDiscount =
+    viewMode === 'COMBINED'
+      ? quoteList
+          .filter((q) => q.status === 'APPROVED' || q.id === activeQuote.id)
+          .reduce((acc, q) => acc + q.discountAmount, 0)
+      : activeQuote.discountAmount;
+  const displayGrandTotal = displaySubtotal - displayDiscount;
 
   const normalizeVehicleSizeDescription = (text: string) => {
     if (!text) return '';
@@ -75,13 +99,13 @@ export default function CustomerQuotationModal({
   };
 
   const parsedReject = (() => {
-    if (!quotation.rejectReason) return null;
+    if (!activeQuote.rejectReason) return null;
     try {
-      const p = JSON.parse(quotation.rejectReason);
+      const p = JSON.parse(activeQuote.rejectReason);
       if (p && typeof p === 'object' && p.type) return p;
-      return { type: 'REVISE', reason: quotation.rejectReason };
+      return { type: 'REVISE', reason: activeQuote.rejectReason };
     } catch {
-      return { type: 'REVISE', reason: quotation.rejectReason };
+      return { type: 'REVISE', reason: activeQuote.rejectReason };
     }
   })();
 
@@ -106,7 +130,7 @@ export default function CustomerQuotationModal({
     try {
       setLoading(true);
       setApproveError('');
-      await approveQuotation(quotation.id);
+      await approveQuotation(activeQuote.id);
       setIsConfirmApproveOpen(false);
       onActionSuccess('Quý khách đã phê duyệt báo giá thành công! Kỹ thuật viên sẽ bắt đầu thực hiện.');
       onClose();
@@ -130,7 +154,7 @@ export default function CustomerQuotationModal({
 
     try {
       setLoading(true);
-      await rejectQuotation(quotation.id, rejectReason.trim(), rejectType);
+      await rejectQuotation(activeQuote.id, rejectReason.trim(), rejectType);
       setIsConfirmCancelOpen(false);
       if (rejectType === 'CANCEL') {
         onActionSuccess('Đã gửi phản hồi: Hủy dịch vụ & Đăng ký nhận lại xe. Cố vấn sẽ hỗ trợ bàn giao xe cho Quý khách.');
@@ -149,7 +173,7 @@ export default function CustomerQuotationModal({
   const handleDownloadPdf = async () => {
     try {
       setDownloadingPdf(true);
-      await downloadQuotationPdf(quotation.id, quotation.quotationNumber);
+      await downloadQuotationPdf(activeQuote.id, activeQuote.quotationNumber);
     } catch (err: any) {
       alert('Không thể tải file PDF lúc này, vui lòng thử lại sau.');
     } finally {
@@ -157,8 +181,8 @@ export default function CustomerQuotationModal({
     }
   };
 
-  const getStatusBadge = () => {
-    switch (quotation.status) {
+  const getStatusBadge = (status: string) => {
+    switch (status) {
       case 'SENT':
         return (
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
@@ -183,7 +207,7 @@ export default function CustomerQuotationModal({
       default:
         return (
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800 border border-gray-300">
-            {quotation.status}
+            {status}
           </span>
         );
     }
@@ -197,16 +221,32 @@ export default function CustomerQuotationModal({
         <div className="p-5 sm:p-6 border-b border-surface-container-highest bg-gradient-to-r from-blue-50/70 via-white to-indigo-50/50 flex items-start justify-between">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs px-2.5 py-0.5 rounded-md font-mono font-bold bg-blue-100 text-primary border border-blue-200">
-                #{quotation.quotationNumber}
-              </span>
-              <span className="text-xs px-2 py-0.5 rounded font-semibold bg-surface-container text-on-surface-variant">
-                Phiên bản v{quotation.version}
-              </span>
-              {getStatusBadge()}
+              {viewMode === 'COMBINED' ? (
+                <span className="text-xs px-2.5 py-0.5 rounded-md font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px]">table_chart</span>
+                  Tổng hợp toàn bộ xe
+                </span>
+              ) : (
+                <>
+                  <span className="text-xs px-2.5 py-0.5 rounded-md font-mono font-bold bg-blue-100 text-primary border border-blue-200">
+                    #{activeQuote.quotationNumber}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded font-semibold bg-surface-container text-on-surface-variant">
+                    Phiên bản v{activeQuote.version}
+                  </span>
+                  {activeQuote.quotationType === 'SUPPLEMENTARY' && (
+                    <span className="text-xs px-2 py-0.5 rounded font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                      Báo giá bổ sung
+                    </span>
+                  )}
+                  {getStatusBadge(activeQuote.status)}
+                </>
+              )}
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-on-surface">
-              Bảng Báo Giá Chi Tiết Dịch Vụ
+              {viewMode === 'COMBINED'
+                ? 'Bảng Tổng Hợp Chi Phí Dịch Vụ Xe'
+                : 'Bảng Báo Giá Chi Tiết Dịch Vụ'}
             </h2>
             <div className="text-xs sm:text-sm text-on-surface-variant flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5">
               <span>
@@ -221,18 +261,90 @@ export default function CustomerQuotationModal({
 
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
             title="Đóng"
           >
             <span className="material-symbols-outlined text-[22px]">close</span>
           </button>
         </div>
 
+        {/* ================= Quotation Switcher Tabs (Nếu có từ 2 báo giá trở lên) ================= */}
+        {quoteList.length > 1 && (
+          <div className="flex items-center gap-1.5 px-5 sm:px-6 py-2.5 bg-surface-container-low border-b border-surface-container-highest overflow-x-auto no-scrollbar">
+            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider shrink-0 mr-1">
+              Phiên bản:
+            </span>
+            {quoteList.map((q) => {
+              const isSelected = viewMode === 'SINGLE' && selectedQuoteId === q.id;
+              return (
+                <button
+                  key={q.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedQuoteId(q.id);
+                    setViewMode('SINGLE');
+                    setShowRejectForm(false);
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                    isSelected
+                      ? 'bg-primary text-white shadow-xs'
+                      : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high border border-outline-variant/60'
+                  }`}
+                >
+                  <span className="font-mono font-bold">#{q.quotationNumber}</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                    isSelected
+                      ? 'bg-white/20 text-white'
+                      : q.status === 'APPROVED'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : q.status === 'SENT'
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-gray-100 text-gray-700'
+                  }`}>
+                    {q.quotationType === 'SUPPLEMENTARY' ? 'Bổ sung' : 'Chính'} (v{q.version})
+                  </span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('COMBINED');
+                setShowRejectForm(false);
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                viewMode === 'COMBINED'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[15px]">table_chart</span>
+              <span>Tổng hợp toàn bộ xe</span>
+            </button>
+          </div>
+        )}
+
         {/* ================= Scrollable Body ================= */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
 
+          {/* Thông báo phân cấp Báo giá bổ sung */}
+          {viewMode === 'SINGLE' && activeQuote.quotationType === 'SUPPLEMENTARY' && (
+            <div className="p-4 rounded-2xl border border-amber-300 bg-amber-50/70 text-amber-950 text-xs space-y-1 shadow-2xs">
+              <div className="flex items-center gap-2 font-bold text-sm text-amber-900">
+                <span className="material-symbols-outlined text-[20px] text-amber-600">add_circle</span>
+                <span>Đây là Báo giá bổ sung (phát sinh sau khi kiểm tra xe hoặc theo yêu cầu thêm)</span>
+              </div>
+              <p className="pl-7 text-amber-800">
+                Bảng dưới đây liệt kê các hạng mục công việc và phụ tùng <b>mới phát sinh</b> cần quý khách xác nhận. 
+                {cumulativeSummary && cumulativeSummary.totalApprovedGrandTotal > 0 && (
+                  <span> Quý khách đã duyệt các hạng mục trước đó trị giá <b>{cumulativeSummary.totalApprovedGrandTotal.toLocaleString()} đ</b>. Nhấn tab <i>"Tổng hợp toàn bộ xe"</i> ở trên để xem đầy đủ mọi chi phí.</span>
+                )}
+              </p>
+            </div>
+          )}
+
           {/* Alert nếu đã từ chối */}
-          {quotation.status === 'REJECTED' && quotation.rejectReason && (
+          {viewMode === 'SINGLE' && activeQuote.status === 'REJECTED' && activeQuote.rejectReason && (
             <div className={`p-4 rounded-2xl border text-xs space-y-1.5 shadow-2xs ${
               parsedReject?.type === 'CANCEL'
                 ? 'bg-rose-50 border-rose-300 text-rose-900'
@@ -249,7 +361,7 @@ export default function CustomerQuotationModal({
                 </span>
               </div>
               <p className="pl-7 italic text-on-surface font-medium">
-                <b>Nội dung phản hồi:</b> "{parsedReject?.reason || quotation.rejectReason}"
+                <b>Nội dung phản hồi:</b> "{parsedReject?.reason || activeQuote.rejectReason}"
               </p>
               <p className="pl-7 text-[11px] opacity-80">
                 {parsedReject?.type === 'CANCEL'
@@ -259,16 +371,67 @@ export default function CustomerQuotationModal({
             </div>
           )}
 
-          {/* 1. Phần Tiền Công Kỹ Thuật (Fixed Labour) */}
+          {/* 1. Phần Gói Dịch Vụ Kỹ Thuật (PACKAGE) */}
+          {packageLines.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-surface-container-highest">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-700 flex items-center justify-center font-bold text-xs">
+                    A
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-on-surface">Gói dịch vụ kỹ thuật & định kỳ</h3>
+                    <p className="text-[11px] text-on-surface-variant">Chi phí trọn gói cố định theo gói tiêu chuẩn hoặc phân khúc xe</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-on-surface font-mono">
+                  {totalPackage.toLocaleString()} đ
+                </span>
+              </div>
+
+              <div className="overflow-x-auto border border-surface-container-highest rounded-xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-surface-container-low text-on-surface-variant border-b border-surface-container-highest">
+                    <tr>
+                      <th className="py-2.5 px-3 font-semibold w-10 text-center">STT</th>
+                      <th className="py-2.5 px-3 font-semibold">Tên gói dịch vụ trọn gói</th>
+                      <th className="py-2.5 px-3 font-semibold text-center w-24">Số lượng</th>
+                      <th className="py-2.5 px-3 font-semibold text-right w-36">Đơn giá trọn gói</th>
+                      <th className="py-2.5 px-3 font-semibold text-right w-36">Thành tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-container-highest bg-surface-container-lowest">
+                    {packageLines.map((line, idx) => (
+                      <tr key={line.id} className="hover:bg-surface-container-low/50">
+                        <td className="py-2.5 px-3 text-center text-on-surface-variant font-mono">{idx + 1}</td>
+                        <td className="py-2.5 px-3 font-medium text-on-surface">
+                          {normalizeVehicleSizeDescription(line.description)}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-mono">{line.quantity}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-on-surface-variant">
+                          {line.unitPrice.toLocaleString()} đ
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold font-mono text-on-surface">
+                          {line.amount.toLocaleString()} đ
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* 2. Phần Tiền Công Kỹ Thuật (Fixed Labour) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-surface-container-highest">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                  A
+                  {packageLines.length > 0 ? 'B' : 'A'}
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-on-surface">Tiền công kỹ thuật & dịch vụ trọn gói</h3>
-                  <p className="text-[11px] text-on-surface-variant">Chi phí khoán trọn gói cố định theo tiêu chuẩn quy trình</p>
+                  <h3 className="text-sm font-bold text-on-surface">Tiền công kỹ thuật & hạng mục khoán</h3>
+                  <p className="text-[11px] text-on-surface-variant">Chi phí nhân công thợ theo thời gian và quy trình kỹ thuật</p>
                 </div>
               </div>
               <span className="text-xs font-bold text-on-surface font-mono">
@@ -306,12 +469,12 @@ export default function CustomerQuotationModal({
             )}
           </div>
 
-          {/* 2. Phần Phụ Tùng & Vật Tư Chính Hãng (100% Genuine Warehouse Parts) */}
+          {/* 3. Phần Phụ Tùng & Vật Tư Chính Hãng (100% Genuine Warehouse Parts) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-surface-container-highest">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-700 flex items-center justify-center font-bold text-xs">
-                  B
+                  {packageLines.length > 0 ? 'C' : 'B'}
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-on-surface">Phụ tùng & vật tư chính hãng xuất kho</h3>
@@ -358,25 +521,25 @@ export default function CustomerQuotationModal({
             )}
           </div>
 
-          {/* 3. Bảng Tổng Kết Tài Chính Chuẩn Zero-Tax */}
+          {/* 4. Bảng Tổng Kết Tài Chính Chuẩn Zero-Tax */}
           <div className="bg-gradient-to-br from-surface-container-low to-blue-50/30 p-4 sm:p-5 rounded-2xl border border-surface-container-highest space-y-3">
             <h4 className="text-xs font-bold text-on-surface uppercase tracking-wider">
-              Tổng kết chi phí dịch vụ
+              {viewMode === 'COMBINED' ? 'Tổng kết tài chính toàn bộ đơn hàng' : 'Tổng kết chi phí đợt báo giá này'}
             </h4>
 
             <div className="space-y-2 text-xs sm:text-sm">
               <div className="flex items-center justify-between text-on-surface-variant">
                 <span>Tổng chi phí dịch vụ & phụ tùng (Tạm tính):</span>
-                <span className="font-mono font-semibold text-on-surface">{quotation.subtotal.toLocaleString()} đ</span>
+                <span className="font-mono font-semibold text-on-surface">{displaySubtotal.toLocaleString()} đ</span>
               </div>
 
-              {quotation.discountAmount > 0 && (
+              {displayDiscount > 0 && (
                 <div className="flex items-center justify-between text-emerald-700 font-medium">
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[16px]">loyalty</span>
                     Chiết khấu ưu đãi:
                   </span>
-                  <span className="font-mono font-bold">-{quotation.discountAmount.toLocaleString()} đ</span>
+                  <span className="font-mono font-bold">-{displayDiscount.toLocaleString()} đ</span>
                 </div>
               )}
 
@@ -394,12 +557,32 @@ export default function CustomerQuotationModal({
               {/* Grand Total */}
               <div className="flex items-center justify-between pt-3 border-t-2 border-primary/20 text-base sm:text-lg">
                 <span className="font-extrabold text-on-surface">
-                  TỔNG CỘNG THANH TOÁN DỰ KIẾN:
+                  {viewMode === 'COMBINED'
+                    ? 'TỔNG CHI PHÍ TOÀN BỘ ĐƠN HÀNG:'
+                    : activeQuote.quotationType === 'SUPPLEMENTARY'
+                    ? 'CHI PHÍ PHÁT SINH BỔ SUNG ĐỢT NÀY:'
+                    : 'TỔNG CỘNG THANH TOÁN DỰ KIẾN:'}
                 </span>
                 <span className="font-mono font-extrabold text-primary text-xl sm:text-2xl">
-                  {quotation.grandTotal.toLocaleString()} đ
+                  {displayGrandTotal.toLocaleString()} đ
                 </span>
               </div>
+
+              {/* Nếu là báo giá bổ sung, hiển thị dòng cộng dồn */}
+              {viewMode === 'SINGLE' && activeQuote.quotationType === 'SUPPLEMENTARY' && cumulativeSummary && (
+                <div className="p-3 bg-blue-50/80 rounded-xl border border-blue-200 mt-2 space-y-1 text-xs">
+                  <div className="flex justify-between text-blue-900">
+                    <span>Chi phí đã duyệt trước đó ({cumulativeSummary.approvedCount} đợt):</span>
+                    <span className="font-mono font-bold">{cumulativeSummary.totalApprovedGrandTotal.toLocaleString()} đ</span>
+                  </div>
+                  <div className="flex justify-between text-blue-950 font-bold border-t border-blue-200/80 pt-1">
+                    <span>Tổng chi phí cả đơn sau khi duyệt đợt này:</span>
+                    <span className="font-mono text-sm text-primary">
+                      {(activeQuote.grandTotal + cumulativeSummary.totalApprovedGrandTotal).toLocaleString()} đ
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <p className="text-[11px] text-on-surface-variant italic pt-1">
@@ -430,7 +613,7 @@ export default function CustomerQuotationModal({
                 <button
                   type="button"
                   onClick={() => setShowRejectForm(false)}
-                  className="text-xs text-on-surface-variant hover:underline"
+                  className="text-xs text-on-surface-variant hover:underline cursor-pointer"
                 >
                   Đóng lại
                 </button>
@@ -445,19 +628,19 @@ export default function CustomerQuotationModal({
                     setRejectReason('');
                     setRejectError('');
                   }}
-                  className={`flex items-start gap-2.5 p-3 rounded-xl text-left transition-all ${
+                  className={`flex items-start gap-2.5 p-3 rounded-xl text-left transition-all cursor-pointer ${
                     rejectType === 'REVISE'
                       ? 'bg-white shadow-sm border border-amber-300 text-amber-950 font-bold'
-                      : 'text-on-surface-variant hover:bg-white/50 font-medium'
+                      : 'text-on-surface-variant hover:bg-white/50'
                   }`}
                 >
                   <span className="material-symbols-outlined text-[20px] text-amber-600 shrink-0 mt-0.5">
-                    handyman
+                    edit_note
                   </span>
                   <div>
-                    <div className="text-xs sm:text-sm font-bold">1. Muốn điều chỉnh phương án</div>
-                    <div className="text-[11px] opacity-80 font-normal mt-0.5">
-                      Giảm bớt hạng mục, đổi phụ tùng tiết kiệm hoặc áp dụng ưu đãi
+                    <div className="text-xs font-bold">Tôi muốn điều chỉnh báo giá</div>
+                    <div className="text-[11px] font-normal opacity-80 mt-0.5">
+                      Bỏ bớt dịch vụ, đổi phụ tùng hoặc thương lượng chi phí
                     </div>
                   </div>
                 </button>
@@ -469,133 +652,127 @@ export default function CustomerQuotationModal({
                     setRejectReason('');
                     setRejectError('');
                   }}
-                  className={`flex items-start gap-2.5 p-3 rounded-xl text-left transition-all ${
+                  className={`flex items-start gap-2.5 p-3 rounded-xl text-left transition-all cursor-pointer ${
                     rejectType === 'CANCEL'
                       ? 'bg-white shadow-sm border border-rose-300 text-rose-950 font-bold'
-                      : 'text-on-surface-variant hover:bg-white/50 font-medium'
+                      : 'text-on-surface-variant hover:bg-white/50'
                   }`}
                 >
                   <span className="material-symbols-outlined text-[20px] text-rose-600 shrink-0 mt-0.5">
-                    car_crash
+                    no_crash
                   </span>
                   <div>
-                    <div className="text-xs sm:text-sm font-bold">2. Hủy dịch vụ & Nhận lại xe</div>
-                    <div className="text-[11px] opacity-80 font-normal mt-0.5">
-                      Không làm dịch vụ lần này, yêu cầu bàn giao xuất trả xe
+                    <div className="text-xs font-bold">Tôi muốn hủy dịch vụ & Lấy xe</div>
+                    <div className="text-[11px] font-normal opacity-80 mt-0.5">
+                      Không làm dịch vụ nữa, đăng ký thủ tục nhận lại xe
                     </div>
                   </div>
                 </button>
               </div>
 
-              {/* Guidance text */}
-              <p className="text-xs font-medium text-on-surface">
-                {rejectType === 'REVISE'
-                  ? 'Vui lòng chọn lý do hoặc nhập yêu cầu điều chỉnh để Cố vấn chuẩn bị báo giá mới tốt hơn:'
-                  : 'Vui lòng chọn lý do hủy dịch vụ để xưởng hỗ trợ xuất trả xe chu đáo nhất:'}
-              </p>
-
-              {/* Preset buttons */}
-              <div className="flex flex-wrap gap-1.5">
-                {(rejectType === 'REVISE' ? REVISE_PRESETS : CANCEL_PRESETS).map((reason) => (
-                  <button
-                    key={reason}
-                    type="button"
-                    onClick={() => {
-                      setRejectReason(reason);
-                      setRejectError('');
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-xs transition-colors shadow-2xs text-left border ${
-                      rejectReason === reason
-                        ? rejectType === 'REVISE'
-                          ? 'bg-amber-200 border-amber-400 text-amber-950 font-bold'
-                          : 'bg-rose-200 border-rose-400 text-rose-950 font-bold'
-                        : 'bg-white hover:bg-black/5 text-on-surface border-black/10'
-                    }`}
-                  >
-                    + {reason}
-                  </button>
-                ))}
+              {/* Presets chips */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+                  {rejectType === 'REVISE'
+                    ? 'Chọn nhanh lý do điều chỉnh hoặc trao đổi:'
+                    : 'Lý do hủy dịch vụ:'}
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {(rejectType === 'REVISE' ? REVISE_PRESETS : CANCEL_PRESETS).map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => {
+                        setRejectReason(preset);
+                        setRejectError('');
+                      }}
+                      className={`text-xs px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                        rejectReason === preset
+                          ? rejectType === 'REVISE'
+                            ? 'bg-amber-600 text-white border-amber-600 font-semibold'
+                            : 'bg-rose-600 text-white border-rose-600 font-semibold'
+                          : 'bg-white text-on-surface-variant border-surface-container-highest hover:border-outline-variant'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Textarea */}
-              <textarea
-                value={rejectReason}
-                onChange={(e) => {
-                  setRejectReason(e.target.value);
-                  setRejectError('');
-                }}
-                rows={3}
-                placeholder={
-                  rejectType === 'REVISE'
-                    ? 'Nhập chi tiết yêu cầu điều chỉnh (ví dụ: bớt gói vệ sinh buồng đốt, chỉ thay nhớt...)'
-                    : 'Nhập ghi chú thêm cho Cố vấn dịch vụ...'
-                }
-                className="w-full p-3 rounded-xl border border-outline-variant bg-white text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+              {/* Textarea for custom reason */}
+              <div className="space-y-1">
+                <textarea
+                  rows={3}
+                  value={rejectReason}
+                  onChange={(e) => {
+                    setRejectReason(e.target.value);
+                    if (rejectError) setRejectError('');
+                  }}
+                  placeholder={
+                    rejectType === 'REVISE'
+                      ? 'Ví dụ: Nhờ Cố vấn đổi giúp mình sang bugi loại thường hoặc bớt hạng mục vệ sinh khoang máy...'
+                      : 'Ghi chú thêm cho Cố vấn dịch vụ về thời gian bạn muốn nhận lại xe...'
+                  }
+                  className="w-full text-xs p-3 rounded-xl border border-outline-variant/80 bg-white text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+                {rejectError && (
+                  <p className="text-[11px] text-rose-600 font-semibold">{rejectError}</p>
+                )}
+              </div>
 
-              {rejectError && (
-                <p className="text-xs text-rose-600 font-semibold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px]">error</span>
-                  {rejectError}
-                </p>
-              )}
-
-              <div className="flex justify-end gap-2 pt-1">
+              {/* Action Buttons for Reject Form */}
+              <div className="flex items-center justify-end gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowRejectForm(false)}
-                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-gray-100 text-on-surface border border-gray-300 transition-colors cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold text-on-surface-variant hover:bg-black/5 cursor-pointer"
                 >
-                  Quay lại
+                  Hủy thao tác
                 </button>
-
-                {rejectType === 'REVISE' ? (
-                  <button
-                    type="button"
-                    onClick={handleExecuteReject}
-                    disabled={loading}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
-                  >
-                    {loading ? (
-                      'Đang gửi...'
-                    ) : (
-                      <>
-                        <span className="material-symbols-outlined text-[16px]">send</span>
-                        <span>Gửi yêu cầu điều chỉnh</span>
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => {
+                    if (rejectType === 'CANCEL') {
                       if (!rejectReason.trim()) {
                         setRejectError('Vui lòng chọn hoặc nhập lý do nhận lại xe');
                         return;
                       }
                       setIsConfirmCancelOpen(true);
-                    }}
-                    disabled={loading}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">cancel</span>
-                    <span>Xác nhận hủy dịch vụ & Nhận lại xe</span>
-                  </button>
-                )}
+                    } else {
+                      handleExecuteReject();
+                    }
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer ${
+                    rejectType === 'REVISE'
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : 'bg-rose-600 hover:bg-rose-700'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {rejectType === 'REVISE' ? 'send' : 'directions_car'}
+                  </span>
+                  <span>
+                    {rejectType === 'REVISE'
+                      ? 'Gửi yêu cầu điều chỉnh báo giá'
+                      : 'Xác nhận đăng ký nhận lại xe'}
+                  </span>
+                </button>
               </div>
             </div>
           )}
 
         </div>
 
-        {/* ================= Footer Actions ================= */}
-        <div className="p-4 sm:p-5 border-t border-surface-container-highest bg-surface-container-lowest flex flex-wrap items-center justify-between gap-3">
+        {/* ================= Footer ================= */}
+        <div className="p-4 sm:p-5 border-t border-surface-container-highest bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Nút tải PDF */}
           <button
             type="button"
             onClick={handleDownloadPdf}
             disabled={downloadingPdf}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-surface-container-highest bg-surface-container-lowest hover:bg-surface-container-low text-xs sm:text-sm font-semibold text-on-surface transition-colors shadow-2xs"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-surface-container-highest bg-surface-container-lowest hover:bg-surface-container text-xs sm:text-sm font-semibold text-on-surface transition-colors cursor-pointer"
           >
             <span className={`material-symbols-outlined text-[18px] text-primary ${downloadingPdf ? 'animate-spin' : ''}`}>
               {downloadingPdf ? 'progress_activity' : 'picture_as_pdf'}
@@ -604,14 +781,14 @@ export default function CustomerQuotationModal({
           </button>
 
           {/* Nhóm nút duyệt / từ chối */}
-          <div className="flex items-center gap-2">
-            {quotation.status === 'SENT' && !showRejectForm && (
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            {viewMode === 'SINGLE' && activeQuote.status === 'SENT' && !showRejectForm && (
               <>
                 <button
                   type="button"
                   onClick={() => setShowRejectForm(true)}
                   disabled={loading}
-                  className="px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs sm:text-sm font-semibold transition-colors"
+                  className="px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
                 >
                   Yêu cầu tư vấn lại / Từ chối
                 </button>
@@ -631,11 +808,11 @@ export default function CustomerQuotationModal({
               </>
             )}
 
-            {quotation.status !== 'SENT' && (
+            {(viewMode !== 'SINGLE' || activeQuote.status !== 'SENT') && (
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs sm:text-sm font-semibold transition-colors"
+                className="px-5 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
               >
                 Đóng
               </button>
@@ -661,7 +838,7 @@ export default function CustomerQuotationModal({
             <div className="bg-surface-container-low rounded-2xl p-4 text-left space-y-2 border border-outline-variant/60 text-xs">
               <div className="flex justify-between">
                 <span className="text-on-surface-variant">Mã số báo giá:</span>
-                <span className="font-mono font-bold text-on-surface">{quotation.quotationNumber}</span>
+                <span className="font-mono font-bold text-on-surface">{activeQuote.quotationNumber}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-on-surface-variant">Phương tiện:</span>
@@ -672,9 +849,9 @@ export default function CustomerQuotationModal({
                 <span className="font-semibold text-on-surface">{advisorName}</span>
               </div>
               <div className="border-t border-outline-variant/60 pt-2 flex justify-between items-center">
-                <span className="font-bold text-on-surface">Tổng thanh toán:</span>
+                <span className="font-bold text-on-surface">Tổng thanh toán đợt này:</span>
                 <span className="font-mono font-extrabold text-base text-primary">
-                  {quotation.grandTotal.toLocaleString('vi-VN')} đ
+                  {activeQuote.grandTotal.toLocaleString('vi-VN')} đ
                 </span>
               </div>
             </div>
@@ -685,73 +862,60 @@ export default function CustomerQuotationModal({
             </div>
 
             {approveError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs text-left">
+              <p className="text-xs text-rose-600 font-bold bg-rose-50 p-2 rounded-lg border border-rose-200">
                 {approveError}
-              </div>
+              </p>
             )}
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
                 disabled={loading}
-                onClick={() => {
-                  setIsConfirmApproveOpen(false);
-                  setApproveError('');
-                }}
-                className="flex-1 py-2.5 rounded-xl border border-outline-variant text-on-surface hover:bg-surface-container font-semibold text-xs transition-colors cursor-pointer"
+                onClick={() => setIsConfirmApproveOpen(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container-high text-xs font-semibold transition-colors cursor-pointer"
               >
-                Xem lại
+                Kiểm tra lại
               </button>
               <button
                 type="button"
                 disabled={loading}
                 onClick={handleExecuteApprove}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-on-primary text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
               >
-                {loading ? (
-                  <>
-                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Đang phê duyệt...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                    <span>Xác nhận đồng ý</span>
-                  </>
-                )}
+                {loading ? 'Đang xử lý...' : 'Xác nhận duyệt'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ================= MODAL XÁC NHẬN HỦY DỊCH VỤ & NHẬN LẠI XE ================= */}
+      {/* ================= MODAL XÁC NHẬN HỦY DỊCH VỤ & LẤY XE ================= */}
       {isConfirmCancelOpen && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-surface-container-lowest rounded-3xl border border-rose-200 shadow-2xl p-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
+          <div className="w-full max-w-md bg-surface-container-lowest rounded-3xl border border-rose-300 shadow-2xl p-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
             <div className="w-14 h-14 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center mx-auto shadow-inner">
-              <span className="material-symbols-outlined text-[32px]">directions_car</span>
+              <span className="material-symbols-outlined text-[32px]">warning</span>
             </div>
 
             <div>
-              <h3 className="text-title-md font-bold text-on-surface">Xác nhận hủy dịch vụ & Nhận lại xe</h3>
+              <h3 className="text-title-md font-bold text-rose-950 dark:text-rose-200">
+                Xác nhận dừng dịch vụ & Nhận lại xe
+              </h3>
               <p className="text-body-xs text-on-surface-variant mt-1">
-                Quý khách xác nhận không thực hiện các hạng mục dịch vụ và muốn nhận lại xe ngay hôm nay?
+                Quý khách chắc chắn muốn hủy kế hoạch sửa chữa và nhận lại phương tiện?
               </p>
             </div>
 
-            <div className="bg-rose-50/60 rounded-2xl p-4 text-left space-y-2 border border-rose-200 text-xs">
-              <div className="flex justify-between">
-                <span className="text-on-surface-variant">Phương tiện:</span>
-                <span className="font-semibold text-on-surface">{vehiclePlate} ({vehicleModel})</span>
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 text-xs text-left space-y-1.5">
+              <div className="font-bold flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-rose-600">info</span>
+                <span>Quy trình bàn giao hoàn trả xe:</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-on-surface-variant">Cố vấn phụ trách:</span>
-                <span className="font-semibold text-on-surface">{advisorName}</span>
-              </div>
-              <div className="border-t border-rose-200 pt-2 text-[11px] text-rose-800">
-                <b>Lý do ghi nhận:</b> {rejectReason}
-              </div>
+              <ul className="list-disc list-inside space-y-0.5 text-[11px] text-rose-800">
+                <li>Hồ sơ sửa chữa sẽ được lưu trữ với lý do hủy xe.</li>
+                <li>Cố vấn dịch vụ sẽ liên hệ để quý khách kiểm tra tài sản và nhận chìa khóa.</li>
+                <li>Không phát sinh chi phí nếu xe chỉ kiểm tra sơ bộ ban đầu.</li>
+              </ul>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">
@@ -759,7 +923,7 @@ export default function CustomerQuotationModal({
                 type="button"
                 disabled={loading}
                 onClick={() => setIsConfirmCancelOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-outline-variant text-on-surface hover:bg-surface-container font-semibold text-xs transition-colors cursor-pointer"
+                className="flex-1 px-4 py-2.5 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container-high text-xs font-semibold transition-colors cursor-pointer"
               >
                 Xem lại
               </button>
@@ -767,24 +931,15 @@ export default function CustomerQuotationModal({
                 type="button"
                 disabled={loading}
                 onClick={handleExecuteReject}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
               >
-                {loading ? (
-                  <>
-                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Đang gửi...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-[16px]">check</span>
-                    <span>Xác nhận nhận lại xe</span>
-                  </>
-                )}
+                {loading ? 'Đang xử lý...' : 'Xác nhận nhận lại xe'}
               </button>
             </div>
           </div>
         </div>
       )}
+
       </div>
     </div>
   );

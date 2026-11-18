@@ -161,16 +161,16 @@ export default function VehicleReturnModal({
                     </span>
                   )}
                 </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 material-symbols-outlined text-[18px] text-outline">
-                    speed
-                  </span>
+                <div className="relative flex items-center">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-on-surface-variant/70">
+                    <span className="material-symbols-outlined text-[18px]">speed</span>
+                  </div>
                   <input
                     type="number"
                     value={returnMileage}
                     onChange={(e) => setReturnMileage(e.target.value ? Number(e.target.value) : '')}
                     placeholder="Nhập số ODO lúc trả xe"
-                    className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-outline-variant bg-white dark:bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full pl-10 pr-3 py-2 text-xs rounded-lg border border-outline-variant bg-white dark:bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono"
                   />
                 </div>
               </div>
@@ -185,14 +185,14 @@ export default function VehicleReturnModal({
                     </span>
                   )}
                 </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 material-symbols-outlined text-[18px] text-outline">
-                    local_gas_station
-                  </span>
+                <div className="relative flex items-center">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-on-surface-variant/70">
+                    <span className="material-symbols-outlined text-[18px]">local_gas_station</span>
+                  </div>
                   <select
                     value={returnFuel}
                     onChange={(e) => setReturnFuel(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-outline-variant bg-white dark:bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full pl-10 pr-8 py-2 text-xs rounded-lg border border-outline-variant bg-white dark:bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                   >
                     {Object.entries(FUEL_LEVEL_LABELS).map(([val, label]) => (
                       <option key={val} value={val}>
