@@ -271,7 +271,7 @@ export class AppointmentService {
 
       if (!createdById || createdById === data.customer_id) {
         notificationService
-          .sendInAppToRoles(['STAFF', 'DESK STAFF', 'ADVISOR', 'SA', 'SERVICE_ADVISOR'], {
+          .sendInAppToRoles(['DESK STAFF'], {
             type: 'GENERAL',
             title: `Lịch hẹn mới từ khách hàng (${vehicle.license_plate})`,
             message: `Khách hàng ${customer.full_name} vừa đặt lịch hẹn cho xe ${vehicle.license_plate} lúc ${timeStr} ngày ${dateStr}.`,
@@ -420,6 +420,18 @@ export class AppointmentService {
           html,
         })
         .catch(err => console.error('Failed to send appointment rescheduled notification:', err));
+
+      if (!isStaff) {
+        notificationService
+          .sendInAppToRoles(['DESK STAFF'], {
+            type: 'APPOINTMENT_RESCHEDULED',
+            title: `Khách hàng dời lịch hẹn (${updated.vehicle?.license_plate || `#${updated.id}`})`,
+            message: `Khách hàng ${updated.customer?.full_name || ''} đã dời lịch hẹn sang ${newTimeStr} ngày ${newDateStr}.`,
+            entityType: 'APPOINTMENT',
+            entityId: updated.id,
+          })
+          .catch(err => console.error('Failed to notify desk staff on appointment rescheduled:', err));
+      }
     }
 
     return updated;
@@ -556,7 +568,7 @@ export class AppointmentService {
 
     if (!isStaff) {
       notificationService
-        .sendInAppToRoles(['STAFF', 'DESK STAFF', 'ADVISOR', 'SA', 'SERVICE_ADVISOR'], {
+        .sendInAppToRoles(['DESK STAFF'], {
           type: 'APPOINTMENT_CANCELLED',
           title: `Khách hàng hủy lịch hẹn (${updated.vehicle?.license_plate || `#${updated.id}`})`,
           message: `Lịch hẹn lúc ${cancelTimeStr} ngày ${cancelDateStr} đã bị khách hàng hủy. Lý do: ${cancelReason}`,
@@ -595,7 +607,7 @@ export class AppointmentService {
       throw new Error('Xe này đang trong hàng đợi tiếp nhận. Không thể tạo phiếu trùng.');
     }
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // Cập nhật trạng thái lịch hẹn → ARRIVED
       const updatedAppointment = await tx.appointment.update({
         where: { id },
@@ -650,5 +662,19 @@ export class AppointmentService {
 
       return { appointment: updatedAppointment, intakeRecord };
     });
+
+    const plate = result.intakeRecord?.vehicle?.license_plate || appointment.vehicle?.license_plate || '';
+    const customerName = result.intakeRecord?.customer?.full_name || appointment.customer?.full_name || '';
+    notificationService
+      .sendInAppToRoles(['SA'], {
+        type: 'CHECKIN_READY',
+        title: `Xe mới check-in chờ tiếp nhận (${plate})`,
+        message: `Xe ${plate} của khách hàng ${customerName} đã check-in từ lịch hẹn và đang chờ cố vấn dịch vụ xử lý.`,
+        entityType: 'INTAKE',
+        entityId: result.intakeRecord?.id ?? id,
+      })
+      .catch(err => console.error('Failed to notify SA on appointment arrival:', err));
+
+    return result;
   }
 }

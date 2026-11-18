@@ -638,7 +638,7 @@ export class WorkOrderService {
       }
     }
 
-    return await prisma.$transaction(async (tx) => {
+    const createdResult = await prisma.$transaction(async (tx) => {
       // 1. Xác định hoặc tạo WoService
       let targetServiceId = data.wo_service_id;
 
@@ -848,6 +848,27 @@ export class WorkOrderService {
         job: fullJob,
       };
     });
+
+    const techUserIds = new Set<number>();
+    for (const lab of createdResult.job?.labours || []) {
+      if (lab.employee?.user_id) {
+        techUserIds.add(lab.employee.user_id);
+      }
+    }
+    for (const techUserId of techUserIds) {
+      notificationService
+        .sendInApp({
+          userId: techUserId,
+          type: 'TASK_ASSIGNED',
+          title: `Phân công công việc mới: ${data.name.trim()}`,
+          message: `Bạn vừa được phân công công việc "${data.name.trim()}" trong phiếu ${wo.wo_number}.`,
+          entityType: 'WORK_ORDER',
+          entityId: workOrderId,
+        })
+        .catch((err) => console.error('Failed to notify technician on job created:', err));
+    }
+
+    return createdResult;
   }
 
   /**
@@ -908,7 +929,9 @@ export class WorkOrderService {
       }
     }
 
-    return await prisma.$transaction(async (tx) => {
+    const prevEmployeeId = job.labours[0]?.employee_id ?? null;
+
+    const fullUpdatedJob = await prisma.$transaction(async (tx) => {
       // 1. Cập nhật Job
       const updatedJob = await tx.job.update({
         where: { id: jobId },
@@ -970,6 +993,25 @@ export class WorkOrderService {
 
       return fullUpdatedJob;
     });
+
+    if (data.technician_id && data.technician_id !== prevEmployeeId) {
+      const assignedLab = fullUpdatedJob?.labours?.find((l) => l.employee_id === data.technician_id);
+      const techUserId = assignedLab?.employee?.user_id;
+      if (techUserId) {
+        notificationService
+          .sendInApp({
+            userId: techUserId,
+            type: 'TASK_ASSIGNED',
+            title: `Phân công công việc: ${fullUpdatedJob?.name || job.name}`,
+            message: `Bạn vừa được phân công thực hiện công việc "${fullUpdatedJob?.name || job.name}".`,
+            entityType: 'WORK_ORDER',
+            entityId: workOrderId,
+          })
+          .catch((err) => console.error('Failed to notify technician on job updated:', err));
+      }
+    }
+
+    return fullUpdatedJob;
   }
 
   /**
@@ -1869,6 +1911,18 @@ export class WorkOrderService {
           created_by_id: userId || wo.advisor_id || 1,
         },
       });
+
+      if (newOnHand <= (item.reorder_level ?? 0)) {
+        notificationService
+          .sendInAppToRoles(['MANAGER'], {
+            type: 'LOW_STOCK_ALERT',
+            title: `Cảnh báo tồn kho thấp (${item.sku})`,
+            message: `Phụ tùng ${item.sku} chỉ còn ${newOnHand} trong kho (mức tối thiểu: ${item.reorder_level ?? 0}).`,
+            entityType: 'INVENTORY',
+            entityId: item.id,
+          })
+          .catch((err) => console.error('Failed to send low stock alert:', err));
+      }
     }
 
     return jobPart;
@@ -2469,6 +2523,19 @@ export class WorkOrderService {
               created_by_id: userId,
             },
           });
+        }
+
+        const reorderLevel = Number(invItem.reorder_level ?? 0);
+        if (newOnHand <= reorderLevel) {
+          notificationService
+            .sendInAppToRoles(['MANAGER'], {
+              type: 'LOW_STOCK_ALERT',
+              title: `Cảnh báo tồn kho thấp (${invItem.sku})`,
+              message: `Phụ tùng ${invItem.sku} chỉ còn ${newOnHand} trong kho (mức tối thiểu: ${reorderLevel}).`,
+              entityType: 'INVENTORY',
+              entityId: invItem.id,
+            })
+            .catch((err) => console.error('Failed to send low stock alert:', err));
         }
       }
     }

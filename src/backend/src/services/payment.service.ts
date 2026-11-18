@@ -167,9 +167,9 @@ export class PaymentService {
       })
       .catch((err: any) => console.warn('[Payment Customer Notification Error]', err?.message));
 
-    // 7. Gửi thông báo real-time tới bộ phận nội bộ (Staff / Advisor / Cashier)
+    // 7. Gửi thông báo real-time tới quầy thu ngân (DESK STAFF)
     notificationService
-      .sendInAppToRoles(['STAFF', 'ADVISOR', 'CASHIER'], {
+      .sendInAppToRoles(['DESK STAFF'], {
         type: 'PAYMENT_SUCCESS',
         title: `Thanh toán thành công hóa đơn ${updatedInvoice.invoice_number}`,
         message: `Hóa đơn ${updatedInvoice.invoice_number} (xe ${updatedInvoice.work_order.vehicle.license_plate}) đã thanh toán ${Number(params.amount).toLocaleString('vi-VN')} đ.`,
