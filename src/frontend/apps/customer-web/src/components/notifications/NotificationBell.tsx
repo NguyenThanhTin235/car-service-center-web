@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { NotificationItem } from '@/lib/api/notification.api';
 import { useNotificationSocket } from '@/hooks/useNotificationSocket';
@@ -15,20 +14,20 @@ import {
 } from '@/store/slices/notificationSlice';
 import {
   formatRelativeTimeVi,
-  getNotificationHref,
   getNotificationIcon,
 } from './notificationUtils';
+import NotificationDetailModal from './NotificationDetailModal';
 
 export default function NotificationBell() {
   useNotificationSocket();
 
-  const router = useRouter();
   const dispatch = useAppDispatch();
   const { items, unreadCount, loading, error, latestRealtime } = useAppSelector(
     (state) => state.notifications
   );
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const [open, setOpen] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -64,7 +63,7 @@ export default function NotificationBell() {
     }
     setOpen(false);
     dispatch(clearLatestRealtime());
-    router.push(getNotificationHref(item));
+    setSelectedNotification({ ...item, isRead: true });
   };
 
   const handleMarkAllRead = () => {
@@ -268,6 +267,11 @@ export default function NotificationBell() {
           </div>
         </div>
       )}
+
+      <NotificationDetailModal
+        notification={selectedNotification}
+        onClose={() => setSelectedNotification(null)}
+      />
     </div>
   );
 }

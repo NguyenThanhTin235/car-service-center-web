@@ -29,6 +29,58 @@ export function getNotificationHref(item: NotificationItem): string {
   return '/customer/notifications';
 }
 
+export const resolveNotificationHref = getNotificationHref;
+
+const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
+  APPOINTMENT_CONFIRMED: 'Lịch hẹn đã xác nhận',
+  APPOINTMENT_RESCHEDULED: 'Lịch hẹn đã dời lịch',
+  APPOINTMENT_CANCELLED: 'Lịch hẹn đã hủy',
+  APPOINTMENT_REMINDER: 'Nhắc nhở lịch hẹn',
+  CHECKIN_READY: 'Sẵn sàng tiếp nhận',
+  QUOTATION_SENT: 'Báo giá mới',
+  QUOTATION_APPROVED: 'Báo giá đã duyệt',
+  QUOTATION_REJECTED: 'Báo giá đã từ chối',
+  WORK_ORDER_STARTED: 'Bắt đầu sửa chữa',
+  SERVICE_ITEM_STARTED: 'Đang thực hiện dịch vụ',
+  QC_PASSED: 'Kiểm tra chất lượng đạt',
+  VEHICLE_READY: 'Xe đã sẵn sàng',
+  VEHICLE_HANDOVER: 'Đã bàn giao xe',
+  INVOICE_ISSUED: 'Hóa đơn mới',
+  PAYMENT_SUCCESS: 'Thanh toán thành công',
+};
+
+export function getNotificationTypeLabel(type: string): string {
+  const normalized = (type || '').toUpperCase();
+  return NOTIFICATION_TYPE_LABELS[normalized] ?? 'Thông báo';
+}
+
+const ENTITY_TYPE_LABELS: Record<string, string> = {
+  APPOINTMENT: 'Lịch hẹn',
+  QUOTATION: 'Báo giá',
+  WORK_ORDER: 'Phiếu sửa chữa',
+  INVOICE: 'Hóa đơn',
+  PAYMENT: 'Thanh toán',
+  VEHICLE: 'Xe',
+};
+
+export function getEntityTypeLabel(entityType: string): string {
+  const normalized = entityType.toUpperCase();
+  return ENTITY_TYPE_LABELS[normalized] ?? entityType;
+}
+
+export function formatExactDateTimeVi(dateInput: string): string {
+  const date = new Date(dateInput);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const day = pad(date.getDate());
+  const month = pad(date.getMonth() + 1);
+  const year = date.getFullYear();
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
+
 export function getNotificationIcon(type: string): {
   icon: string;
   bgClass: string;

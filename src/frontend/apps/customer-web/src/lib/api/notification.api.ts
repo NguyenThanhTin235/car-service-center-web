@@ -43,6 +43,8 @@ export interface GetNotificationsParams {
   limit?: number;
   unreadOnly?: boolean;
   since?: string;
+  types?: string[];
+  search?: string;
 }
 
 export interface NotificationsResponse {
@@ -53,7 +55,16 @@ export interface NotificationsResponse {
 export async function getNotifications(
   params: GetNotificationsParams = {}
 ): Promise<NotificationsResponse> {
-  const { data } = await api.get('/api/notifications', { params });
+  const queryParams: Record<string, unknown> = {
+    ...(params.page !== undefined ? { page: params.page } : {}),
+    ...(params.limit !== undefined ? { limit: params.limit } : {}),
+    ...(params.unreadOnly !== undefined ? { unreadOnly: params.unreadOnly } : {}),
+    ...(params.since !== undefined ? { since: params.since } : {}),
+    ...(params.types && params.types.length > 0 ? { types: params.types.join(',') } : {}),
+    ...(params.search && params.search.trim() ? { search: params.search.trim() } : {}),
+  };
+
+  const { data } = await api.get('/api/notifications', { params: queryParams });
   return {
     items: data.data ?? [],
     meta: data.meta ?? {
@@ -63,6 +74,11 @@ export async function getNotifications(
       totalPages: 1,
     },
   };
+}
+
+export async function getNotificationById(id: number): Promise<NotificationItem> {
+  const { data } = await api.get(`/api/notifications/${id}`);
+  return data.data;
 }
 
 export async function getUnreadCount(): Promise<number> {

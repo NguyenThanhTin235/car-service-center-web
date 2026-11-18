@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { NotificationItem } from '@/lib/api/notification.api';
 import {
@@ -12,31 +11,84 @@ import {
 } from '@/store/slices/notificationSlice';
 import {
   formatRelativeTimeVi,
-  getNotificationHref,
   getNotificationIcon,
 } from '@/components/notifications/notificationUtils';
+import NotificationDetailModal from '@/components/notifications/NotificationDetailModal';
 
-type FilterTab = 'all' | 'unread';
+type ReadFilter = 'all' | 'unread';
+type CategoryKey = 'all' | 'appointments' | 'service' | 'billing';
+
+interface CategoryTab {
+  key: CategoryKey;
+  label: string;
+  types?: string[];
+}
+
+const CATEGORY_TABS: CategoryTab[] = [
+  { key: 'all', label: 'Tất cả' },
+  {
+    key: 'appointments',
+    label: 'Lịch hẹn',
+    types: [
+      'APPOINTMENT_CONFIRMED',
+      'APPOINTMENT_RESCHEDULED',
+      'APPOINTMENT_CANCELLED',
+      'APPOINTMENT_REMINDER',
+    ],
+  },
+  {
+    key: 'service',
+    label: 'Báo giá & Sửa chữa',
+    types: [
+      'QUOTATION_SENT',
+      'WORK_ORDER_STARTED',
+      'SERVICE_ITEM_STARTED',
+      'VEHICLE_READY',
+      'VEHICLE_HANDOVER',
+    ],
+  },
+  {
+    key: 'billing',
+    label: 'Hóa đơn & Thanh toán',
+    types: ['INVOICE_ISSUED', 'PAYMENT_SUCCESS'],
+  },
+];
 
 const PAGE_LIMIT = 20;
 
 export default function NotificationsPage() {
-  const router = useRouter();
   const dispatch = useAppDispatch();
   const { items, unreadCount, loading, error, hasMore, page } = useAppSelector(
     (state) => state.notifications
   );
-  const [filter, setFilter] = useState<FilterTab>('all');
+  const [readFilter, setReadFilter] = useState<ReadFilter>('all');
+  const [category, setCategory] = useState<CategoryKey>('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(
+    null
+  );
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const activeTypes = CATEGORY_TABS.find((tab) => tab.key === category)?.types;
 
   useEffect(() => {
     dispatch(
       fetchNotifications({
         page: 1,
         limit: PAGE_LIMIT,
-        unreadOnly: filter === 'unread',
+        unreadOnly: readFilter === 'unread',
+        types: activeTypes,
+        search: debouncedSearch || undefined,
       })
     );
-  }, [dispatch, filter]);
+  }, [dispatch, readFilter, activeTypes, debouncedSearch]);
 
   const handleLoadMore = () => {
     if (loading || !hasMore) return;
@@ -44,7 +96,9 @@ export default function NotificationsPage() {
       fetchNotifications({
         page: page + 1,
         limit: PAGE_LIMIT,
-        unreadOnly: filter === 'unread',
+        unreadOnly: readFilter === 'unread',
+        types: activeTypes,
+        search: debouncedSearch || undefined,
         append: true,
       })
     );
@@ -55,7 +109,9 @@ export default function NotificationsPage() {
       fetchNotifications({
         page: 1,
         limit: PAGE_LIMIT,
-        unreadOnly: filter === 'unread',
+        unreadOnly: readFilter === 'unread',
+        types: activeTypes,
+        search: debouncedSearch || undefined,
       })
     );
   };
@@ -64,7 +120,7 @@ export default function NotificationsPage() {
     if (!item.isRead) {
       dispatch(markAsRead(item.id));
     }
-    router.push(getNotificationHref(item));
+    setSelectedNotification({ ...item, isRead: true });
   };
 
   const handleDelete = (e: React.MouseEvent, id: number) => {
@@ -73,7 +129,10 @@ export default function NotificationsPage() {
   };
 
   const displayedItems =
-    filter === 'unread' ? items.filter((item) => !item.isRead) : items;
+    readFilter === 'unread' ? items.filter((item) => !item.isRead) : items;
+
+  const hasActiveFilters =
+    readFilter === 'unread' || category !== 'all' || Boolean(debouncedSearch);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -102,41 +161,87 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-surface-container-highest pb-3">
-        <button
-          type="button"
-          onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            filter === 'all'
-              ? 'bg-primary text-on-primary shadow-sm'
-              : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high'
-          }`}
-        >
-          Tất cả
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter('unread')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            filter === 'unread'
-              ? 'bg-primary text-on-primary shadow-sm'
-              : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high'
-          }`}
-        >
-          Chưa đọc
-          {unreadCount > 0 && (
-            <span
-              className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${
-                filter === 'unread'
-                  ? 'bg-on-primary text-primary'
-                  : 'bg-primary-fixed text-primary'
+      {/* Category Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-surface-container-highest pb-3">
+        {CATEGORY_TABS.map((tab) => {
+          const isActive = category === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setCategory(tab.key)}
+              className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                isActive
+                  ? 'bg-primary text-on-primary shadow-sm'
+                  : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high'
               }`}
             >
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search & Read-Status Toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative flex-1">
+          <span
+            className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none"
+            style={{ fontSize: '18px' }}
+          >
+            search
+          </span>
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Tìm kiếm theo tiêu đề hoặc nội dung thông báo..."
+            aria-label="Tìm kiếm thông báo"
+            className="w-full pl-9 pr-9 py-2 rounded-xl bg-surface-container-lowest border border-surface-container-highest text-sm text-on-surface placeholder:text-on-surface-variant/70 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+          />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => setSearchInput('')}
+              aria-label="Xóa tìm kiếm"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-on-surface-variant hover:text-on-surface"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                close
+              </span>
+            </button>
           )}
-        </button>
+        </div>
+
+        <div className="inline-flex items-center p-1 rounded-xl bg-surface-container-low border border-surface-container-highest self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setReadFilter('all')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              readFilter === 'all'
+                ? 'bg-surface-container-lowest text-on-surface shadow-sm'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            Tất cả
+          </button>
+          <button
+            type="button"
+            onClick={() => setReadFilter('unread')}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              readFilter === 'unread'
+                ? 'bg-surface-container-lowest text-primary shadow-sm'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            Chưa đọc
+            {unreadCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-primary-fixed text-primary">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Content Card (4-State UI) */}
@@ -180,13 +285,13 @@ export default function NotificationsPage() {
               notifications_none
             </span>
             <p className="text-base font-semibold text-on-surface">
-              {filter === 'unread'
-                ? 'Bạn đã đọc hết tất cả thông báo'
+              {hasActiveFilters
+                ? 'Không tìm thấy thông báo phù hợp'
                 : 'Chưa có thông báo nào'}
             </p>
             <p className="text-sm text-on-surface-variant">
-              {filter === 'unread'
-                ? 'Không còn thông báo chưa đọc nào trong danh sách.'
+              {hasActiveFilters
+                ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm để xem thêm thông báo.'
                 : 'Các thông báo về lịch hẹn, báo giá và hóa đơn sẽ xuất hiện tại đây.'}
             </p>
           </div>
@@ -253,7 +358,7 @@ export default function NotificationsPage() {
                       </div>
                     </div>
 
-                    <p className="text-sm text-on-surface-variant mt-1">
+                    <p className="text-sm text-on-surface-variant mt-1 line-clamp-2">
                       {item.message}
                     </p>
                     <p className="text-xs text-on-surface-variant/80 mt-1.5">
@@ -287,6 +392,11 @@ export default function NotificationsPage() {
           </button>
         </div>
       )}
+
+      <NotificationDetailModal
+        notification={selectedNotification}
+        onClose={() => setSelectedNotification(null)}
+      />
     </div>
   );
 }
