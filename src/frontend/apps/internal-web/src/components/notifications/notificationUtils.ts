@@ -1,5 +1,25 @@
 import { NotificationItem } from '@/lib/api/notification.api';
 
+export function resolveNotificationCenterHref(roles: string[] = []): string {
+  const normalizedRoles = roles.map((r) =>
+    r.toUpperCase().trim().replace(/[\s-]+/g, '_')
+  );
+
+  if (normalizedRoles.some((r) => ['ADMIN', 'ADMINISTRATOR'].includes(r))) {
+    return '/admin/notifications';
+  }
+  if (normalizedRoles.includes('MANAGER')) {
+    return '/manager/notifications';
+  }
+  if (normalizedRoles.some((r) => ['SA', 'ADVISOR', 'SERVICE_ADVISOR'].includes(r))) {
+    return '/advisor/notifications';
+  }
+  if (normalizedRoles.some((r) => ['DESK_STAFF', 'STAFF', 'TECHNICIAN'].includes(r))) {
+    return '/staff/notifications';
+  }
+  return '/staff/notifications';
+}
+
 export function resolveNotificationHref(
   item: NotificationItem,
   roles: string[] = []
@@ -39,7 +59,7 @@ export function resolveNotificationHref(
     case 'PART':
       return isManager || isAdmin ? '/inventory' : '/staff';
     default:
-      return '/notifications';
+      return resolveNotificationCenterHref(roles);
   }
 }
 
@@ -67,12 +87,67 @@ export function formatRelativeTimeVi(dateInput: string): string {
   });
 }
 
+export function formatExactDateTimeVi(dateInput: string): string {
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return '';
+
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  const hh = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+}
+
+const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
+  APPOINTMENT_CONFIRMED: 'Xác nhận lịch hẹn',
+  APPOINTMENT_CANCELLED: 'Hủy lịch hẹn',
+  APPOINTMENT_REMINDER: 'Nhắc lịch hẹn',
+  APPOINTMENT_RESCHEDULED: 'Dời lịch hẹn',
+  INTAKE_CREATED: 'Tiếp nhận xe',
+  QUOTATION_SENT: 'Đã gửi báo giá',
+  QUOTATION_APPROVED: 'Khách duyệt báo giá',
+  QUOTATION_REJECTED: 'Từ chối báo giá',
+  WORK_ORDER_STARTED: 'Bắt đầu sửa chữa',
+  SERVICE_ITEM_STARTED: 'Bắt đầu hạng mục',
+  SERVICE_ITEM_COMPLETED: 'Hoàn thành hạng mục',
+  VEHICLE_READY: 'Xe sẵn sàng bàn giao',
+  VEHICLE_HANDOVER: 'Đã bàn giao xe',
+  INVOICE_ISSUED: 'Đã xuất hóa đơn',
+  PAYMENT_SUCCESS: 'Thanh toán thành công',
+  PAYMENT_FAILED: 'Thanh toán thất bại',
+  QC_PASSED: 'Kiểm tra QC đạt',
+  QC_FAILED: 'Kiểm tra QC không đạt',
+  LOW_STOCK_ALERT: 'Cảnh báo tồn kho',
+  TASK_ASSIGNED: 'Phân công công việc',
+  SYSTEM_ALERT: 'Cảnh báo hệ thống',
+  GENERAL: 'Thông báo chung',
+};
+
+export function getNotificationTypeLabel(type: string): string {
+  return NOTIFICATION_TYPE_LABELS[type.toUpperCase()] || type;
+}
+
 export function getNotificationVisual(type: string): {
   icon: string;
   bgClass: string;
   textClass: string;
 } {
   const t = type.toUpperCase();
+  if (t.includes('SYSTEM_ALERT')) {
+    return {
+      icon: 'security',
+      bgClass: 'bg-rose-50',
+      textClass: 'text-rose-600',
+    };
+  }
+  if (t.includes('TASK_ASSIGNED')) {
+    return {
+      icon: 'engineering',
+      bgClass: 'bg-blue-50',
+      textClass: 'text-[#0050cd]',
+    };
+  }
   if (t.includes('PAYMENT_FAILED') || t.includes('CANCELLED') || t.includes('REJECTED') || t.includes('QC_FAILED')) {
     return {
       icon: 'error',

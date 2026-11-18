@@ -4,6 +4,7 @@ import {
   NotificationMeta,
   GetNotificationsParams,
   getNotifications,
+  getNotificationById,
   getUnreadCount,
   markNotificationRead,
   markAllNotificationsRead,
@@ -47,6 +48,17 @@ export const fetchNotifications = createAsyncThunk(
       return await getNotifications(params);
     } catch (err) {
       return rejectWithValue(getErrorMessage(err, 'Không thể tải danh sách thông báo'));
+    }
+  }
+);
+
+export const fetchNotificationById = createAsyncThunk(
+  'notifications/fetchById',
+  async (id: number, { rejectWithValue }) => {
+    try {
+      return await getNotificationById(id);
+    } catch (err) {
+      return rejectWithValue(getErrorMessage(err, 'Không thể tải chi tiết thông báo'));
     }
   }
 );

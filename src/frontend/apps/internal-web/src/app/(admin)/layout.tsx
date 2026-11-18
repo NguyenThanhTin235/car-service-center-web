@@ -42,6 +42,11 @@ const ADMIN_NAV_ITEMS: SaaSNavItem[] = [
     href: '/catalogs',
     icon: 'category',
   },
+  {
+    label: 'Thông báo',
+    href: '/admin/notifications',
+    icon: 'notifications',
+  },
 ];
 
 const ADMIN_TELEMETRY_ITEMS: SaaSTelemetryDotItem[] = [

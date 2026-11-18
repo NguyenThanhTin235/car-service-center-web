@@ -22,6 +22,7 @@ export const SA_NAV_ITEMS: NavItemConfig[] = [
   { name: 'Phiếu công việc', shortName: 'Phiếu CV', href: '/advisor/work-orders', icon: 'assignment' },
   { name: 'Khách hàng', shortName: 'Khách hàng', href: '/advisor/customers', icon: 'group', comingSoon: true },
   { name: 'Phân tích & KPI', shortName: 'Phân tích', href: '/advisor/dashboard', icon: 'monitoring' },
+  { name: 'Thông báo', shortName: 'Thông báo', href: '/advisor/notifications', icon: 'notifications' },
 ];
 
 export default function AdvisorTopNav() {

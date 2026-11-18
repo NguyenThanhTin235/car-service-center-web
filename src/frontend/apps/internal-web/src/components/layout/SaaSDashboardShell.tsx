@@ -112,7 +112,7 @@ export default function SaaSDashboardShell({
 
   const isHrefActive = (href?: string) => {
     if (!href) return false;
-    if (href === '/staff' || href === '/dashboard') {
+    if (href === '/staff' || href === '/dashboard' || href === '/admin') {
       return pathname === href;
     }
     return pathname === href || pathname.startsWith(`${href}/`);

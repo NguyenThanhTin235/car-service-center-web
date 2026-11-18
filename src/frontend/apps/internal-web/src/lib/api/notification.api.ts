@@ -20,6 +20,8 @@ export type NotificationType =
   | 'QC_PASSED'
   | 'QC_FAILED'
   | 'LOW_STOCK_ALERT'
+  | 'TASK_ASSIGNED'
+  | 'SYSTEM_ALERT'
   | 'GENERAL';
 
 export interface NotificationItem {
@@ -47,6 +49,8 @@ export interface GetNotificationsParams {
   limit?: number;
   unreadOnly?: boolean;
   since?: string;
+  types?: string[];
+  search?: string;
 }
 
 interface ApiEnvelope<T> {
@@ -67,6 +71,10 @@ export async function getNotifications(
       ...(params.limit !== undefined ? { limit: params.limit } : {}),
       ...(params.unreadOnly !== undefined ? { unreadOnly: params.unreadOnly } : {}),
       ...(params.since ? { since: params.since } : {}),
+      ...(params.types && params.types.length > 0 ? { types: params.types.join(',') } : {}),
+      ...(params.search && params.search.trim().length > 0
+        ? { search: params.search.trim() }
+        : {}),
     },
   });
 
@@ -79,6 +87,13 @@ export async function getNotifications(
       totalPages: 1,
     },
   };
+}
+
+export async function getNotificationById(id: number): Promise<NotificationItem> {
+  const response = await api.get<ApiEnvelope<NotificationItem>>(
+    `/api/notifications/${id}`
+  );
+  return response.data.data;
 }
 
 export async function getUnreadCount(): Promise<number> {

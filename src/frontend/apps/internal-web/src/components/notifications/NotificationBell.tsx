@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { NotificationItem } from '@/lib/api/notification.api';
 import {
@@ -15,8 +14,9 @@ import { useNotificationSocket } from '@/hooks/useNotificationSocket';
 import {
   formatRelativeTimeVi,
   getNotificationVisual,
-  resolveNotificationHref,
+  resolveNotificationCenterHref,
 } from './notificationUtils';
+import NotificationDetailModal from './NotificationDetailModal';
 
 export interface NotificationBellProps {
   variant?: 'default' | 'pill';
@@ -26,7 +26,6 @@ export default function NotificationBell({ variant = 'default' }: NotificationBe
   useNotificationSocket();
 
   const dispatch = useAppDispatch();
-  const router = useRouter();
   const { user } = useAppSelector((state) => state.auth);
   const { items, unreadCount, loading, error } = useAppSelector(
     (state) => state.notifications
@@ -34,6 +33,7 @@ export default function NotificationBell({ variant = 'default' }: NotificationBe
 
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<NotificationItem | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,13 +67,14 @@ export default function NotificationBell({ variant = 'default' }: NotificationBe
     }
   };
 
-  const handleItemClick = async (item: NotificationItem) => {
+  const handleItemClick = (item: NotificationItem) => {
     if (!item.isRead) {
       dispatch(markAsReadThunk(item.id));
     }
     setOpen(false);
-    const targetHref = resolveNotificationHref(item, user?.roles ?? []);
-    router.push(targetHref);
+    setSelectedItem(
+      item.isRead ? item : { ...item, isRead: true, readAt: new Date().toISOString() }
+    );
   };
 
   const handleDelete = (e: React.MouseEvent, id: number) => {
@@ -264,7 +265,7 @@ export default function NotificationBell({ variant = 'default' }: NotificationBe
           {/* Footer */}
           <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/60 text-center">
             <Link
-              href="/notifications"
+              href={resolveNotificationCenterHref(user?.roles || [])}
               onClick={() => setOpen(false)}
               className="inline-flex items-center gap-1 text-xs font-bold text-[#0050cd] hover:text-[#0866ff] transition-colors"
             >
@@ -274,6 +275,14 @@ export default function NotificationBell({ variant = 'default' }: NotificationBe
           </div>
         </div>
       )}
+
+      <NotificationDetailModal
+        item={selectedItem}
+        isOpen={selectedItem !== null}
+        onClose={() => setSelectedItem(null)}
+        onDelete={(id) => dispatch(deleteNotificationThunk(id))}
+        roles={user?.roles ?? []}
+      />
     </div>
   );
 }
