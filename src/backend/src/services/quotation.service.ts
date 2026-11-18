@@ -595,12 +595,12 @@ export class QuotationService {
         },
       });
 
-      // Gửi email thông báo cho khách hàng nếu có email kèm Deep Link
+      // Gửi thông báo & email cho khách hàng kèm Deep Link
       const customerEmail = quotation.work_order.customer?.email;
-      if (customerEmail) {
-        const grandTotalFormatted = Number(updated.grand_total).toLocaleString('vi-VN');
-        const trackingLink = `http://localhost:3000/tracking`;
-        const emailHtml = `
+      const grandTotalFormatted = Number(updated.grand_total).toLocaleString('vi-VN');
+      const trackingLink = `http://localhost:3000/tracking`;
+      const emailHtml = customerEmail
+        ? `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
             <div style="background-color: #1e40af; padding: 24px; text-align: center; color: #ffffff;">
               <h2 style="margin: 0; font-size: 20px; font-weight: bold; letter-spacing: 0.5px;">CAR SERVICE CENTER</h2>
@@ -645,16 +645,22 @@ export class QuotationService {
               Hệ thống Dịch vụ & Chăm sóc Kỹ thuật Ô tô Toàn diện
             </div>
           </div>
-        `;
+        `
+        : undefined;
 
-        notificationService
-          .sendEmail(
-            customerEmail,
-            `[Car Service Center] Báo giá dịch vụ cho xe ${quotation.work_order.vehicle.license_plate}`,
-            emailHtml
-          )
-          .catch((err: any) => console.warn('[Quotation Email Error]', err?.message));
-      }
+      notificationService
+        .notifyAndEmail({
+          userId: quotation.work_order.customer_id,
+          type: 'QUOTATION_SENT',
+          title: `Báo giá dịch vụ xe ${quotation.work_order.vehicle.license_plate}`,
+          message: `Báo giá ${updated.quotation_number} với tổng số tiền ${grandTotalFormatted} đ đã sẵn sàng để Quý khách xem và phê duyệt.`,
+          entityType: 'QUOTATION',
+          entityId: quotation.id,
+          email: customerEmail || undefined,
+          subject: `[Car Service Center] Báo giá dịch vụ cho xe ${quotation.work_order.vehicle.license_plate}`,
+          html: emailHtml,
+        })
+        .catch((err: any) => console.warn('[Quotation Notification Error]', err?.message));
 
       return this.formatQuotation(updated);
     });
@@ -730,6 +736,29 @@ export class QuotationService {
         });
       }
 
+      if (quotation.work_order.advisor_id) {
+        notificationService
+          .sendInApp({
+            userId: quotation.work_order.advisor_id,
+            type: 'QUOTATION_APPROVED',
+            title: `Báo giá ${quotation.quotation_number} đã được phê duyệt`,
+            message: `Phiếu công việc ${quotation.work_order.wo_number} đã được phê duyệt và sẵn sàng thi công.`,
+            entityType: 'QUOTATION',
+            entityId: quotation.id,
+          })
+          .catch((err: any) => console.warn('[ApproveQuotation InApp Error]', err?.message));
+      } else {
+        notificationService
+          .sendInAppToRoles(['ADVISOR', 'SA', 'SERVICE_ADVISOR'], {
+            type: 'QUOTATION_APPROVED',
+            title: `Báo giá ${quotation.quotation_number} đã được phê duyệt`,
+            message: `Phiếu công việc ${quotation.work_order.wo_number} đã được phê duyệt và sẵn sàng thi công.`,
+            entityType: 'QUOTATION',
+            entityId: quotation.id,
+          })
+          .catch((err: any) => console.warn('[ApproveQuotation InApp Error]', err?.message));
+      }
+
       return this.formatQuotation(updatedQuotation);
     });
   }
@@ -789,6 +818,29 @@ export class QuotationService {
           status: 'IN_PLANNING',
         },
       });
+
+      if (quotation.work_order.advisor_id) {
+        notificationService
+          .sendInApp({
+            userId: quotation.work_order.advisor_id,
+            type: 'QUOTATION_REJECTED',
+            title: `Báo giá ${quotation.quotation_number} đã bị từ chối`,
+            message: `Phiếu công việc ${quotation.work_order.wo_number} bị từ chối (${rejectType === 'CANCEL' ? 'Yêu cầu nhận lại xe' : 'Yêu cầu điều chỉnh'}).`,
+            entityType: 'QUOTATION',
+            entityId: quotation.id,
+          })
+          .catch((err: any) => console.warn('[RejectQuotation InApp Error]', err?.message));
+      } else {
+        notificationService
+          .sendInAppToRoles(['ADVISOR', 'SA', 'SERVICE_ADVISOR'], {
+            type: 'QUOTATION_REJECTED',
+            title: `Báo giá ${quotation.quotation_number} đã bị từ chối`,
+            message: `Phiếu công việc ${quotation.work_order.wo_number} bị từ chối (${rejectType === 'CANCEL' ? 'Yêu cầu nhận lại xe' : 'Yêu cầu điều chỉnh'}).`,
+            entityType: 'QUOTATION',
+            entityId: quotation.id,
+          })
+          .catch((err: any) => console.warn('[RejectQuotation InApp Error]', err?.message));
+      }
 
       return this.formatQuotation(updatedQuotation);
     });
