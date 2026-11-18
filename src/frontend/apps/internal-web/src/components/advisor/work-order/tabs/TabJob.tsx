@@ -105,6 +105,22 @@ const CACHE_TTL_MS = 2 * 60 * 1000;
 let techniciansCache: { data: EmployeeData[]; expiresAt: number } | null = null;
 let serviceCatalogCache: { data: ServiceTemplateOption[]; expiresAt: number } | null = null;
 
+const JOB_STATUS_OPTIONS = [
+  { value: 'PLANNED', label: 'Chờ thực hiện' },
+  { value: 'IN_PROGRESS', label: 'Đang làm' },
+  { value: 'COMPLETED', label: 'Đã hoàn thành' },
+  { value: 'REWORK', label: 'Cần làm lại' },
+  { value: 'PASSED', label: 'Đạt KĐ' },
+] as const;
+
+const ALLOWED_JOB_STATUS_TRANSITIONS: Record<string, string[]> = {
+  PLANNED: ['PLANNED', 'IN_PROGRESS', 'COMPLETED'],
+  IN_PROGRESS: ['IN_PROGRESS', 'COMPLETED'],
+  COMPLETED: ['COMPLETED', 'REWORK', 'PASSED'],
+  REWORK: ['REWORK', 'IN_PROGRESS', 'COMPLETED'],
+  PASSED: ['PASSED'],
+};
+
 export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setActiveTab }: TabJobProps) {
   const services = workOrder?.services || [];
   const isWOClosed = isReadOnly || ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '');
@@ -117,6 +133,10 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
     'RELEASED',
     'CLOSED',
   ].includes(workOrder?.status || '');
+  const hasApprovedQuotation =
+    ((workOrder as any)?.quotations as Array<{ status: string }> | undefined)?.some(
+      (q) => q.status === 'APPROVED'
+    ) ?? false;
 
   // Trích xuất toàn bộ findings từ kiểm tra xe
   const allFindings = workOrder?.inspections?.flatMap((i) => i.findings) || [];
@@ -212,14 +232,23 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
 
   // Cập nhật trạng thái công việc trực tiếp (Trạng thái dịch vụ cha sẽ tự động đồng bộ theo các job)
   const [updatingJobId, setUpdatingJobId] = useState<number | null>(null);
+  const [completeJobModal, setCompleteJobModal] = useState<{
+    job: WoJob;
+    usageMap: Record<number, number>;
+  } | null>(null);
 
-  const handleUpdateJobStatus = async (jobId: number, newStatus: any) => {
+  const submitJobStatusUpdate = async (
+    jobId: number,
+    newStatus: any,
+    partsUsage?: Array<{ jobPartId: number; usedQuantity: number }>
+  ) => {
     if (!workOrder || updatingJobId) return;
     try {
       setUpdatingJobId(jobId);
-      const res = await updateJobStatus(workOrder.id, jobId, newStatus);
+      const res = await updateJobStatus(workOrder.id, jobId, newStatus, partsUsage);
       if (res.success) {
         toast.success('Đã cập nhật trạng thái công việc');
+        setCompleteJobModal(null);
         if (refetchWO) refetchWO();
       } else {
         toast.error(res.message || 'Lỗi khi cập nhật trạng thái công việc');
@@ -229,6 +258,31 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
     } finally {
       setUpdatingJobId(null);
     }
+  };
+
+  const handleUpdateJobStatus = async (jobId: number, newStatus: any) => {
+    if (!workOrder || updatingJobId) return;
+    if (newStatus === 'COMPLETED') {
+      const targetJob = services.flatMap((s) => s.jobs || []).find((j) => j.id === jobId);
+      const activeParts = (targetJob?.parts || []).filter(
+        (p: any) =>
+          p.status !== 'RETURNED' &&
+          (Number(p.issued_quantity) > 0 || Number(p.planned_quantity) > 0)
+      );
+      if (targetJob && activeParts.length > 0) {
+        const usageMap: Record<number, number> = {};
+        for (const p of activeParts) {
+          const issued =
+            Number(p.issued_quantity) > 0
+              ? Number(p.issued_quantity)
+              : Number(p.planned_quantity) || 0;
+          usageMap[p.id] = issued;
+        }
+        setCompleteJobModal({ job: targetJob, usageMap });
+        return;
+      }
+    }
+    await submitJobStatusUpdate(jobId, newStatus);
   };
 
   // Load danh sách nhân viên kỹ thuật (cache 2 phút)
@@ -930,34 +984,60 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
                         </button>
 
                         {/* Xóa hạng mục */}
-                        {deleteConfirm === svc.id ? (
-                          <div className="flex items-center gap-1 bg-surface-container px-1 py-0.5 rounded-lg border border-error/30 animate-fade-in">
+                        {(() => {
+                          const isServiceDeleteLocked =
+                            isApprovedOrBeyond ||
+                            hasApprovedQuotation ||
+                            getServiceDerivedStatus(svc) === 'IN_PROGRESS' ||
+                            svc.status === 'IN_PROGRESS';
+
+                          if (isServiceDeleteLocked) {
+                            return (
+                              <button
+                                type="button"
+                                aria-disabled="true"
+                                onClick={() =>
+                                  toast.error(
+                                    'Không thể xóa dịch vụ khi báo giá đã được phê duyệt hoặc dịch vụ đang thực hiện.'
+                                  )
+                                }
+                                className="p-1 text-slate-300 opacity-60 cursor-not-allowed rounded-lg"
+                                title="Không thể xóa dịch vụ khi báo giá đã được phê duyệt hoặc dịch vụ đang thực hiện."
+                              >
+                                <span className="material-symbols-outlined text-[16px]">delete_outline</span>
+                              </button>
+                            );
+                          }
+
+                          return deleteConfirm === svc.id ? (
+                            <div className="flex items-center gap-1 bg-surface-container px-1 py-0.5 rounded-lg border border-error/30 animate-fade-in">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveService(svc.id)}
+                                disabled={deleting}
+                                className="px-2 py-0.5 bg-error text-white rounded text-[11px] font-bold cursor-pointer"
+                              >
+                                Xóa?
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirm(null)}
+                                className="p-0.5 text-on-surface-variant hover:text-on-surface cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">close</span>
+                              </button>
+                            </div>
+                          ) : (
                             <button
                               type="button"
-                              onClick={() => handleRemoveService(svc.id)}
-                              disabled={deleting}
-                              className="px-2 py-0.5 bg-error text-white rounded text-[11px] font-bold cursor-pointer"
+                              onClick={() => setDeleteConfirm(svc.id)}
+                              className="p-1 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors cursor-pointer"
+                              title="Xóa hạng mục này"
                             >
-                              Xóa?
+                              <span className="material-symbols-outlined text-[16px]">delete_outline</span>
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => setDeleteConfirm(null)}
-                              className="p-0.5 text-on-surface-variant hover:text-on-surface cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-[14px]">close</span>
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setDeleteConfirm(svc.id)}
-                            className="p-1 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors cursor-pointer"
-                            title="Xóa hạng mục này"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">delete_outline</span>
-                          </button>
-                        )}
+                          );
+                        })()}
                       </>
                     )}
                   </div>
@@ -1149,51 +1229,66 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
 
                                   {/* Trạng thái */}
                                   <td className="px-4 py-3 text-center whitespace-nowrap">
-                                    {!isWOClosed && (isExecutionActive || workOrder?.status === 'APPROVED') ? (
-                                      <div className="relative inline-flex items-center group">
-                                        <div
-                                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all shadow-2xs group-hover:shadow-xs group-hover:brightness-95 ${jobStatus.bg} ${jobStatus.text}`}
-                                        >
-                                          {updatingJobId === job.id ? (
-                                            <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
-                                          ) : (
-                                            <span
-                                              className={`material-symbols-outlined text-[13px] leading-none shrink-0 ${
-                                                job.status === 'IN_PROGRESS' ? 'animate-spin' : ''
-                                              }`}
+                                    {(() => {
+                                      const allowedValues = ALLOWED_JOB_STATUS_TRANSITIONS[job.status] || [job.status];
+                                      const availableOptions = JOB_STATUS_OPTIONS.filter((opt) =>
+                                        allowedValues.includes(opt.value)
+                                      );
+                                      const canChangeStatus =
+                                        !isWOClosed &&
+                                        (isExecutionActive || workOrder?.status === 'APPROVED') &&
+                                        availableOptions.length > 1;
+
+                                      if (canChangeStatus) {
+                                        return (
+                                          <div className="relative inline-flex items-center group">
+                                            <div
+                                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all shadow-2xs group-hover:shadow-xs group-hover:brightness-95 ${jobStatus.bg} ${jobStatus.text}`}
                                             >
-                                              {jobStatus.icon}
-                                            </span>
-                                          )}
-                                          <span className="whitespace-nowrap">{jobStatus.label}</span>
-                                          <span className="material-symbols-outlined text-[14px] leading-none opacity-60 shrink-0">
-                                            arrow_drop_down
-                                          </span>
-                                        </div>
-                                        <select
-                                          value={job.status}
-                                          disabled={updatingJobId === job.id}
-                                          onChange={(e) => handleUpdateJobStatus(job.id, e.target.value as any)}
-                                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                                          title="Nhấp để thay đổi trạng thái công việc"
+                                              {updatingJobId === job.id ? (
+                                                <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+                                              ) : (
+                                                <span
+                                                  className={`material-symbols-outlined text-[13px] leading-none shrink-0 ${
+                                                    job.status === 'IN_PROGRESS' ? 'animate-spin' : ''
+                                                  }`}
+                                                >
+                                                  {jobStatus.icon}
+                                                </span>
+                                              )}
+                                              <span className="whitespace-nowrap">{jobStatus.label}</span>
+                                              <span className="material-symbols-outlined text-[14px] leading-none opacity-60 shrink-0">
+                                                arrow_drop_down
+                                              </span>
+                                            </div>
+                                            <select
+                                              value={job.status}
+                                              disabled={updatingJobId === job.id}
+                                              onChange={(e) => handleUpdateJobStatus(job.id, e.target.value as any)}
+                                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                                              title="Nhấp để thay đổi trạng thái công việc"
+                                            >
+                                              {availableOptions.map((opt) => (
+                                                <option key={opt.value} value={opt.value}>
+                                                  {opt.label}
+                                                </option>
+                                              ))}
+                                            </select>
+                                          </div>
+                                        );
+                                      }
+
+                                      return (
+                                        <span
+                                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${jobStatus.bg} ${jobStatus.text}`}
                                         >
-                                          <option value="PLANNED">Chờ thực hiện</option>
-                                          <option value="IN_PROGRESS">Đang làm</option>
-                                          <option value="COMPLETED">Đã hoàn thành</option>
-                                          <option value="REWORK">Cần làm lại</option>
-                                          <option value="PASSED">Đạt KĐ</option>
-                                        </select>
-                                      </div>
-                                    ) : (
-                                      <span
-                                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${jobStatus.bg} ${jobStatus.text}`}
-                                      >
-                                        <span className="material-symbols-outlined text-[13px]">
-                                          {jobStatus.icon}
+                                          <span className="material-symbols-outlined text-[13px]">
+                                            {jobStatus.icon}
+                                          </span>
+                                          <span>{jobStatus.label}</span>
                                         </span>
-                                        <span>{jobStatus.label}</span>
-                                      </span>
-                                    )}
+                                      );
+                                    })()}
                                   </td>
 
                                   {/* Thao tác */}
@@ -1379,6 +1474,139 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
       )}
 
 
+      {/* MODAL XÁC NHẬN VẬT TƯ THỰC DÙNG KHI HOÀN TẤT CÔNG VIỆC */}
+      {workOrder && completeJobModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+          <div className="bg-surface-container-lowest w-full max-w-lg rounded-2xl border border-outline-variant shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-outline-variant/40 flex items-center justify-between bg-surface-container-low/60">
+              <div>
+                <h3 className="text-title-md font-bold text-on-surface">
+                  Xác nhận vật tư thực dùng
+                </h3>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Công việc: <span className="font-semibold text-on-surface">{completeJobModal.job.name}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCompleteJobModal(null)}
+                className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-3 max-h-[60vh] overflow-y-auto">
+              <p className="text-xs text-on-surface-variant">
+                Nhập số lượng phụ tùng thực tế đã sử dụng. Phần vật tư dư thừa sẽ tự động hoàn trả lại kho khả dụng.
+              </p>
+
+              {(completeJobModal.job.parts || [])
+                .filter(
+                  (p: any) =>
+                    p.status !== 'RETURNED' &&
+                    (Number(p.issued_quantity) > 0 || Number(p.planned_quantity) > 0)
+                )
+                .map((part: any) => {
+                  const issued =
+                    Number(part.issued_quantity) > 0
+                      ? Number(part.issued_quantity)
+                      : Number(part.planned_quantity) || 0;
+                  const used = completeJobModal.usageMap[part.id] ?? issued;
+                  const returned = Math.max(0, Number((issued - used).toFixed(2)));
+                  const partName =
+                    part.item?.part_category?.name || part.item?.sku || `Phụ tùng #${part.item_id}`;
+
+                  return (
+                    <div
+                      key={part.id}
+                      className="p-3.5 rounded-xl border border-outline-variant/60 bg-surface-container-low/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-on-surface truncate">{partName}</p>
+                        <div className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-3 font-mono">
+                          <span>Đã xuất: <strong className="text-on-surface">{issued}</strong></span>
+                          {returned > 0 && (
+                            <span className="text-amber-700 font-semibold">
+                              Trả lại kho: {returned}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <label className="text-xs font-semibold text-on-surface-variant whitespace-nowrap">
+                          Thực dùng:
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={issued}
+                          step="any"
+                          value={used}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                            setCompleteJobModal((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    usageMap: {
+                                      ...prev.usageMap,
+                                      [part.id]: Number.isFinite(val) ? val : 0,
+                                    },
+                                  }
+                                : null
+                            );
+                          }}
+                          className="w-24 px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-sm font-mono font-bold text-on-surface focus:outline-none focus:border-primary"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            <div className="px-6 py-4 border-t border-outline-variant/40 bg-surface-container-low/50 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setCompleteJobModal(null)}
+                disabled={updatingJobId !== null}
+                className="px-4 py-2 rounded-xl border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-container"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={updatingJobId !== null}
+                onClick={() => {
+                  const entries = Object.entries(completeJobModal.usageMap).map(([id, qty]) => ({
+                    jobPartId: Number(id),
+                    usedQuantity: Number(qty),
+                  }));
+                  const partsList = completeJobModal.job.parts || [];
+                  const invalid = entries.some((entry) => {
+                    const p: any = partsList.find((item: any) => item.id === entry.jobPartId);
+                    const issued =
+                      Number(p?.issued_quantity) > 0
+                        ? Number(p?.issued_quantity)
+                        : Number(p?.planned_quantity) || 0;
+                    return !Number.isFinite(entry.usedQuantity) || entry.usedQuantity < 0 || entry.usedQuantity > issued;
+                  });
+                  if (invalid) {
+                    toast.error('Số lượng thực dùng phải từ 0 đến số lượng đã xuất');
+                    return;
+                  }
+                  submitJobStatusUpdate(completeJobModal.job.id, 'COMPLETED', entries);
+                }}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                Xác nhận hoàn tất công việc
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

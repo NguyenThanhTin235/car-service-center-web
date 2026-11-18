@@ -510,6 +510,7 @@ export interface CreateManualJobPayload {
   technician_id?: number | null;
   description?: string | null;
   estimated_hours?: number | null;
+  price?: number | null;
   labours?: Array<{
     task_name?: string;
     employee_id?: number | null;
@@ -543,6 +544,7 @@ export interface UpdateManualJobPayload {
   technician_id?: number | null;
   description?: string | null;
   estimated_hours?: number | null;
+  price?: number | null;
 }
 
 /**
@@ -711,9 +713,13 @@ export async function updateServiceStatus(
 export async function updateJobStatus(
   workOrderId: number,
   jobId: number,
-  status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'REWORK' | 'PASSED'
+  status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'REWORK' | 'PASSED',
+  partsUsage?: Array<{ jobPartId: number; usedQuantity: number }>
 ): Promise<ApiResponse<WoJob>> {
-  const response = await api.patch(`/api/work-orders/${workOrderId}/jobs/${jobId}/status`, { status });
+  const response = await api.patch(`/api/work-orders/${workOrderId}/jobs/${jobId}/status`, {
+    status,
+    ...(partsUsage ? { partsUsage } : {}),
+  });
   return response.data;
 }
 

@@ -236,8 +236,26 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
   };
 
   // Handler: Cập nhật chiết khấu (UC-39)
+  const discountValidationError = (() => {
+    if (!activeQuotation) return null;
+    if (!Number.isFinite(discountValue) || discountValue < 0) {
+      return 'Mức chiết khấu không được nhỏ hơn 0.';
+    }
+    if (discountType === 'percent' && discountValue > 100) {
+      return 'Mức chiết khấu không được vượt quá 100%.';
+    }
+    if (discountType === 'amount' && discountValue > activeQuotation.subtotal) {
+      return `Mức chiết khấu không được vượt quá tổng số tiền ban đầu của báo giá (${formatVND(activeQuotation.subtotal)}).`;
+    }
+    return null;
+  })();
+
   const handleSaveDiscount = async () => {
     if (!activeQuotation) return;
+    if (discountValidationError) {
+      toast.error(discountValidationError);
+      return;
+    }
     try {
       setActionLoading(true);
       const payload =
@@ -825,17 +843,31 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
             </div>
 
             <div>
-              <label className="text-xs font-bold text-on-surface-variant mb-1 block">
-                {discountType === 'amount' ? 'Số tiền giảm (VND)' : 'Tỷ lệ chiết khấu (%)'}
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-on-surface-variant">
+                  {discountType === 'amount' ? 'Số tiền giảm (VND)' : 'Tỷ lệ chiết khấu (%)'}
+                </label>
+                {activeQuotation && (
+                  <span className="text-[11px] font-mono text-on-surface-variant">
+                    Tổng ban đầu: {formatVND(activeQuotation.subtotal)}
+                  </span>
+                )}
+              </div>
               <input
                 type="number"
                 min={0}
                 max={discountType === 'percent' ? 100 : activeQuotation?.subtotal}
                 value={discountValue}
-                onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
-                className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm font-mono text-on-surface focus:outline-none focus:border-primary"
+                onChange={(e) => setDiscountValue(e.target.value === '' ? 0 : Number(e.target.value))}
+                className={`w-full px-3 py-2 bg-surface-container-lowest border rounded-lg text-sm font-mono text-on-surface focus:outline-none ${
+                  discountValidationError
+                    ? 'border-rose-500 focus:border-rose-500'
+                    : 'border-outline-variant focus:border-primary'
+                }`}
               />
+              {discountValidationError && (
+                <p className="mt-1.5 text-xs font-medium text-rose-600">{discountValidationError}</p>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2">

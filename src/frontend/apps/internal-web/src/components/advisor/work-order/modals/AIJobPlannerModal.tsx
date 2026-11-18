@@ -263,6 +263,14 @@ export default function AIJobPlannerModal({
       return;
     }
 
+    const hasInvalidHours = servicesToApply.some((svc) =>
+      svc.jobs.some((j: any) => !Number.isFinite(Number(j.estimated_hours)) || Number(j.estimated_hours) <= 0)
+    );
+    if (hasInvalidHours) {
+      toast.error('Số giờ công và đơn giá nhân công phải lớn hơn 0');
+      return;
+    }
+
     try {
       setApplying(true);
       const res = await applyAIJobs(workOrderId, { services: servicesToApply });

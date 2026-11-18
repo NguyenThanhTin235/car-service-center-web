@@ -21,12 +21,26 @@ const PART_STATUS_MAP: Record<string, { label: string; bg: string; text: string 
   PLANNED: { label: 'Đã lên kế hoạch', bg: 'bg-blue-500/10 border-blue-500/20', text: 'text-blue-700 dark:text-blue-400' },
   RESERVED: { label: 'Đã giữ chỗ', bg: 'bg-amber-500/10 border-amber-500/20', text: 'text-amber-700 dark:text-amber-400' },
   ISSUED: { label: 'Đã xuất kho', bg: 'bg-purple-500/10 border-purple-500/20', text: 'text-purple-700 dark:text-purple-400' },
-  USED: { label: 'Đã lắp ráp', bg: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-700 dark:text-emerald-400' },
-  RETURNED: { label: 'Đã trả kho', bg: 'bg-slate-500/10 border-slate-500/20', text: 'text-slate-700 dark:text-slate-400' },
+  USED: { label: 'Đã sử dụng', bg: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-700 dark:text-emerald-400' },
+  RETURNED: { label: 'Đã trả lại kho', bg: 'bg-slate-500/10 border-slate-500/20', text: 'text-slate-700 dark:text-slate-400' },
 };
 
 // Đồng bộ trạng thái và SL xuất kho phụ tùng theo từng giai đoạn trạng thái công việc
 const getEffectivePartStatus = (part: WoJobPart) => {
+  if (part.status === 'RETURNED') {
+    return {
+      status: 'RETURNED',
+      issued: 0,
+      ...PART_STATUS_MAP.RETURNED,
+    };
+  }
+  if (part.status === 'USED') {
+    return {
+      status: 'USED',
+      issued: Number(part.issued_quantity) || Number(part.planned_quantity) || 0,
+      ...PART_STATUS_MAP.USED,
+    };
+  }
   const jStatus = part.job?.status;
   if (jStatus === 'COMPLETED' || jStatus === 'PASSED') {
     return {
@@ -37,9 +51,9 @@ const getEffectivePartStatus = (part: WoJobPart) => {
   }
   if (jStatus === 'IN_PROGRESS' || jStatus === 'REWORK') {
     return {
-      status: part.status === 'USED' ? 'USED' : 'ISSUED',
+      status: 'ISSUED',
       issued: Number(part.planned_quantity),
-      ...(part.status === 'USED' ? PART_STATUS_MAP.USED : PART_STATUS_MAP.ISSUED),
+      ...PART_STATUS_MAP.ISSUED,
     };
   }
   return {
@@ -98,7 +112,7 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
 
   useEffect(() => {
     fetchParts();
-  }, [fetchParts]);
+  }, [workOrder, fetchParts]);
 
   // Handle successful save from modal
   const handleModalSuccess = () => {

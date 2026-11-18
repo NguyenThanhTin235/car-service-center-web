@@ -151,6 +151,44 @@ export class QuotationService {
   }
 
   /**
+   * Kiểm tra mức chiết khấu hợp lệ: không âm, không vượt quá 100% và không vượt quá tổng tiền ban đầu
+   */
+  private validateDiscountInput(
+    subtotal: number,
+    dto: { discountAmount?: number; discountPercent?: number }
+  ) {
+    if (dto.discountPercent !== undefined) {
+      const pct = Number(dto.discountPercent);
+      if (!Number.isFinite(pct) || pct < 0) {
+        const err: any = new Error('Mức chiết khấu không được nhỏ hơn 0%.');
+        err.statusCode = 400;
+        throw err;
+      }
+      if (pct > 100) {
+        const err: any = new Error('Mức chiết khấu không được vượt quá 100%.');
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+
+    if (dto.discountAmount !== undefined) {
+      const amt = Number(dto.discountAmount);
+      if (!Number.isFinite(amt) || amt < 0) {
+        const err: any = new Error('Số tiền chiết khấu không được nhỏ hơn 0.');
+        err.statusCode = 400;
+        throw err;
+      }
+      if (amt > subtotal) {
+        const err: any = new Error(
+          'Mức chiết khấu không được vượt quá tổng số tiền ban đầu của báo giá.'
+        );
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+  }
+
+  /**
    * Tự động tạo Báo giá từ kế hoạch hiện tại của Phiếu công việc (UC-37)
    */
   async createQuotation(workOrderId: number, advisorUserId: number, dto: CreateQuotationDto = {}) {
@@ -281,6 +319,12 @@ export class QuotationService {
       if (lineInputs.length === 0) {
         throw new Error('Phiếu công việc chưa có bất kỳ hạng mục dịch vụ hoặc phụ tùng nào có chi phí.');
       }
+
+      const rawSubtotal = lineInputs.reduce(
+        (sum, l) => sum + Math.round(Math.max(0, Number(l.quantity) || 0) * Math.max(0, Number(l.unitPrice) || 0)),
+        0
+      );
+      this.validateDiscountInput(rawSubtotal, dto);
 
       // 3. Tính toán chi phí, chiết khấu và tổng thanh toán theo chuẩn Zero-Tax
       const totals = calculatePricingTotals({
@@ -464,6 +508,12 @@ export class QuotationService {
           sortOrder: l.sort_order,
         }));
       }
+
+      const subtotal = currentLines.reduce(
+        (sum, l) => sum + Math.round(Math.max(0, Number(l.quantity) || 0) * Math.max(0, Number(l.unitPrice) || 0)),
+        0
+      );
+      this.validateDiscountInput(subtotal, dto);
 
       // Tính lại tổng
       const totals = calculatePricingTotals({

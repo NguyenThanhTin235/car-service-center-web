@@ -128,11 +128,17 @@ export default function StandardVehicleHandoverModal({
 
   const checkIn = workOrder.check_in;
 
+  const isOdoInvalid =
+    checkIn?.mileage !== null &&
+    checkIn?.mileage !== undefined &&
+    returnMileage !== '' &&
+    Number(returnMileage) < Number(checkIn.mileage);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (checkIn?.mileage && returnMileage !== '' && Number(returnMileage) < Number(checkIn.mileage)) {
-      toast.error(`Số ODO xuất xưởng (${returnMileage} km) không thể nhỏ hơn ODO lúc nhận (${checkIn.mileage} km)`);
+    if (isOdoInvalid) {
+      toast.error(`Số ODO xuất xưởng (${returnMileage} km) không thể nhỏ hơn ODO lúc nhận (${checkIn?.mileage} km)`);
       return;
     }
 
@@ -204,7 +210,7 @@ export default function StandardVehicleHandoverModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+        <form noValidate onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
           {/* Thông tin phương tiện & khách hàng */}
           <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div>
@@ -258,10 +264,19 @@ export default function StandardVehicleHandoverModal({
                       value={returnMileage}
                       onChange={(e) => setReturnMileage(e.target.value === '' ? '' : Number(e.target.value))}
                       placeholder="Nhập số ODO lúc bàn giao"
-                      className="w-full pl-10 pr-9 py-2 bg-surface rounded-lg border border-outline-variant text-xs sm:text-sm font-mono focus:border-emerald-600 focus:outline-none"
+                      className={`w-full pl-10 pr-9 py-2 bg-surface rounded-lg border text-xs sm:text-sm font-mono focus:outline-none ${
+                        isOdoInvalid
+                          ? 'border-rose-500 focus:border-rose-500'
+                          : 'border-outline-variant focus:border-emerald-600'
+                      }`}
                     />
                     <span className="absolute right-3 top-2.5 text-xs text-on-surface-variant font-mono pointer-events-none">km</span>
                   </div>
+                  {isOdoInvalid && (
+                    <p className="mt-1.5 text-[11px] font-medium text-rose-600">
+                      Số ODO xuất xưởng ({returnMileage} km) không thể nhỏ hơn ODO lúc nhận ({checkIn?.mileage} km).
+                    </p>
+                  )}
                 </div>
               </div>
 

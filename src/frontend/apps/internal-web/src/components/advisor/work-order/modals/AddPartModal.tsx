@@ -741,9 +741,8 @@ export default function AddPartModal({
               <div className="text-body-small">
                 <p className="font-semibold">Cảnh báo thiếu hụt kho:</p>
                 <p>
-                  Số lượng dự kiến ({plannedQuantity} {selectedItem.uom?.name || 'đơn vị'}) vượt quá số lượng tồn
-                  thực tế hiện có ({selectedItem.onHand} {selectedItem.uom?.name || 'đơn vị'}). Cần thông báo bộ phận kho
-                  chuẩn bị hoặc nhập thêm hàng.
+                  Số lượng dự kiến vượt quá số lượng tồn thực tế (Tồn: {selectedItem.onHand}, Cần: {plannedQuantity}). Cần
+                  thông báo bộ phận kho chuẩn bị hoặc nhập thêm hàng.
                 </p>
               </div>
             </div>

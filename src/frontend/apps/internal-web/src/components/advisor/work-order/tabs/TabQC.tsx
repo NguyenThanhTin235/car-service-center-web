@@ -182,7 +182,25 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
   };
 
   // Gửi đánh giá QC cho service
+  const incompleteJobs = useMemo(() => {
+    const list: Array<{ id: number; name: string; status: string }> = [];
+    for (const svc of qcData?.services || []) {
+      for (const job of svc.jobs || []) {
+        if (job.status !== 'COMPLETED' && job.status !== 'PASSED') {
+          list.push({ id: job.id, name: job.name, status: job.status });
+        }
+      }
+    }
+    return list;
+  }, [qcData]);
+
   const handleSubmitServiceQc = async (service: QcServiceItem) => {
+    if (incompleteJobs.length > 0) {
+      toast.error(
+        `Không thể nghiệm thu chất lượng vì vẫn còn ${incompleteJobs.length} công việc thi công dở dang chưa hoàn thành.`
+      );
+      return;
+    }
     const serviceForm = evaluationForms[service.id];
     if (!serviceForm) return;
 
@@ -251,6 +269,12 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
 
   // Gửi đánh giá QC cho TOÀN BỘ các dịch vụ trong phiếu cùng một lúc
   const handleSubmitAllQc = async () => {
+    if (incompleteJobs.length > 0) {
+      toast.error(
+        `Không thể nghiệm thu chất lượng vì vẫn còn ${incompleteJobs.length} công việc thi công dở dang chưa hoàn thành.`
+      );
+      return;
+    }
     if (!qcData?.services || qcData.services.length === 0) return;
 
     // 1. Kiểm tra validation toàn bộ các dịch vụ
@@ -656,8 +680,17 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                     type="button"
                     onClick={() => handleSubmitServiceQc(activeService)}
                     disabled={actionLoading}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer disabled:opacity-50"
-                    title="Chỉ lưu kết quả kiểm định của dịch vụ hiện tại"
+                    aria-disabled={incompleteJobs.length > 0}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border ${
+                      incompleteJobs.length > 0
+                        ? 'bg-slate-100 text-slate-400 border-slate-200 opacity-60 cursor-not-allowed'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200 cursor-pointer disabled:opacity-50'
+                    }`}
+                    title={
+                      incompleteJobs.length > 0
+                        ? `Còn ${incompleteJobs.length} công việc chưa hoàn thành, chưa thể nghiệm thu`
+                        : 'Chỉ lưu kết quả kiểm định của dịch vụ hiện tại'
+                    }
                   >
                     <span className="material-symbols-outlined text-[16px]">save</span>
                     <span>Lưu mục này</span>
@@ -668,8 +701,17 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                     type="button"
                     onClick={handleSubmitAllQc}
                     disabled={actionLoading}
-                    className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#0050cd] hover:bg-[#0866ff] text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
-                    title="Lưu kết quả kiểm định cho toàn bộ các dịch vụ và công việc"
+                    aria-disabled={incompleteJobs.length > 0}
+                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-2xs ${
+                      incompleteJobs.length > 0
+                        ? 'bg-slate-200 text-slate-400 opacity-70 cursor-not-allowed'
+                        : 'bg-[#0050cd] hover:bg-[#0866ff] text-white active:scale-95 disabled:opacity-50 cursor-pointer'
+                    }`}
+                    title={
+                      incompleteJobs.length > 0
+                        ? `Còn ${incompleteJobs.length} công việc chưa hoàn thành, chưa thể nghiệm thu`
+                        : 'Lưu kết quả kiểm định cho toàn bộ các dịch vụ và công việc'
+                    }
                   >
                     <span className="material-symbols-outlined text-[18px]">
                       {actionLoading ? 'progress_activity' : 'fact_check'}

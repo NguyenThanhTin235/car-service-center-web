@@ -89,6 +89,7 @@ export default function CreateDispatchJobModal({
         setJobName(job.name || '');
         setDescription(job.description || '');
         setEstimatedHours(Number(job.estimated_hours) || 1.0);
+        setLabourPrice(Number(job.labours?.[0]?.price) || 150000);
         const jtId = job.job_type_id || job.job_type?.id || job.labours?.[0]?.job_type_id || null;
         setSelectedJobTypeId(jtId ? Number(jtId) : null);
         const techId = job.technician_id || job.labours?.[0]?.employee_id || job.labours?.[0]?.employee?.id || null;
@@ -216,6 +217,16 @@ export default function CreateDispatchJobModal({
       return;
     }
 
+    if (
+      !Number.isFinite(Number(estimatedHours)) ||
+      Number(estimatedHours) <= 0 ||
+      !Number.isFinite(Number(labourPrice)) ||
+      Number(labourPrice) <= 0
+    ) {
+      toast.error('Số giờ công và đơn giá nhân công phải lớn hơn 0');
+      return;
+    }
+
     try {
       setSaving(true);
 
@@ -226,7 +237,8 @@ export default function CreateDispatchJobModal({
           job_type_id: selectedJobTypeId || null,
           technician_id: selectedTechnicianId || null,
           description: description.trim() || null,
-          estimated_hours: Number(estimatedHours) || 1.0,
+          estimated_hours: Number(estimatedHours),
+          price: Number(labourPrice),
         };
 
         const res = await updateManualJob(workOrder.id, job.id, updatePayload);
@@ -251,13 +263,13 @@ export default function CreateDispatchJobModal({
         job_type_id: selectedJobTypeId || null,
         technician_id: selectedTechnicianId || null,
         description: description.trim() || null,
-        estimated_hours: Number(estimatedHours) || 1.0,
+        estimated_hours: Number(estimatedHours),
         labours: [
           {
             task_name: jobName.trim(),
             employee_id: selectedTechnicianId || null,
-            estimated_hours: Number(estimatedHours) || 1.0,
-            price: Number(labourPrice) || 150000,
+            estimated_hours: Number(estimatedHours),
+            price: Number(labourPrice),
             job_type_id: selectedJobTypeId || null,
           },
         ],
@@ -503,7 +515,7 @@ export default function CreateDispatchJobModal({
                   max="40"
                   value={estimatedHours}
                   disabled={isReadOnlyMode}
-                  onChange={(e) => setEstimatedHours(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setEstimatedHours(e.target.value === '' ? 0 : parseFloat(e.target.value))}
                   className={`w-full pl-3 pr-10 py-2.5 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm font-bold text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary font-mono ${
                     isReadOnlyMode ? 'bg-surface-container-low/60 cursor-default opacity-80' : ''
                   }`}
@@ -522,10 +534,10 @@ export default function CreateDispatchJobModal({
                 <input
                   type="number"
                   step="10000"
-                  min="0"
+                  min="1"
                   value={labourPrice}
                   disabled={isReadOnlyMode}
-                  onChange={(e) => setLabourPrice(parseInt(e.target.value, 10) || 0)}
+                  onChange={(e) => setLabourPrice(e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
                   className={`w-full pl-3 pr-12 py-2.5 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-sm font-bold text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary font-mono ${
                     isReadOnlyMode ? 'bg-surface-container-low/60 cursor-default opacity-80' : ''
                   }`}
