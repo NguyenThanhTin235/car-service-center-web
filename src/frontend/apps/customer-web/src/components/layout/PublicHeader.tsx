@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import LogoutButton from '@/components/shared/LogoutButton';
+import NotificationBell from '@/components/notifications/NotificationBell';
 import { getDashboardPathByRole } from '@/utils/roleRedirect';
 
 export default function PublicHeader() {
@@ -56,6 +57,7 @@ export default function PublicHeader() {
               <div className="w-24 h-9 bg-surface-container-low animate-pulse rounded-lg"></div>
             ) : isAuthenticated && user ? (
               <>
+                <NotificationBell />
                 <div className="relative flex items-center">
                   <button
                     onClick={() => setProfileOpen(!profileOpen)}

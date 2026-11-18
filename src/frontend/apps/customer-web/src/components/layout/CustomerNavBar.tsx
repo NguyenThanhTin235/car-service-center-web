@@ -7,6 +7,7 @@ import { useAppSelector, useAppDispatch } from '@/store';
 import { logout } from '@/store/slices/authSlice';
 import api from '@/lib/axios';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 const navLinks = [
   { href: '/customer', label: 'Tổng quan', icon: 'home' },
@@ -105,9 +106,7 @@ export default function CustomerNavBar() {
             </Link>
 
             {/* Notification */}
-            <button className="relative p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" title="Thông báo">
-              <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>notifications</span>
-            </button>
+            {mounted && user && <NotificationBell />}
 
             {/* User Profile Dropdown */}
             <div className="relative flex items-center pl-2 border-l border-surface-container-highest gap-2">
