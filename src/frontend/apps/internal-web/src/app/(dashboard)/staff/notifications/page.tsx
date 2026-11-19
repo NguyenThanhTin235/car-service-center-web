@@ -20,21 +20,20 @@ const STAFF_CATEGORIES: NotificationCategoryTab[] = [
   {
     key: 'billing',
     label: 'Yêu cầu Thu ngân',
-    types: ['INVOICE_ISSUED'],
+    types: ['BILLING_REQUEST', 'INVOICE_ISSUED'],
   },
   {
     key: 'payments',
     label: 'Thanh toán',
-    types: ['PAYMENT_SUCCESS', 'PAYMENT_FAILED'],
+    types: ['PAYMENT_SUCCESS'],
   },
   {
     key: 'tasks',
     label: 'Công việc KTV',
     types: [
-      'INTAKE_CREATED',
+      'CHECKIN_READY',
       'WORK_ORDER_STARTED',
       'SERVICE_ITEM_STARTED',
-      'SERVICE_ITEM_COMPLETED',
       'TASK_ASSIGNED',
       'VEHICLE_READY',
       'VEHICLE_HANDOVER',
@@ -44,10 +43,14 @@ const STAFF_CATEGORIES: NotificationCategoryTab[] = [
 
 export default function StaffNotificationsPage() {
   return (
-    <NotificationCenterView
-      portalName="Quầy Dịch Vụ"
-      subtitle="Theo dõi lịch hẹn khách hàng, tiếp nhận xe, yêu cầu thu ngân và tiến độ sửa chữa."
-      categories={STAFF_CATEGORIES}
-    />
+    <div className="flex flex-col gap-5 max-w-[1440px] mx-auto w-full">
+      <NotificationCenterView
+        portalName="Quầy Dịch Vụ"
+        subtitle="Theo dõi lịch hẹn khách hàng, tiếp nhận xe, yêu cầu thu ngân và tiến độ sửa chữa."
+        categories={STAFF_CATEGORIES}
+        actionsPlacement="below-filters"
+        hideHeader
+      />
+    </div>
   );
 }

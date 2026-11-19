@@ -40,7 +40,6 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
         ],
       },
       { label: 'Báo cáo vận hành', href: '/reports', icon: 'monitoring' },
-      { label: 'Thông báo', href: '/manager/notifications', icon: 'notifications' },
     ],
     [lowStockCount, inventoryItems.length, partCategories.length]
   );

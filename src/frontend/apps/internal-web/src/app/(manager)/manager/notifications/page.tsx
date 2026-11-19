@@ -20,7 +20,6 @@ const MANAGER_CATEGORIES: NotificationCategoryTab[] = [
       'QC_PASSED',
       'QC_FAILED',
       'PAYMENT_SUCCESS',
-      'PAYMENT_FAILED',
       'SYSTEM_ALERT',
     ],
   },
@@ -28,10 +27,14 @@ const MANAGER_CATEGORIES: NotificationCategoryTab[] = [
 
 export default function ManagerNotificationsPage() {
   return (
-    <NotificationCenterView
-      portalName="Quản Lý Dịch Vụ"
-      subtitle="Giám sát cảnh báo tồn kho phụ tùng, chất lượng QC và tình hình vận hành xưởng."
-      categories={MANAGER_CATEGORIES}
-    />
+    <div className="flex flex-col gap-5 max-w-[1440px] mx-auto w-full">
+      <NotificationCenterView
+        portalName="Quản Lý Dịch Vụ"
+        subtitle="Giám sát cảnh báo tồn kho phụ tùng, chất lượng QC và tình hình vận hành xưởng."
+        categories={MANAGER_CATEGORIES}
+        actionsPlacement="below-filters"
+        hideHeader
+      />
+    </div>
   );
 }

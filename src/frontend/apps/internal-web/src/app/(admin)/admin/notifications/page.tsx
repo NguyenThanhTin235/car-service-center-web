@@ -21,10 +21,14 @@ const ADMIN_CATEGORIES: NotificationCategoryTab[] = [
 
 export default function AdminNotificationsPage() {
   return (
-    <NotificationCenterView
-      portalName="Quản Trị Hệ Thống"
-      subtitle="Theo dõi cảnh báo bảo mật, trạng thái hạ tầng và các thông báo quản trị hệ thống."
-      categories={ADMIN_CATEGORIES}
-    />
+    <div className="flex flex-col gap-5 max-w-[1440px] mx-auto w-full">
+      <NotificationCenterView
+        portalName="Quản Trị Hệ Thống"
+        subtitle="Theo dõi cảnh báo bảo mật, trạng thái hạ tầng và các thông báo quản trị hệ thống."
+        categories={ADMIN_CATEGORIES}
+        actionsPlacement="below-filters"
+        hideHeader
+      />
+    </div>
   );
 }

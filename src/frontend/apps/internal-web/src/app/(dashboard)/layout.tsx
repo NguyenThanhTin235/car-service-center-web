@@ -14,7 +14,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { records: intakeRecords } = useAppSelector((state) => state.intake);
   const { appointments } = useAppSelector((state) => state.appointments);
   const { summary: billingSummary } = useAppSelector((state) => state.billing);
-  const { unreadCount } = useAppSelector((state) => state.notifications);
 
   const queuedIntakeCount = useMemo(
     () => intakeRecords.filter((r) => r.status === 'QUEUED').length,
@@ -56,14 +55,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             : undefined,
       },
       { label: 'Quản lý Khách hàng', href: '/staff/customers', icon: 'group' },
-      {
-        label: 'Thông báo',
-        href: '/staff/notifications',
-        icon: 'notifications',
-        badge: unreadCount > 0 ? unreadCount : undefined,
-      },
     ],
-    [activeAptCount, queuedIntakeCount, billingSummary, unreadCount]
+    [activeAptCount, queuedIntakeCount, billingSummary]
   );
 
   const telemetryItems: SaaSTelemetryDotItem[] = useMemo(

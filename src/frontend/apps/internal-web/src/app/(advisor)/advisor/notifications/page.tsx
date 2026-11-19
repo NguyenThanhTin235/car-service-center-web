@@ -10,7 +10,7 @@ const ADVISOR_CATEGORIES: NotificationCategoryTab[] = [
   {
     key: 'intake',
     label: 'Xe chờ tiếp nhận',
-    types: ['INTAKE_CREATED', 'APPOINTMENT_CONFIRMED', 'APPOINTMENT_RESCHEDULED'],
+    types: ['CHECKIN_READY', 'APPOINTMENT_CONFIRMED', 'APPOINTMENT_RESCHEDULED'],
   },
   {
     key: 'quotations',
@@ -26,17 +26,21 @@ const ADVISOR_CATEGORIES: NotificationCategoryTab[] = [
       'VEHICLE_READY',
       'VEHICLE_HANDOVER',
       'WORK_ORDER_STARTED',
-      'SERVICE_ITEM_COMPLETED',
+      'SERVICE_ITEM_STARTED',
     ],
   },
 ];
 
 export default function AdvisorNotificationsPage() {
   return (
-    <NotificationCenterView
-      portalName="Cố Vấn Dịch Vụ"
-      subtitle="Cập nhật xe chờ tiếp nhận, phản hồi báo giá từ khách hàng, kết quả QC và bàn giao."
-      categories={ADVISOR_CATEGORIES}
-    />
+    <div className="flex flex-col gap-5 py-3 max-w-[1440px] mx-auto w-full">
+      <NotificationCenterView
+        portalName="Cố Vấn Dịch Vụ"
+        subtitle="Cập nhật xe chờ tiếp nhận, phản hồi báo giá từ khách hàng, kết quả QC và bàn giao."
+        categories={ADVISOR_CATEGORIES}
+        actionsPlacement="below-filters"
+        hideHeader
+      />
+    </div>
   );
 }

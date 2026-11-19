@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { NotificationItem } from '@/lib/api/notification.api';
 import {
@@ -26,6 +27,11 @@ export default function NotificationDetailModal({
   roles = [],
 }: NotificationDetailModalProps) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -38,7 +44,7 @@ export default function NotificationDetailModal({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen || !item) return null;
+  if (!mounted || !isOpen || !item) return null;
 
   const visual = getNotificationVisual(item.type);
   const typeLabel = getNotificationTypeLabel(item.type);
@@ -55,9 +61,9 @@ export default function NotificationDetailModal({
     onClose();
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -127,20 +133,6 @@ export default function NotificationDetailModal({
           <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
             {item.message}
           </p>
-
-          {(item.entityType || item.entityId !== null) && (
-            <div className="pt-2 flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold text-slate-500">
-                Đối tượng liên quan:
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono text-xs font-semibold">
-                {item.entityType || 'ENTITY'}
-                {item.entityId !== null && item.entityId !== undefined
-                  ? ` #${item.entityId}`
-                  : ''}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Footer */}
@@ -178,6 +170,7 @@ export default function NotificationDetailModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

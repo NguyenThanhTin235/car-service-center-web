@@ -102,8 +102,9 @@ export function formatExactDateTimeVi(dateInput: string): string {
 const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
   APPOINTMENT_CONFIRMED: 'Xác nhận lịch hẹn',
   APPOINTMENT_CANCELLED: 'Hủy lịch hẹn',
-  APPOINTMENT_REMINDER: 'Nhắc lịch hẹn',
+  APPOINTMENT_REMINDER: 'Nhắc nhở lịch hẹn',
   APPOINTMENT_RESCHEDULED: 'Dời lịch hẹn',
+  CHECKIN_READY: 'Xe sẵn sàng tiếp nhận',
   INTAKE_CREATED: 'Tiếp nhận xe',
   QUOTATION_SENT: 'Đã gửi báo giá',
   QUOTATION_APPROVED: 'Khách duyệt báo giá',
@@ -119,13 +120,14 @@ const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
   QC_PASSED: 'Kiểm tra QC đạt',
   QC_FAILED: 'Kiểm tra QC không đạt',
   LOW_STOCK_ALERT: 'Cảnh báo tồn kho',
+  BILLING_REQUEST: 'Yêu cầu thanh toán',
   TASK_ASSIGNED: 'Phân công công việc',
   SYSTEM_ALERT: 'Cảnh báo hệ thống',
   GENERAL: 'Thông báo chung',
 };
 
 export function getNotificationTypeLabel(type: string): string {
-  return NOTIFICATION_TYPE_LABELS[type.toUpperCase()] || type;
+  return NOTIFICATION_TYPE_LABELS[(type || '').toUpperCase()] || 'Thông báo';
 }
 
 export function getNotificationVisual(type: string): {
