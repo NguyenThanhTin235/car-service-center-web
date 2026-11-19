@@ -189,6 +189,7 @@ export default function SaaSDashboardShell({
 
   const displayName = mounted ? user?.fullName || defaultRoleLabel : defaultRoleLabel;
   const displayRole = mounted ? formatRoleLabel(user?.roles?.[0]) || roleTitle : roleTitle;
+  const profileHref = mounted ? resolveProfileHref(user?.roles || []) : '/staff/profile';
   const initials =
     displayName
       .split(' ')
@@ -593,7 +594,7 @@ export default function SaaSDashboardShell({
           {isMini ? (
             <div className="flex flex-col items-center gap-2">
               <Link
-                href={resolveProfileHref(user?.roles || [])}
+                href={profileHref}
                 title={`${displayName} — Thông tin cá nhân`}
                 aria-label="Thông tin cá nhân"
                 className="w-9 h-9 rounded-full bg-[#0866ff] hover:bg-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center transition-colors"
@@ -612,7 +613,7 @@ export default function SaaSDashboardShell({
           ) : (
             <div className="flex items-center justify-between gap-2 px-1">
               <Link
-                href={resolveProfileHref(user?.roles || [])}
+                href={profileHref}
                 title="Mở trang thông tin cá nhân"
                 className={`flex items-center gap-2.5 min-w-0 flex-1 rounded-xl p-1 -m-1 transition-colors ${
                   isLight ? 'hover:bg-slate-200/60' : 'hover:bg-white/10'

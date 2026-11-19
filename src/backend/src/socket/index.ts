@@ -1,6 +1,7 @@
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
-import { verifyToken, JwtPayload } from '../utils/jwt.util';
+import { verifyAccessToken, JwtPayload } from '../utils/jwt.util';
+import { BLACKLIST_JTI_KEY, TOKEN_INVALID_BEFORE_KEY } from '../services/auth.service';
 import { getCache } from '../utils/redis.util';
 import prisma from '../utils/prisma';
 
@@ -66,10 +67,10 @@ function extractToken(socket: Socket, portal?: 'internal' | 'customer'): string 
 
   const cookies = parseCookies(socket.handshake.headers.cookie);
   if (portal === 'internal') {
-    return cookies.staff_jwt || cookies.jwt || cookies.customer_jwt || null;
+    return cookies.staff_jwt || null;
   }
   if (portal === 'customer') {
-    return cookies.customer_jwt || cookies.jwt || cookies.staff_jwt || null;
+    return cookies.customer_jwt || null;
   }
   return cookies.staff_jwt || cookies.customer_jwt || cookies.jwt || null;
 }
@@ -111,9 +112,21 @@ export function initSocketServer(httpServer: HttpServer): Server {
 
       let payload: JwtPayload;
       try {
-        payload = verifyToken(token);
+        payload = verifyAccessToken(token);
       } catch {
         return next(new Error('Unauthorized: Invalid or expired token'));
+      }
+
+      if (payload.jti) {
+        const isBlacklisted = await getCache(BLACKLIST_JTI_KEY(payload.jti));
+        if (isBlacklisted) {
+          return next(new Error('Unauthorized: Session has been logged out'));
+        }
+      }
+
+      const invalidBeforeRaw = await getCache(TOKEN_INVALID_BEFORE_KEY(payload.id));
+      if (invalidBeforeRaw && payload.iat && payload.iat < Number(invalidBeforeRaw)) {
+        return next(new Error('Unauthorized: Session invalidated after password change'));
       }
 
       const isRevoked = await getCache(`revoked_user:${payload.id}`);

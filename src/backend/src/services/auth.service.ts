@@ -1,6 +1,14 @@
+import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import prisma from '../utils/prisma';
-import { generateToken, JwtPayload } from '../utils/jwt.util';
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyAccessToken,
+  verifyRefreshToken,
+  REFRESH_TOKEN_TTL_SECONDS,
+  JwtPayload,
+} from '../utils/jwt.util';
 import { generateOtp, hashOtp, verifyOtp, isOtpExpired, getOtpExpiresAt } from '../utils/otp.util';
 import { sendOtpEmail } from '../utils/email.util';
 import { setCache, getCache, deleteCache } from '../utils/redis.util';
@@ -19,6 +27,27 @@ const LOGIN_FAIL_KEY = (email: string) => `login_fail:${email.toLowerCase()}`;
 const LOGIN_LOCK_KEY = (email: string) => `login_lock:${email.toLowerCase()}`;
 export const LOGIN_LOCKED_MESSAGE =
   'Bạn đã nhập sai mật khẩu quá số lần cho phép. Vui lòng thử lại sau ít phút hoặc sử dụng tính năng Quên mật khẩu.';
+
+// Token revocation & refresh rotation keys
+export const BLACKLIST_JTI_KEY = (jti: string) => `bl_jti:${jti}`;
+export const TOKEN_INVALID_BEFORE_KEY = (userId: number) => `token_invalid_before:${userId}`;
+export const REFRESH_FAMILY_KEY = (userId: number, familyId: string) =>
+  `rt_family:${userId}:${familyId}`;
+
+const STAFF_PORTAL_ROLES = new Set([
+  'ADMIN',
+  'ADMINISTRATOR',
+  'MANAGER',
+  'DESK STAFF',
+  'DESK_STAFF',
+  'SA',
+  'ADVISOR',
+  'STAFF',
+  'SERVICE_ADVISOR',
+  'TECHNICIAN',
+  'QC_STAFF',
+  'CASHIER',
+]);
 
 export class LoginLockedError extends Error {
   constructor(public retryAfterSeconds: number) {
@@ -44,7 +73,11 @@ export class AuthService {
   // ========================
   // UC-03 Login
   // ========================
-  async login(email: string, passwordPlain: string) {
+  async login(
+    email: string,
+    passwordPlain: string,
+    portal?: 'internal' | 'customer'
+  ) {
     // 1. Chặn ngay nếu tài khoản (email) đang bị khóa tạm thời
     const lockedUntilRaw = await getCache(LOGIN_LOCK_KEY(email));
     if (lockedUntilRaw) {
@@ -85,8 +118,28 @@ export class AuthService {
       roles,
     };
 
-    const token = generateToken(payload);
-    return { token, user: payload };
+    return this.issueSessionTokens(payload, portal);
+  }
+
+  private async issueSessionTokens(
+    payload: JwtPayload,
+    portal?: 'internal' | 'customer'
+  ) {
+    const familyId = crypto.randomUUID();
+    const token = generateAccessToken(payload);
+    const { token: refreshToken, jti } = generateRefreshToken({
+      id: payload.id,
+      familyId,
+      portal,
+    });
+
+    await setCache(
+      REFRESH_FAMILY_KEY(payload.id, familyId),
+      jti,
+      REFRESH_TOKEN_TTL_SECONDS
+    );
+
+    return { token, refreshToken, user: payload };
   }
 
   /**
@@ -107,11 +160,125 @@ export class AuthService {
   }
 
   // ========================
-  // UC-04 Logout
+  // Refresh Access Token (with Rotation & Reuse Detection)
   // ========================
-  async logout(): Promise<void> {
-    // Stateless JWT: chỉ cần xóa cookie ở controller.
-    // Nếu cần blacklist, lưu token vào Redis tại đây.
+  async refreshSession(
+    refreshToken: string,
+    expectedPortal?: 'internal' | 'customer'
+  ) {
+    let decoded;
+    try {
+      decoded = verifyRefreshToken(refreshToken);
+    } catch {
+      throw new Error('Refresh token không hợp lệ hoặc đã hết hạn.');
+    }
+
+    if (expectedPortal && decoded.portal && decoded.portal !== expectedPortal) {
+      throw new Error('Refresh token không thuộc cổng truy cập này.');
+    }
+
+    const isRevoked = await getCache(`revoked_user:${decoded.id}`);
+    if (isRevoked) {
+      throw new Error('Tài khoản đã bị tạm khóa và phiên đăng nhập bị thu hồi.');
+    }
+
+    const invalidBeforeRaw = await getCache(TOKEN_INVALID_BEFORE_KEY(decoded.id));
+    if (invalidBeforeRaw && decoded.iat && decoded.iat < Number(invalidBeforeRaw)) {
+      throw new Error('Phiên đăng nhập đã hết hiệu lực do thay đổi bảo mật.');
+    }
+
+    const familyKey = REFRESH_FAMILY_KEY(decoded.id, decoded.familyId);
+    const storedJti = await getCache(familyKey);
+
+    // Reuse detection: token hợp lệ về chữ ký nhưng đã dùng hoặc đã bị xóa
+    if (!storedJti || storedJti !== decoded.jti) {
+      await deleteCache(familyKey);
+      throw new Error('Phiên làm việc đã hết hạn hoặc bị thu hồi. Vui lòng đăng nhập lại.');
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        email: true,
+        full_name: true,
+        is_active: true,
+        roles: { select: { role: { select: { name: true } } } },
+      },
+    });
+
+    if (!user || !user.is_active) {
+      await deleteCache(familyKey);
+      throw new Error('Tài khoản không tồn tại hoặc đã bị vô hiệu hóa.');
+    }
+
+    const liveRoles = user.roles.map((r) => r.role.name);
+    if (expectedPortal === 'internal') {
+      const hasStaffRole = liveRoles.some((r) =>
+        STAFF_PORTAL_ROLES.has(r.toUpperCase().trim())
+      );
+      if (!hasStaffRole) {
+        await deleteCache(familyKey);
+        throw new Error('Tài khoản khách hàng không có quyền truy cập trang quản trị nội bộ.');
+      }
+    }
+
+    const payload: JwtPayload = {
+      id: user.id,
+      email: user.email,
+      fullName: user.full_name,
+      roles: liveRoles,
+    };
+
+    const nextAccessToken = generateAccessToken(payload);
+    const { token: nextRefreshToken, jti: nextJti } = generateRefreshToken({
+      id: user.id,
+      familyId: decoded.familyId,
+      portal: decoded.portal || expectedPortal,
+    });
+
+    await setCache(familyKey, nextJti, REFRESH_TOKEN_TTL_SECONDS);
+
+    return { token: nextAccessToken, refreshToken: nextRefreshToken, user: payload };
+  }
+
+  // ========================
+  // UC-04 Logout (Blacklist Access Token jti + Revoke Refresh Family)
+  // ========================
+  async logout(params?: {
+    accessToken?: string | null;
+    refreshToken?: string | null;
+  }): Promise<void> {
+    if (params?.accessToken) {
+      try {
+        const decoded = verifyAccessToken(params.accessToken);
+        if (decoded.jti) {
+          const nowSec = Math.floor(Date.now() / 1000);
+          const ttl = decoded.exp ? Math.max(1, decoded.exp - nowSec) : 15 * 60;
+          await setCache(BLACKLIST_JTI_KEY(decoded.jti), '1', ttl);
+        }
+      } catch {
+        // Token already expired or invalid — ignore
+      }
+    }
+
+    if (params?.refreshToken) {
+      try {
+        const decoded = verifyRefreshToken(params.refreshToken);
+        await deleteCache(REFRESH_FAMILY_KEY(decoded.id, decoded.familyId));
+      } catch {
+        // Refresh token already expired or invalid — ignore
+      }
+    }
+  }
+
+  async revokeAllUserTokens(userId: number): Promise<void> {
+    const nowSec = Math.floor(Date.now() / 1000);
+    await setCache(
+      TOKEN_INVALID_BEFORE_KEY(userId),
+      String(nowSec),
+      REFRESH_TOKEN_TTL_SECONDS
+    );
   }
 
   // ========================
@@ -197,8 +364,7 @@ export class AuthService {
       fullName: newUser.full_name,
       roles: ['CUSTOMER'],
     };
-    const token = generateToken(payload);
-    return { token, user: payload };
+    return this.issueSessionTokens(payload, 'customer');
   }
 
   // ========================
@@ -255,16 +421,18 @@ export class AuthService {
     }
 
     const newHash = await bcrypt.hash(newPassword, 12);
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { email },
       data: { password_hash: newHash },
+      select: { id: true },
     });
 
     // Xóa pending data
     await deleteCache(RESET_KEY(email));
-    // Đặt lại mật khẩu thành công → gỡ khóa đăng nhập tạm thời
+    // Đặt lại mật khẩu thành công → gỡ khóa đăng nhập tạm thời & thu hồi toàn bộ token cũ
     await deleteCache(LOGIN_LOCK_KEY(email));
     await deleteCache(LOGIN_FAIL_KEY(email));
+    await this.revokeAllUserTokens(updatedUser.id);
   }
 
   // ========================

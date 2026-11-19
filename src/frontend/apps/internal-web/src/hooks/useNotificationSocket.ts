@@ -84,10 +84,13 @@ export function useNotificationSocket(): void {
 
       socket.on('notification:new', (payload: NotificationItem) => {
         dispatch(receiveNewNotification(payload));
-        toast(payload.title || 'Bạn có thông báo mới', {
-          icon: '🔔',
-          duration: 4000,
-        });
+        // Tránh chồng toast khi Admin tự thao tác khóa/mở khóa tài khoản trên trang Quản lý tài khoản
+        if (payload.entityType?.toUpperCase() !== 'USER') {
+          toast(payload.title || 'Bạn có thông báo mới', {
+            icon: '🔔',
+            duration: 4000,
+          });
+        }
       });
 
       socket.on('notification:unread_count', (payload: { count: number }) => {

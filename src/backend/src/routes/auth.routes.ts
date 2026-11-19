@@ -4,11 +4,12 @@ import { authenticate } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-// UC-03: Login
+// UC-03: Login & Refresh
 router.post('/login', authController.login.bind(authController));
+router.post('/refresh', authController.refresh.bind(authController));
 
-// UC-04: Logout (cần authenticate để biết đang logout ai — optional, nhưng good practice)
-router.post('/logout', authenticate, authController.logout.bind(authController));
+// UC-04: Logout (luôn dọn cookie + thu hồi phiên kể cả khi access token vừa hết hạn)
+router.post('/logout', authController.logout.bind(authController));
 
 // UC-02: Register (2-step: gửi OTP → verify OTP → tạo account)
 router.post('/send-otp-register', authController.sendOtpRegister.bind(authController));

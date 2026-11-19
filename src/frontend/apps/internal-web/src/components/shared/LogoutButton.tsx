@@ -19,11 +19,22 @@ export default function LogoutButton({ className = '', iconOnly = false }: Logou
   const handleLogout = async () => {
     setLoading(true);
     try {
-      await api.post('/api/auth/logout');
+      const refreshToken =
+        typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
+      await api.post('/api/auth/logout', refreshToken ? { refreshToken } : {});
     } catch {
     } finally {
       dispatch(logout());
-      window.location.href = '/login';
+      if (typeof window !== 'undefined') {
+        if ('BroadcastChannel' in window) {
+          try {
+            const ch = new BroadcastChannel('csc_session_channel');
+            ch.postMessage({ type: 'USER_LOGGED_OUT' });
+            ch.close();
+          } catch {}
+        }
+        window.location.href = '/login';
+      }
       setLoading(false);
     }
   };

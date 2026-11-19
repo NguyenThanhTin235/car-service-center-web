@@ -19,6 +19,11 @@ export default function SessionWatcher() {
       try {
         channel = new BroadcastChannel('csc_session_channel');
         channel.onmessage = (event) => {
+          if (event.data?.type === 'USER_LOGGED_OUT') {
+            dispatch(logout());
+            window.location.href = '/login';
+            return;
+          }
           if (
             event.data?.type === 'ACCOUNT_DEACTIVATED' &&
             Number(event.data?.userId) === Number(user.id)

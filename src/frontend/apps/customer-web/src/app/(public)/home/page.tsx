@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/axios';
+import Toast from '@/components/shared/Toast';
 
 interface ServiceCategory {
   id: number;
@@ -49,6 +50,17 @@ export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAllServices, setShowAllServices] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const msg = sessionStorage.getItem('auth_toast');
+      if (msg) {
+        setToastMessage(msg);
+        sessionStorage.removeItem('auth_toast');
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -76,6 +88,14 @@ export default function HomePage() {
 
   return (
     <>
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type="success"
+          duration={4000}
+          onClose={() => setToastMessage('')}
+        />
+      )}
       {/* ================= 1. HERO SECTION ================= */}
       <section className="relative w-full overflow-hidden bg-gradient-to-br from-[#0866FF] via-[#0050CD] to-[#0A2540] text-on-primary py-space-4xl lg:py-24">
         {/* Ambient Graphic Vector Pattern Overlay */}

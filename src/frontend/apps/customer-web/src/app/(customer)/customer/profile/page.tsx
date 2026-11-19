@@ -25,8 +25,10 @@ import ConfirmModal from '@/components/shared/ConfirmModal';
 import TrackingView from '@/components/tracking/TrackingView';
 import InvoicesView from '@/components/invoices/InvoicesView';
 import HistoryView from '@/components/history/HistoryView';
+import CustomerOverviewTab from '@/components/profile/CustomerOverviewTab';
 
-export type TabKey = 'profile' | 'vehicles' | 'appointments' | 'tracking' | 'invoices' | 'history';
+export type TabKey = 'overview' | 'profile' | 'vehicles' | 'appointments' | 'tracking' | 'invoices' | 'history';
+const VALID_TABS: TabKey[] = ['overview', 'profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history'];
 
 // Vehicle Form Types & Presets
 interface VehicleFormData {
@@ -183,21 +185,31 @@ export default function ProfilePage() {
   const { appointments } = useAppSelector((state) => state.appointments);
 
   // Active Tab State
-  const initialTab = (searchParams.get('tab') as TabKey) || 'profile';
+  const initialTab = (searchParams.get('tab') as TabKey) || 'overview';
   // Sync activeTab when searchParams changes
   useEffect(() => {
     const tabParam = searchParams.get('tab') as TabKey;
-    if (tabParam && ['profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history'].includes(tabParam)) {
+    if (tabParam && VALID_TABS.includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const msg = sessionStorage.getItem('auth_toast');
+      if (msg) {
+        setVehicleToast({ message: msg, type: 'success' });
+        sessionStorage.removeItem('auth_toast');
+      }
+    }
+  }, []);
 
   const handleTabChange = (key: TabKey) => {
     setActiveTab(key);
     window.history.replaceState(null, '', `/customer/profile?tab=${key}`);
   };
   const [activeTab, setActiveTab] = useState<TabKey>(
-    ['profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history'].includes(initialTab) ? initialTab : 'profile'
+    VALID_TABS.includes(initialTab) ? initialTab : 'overview'
   );
 
   // Profile Form States
@@ -816,8 +828,9 @@ export default function ProfilePage() {
     });
   }, [historySearch, selectedVehicleFilter]);
 
-  // 6 Tabs in Vertical Sidebar (including UC-15 Tracking & UC-16 Invoices)
+  // 7 Tabs in Vertical Sidebar (including Overview, UC-15 Tracking & UC-16 Invoices)
   const navTabs: { key: TabKey; label: string; icon: string }[] = [
+    { key: 'overview', label: 'Tổng quan', icon: 'dashboard' },
     { key: 'profile', label: 'Hồ sơ cá nhân', icon: 'account_circle' },
     { key: 'vehicles', label: 'Xe của tôi', icon: 'directions_car' },
     { key: 'appointments', label: 'Đặt lịch', icon: 'calendar_today' },
@@ -857,10 +870,8 @@ export default function ProfilePage() {
       <nav className="flex items-center gap-1.5 text-xs text-slate-500 mb-6">
         <Link href="/" className="hover:text-blue-600 transition-colors">Trang chủ</Link>
         <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-        <Link href="/customer" className="hover:text-blue-600 transition-colors">Tổng quan</Link>
-        <span className="material-symbols-outlined text-[14px]">chevron_right</span>
         <span className="text-slate-800 font-medium">
-          {navTabs.find((t) => t.key === activeTab)?.label || 'Hồ sơ cá nhân'}
+          {navTabs.find((t) => t.key === activeTab)?.label || 'Tổng quan'}
         </span>
       </nav>
 
@@ -886,16 +897,6 @@ export default function ProfilePage() {
 
           {/* Navigation Tabs */}
           <nav className="space-y-1">
-            {/* Quick link back to Customer Dashboard */}
-            <Link
-              href="/customer"
-              className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-semibold transition-all text-slate-700 bg-slate-50 hover:bg-blue-50 hover:text-blue-700 border border-slate-200/60 mb-2 group shadow-2xs"
-            >
-              <span className="material-symbols-outlined text-xl text-blue-600 transition-transform group-hover:-translate-x-0.5">
-                dashboard
-              </span>
-              <span>Trang tổng quan</span>
-            </Link>
             {navTabs.map((tab) => {
               const isActive = activeTab === tab.key;
               return (
@@ -923,6 +924,11 @@ export default function ProfilePage() {
 
         {/* Right Column: Tab Content */}
         <main className="flex-1 min-w-0 w-full">
+
+          {/* TAB 0: TỔNG QUAN */}
+          {activeTab === 'overview' && (
+            <CustomerOverviewTab onSelectTab={handleTabChange} />
+          )}
 
           {/* TAB 1: HỒ SƠ CÁ NHÂN */}
           {activeTab === 'profile' && (

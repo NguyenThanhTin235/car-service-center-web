@@ -15,12 +15,49 @@ import {
   FULL_NAME_INVALID_MSG,
 } from '../dtos/auth.dto';
 
-const COOKIE_OPTIONS = {
+const BASE_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'strict' as const,
+};
+
+const ACCESS_COOKIE_OPTIONS = {
+  ...BASE_COOKIE_OPTIONS,
+  maxAge: 15 * 60 * 1000, // 15 minutes
+};
+
+const REFRESH_COOKIE_OPTIONS = {
+  ...BASE_COOKIE_OPTIONS,
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
+
+function resolvePortal(req: Request): 'internal' | 'customer' {
+  const headerPortal = req.headers['x-portal'];
+  if (headerPortal === 'internal' || headerPortal === 'customer') {
+    return headerPortal;
+  }
+  const referer = req.headers.referer || '';
+  const origin = req.headers.origin || '';
+  if (referer.includes(':3001') || referer.includes('/staff') || origin.includes(':3001')) {
+    return 'internal';
+  }
+  return 'customer';
+}
+
+function setPortalAuthCookies(
+  res: Response,
+  portal: 'internal' | 'customer',
+  accessToken: string,
+  refreshToken: string
+): void {
+  if (portal === 'internal') {
+    res.cookie('staff_jwt', accessToken, ACCESS_COOKIE_OPTIONS);
+    res.cookie('staff_refresh_jwt', refreshToken, REFRESH_COOKIE_OPTIONS);
+  } else {
+    res.cookie('customer_jwt', accessToken, ACCESS_COOKIE_OPTIONS);
+    res.cookie('customer_refresh_jwt', refreshToken, REFRESH_COOKIE_OPTIONS);
+  }
+}
 
 export class AuthController {
   // ========================
@@ -35,19 +72,12 @@ export class AuthController {
 
     try {
       const { email, password } = value;
-      const { token, user } = await authService.login(email, password);
+      const portal = resolvePortal(req);
+      const { token, refreshToken, user } = await authService.login(email, password, portal);
 
-      const portal = (req.headers['x-portal'] as string) || 
-        (req.headers.referer?.includes(':3001') || req.headers.referer?.includes('/staff') || req.headers.origin?.includes(':3001') ? 'internal' : 'customer');
+      setPortalAuthCookies(res, portal, token, refreshToken);
 
-      if (portal === 'internal') {
-        res.cookie('staff_jwt', token, COOKIE_OPTIONS);
-      } else {
-        res.cookie('customer_jwt', token, COOKIE_OPTIONS);
-      }
-      res.cookie('jwt', token, COOKIE_OPTIONS);
-
-      res.status(200).json({ status: 'success', data: { token, user } });
+      res.status(200).json({ status: 'success', data: { token, refreshToken, user } });
     } catch (err: any) {
       if (err instanceof LoginLockedError) {
         res.setHeader('Retry-After', String(err.retryAfterSeconds));
@@ -64,28 +94,101 @@ export class AuthController {
   }
 
   // ========================
+  // Refresh Access Token
+  // ========================
+  async refresh(req: Request, res: Response): Promise<void> {
+    const portal = resolvePortal(req);
+    const cookieRefresh =
+      portal === 'internal'
+        ? req.cookies?.staff_refresh_jwt
+        : req.cookies?.customer_refresh_jwt;
+    const refreshToken =
+      cookieRefresh ||
+      (typeof req.body?.refreshToken === 'string' ? req.body.refreshToken : null);
+
+    if (!refreshToken) {
+      res.status(401).json({
+        status: 'error',
+        message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+      });
+      return;
+    }
+
+    try {
+      const { token, refreshToken: nextRefreshToken, user } =
+        await authService.refreshSession(refreshToken, portal);
+
+      setPortalAuthCookies(res, portal, token, nextRefreshToken);
+
+      res.status(200).json({
+        status: 'success',
+        data: { token, refreshToken: nextRefreshToken, user },
+      });
+    } catch (err: any) {
+      if (portal === 'internal') {
+        res.clearCookie('staff_jwt', BASE_COOKIE_OPTIONS);
+        res.clearCookie('staff_refresh_jwt', BASE_COOKIE_OPTIONS);
+      } else {
+        res.clearCookie('customer_jwt', BASE_COOKIE_OPTIONS);
+        res.clearCookie('customer_refresh_jwt', BASE_COOKIE_OPTIONS);
+      }
+      res.clearCookie('jwt', BASE_COOKIE_OPTIONS);
+
+      res.status(401).json({
+        status: 'error',
+        message: err.message || 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.',
+      });
+    }
+  }
+
+  // ========================
   // UC-04: Logout
   // ========================
   async logout(req: Request, res: Response): Promise<void> {
-    const portal = (req.headers['x-portal'] as string) || 
-      (req.headers.referer?.includes(':3001') || req.headers.referer?.includes('/staff') || req.headers.origin?.includes(':3001') ? 'internal' : 
-       req.headers.referer?.includes(':3000') || req.headers.origin?.includes(':3000') ? 'customer' : undefined);
+    const hasPortalHeader = req.headers['x-portal'] === 'internal' || req.headers['x-portal'] === 'customer';
+    const portal = hasPortalHeader
+      ? (req.headers['x-portal'] as 'internal' | 'customer')
+      : req.headers.referer?.includes(':3001') || req.headers.referer?.includes('/staff') || req.headers.origin?.includes(':3001')
+      ? 'internal'
+      : req.headers.referer?.includes(':3000') || req.headers.origin?.includes(':3000')
+      ? 'customer'
+      : undefined;
 
-    const clearOpts = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict' as const,
-    };
+    const authHeader = req.headers.authorization;
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+    const accessToken =
+      bearerToken ||
+      (portal === 'internal'
+        ? req.cookies?.staff_jwt
+        : portal === 'customer'
+        ? req.cookies?.customer_jwt
+        : req.cookies?.staff_jwt || req.cookies?.customer_jwt || req.cookies?.jwt);
+
+    const refreshToken =
+      (typeof req.body?.refreshToken === 'string' && req.body.refreshToken) ||
+      (portal === 'internal'
+        ? req.cookies?.staff_refresh_jwt
+        : portal === 'customer'
+        ? req.cookies?.customer_refresh_jwt
+        : req.cookies?.staff_refresh_jwt || req.cookies?.customer_refresh_jwt);
+
+    await authService.logout({ accessToken, refreshToken });
 
     if (portal === 'internal') {
-      res.clearCookie('staff_jwt', clearOpts);
+      res.clearCookie('staff_jwt', BASE_COOKIE_OPTIONS);
+      res.clearCookie('staff_refresh_jwt', BASE_COOKIE_OPTIONS);
     } else if (portal === 'customer') {
-      res.clearCookie('customer_jwt', clearOpts);
+      res.clearCookie('customer_jwt', BASE_COOKIE_OPTIONS);
+      res.clearCookie('customer_refresh_jwt', BASE_COOKIE_OPTIONS);
     } else {
-      res.clearCookie('staff_jwt', clearOpts);
-      res.clearCookie('customer_jwt', clearOpts);
-      res.clearCookie('jwt', clearOpts);
+      res.clearCookie('staff_jwt', BASE_COOKIE_OPTIONS);
+      res.clearCookie('staff_refresh_jwt', BASE_COOKIE_OPTIONS);
+      res.clearCookie('customer_jwt', BASE_COOKIE_OPTIONS);
+      res.clearCookie('customer_refresh_jwt', BASE_COOKIE_OPTIONS);
     }
+    // Always clear legacy shared jwt cookie so no stale session survives across tabs
+    res.clearCookie('jwt', BASE_COOKIE_OPTIONS);
+
     res.status(200).json({ status: 'success', message: 'Đã đăng xuất thành công.' });
   }
 
@@ -126,20 +229,15 @@ export class AuthController {
 
     try {
       const { email, otp } = value;
-      const { token, user } = await authService.verifyOtpAndCreateUser(email, otp);
+      const { token, refreshToken, user } = await authService.verifyOtpAndCreateUser(email, otp);
 
-      const portal = (req.headers['x-portal'] as string) || 'customer';
-      if (portal === 'internal') {
-        res.cookie('staff_jwt', token, COOKIE_OPTIONS);
-      } else {
-        res.cookie('customer_jwt', token, COOKIE_OPTIONS);
-      }
-      res.cookie('jwt', token, COOKIE_OPTIONS);
+      const portal = resolvePortal(req);
+      setPortalAuthCookies(res, portal, token, refreshToken);
 
       res.status(201).json({
         status: 'success',
         message: 'Đăng ký tài khoản thành công!',
-        data: { token, user },
+        data: { token, refreshToken, user },
       });
     } catch (err: any) {
       res.status(400).json({ status: 'error', message: err.message });
@@ -480,6 +578,8 @@ export class AuthController {
         where: { id: userId },
         data: { password_hash: newHash },
       });
+
+      await authService.revokeAllUserTokens(userId);
 
       res.json({
         status: 'success',
