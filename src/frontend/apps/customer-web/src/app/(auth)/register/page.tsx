@@ -58,6 +58,20 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
+    const trimmedName = form.fullName.trim();
+    if (!trimmedName) {
+      setError('Vui lòng nhập họ và tên.');
+      return;
+    }
+    if (!/^[\p{L}\s]+$/u.test(trimmedName)) {
+      setError('Vui lòng nhập họ và tên hợp lệ, không nhập số hoặc ký tự đặc biệt.');
+      return;
+    }
+    if (trimmedName.length < 2) {
+      setError('Họ và tên phải có ít nhất 2 ký tự.');
+      return;
+    }
+
     if (form.password !== form.confirmPassword) {
       setError('Mật khẩu xác nhận không khớp.');
       return;
@@ -66,7 +80,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await api.post('/api/auth/send-otp-register', {
-        fullName: form.fullName,
+        fullName: trimmedName,
         phone: form.phone,
         email: form.email,
         password: form.password,

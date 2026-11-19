@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAppSelector, useAppDispatch } from '@/store';
 import { fetchVehicles } from '@/store/slices/vehicleSlice';
 import { fetchMyTrackingOrders } from '@/store/slices/trackingSlice';
+import Toast from '@/components/shared/Toast';
 
 const quickLinks = [
   {
@@ -49,17 +50,36 @@ export default function CustomerDashboardPage() {
   const { vehicles } = useAppSelector((state) => state.vehicles);
   const { orders } = useAppSelector((state) => state.tracking);
   const dispatch = useAppDispatch();
+  const [toastMessage, setToastMessage] = useState('');
 
   useEffect(() => {
     dispatch(fetchVehicles());
     dispatch(fetchMyTrackingOrders());
   }, [dispatch]);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const msg = sessionStorage.getItem('auth_toast');
+      if (msg) {
+        setToastMessage(msg);
+        sessionStorage.removeItem('auth_toast');
+      }
+    }
+  }, []);
+
   const activeVehicles = vehicles.filter((v) => v.isActive).length;
   const activeOrder = orders.length > 0 ? orders[0] : null;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type="success"
+          duration={4000}
+          onClose={() => setToastMessage('')}
+        />
+      )}
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-primary to-primary/80 text-on-primary rounded-2xl p-6 sm:p-8 shadow-sm overflow-hidden relative">
         <div className="relative z-10">

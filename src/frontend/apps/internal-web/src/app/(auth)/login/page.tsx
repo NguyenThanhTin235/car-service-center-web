@@ -20,6 +20,8 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
+  const [lockSeconds, setLockSeconds] = useState(0);
+  const isLocked = lockSeconds > 0;
 
   const router = useRouter();
   const dispatch = useDispatch();
@@ -54,6 +56,18 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   React.useEffect(() => setMounted(true), []);
 
+  // Đếm ngược thời gian khóa đăng nhập
+  React.useEffect(() => {
+    if (lockSeconds <= 0) return;
+    const timer = setTimeout(() => {
+      setLockSeconds((s) => {
+        if (s <= 1) setError('');
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [lockSeconds]);
+
   const isInternalRole = Boolean(
     isAuthenticated && user?.roles?.some((r: string) => ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA'].includes(r))
   );
@@ -68,6 +82,7 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocked) return;
     setError('');
     setLoading(true);
 
@@ -88,6 +103,10 @@ export default function LoginPage() {
       const redirectPath = getDashboardPathByRole(user.roles);
       router.push(redirectPath);
     } catch (err: any) {
+      if (err.response?.status === 429) {
+        setLockSeconds(Number(err.response.data?.retryAfter) || 900);
+        setPassword('');
+      }
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
       } else {
@@ -156,9 +175,29 @@ export default function LoginPage() {
             )}
 
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-error-container text-error text-body-sm font-medium flex items-center gap-2">
-                <span className="material-symbols-outlined text-[1.125rem]">error</span>
-                <span>{error}</span>
+              <div
+                role="alert"
+                className="mb-4 p-3 rounded-lg bg-error-container text-error text-body-sm font-medium flex items-start gap-2"
+              >
+                <span className="material-symbols-outlined text-[1.125rem] mt-0.5">
+                  {isLocked ? 'lock_clock' : 'error'}
+                </span>
+                <div className="space-y-1">
+                  <span>{error}</span>
+                  {isLocked && (
+                    <p className="text-body-sm">
+                      Thử lại sau{' '}
+                      <strong className="tabular-nums">
+                        {String(Math.floor(lockSeconds / 60)).padStart(2, '0')}:
+                        {String(lockSeconds % 60).padStart(2, '0')}
+                      </strong>
+                      {' · '}
+                      <Link href="/forgot-password" className="underline font-semibold">
+                        Quên mật khẩu?
+                      </Link>
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -181,6 +220,7 @@ export default function LoginPage() {
                     type="email"
                     placeholder="Nhập email của bạn"
                     required
+                    disabled={isLocked}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
@@ -204,6 +244,7 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     required
+                    disabled={isLocked}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
@@ -237,11 +278,11 @@ export default function LoginPage() {
                 <button
                   suppressHydrationWarning
                   type="submit"
-                  disabled={loading}
-                  className="w-full h-12 bg-primary-container hover:bg-primary active:scale-[0.99] text-on-primary font-bold rounded-xl shadow-md shadow-primary-container/25 transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
+                  disabled={loading || isLocked}
+                  className="w-full h-12 bg-primary-container hover:bg-primary active:scale-[0.99] text-on-primary font-bold rounded-xl shadow-md shadow-primary-container/25 transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  <span>{loading ? 'Đang xử lý...' : 'Đăng nhập'}</span>
-                  {!loading && <span className="material-symbols-outlined text-xl">arrow_forward</span>}
+                  <span>{isLocked ? 'Tạm khóa đăng nhập' : loading ? 'Đang xử lý...' : 'Đăng nhập'}</span>
+                  {!loading && !isLocked && <span className="material-symbols-outlined text-xl">arrow_forward</span>}
                 </button>
               </div>
 
@@ -252,8 +293,9 @@ export default function LoginPage() {
                   <button
                     suppressHydrationWarning
                     type="button"
+                    disabled={isLocked}
                     onClick={() => { setEmail('manager3@carservice.com'); setPassword('password123'); }}
-                    className="p-2 text-left rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors"
+                    className="p-2 text-left rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="font-bold flex items-center gap-1">
                       <span className="material-symbols-outlined text-xs">monitoring</span> Quản lý (Manager)
@@ -263,8 +305,9 @@ export default function LoginPage() {
                   <button
                     suppressHydrationWarning
                     type="button"
+                    disabled={isLocked}
                     onClick={() => { setEmail('admin1@carservice.com'); setPassword('password123'); }}
-                    className="p-2 text-left rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 transition-colors"
+                    className="p-2 text-left rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="font-bold flex items-center gap-1">
                       <span className="material-symbols-outlined text-xs">admin_panel_settings</span> Quản trị (Admin)
@@ -274,8 +317,9 @@ export default function LoginPage() {
                   <button
                     suppressHydrationWarning
                     type="button"
+                    disabled={isLocked}
                     onClick={() => { setEmail('advisor5@carservice.com'); setPassword('password123'); }}
-                    className="p-2 text-left rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors"
+                    className="p-2 text-left rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="font-bold flex items-center gap-1">
                       <span className="material-symbols-outlined text-xs">engineering</span> Cố vấn (SA)
@@ -285,8 +329,9 @@ export default function LoginPage() {
                   <button
                     suppressHydrationWarning
                     type="button"
+                    disabled={isLocked}
                     onClick={() => { setEmail('desk9@carservice.com'); setPassword('password123'); }}
-                    className="p-2 text-left rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition-colors"
+                    className="p-2 text-left rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="font-bold flex items-center gap-1">
                       <span className="material-symbols-outlined text-xs">support_agent</span> Lễ tân (Desk)

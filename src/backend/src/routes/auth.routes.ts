@@ -17,6 +17,7 @@ router.post('/resend-otp-register', authController.resendOtpRegister.bind(authCo
 
 // UC-05: Reset Password (2-step: gửi OTP → đổi mật khẩu)
 router.post('/forgot-password', authController.forgotPassword.bind(authController));
+router.post('/verify-otp-reset', authController.verifyOtpReset.bind(authController));
 router.post('/reset-password', authController.resetPassword.bind(authController));
 router.post('/resend-otp-reset', authController.resendOtpReset.bind(authController));
 

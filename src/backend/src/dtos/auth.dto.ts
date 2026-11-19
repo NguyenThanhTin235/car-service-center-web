@@ -1,5 +1,9 @@
 import Joi from 'joi';
 
+// Chỉ cho phép chữ cái (bao gồm tiếng Việt có dấu) và khoảng trắng
+export const FULL_NAME_REGEX = /^[\p{L}\s]+$/u;
+export const FULL_NAME_INVALID_MSG = 'Vui lòng nhập họ và tên hợp lệ, không nhập số hoặc ký tự đặc biệt.';
+
 export const loginSchema = Joi.object({
   email: Joi.string().email().required().messages({
     'string.empty': 'Vui lòng nhập email',
@@ -13,10 +17,11 @@ export const loginSchema = Joi.object({
 });
 
 export const sendOtpRegisterSchema = Joi.object({
-  fullName: Joi.string().min(2).max(150).required().messages({
+  fullName: Joi.string().trim().min(2).max(150).pattern(FULL_NAME_REGEX).required().messages({
     'string.empty': 'Vui lòng nhập họ và tên',
     'string.min': 'Họ và tên phải có ít nhất 2 ký tự',
     'string.max': 'Họ và tên không được vượt quá 150 ký tự',
+    'string.pattern.base': FULL_NAME_INVALID_MSG,
     'any.required': 'Vui lòng nhập họ và tên',
   }),
   phone: Joi.string()
@@ -61,6 +66,20 @@ export const forgotPasswordSchema = Joi.object({
   }),
 });
 
+export const verifyOtpResetSchema = Joi.object({
+  email: Joi.string().email().required().messages({
+    'string.empty': 'Vui lòng nhập email',
+    'string.email': 'Email không hợp lệ',
+    'any.required': 'Vui lòng nhập email',
+  }),
+  otp: Joi.string().length(6).pattern(/^\d{6}$/).required().messages({
+    'string.empty': 'Vui lòng nhập mã OTP',
+    'string.length': 'Mã OTP phải có 6 chữ số',
+    'string.pattern.base': 'Mã OTP chỉ gồm chữ số',
+    'any.required': 'Vui lòng nhập mã OTP',
+  }),
+});
+
 export const resetPasswordSchema = Joi.object({
   email: Joi.string().email().required().messages({
     'string.empty': 'Vui lòng nhập email',
@@ -80,6 +99,7 @@ export const resetPasswordSchema = Joi.object({
 });
 
 export const updateMeSchema = Joi.object({
+  // Quy tắc ký tự hợp lệ (FULL_NAME_REGEX) được kiểm tra ở controller khi họ tên thực sự thay đổi
   fullName: Joi.string().trim().min(2).max(150).messages({
     'string.empty': 'Vui lòng nhập họ và tên',
     'string.min': 'Họ và tên phải có ít nhất 2 ký tự',

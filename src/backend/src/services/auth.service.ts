@@ -12,6 +12,21 @@ const RESET_KEY = (email: string) => `reset:${email}`;
 // OTP TTL in seconds (5 minutes)
 const OTP_TTL = 300;
 
+// Brute-force protection for login
+export const MAX_LOGIN_ATTEMPTS = 5;
+export const LOGIN_LOCK_SECONDS = 15 * 60; // 15 phút
+const LOGIN_FAIL_KEY = (email: string) => `login_fail:${email.toLowerCase()}`;
+const LOGIN_LOCK_KEY = (email: string) => `login_lock:${email.toLowerCase()}`;
+export const LOGIN_LOCKED_MESSAGE =
+  'Bạn đã nhập sai mật khẩu quá số lần cho phép. Vui lòng thử lại sau ít phút hoặc sử dụng tính năng Quên mật khẩu.';
+
+export class LoginLockedError extends Error {
+  constructor(public retryAfterSeconds: number) {
+    super(LOGIN_LOCKED_MESSAGE);
+    this.name = 'LoginLockedError';
+  }
+}
+
 interface PendingRegistration {
   fullName: string;
   phone: string;
@@ -30,6 +45,13 @@ export class AuthService {
   // UC-03 Login
   // ========================
   async login(email: string, passwordPlain: string) {
+    // 1. Chặn ngay nếu tài khoản (email) đang bị khóa tạm thời
+    const lockedUntilRaw = await getCache(LOGIN_LOCK_KEY(email));
+    if (lockedUntilRaw) {
+      const remaining = Math.ceil((Number(lockedUntilRaw) - Date.now()) / 1000);
+      throw new LoginLockedError(remaining > 0 ? remaining : LOGIN_LOCK_SECONDS);
+    }
+
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
@@ -39,11 +61,21 @@ export class AuthService {
       },
     });
 
-    if (!user) throw new Error('Email hoặc mật khẩu không đúng');
+    // Email không tồn tại cũng tính là một lần sai (chống dò tìm tài khoản)
+    if (!user) {
+      await this.registerFailedLogin(email);
+      throw new Error('Email hoặc mật khẩu không đúng');
+    }
     if (!user.is_active) throw new Error('Tài khoản đã bị vô hiệu hóa');
 
     const isMatch = await bcrypt.compare(passwordPlain, user.password_hash);
-    if (!isMatch) throw new Error('Email hoặc mật khẩu không đúng');
+    if (!isMatch) {
+      await this.registerFailedLogin(email);
+      throw new Error('Email hoặc mật khẩu không đúng');
+    }
+
+    // Đăng nhập thành công → reset bộ đếm
+    await deleteCache(LOGIN_FAIL_KEY(email));
 
     const roles = user.roles.map((r: any) => r.role.name);
     const payload: JwtPayload = {
@@ -55,6 +87,23 @@ export class AuthService {
 
     const token = generateToken(payload);
     return { token, user: payload };
+  }
+
+  /**
+   * Tăng bộ đếm đăng nhập sai. Đạt ngưỡng → khóa tạm thời và ném LoginLockedError.
+   */
+  private async registerFailedLogin(email: string): Promise<void> {
+    const raw = await getCache(LOGIN_FAIL_KEY(email));
+    const attempts = (raw ? Number(raw) : 0) + 1;
+
+    if (attempts >= MAX_LOGIN_ATTEMPTS) {
+      const lockedUntil = Date.now() + LOGIN_LOCK_SECONDS * 1000;
+      await setCache(LOGIN_LOCK_KEY(email), String(lockedUntil), LOGIN_LOCK_SECONDS);
+      await deleteCache(LOGIN_FAIL_KEY(email));
+      throw new LoginLockedError(LOGIN_LOCK_SECONDS);
+    }
+
+    await setCache(LOGIN_FAIL_KEY(email), String(attempts), LOGIN_LOCK_SECONDS);
   }
 
   // ========================
@@ -74,13 +123,16 @@ export class AuthService {
     email: string,
     password: string
   ): Promise<void> {
-    // Kiểm tra email trùng
-    const existingEmail = await prisma.user.findUnique({ where: { email } });
-    if (existingEmail) throw new Error('Email này đã được đăng ký trong hệ thống.');
-
-    // Kiểm tra phone trùng
-    const existingPhone = await prisma.user.findUnique({ where: { phone } });
-    if (existingPhone) throw new Error('Số điện thoại này đã được đăng ký trong hệ thống.');
+    // Kiểm tra email hoặc số điện thoại trùng (thông báo chung chống dò tìm tài khoản - OWASP)
+    const [existingEmail, existingPhone] = await Promise.all([
+      prisma.user.findUnique({ where: { email }, select: { id: true } }),
+      prisma.user.findUnique({ where: { phone }, select: { id: true } }),
+    ]);
+    if (existingEmail || existingPhone) {
+      throw new Error(
+        'Thông tin đăng ký không hợp lệ hoặc không thể sử dụng. Vui lòng kiểm tra lại hoặc thử đăng nhập.'
+      );
+    }
 
     // Tạo OTP và hash
     const otp = generateOtp();
@@ -172,6 +224,22 @@ export class AuthService {
   }
 
   // ========================
+  // UC-05 Reset Password — Bước 1.5: Kiểm tra OTP (không tiêu hủy mã)
+  // ========================
+  async verifyResetOtp(email: string, otp: string): Promise<void> {
+    const cached = await getCache(RESET_KEY(email));
+    if (!cached) {
+      throw new Error('Mã OTP không hợp lệ hoặc đã hết hạn. Vui lòng gửi lại mã.');
+    }
+
+    const pending: PendingReset = JSON.parse(cached);
+    const isValid = await verifyOtp(otp, pending.otpHash);
+    if (!isValid) {
+      throw new Error('Mã OTP không đúng. Vui lòng kiểm tra lại.');
+    }
+  }
+
+  // ========================
   // UC-05 Reset Password — Bước 2: Xác thực OTP & Đổi mật khẩu
   // ========================
   async resetPassword(email: string, otp: string, newPassword: string): Promise<void> {
@@ -194,6 +262,9 @@ export class AuthService {
 
     // Xóa pending data
     await deleteCache(RESET_KEY(email));
+    // Đặt lại mật khẩu thành công → gỡ khóa đăng nhập tạm thời
+    await deleteCache(LOGIN_LOCK_KEY(email));
+    await deleteCache(LOGIN_FAIL_KEY(email));
   }
 
   // ========================

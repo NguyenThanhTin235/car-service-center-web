@@ -60,23 +60,32 @@ export default function VerifyOtpPage() {
       if (purpose === 'register') {
         const res = await api.post('/api/auth/verify-otp-register', { email, otp: otpString });
         const { user, token } = res.data.data;
+        const successMsg =
+          res.data?.message || 'Đăng ký tài khoản thành công! Chào mừng bạn đến với AutoCare Pro.';
         dispatch(setCredentials({ user, token }));
         sessionStorage.removeItem('pendingEmail');
         sessionStorage.removeItem('otpPurpose');
+        sessionStorage.setItem('auth_toast', successMsg);
+        setSuccess(`${successMsg} Đang chuyển hướng đến trang chủ...`);
+
         const redirectPath = getDashboardPathByRole(user.roles);
-        if (redirectPath.startsWith('http')) {
-          window.location.href = redirectPath;
-        } else {
-          router.push(redirectPath);
-        }
+        setTimeout(() => {
+          if (redirectPath.startsWith('http')) {
+            window.location.href = redirectPath;
+          } else {
+            router.push(redirectPath);
+          }
+        }, 1200);
+        return;
       } else {
-        // reset password: redirect to reset-password page with otp
+        // reset password: verify OTP on server first, only redirect if valid
+        await api.post('/api/auth/verify-otp-reset', { email, otp: otpString });
         sessionStorage.setItem('verifiedOtp', otpString);
         router.push('/reset-password');
+        return;
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Mã OTP không đúng. Vui lòng thử lại.');
-    } finally {
       setLoading(false);
     }
   };

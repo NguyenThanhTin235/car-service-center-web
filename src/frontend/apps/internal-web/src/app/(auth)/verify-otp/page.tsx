@@ -66,7 +66,8 @@ export default function VerifyOtpPage() {
         const redirectPath = getDashboardPathByRole(user.roles);
         router.push(redirectPath);
       } else {
-        // reset password: redirect to reset-password page with otp
+        // reset password: verify OTP on server first, only redirect if valid
+        await api.post('/api/auth/verify-otp-reset', { email, otp: otpString });
         sessionStorage.setItem('verifiedOtp', otpString);
         router.push('/reset-password');
       }

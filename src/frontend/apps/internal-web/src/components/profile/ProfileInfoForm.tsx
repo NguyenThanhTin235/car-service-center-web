@@ -42,6 +42,11 @@ export default function ProfileInfoForm({ profile, onUpdated }: ProfileInfoFormP
       errors.fullName = 'Họ và tên phải có ít nhất 2 ký tự.';
     } else if (trimmedName.length > 150) {
       errors.fullName = 'Họ và tên không được vượt quá 150 ký tự.';
+    } else if (
+      trimmedName !== (profile.fullName || '').trim() &&
+      !/^[\p{L}\s]+$/u.test(trimmedName)
+    ) {
+      errors.fullName = 'Vui lòng nhập họ và tên hợp lệ, không nhập số hoặc ký tự đặc biệt.';
     }
 
     if (trimmedPhone && !VN_PHONE_REGEX.test(trimmedPhone)) {

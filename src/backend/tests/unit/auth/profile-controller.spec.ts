@@ -157,6 +157,69 @@ describe('AuthController — Internal Profile & Change Password', () => {
       });
     });
 
+    it('rejects changing full name to one with digits or special characters', async () => {
+      prismaMock.user.findUnique.mockResolvedValueOnce({
+        id: 2,
+        full_name: 'Nguyễn Văn An',
+        phone: '0901234567',
+        email: 'staff@autocare.vn',
+        address: null,
+        is_active: true,
+        roles: [{ role: { name: 'STAFF' } }],
+        employee: null,
+      });
+
+      const req: any = {
+        user: { id: 2, roles: ['STAFF'] },
+        body: { fullName: 'Nguyễn Văn An 99' },
+      };
+      const res = createMockRes();
+
+      await authController.updateMe(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toBe(
+        'Vui lòng nhập họ và tên hợp lệ, không nhập số hoặc ký tự đặc biệt.'
+      );
+      expect(prismaMock.user.update).not.toHaveBeenCalled();
+    });
+
+    it('allows updating other fields when an existing legacy name is unchanged', async () => {
+      prismaMock.user.findUnique
+        .mockResolvedValueOnce({
+          id: 7,
+          full_name: 'Nhân Viên 7',
+          phone: '0811111107',
+          email: 'staff2@carservice.com',
+          address: null,
+          is_active: true,
+          roles: [{ role: { name: 'TECHNICIAN' } }],
+          employee: null,
+        })
+        .mockResolvedValueOnce(null);
+      prismaMock.user.update.mockResolvedValue({
+        id: 7,
+        full_name: 'Nhân Viên 7',
+        phone: '0912345670',
+        email: 'staff2@carservice.com',
+        address: null,
+        is_active: true,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+
+      const req: any = {
+        user: { id: 7, roles: ['TECHNICIAN'] },
+        body: { fullName: 'Nhân Viên 7', phone: '0912345670' },
+      };
+      const res = createMockRes();
+
+      await authController.updateMe(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(prismaMock.user.update).toHaveBeenCalledTimes(1);
+    });
+
     it('rejects duplicate phone number with 400', async () => {
       prismaMock.user.findUnique
         .mockResolvedValueOnce({
@@ -180,7 +243,7 @@ describe('AuthController — Internal Profile & Change Password', () => {
       await authController.updateMe(req, res);
 
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toContain('Số điện thoại đã được sử dụng');
+      expect(res.body.message).toContain('Không thể cập nhật thông tin liên hệ này');
     });
   });
 

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import { authService } from '../services/auth.service';
+import { authService, LoginLockedError } from '../services/auth.service';
 import prisma from '../utils/prisma';
 import {
   loginSchema,
@@ -8,8 +8,11 @@ import {
   verifyOtpRegisterSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  verifyOtpResetSchema,
   updateMeSchema,
   changePasswordSchema,
+  FULL_NAME_REGEX,
+  FULL_NAME_INVALID_MSG,
 } from '../dtos/auth.dto';
 
 const COOKIE_OPTIONS = {
@@ -46,6 +49,16 @@ export class AuthController {
 
       res.status(200).json({ status: 'success', data: { token, user } });
     } catch (err: any) {
+      if (err instanceof LoginLockedError) {
+        res.setHeader('Retry-After', String(err.retryAfterSeconds));
+        res.status(429).json({
+          status: 'error',
+          code: 'LOGIN_LOCKED',
+          message: err.message,
+          retryAfter: err.retryAfterSeconds,
+        });
+        return;
+      }
       res.status(401).json({ status: 'error', message: err.message || 'Xác thực thất bại' });
     }
   }
@@ -94,7 +107,9 @@ export class AuthController {
         message: `Mã OTP đã được gửi về email ${email}. Vui lòng kiểm tra hộp thư.`,
       });
     } catch (err: any) {
-      const isConflict = err.message?.includes('đã được đăng ký');
+      const isConflict =
+        err.message?.includes('không thể sử dụng') ||
+        err.message?.includes('đã được đăng ký');
       res.status(isConflict ? 409 : 500).json({ status: 'error', message: err.message });
     }
   }
@@ -168,6 +183,24 @@ export class AuthController {
       });
     } catch (err: any) {
       res.status(500).json({ status: 'error', message: 'Đã xảy ra lỗi. Vui lòng thử lại.' });
+    }
+  }
+
+  // ========================
+  // UC-05: Verify Reset OTP (kiểm tra trước khi sang trang đặt mật khẩu)
+  // ========================
+  async verifyOtpReset(req: Request, res: Response): Promise<void> {
+    const { error, value } = verifyOtpResetSchema.validate(req.body);
+    if (error) {
+      res.status(400).json({ status: 'error', message: error.details[0].message });
+      return;
+    }
+
+    try {
+      await authService.verifyResetOtp(value.email, value.otp);
+      res.status(200).json({ status: 'success', message: 'Mã OTP hợp lệ.' });
+    } catch (err: any) {
+      res.status(400).json({ status: 'error', message: err.message });
     }
   }
 
@@ -325,11 +358,20 @@ export class AuthController {
       const normalizedPhone = phone === '' ? null : phone;
       const normalizedAddress = address === '' ? null : address;
 
+      // Chỉ kiểm tra ký tự hợp lệ khi họ tên thực sự thay đổi (tránh khóa tài khoản có tên cũ)
+      if (fullName !== undefined && fullName !== user.full_name && !FULL_NAME_REGEX.test(fullName)) {
+        res.status(400).json({ status: 'error', message: FULL_NAME_INVALID_MSG });
+        return;
+      }
+
       // Validate unique phone if changed and non-null
       if (normalizedPhone !== undefined && normalizedPhone !== null && normalizedPhone !== user.phone) {
         const existPhone = await prisma.user.findUnique({ where: { phone: normalizedPhone } });
         if (existPhone && existPhone.id !== userId) {
-          res.status(400).json({ status: 'error', message: 'Số điện thoại đã được sử dụng bởi tài khoản khác.' });
+          res.status(400).json({
+            status: 'error',
+            message: 'Không thể cập nhật thông tin liên hệ này. Vui lòng kiểm tra lại và thử với thông tin khác.',
+          });
           return;
         }
       }
@@ -338,7 +380,10 @@ export class AuthController {
       if (!isInternalAccount && email && email !== user.email) {
         const existEmail = await prisma.user.findUnique({ where: { email } });
         if (existEmail && existEmail.id !== userId) {
-          res.status(400).json({ status: 'error', message: 'Email đã được sử dụng bởi tài khoản khác.' });
+          res.status(400).json({
+            status: 'error',
+            message: 'Không thể cập nhật thông tin liên hệ này. Vui lòng kiểm tra lại và thử với thông tin khác.',
+          });
           return;
         }
       }
