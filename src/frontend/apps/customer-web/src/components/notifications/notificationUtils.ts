@@ -33,20 +33,26 @@ export const resolveNotificationHref = getNotificationHref;
 
 const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
   APPOINTMENT_CONFIRMED: 'Lịch hẹn đã xác nhận',
-  APPOINTMENT_RESCHEDULED: 'Lịch hẹn đã dời lịch',
+  APPOINTMENT_RESCHEDULED: 'Dời lịch hẹn',
   APPOINTMENT_CANCELLED: 'Lịch hẹn đã hủy',
   APPOINTMENT_REMINDER: 'Nhắc nhở lịch hẹn',
-  CHECKIN_READY: 'Sẵn sàng tiếp nhận',
+  CHECKIN_READY: 'Xe sẵn sàng tiếp nhận',
   QUOTATION_SENT: 'Báo giá mới',
   QUOTATION_APPROVED: 'Báo giá đã duyệt',
   QUOTATION_REJECTED: 'Báo giá đã từ chối',
   WORK_ORDER_STARTED: 'Bắt đầu sửa chữa',
   SERVICE_ITEM_STARTED: 'Đang thực hiện dịch vụ',
   QC_PASSED: 'Kiểm tra chất lượng đạt',
-  VEHICLE_READY: 'Xe đã sẵn sàng',
+  QC_FAILED: 'Kiểm tra chất lượng chưa đạt',
+  VEHICLE_READY: 'Xe đã sẵn sàng bàn giao',
   VEHICLE_HANDOVER: 'Đã bàn giao xe',
   INVOICE_ISSUED: 'Hóa đơn mới',
   PAYMENT_SUCCESS: 'Thanh toán thành công',
+  BILLING_REQUEST: 'Yêu cầu thanh toán',
+  LOW_STOCK_ALERT: 'Cảnh báo tồn kho',
+  TASK_ASSIGNED: 'Phân công công việc',
+  SYSTEM_ALERT: 'Cảnh báo hệ thống',
+  GENERAL: 'Thông báo chung',
 };
 
 export function getNotificationTypeLabel(type: string): string {

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { NotificationItem } from '@/lib/api/notification.api';
 import { useNotificationSocket } from '@/hooks/useNotificationSocket';
@@ -251,19 +250,6 @@ export default function NotificationBell() {
                 );
               })
             )}
-          </div>
-
-          <div className="px-4 py-2.5 border-t border-surface-container-high bg-surface-container-low/50 text-center">
-            <Link
-              href="/customer/notifications"
-              onClick={() => setOpen(false)}
-              className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
-            >
-              Xem tất cả thông báo
-              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
-                arrow_forward
-              </span>
-            </Link>
           </div>
         </div>
       )}

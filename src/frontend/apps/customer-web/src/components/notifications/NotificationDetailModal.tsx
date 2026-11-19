@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { NotificationItem } from '@/lib/api/notification.api';
 import { useAppDispatch } from '@/store';
@@ -8,7 +9,6 @@ import { removeNotification } from '@/store/slices/notificationSlice';
 import {
   formatExactDateTimeVi,
   formatRelativeTimeVi,
-  getEntityTypeLabel,
   getNotificationIcon,
   getNotificationTypeLabel,
   resolveNotificationHref,
@@ -26,6 +26,11 @@ export default function NotificationDetailModal({
   const router = useRouter();
   const dispatch = useAppDispatch();
   const [deleting, setDeleting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!notification) return;
@@ -38,7 +43,7 @@ export default function NotificationDetailModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [notification, deleting, onClose]);
 
-  if (!notification) return null;
+  if (!mounted || !notification) return null;
 
   const { icon, bgClass, textClass } = getNotificationIcon(notification.type);
   const typeLabel = getNotificationTypeLabel(notification.type);
@@ -65,15 +70,15 @@ export default function NotificationDetailModal({
     router.push(detailHref);
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="notification-detail-title"
     >
       <div
-        className="absolute inset-0 bg-inverse-surface/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
         onClick={deleting ? undefined : onClose}
         aria-hidden="true"
       />
@@ -151,18 +156,6 @@ export default function NotificationDetailModal({
           <p className="text-sm text-on-surface-variant leading-relaxed whitespace-pre-line">
             {notification.message}
           </p>
-
-          {/* Related Entity Badge */}
-          {notification.entityType && notification.entityId !== null && (
-            <div className="pt-1">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-surface-container-low border border-surface-container-high text-xs font-medium text-on-surface-variant">
-                <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
-                  link
-                </span>
-                {getEntityTypeLabel(notification.entityType)} #{notification.entityId}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Footer Actions */}
@@ -206,6 +199,7 @@ export default function NotificationDetailModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
