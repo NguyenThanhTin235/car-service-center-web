@@ -10,6 +10,7 @@ export interface Vehicle {
   color: string | null;
   vehicleSize: 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL' | null;
   isActive: boolean;
+  hasTransactions?: boolean;
   activeWorkOrder?: {
     id: number;
     woNumber: string;

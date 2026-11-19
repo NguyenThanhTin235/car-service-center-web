@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation';
 import { useAppSelector } from '@/store';
 import LogoutButton from '@/components/shared/LogoutButton';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import UserAvatarMenu from '@/components/layout/UserAvatarMenu';
+import { resolveProfileHref } from '@/components/profile/profileUtils';
 
 export interface SaaSNavChildItem {
   label: string;
@@ -120,6 +122,12 @@ export default function SaaSDashboardShell({
 
   // Determine current active page title and icon for Top Context Bar
   const activePageMeta = useMemo(() => {
+    if (pathname.endsWith('/profile')) {
+      return { label: 'Thông tin cá nhân', icon: 'account_circle' };
+    }
+    if (pathname.endsWith('/notifications')) {
+      return { label: 'Trung tâm thông báo', icon: 'notifications' };
+    }
     for (const item of navItems) {
       if (item.href && isHrefActive(item.href)) {
         return { label: item.label, icon: item.icon };
@@ -584,12 +592,14 @@ export default function SaaSDashboardShell({
         >
           {isMini ? (
             <div className="flex flex-col items-center gap-2">
-              <div
-                title={displayName}
-                className="w-9 h-9 rounded-full bg-[#0866ff] text-white font-mono text-xs font-bold flex items-center justify-center"
+              <Link
+                href={resolveProfileHref(user?.roles || [])}
+                title={`${displayName} — Thông tin cá nhân`}
+                aria-label="Thông tin cá nhân"
+                className="w-9 h-9 rounded-full bg-[#0866ff] hover:bg-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center transition-colors"
               >
                 {initials}
-              </div>
+              </Link>
               <LogoutButton
                 iconOnly
                 className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
@@ -601,7 +611,13 @@ export default function SaaSDashboardShell({
             </div>
           ) : (
             <div className="flex items-center justify-between gap-2 px-1">
-              <div className="flex items-center gap-2.5 min-w-0">
+              <Link
+                href={resolveProfileHref(user?.roles || [])}
+                title="Mở trang thông tin cá nhân"
+                className={`flex items-center gap-2.5 min-w-0 flex-1 rounded-xl p-1 -m-1 transition-colors ${
+                  isLight ? 'hover:bg-slate-200/60' : 'hover:bg-white/10'
+                }`}
+              >
                 <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0 shadow-xs">
                   {initials}
                   <span
@@ -626,7 +642,7 @@ export default function SaaSDashboardShell({
                     {displayRole}
                   </div>
                 </div>
-              </div>
+              </Link>
               <LogoutButton
                 iconOnly
                 className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0 cursor-pointer ${
@@ -736,18 +752,12 @@ export default function SaaSDashboardShell({
 
             <NotificationBell variant="default" />
 
-            <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
-                {initials}
-              </div>
-              <div className="hidden md:flex flex-col leading-tight">
-                <span className="text-xs font-bold text-slate-900 max-w-[130px] truncate">
-                  {displayName}
-                </span>
-                <span className="text-xs font-mono text-[#0050cd] font-semibold">
-                  {displayRole}
-                </span>
-              </div>
+            <div className="pl-2 border-l border-slate-200">
+              <UserAvatarMenu
+                variant="default"
+                defaultRoleLabel={defaultRoleLabel}
+                defaultInitials={defaultInitials}
+              />
             </div>
           </div>
         </header>

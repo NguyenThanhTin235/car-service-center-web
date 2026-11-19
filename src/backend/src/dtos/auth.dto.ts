@@ -78,3 +78,42 @@ export const resetPasswordSchema = Joi.object({
     'any.required': 'Vui lòng nhập mật khẩu mới',
   }),
 });
+
+export const updateMeSchema = Joi.object({
+  fullName: Joi.string().trim().min(2).max(150).messages({
+    'string.empty': 'Vui lòng nhập họ và tên',
+    'string.min': 'Họ và tên phải có ít nhất 2 ký tự',
+    'string.max': 'Họ và tên không được vượt quá 150 ký tự',
+  }),
+  phone: Joi.string()
+    .trim()
+    .pattern(/^(0|\+84)[3-9]\d{8}$/)
+    .allow('', null)
+    .messages({
+      'string.pattern.base': 'Số điện thoại không đúng định dạng Việt Nam (VD: 0901234567)',
+    }),
+  email: Joi.string().trim().email().messages({
+    'string.email': 'Email không hợp lệ',
+  }),
+  address: Joi.string().trim().max(500).allow('', null).messages({
+    'string.max': 'Địa chỉ không được vượt quá 500 ký tự',
+  }),
+});
+
+export const changePasswordSchema = Joi.object({
+  currentPassword: Joi.string().required().messages({
+    'string.empty': 'Vui lòng nhập mật khẩu hiện tại',
+    'any.required': 'Vui lòng nhập mật khẩu hiện tại',
+  }),
+  newPassword: Joi.string().min(8).max(100).required().messages({
+    'string.empty': 'Vui lòng nhập mật khẩu mới',
+    'string.min': 'Mật khẩu mới phải có ít nhất 8 ký tự',
+    'string.max': 'Mật khẩu mới không được vượt quá 100 ký tự',
+    'any.required': 'Vui lòng nhập mật khẩu mới',
+  }),
+  confirmPassword: Joi.string().valid(Joi.ref('newPassword')).required().messages({
+    'any.only': 'Mật khẩu xác nhận không khớp',
+    'string.empty': 'Vui lòng xác nhận mật khẩu mới',
+    'any.required': 'Vui lòng xác nhận mật khẩu mới',
+  }),
+});

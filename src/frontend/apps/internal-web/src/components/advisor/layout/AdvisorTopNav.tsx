@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useAppSelector } from '@/store';
+import React, { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import LogoutButton from '@/components/shared/LogoutButton';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import UserAvatarMenu from '@/components/layout/UserAvatarMenu';
 import toast from 'react-hot-toast';
 
 export interface NavItemConfig {
@@ -25,28 +25,10 @@ export const SA_NAV_ITEMS: NavItemConfig[] = [
 ];
 
 export default function AdvisorTopNav() {
-  const { user } = useAppSelector((state) => state.auth);
   const pathname = usePathname();
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [quickSearch, setQuickSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const isItemActive = (item: NavItemConfig) => {
     if (item.href === '/advisor') return pathname === '/advisor';
@@ -73,15 +55,6 @@ export default function AdvisorTopNav() {
     }
     router.push(`/advisor/work-orders?search=${encodeURIComponent(quickSearch.trim())}`);
   };
-
-  const displayName = mounted ? user?.fullName || 'Cố vấn dịch vụ' : 'Cố vấn dịch vụ';
-  const displayEmail = mounted ? user?.email || 'advisor@autocare.vn' : 'advisor@autocare.vn';
-  const initials = displayName
-    .split(' ')
-    .filter(Boolean)
-    .slice(-2)
-    .map((w) => w[0]?.toUpperCase())
-    .join('') || 'SA';
 
   return (
     <>
@@ -227,52 +200,15 @@ export default function AdvisorTopNav() {
             <NotificationBell variant="pill" />
 
             {/* User Avatar Pill & Dropdown */}
-            <div className="relative" ref={dropdownRef}>
-              <button
-                type="button"
-                onClick={() => setDropdownOpen((o) => !o)}
-                className="flex items-center gap-2 min-h-[44px] bg-white hover:bg-slate-50 border border-slate-200/80 rounded-full p-1 pr-2.5 shadow-2xs transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40"
-                title={displayName}
-              >
-                <div className="w-8 h-8 rounded-full bg-[#0c2340] text-white flex items-center justify-center font-bold text-xs tracking-tight">
-                  {initials}
-                </div>
-                <span className="hidden lg:inline text-xs font-bold text-zinc-800 max-w-[120px] truncate">
-                  {displayName}
-                </span>
-                <span className="material-symbols-outlined text-[16px] text-slate-400">expand_more</span>
-              </button>
-
-              {dropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-white text-zinc-900 rounded-2xl shadow-xl border border-slate-200/90 py-2 z-50 animate-in fade-in duration-150">
-                  <div className="px-4 py-2.5 border-b border-slate-100">
-                    <p className="text-xs font-bold text-zinc-900 truncate">{displayName}</p>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">{displayEmail}</p>
-                  </div>
-                  <div className="py-1">
-                    <Link
-                      href="/advisor/intake-queue"
-                      onClick={() => setDropdownOpen(false)}
-                      className="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-50 flex items-center gap-2.5 text-slate-700 transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[18px] text-[#0050cd]">directions_car</span>
-                      Hàng đợi tiếp nhận
-                    </Link>
-                    <Link
-                      href="/advisor/work-orders"
-                      onClick={() => setDropdownOpen(false)}
-                      className="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-50 flex items-center gap-2.5 text-slate-700 transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[18px] text-[#0050cd]">assignment</span>
-                      Danh sách Phiếu công việc
-                    </Link>
-                  </div>
-                  <div className="pt-1 border-t border-slate-100">
-                    <LogoutButton className="w-full text-left px-4 py-2 text-xs hover:bg-rose-50 text-rose-600 flex items-center gap-2.5 transition-colors font-bold cursor-pointer" />
-                  </div>
-                </div>
-              )}
-            </div>
+            <UserAvatarMenu
+              variant="pill"
+              defaultRoleLabel="Cố vấn dịch vụ"
+              defaultInitials="SA"
+              extraLinks={[
+                { href: '/advisor/intake-queue', label: 'Hàng đợi tiếp nhận', icon: 'directions_car' },
+                { href: '/advisor/work-orders', label: 'Danh sách Phiếu công việc', icon: 'assignment' },
+              ]}
+            />
           </div>
         </div>
       </header>

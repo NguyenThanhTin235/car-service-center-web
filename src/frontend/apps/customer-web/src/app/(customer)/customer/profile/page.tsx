@@ -184,7 +184,7 @@ export default function ProfilePage() {
 
   // Active Tab State
   const initialTab = (searchParams.get('tab') as TabKey) || 'profile';
-    // Sync activeTab when searchParams changes
+  // Sync activeTab when searchParams changes
   useEffect(() => {
     const tabParam = searchParams.get('tab') as TabKey;
     if (tabParam && ['profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history'].includes(tabParam)) {
@@ -208,6 +208,7 @@ export default function ProfilePage() {
     email: '',
     address: '',
   });
+  const [profileErrors, setProfileErrors] = useState<Partial<Record<'fullName' | 'phone' | 'email' | 'address', string>>>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Vehicle Management State in child panel
@@ -215,6 +216,7 @@ export default function ProfilePage() {
   const [vehicleModalMode, setVehicleModalMode] = useState<'add' | 'edit'>('add');
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [vehicleForm, setVehicleForm] = useState<VehicleFormData>(EMPTY_VEHICLE_FORM);
+  const [vehicleErrors, setVehicleErrors] = useState<Partial<Record<keyof VehicleFormData, string>>>({});
   const [vehicleDeleteConfirm, setVehicleDeleteConfirm] = useState<Vehicle | null>(null);
   const [vehicleToast, setVehicleToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -291,17 +293,133 @@ export default function ProfilePage() {
     }
   }, [updateSuccess, dispatch]);
 
+  const EMAIL_REGEX =
+    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  const VN_PHONE_REGEX = /^(0|\+84)(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-9])[0-9]{7}$/;
+  const FULL_NAME_REGEX = /^[\p{L}\s'.-]+$/u;
+  const VN_LICENSE_PLATE_REGEX =
+    /^[0-9]{2}[A-Z]{1,2}[A-Z0-9]?[-\s.]?[0-9]{3,5}(?:\.[0-9]{2})?$/;
+
+  const validateProfileField = (
+    field: 'fullName' | 'phone' | 'email' | 'address',
+    value: string
+  ): string | undefined => {
+    const trimmed = value.trim();
+    if (field === 'fullName') {
+      if (!trimmed) return 'Họ và tên không được để trống';
+      if (trimmed.length < 2) return 'Họ và tên phải có tối thiểu 2 ký tự';
+      if (trimmed.length > 120) return 'Họ và tên không được vượt quá 120 ký tự';
+      if (!FULL_NAME_REGEX.test(trimmed)) {
+        return 'Họ và tên không đúng định dạng (chỉ chứa chữ cái và khoảng trắng)';
+      }
+      return undefined;
+    }
+    if (field === 'phone') {
+      if (!trimmed) return 'Số điện thoại không được để trống';
+      const cleaned = trimmed.replace(/[\s.-]/g, '');
+      if (!VN_PHONE_REGEX.test(cleaned)) {
+        return 'Số điện thoại không đúng định dạng (gồm 10 chữ số, VD: 0901234567)';
+      }
+      return undefined;
+    }
+    if (field === 'email') {
+      if (!trimmed) return 'Email không được để trống';
+      if (!EMAIL_REGEX.test(trimmed)) {
+        return 'Email không đúng định dạng (VD: example@gmail.com)';
+      }
+      return undefined;
+    }
+    if (field === 'address') {
+      if (!trimmed) return undefined;
+      if (trimmed.length < 5) return 'Địa chỉ liên hệ phải có tối thiểu 5 ký tự';
+      if (trimmed.length > 255) return 'Địa chỉ liên hệ không được vượt quá 255 ký tự';
+      return undefined;
+    }
+    return undefined;
+  };
+
+  const handleProfileInputChange = (
+    field: 'fullName' | 'phone' | 'email' | 'address',
+    value: string
+  ) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (isEditing) {
+      const errMsg = validateProfileField(field, value);
+      setProfileErrors((prev) => ({ ...prev, [field]: errMsg }));
+    }
+  };
+
+  const validateVehicleField = (
+    field: keyof VehicleFormData,
+    value: string,
+    mode: 'add' | 'edit' = vehicleModalMode
+  ): string | undefined => {
+    const trimmed = value.trim();
+    if (field === 'licensePlate') {
+      if (mode === 'edit') return undefined;
+      if (!trimmed) return 'Biển số xe không được để trống';
+      if (!VN_LICENSE_PLATE_REGEX.test(trimmed.toUpperCase())) {
+        return 'Biển số xe không đúng định dạng (VD: 51G-123.45 hoặc 30A-12345)';
+      }
+      return undefined;
+    }
+    if (field === 'make') {
+      if (!trimmed) return 'Hãng xe không được để trống';
+      if (trimmed.length < 2 || trimmed.length > 50) {
+        return 'Hãng xe phải có từ 2 đến 50 ký tự';
+      }
+      return undefined;
+    }
+    if (field === 'model') {
+      if (!trimmed) return 'Dòng xe không được để trống';
+      if (trimmed.length > 50) return 'Dòng xe không được vượt quá 50 ký tự';
+      return undefined;
+    }
+    if (field === 'year') {
+      if (!trimmed) return undefined;
+      const maxYear = new Date().getFullYear() + 1;
+      const num = Number(trimmed);
+      if (!Number.isInteger(num) || num < 1980 || num > maxYear) {
+        return `Năm sản xuất không hợp lệ (1980 - ${maxYear})`;
+      }
+      return undefined;
+    }
+    if (field === 'color') {
+      if (!trimmed) return undefined;
+      if (!/^[\p{L}\s/-]{1,30}$/u.test(trimmed)) {
+        return 'Màu sơn không đúng định dạng (chỉ chứa chữ cái, tối đa 30 ký tự)';
+      }
+      return undefined;
+    }
+    return undefined;
+  };
+
+  const handleVehicleInputChange = (field: keyof VehicleFormData, value: string) => {
+    setVehicleForm((prev) => ({ ...prev, [field]: value }));
+    const errMsg = validateVehicleField(field, value);
+    setVehicleErrors((prev) => ({ ...prev, [field]: errMsg }));
+  };
+
   const requestSave = () => {
-    if (!form.fullName.trim()) return;
+    const nextErrors: Partial<Record<'fullName' | 'phone' | 'email' | 'address', string>> = {
+      fullName: validateProfileField('fullName', form.fullName),
+      phone: validateProfileField('phone', form.phone),
+      email: validateProfileField('email', form.email),
+      address: validateProfileField('address', form.address),
+    };
+    setProfileErrors(nextErrors);
+    if (Object.values(nextErrors).some(Boolean)) {
+      return;
+    }
     setConfirmOpen(true);
   };
 
   const handleSave = async () => {
     dispatch(updateProfile({
-      fullName: form.fullName,
-      phone: form.phone,
-      email: form.email,
-      address: form.address,
+      fullName: form.fullName.trim(),
+      phone: form.phone.trim().replace(/[\s.-]/g, ''),
+      email: form.email.trim(),
+      address: form.address.trim(),
     }));
     setConfirmOpen(false);
   };
@@ -315,6 +433,7 @@ export default function ProfilePage() {
         address: data.address || '',
       });
     }
+    setProfileErrors({});
     setIsEditing(false);
     dispatch(clearUpdateStatus());
   };
@@ -324,6 +443,7 @@ export default function ProfilePage() {
     setVehicleModalMode('add');
     setSelectedVehicle(null);
     setVehicleForm(EMPTY_VEHICLE_FORM);
+    setVehicleErrors({});
     setVehicleModalOpen(true);
   };
 
@@ -338,13 +458,21 @@ export default function ProfilePage() {
       color: v.color || '',
       vehicleSize: (v.vehicleSize as VehicleFormData['vehicleSize']) || 'MEDIUM',
     });
+    setVehicleErrors({});
     setVehicleModalOpen(true);
   };
 
   const handleSaveVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!vehicleForm.licensePlate.trim() || !vehicleForm.make.trim() || !vehicleForm.model.trim()) {
-      setVehicleToast({ message: 'Vui lòng điền các trường bắt buộc: Biển số, Hãng xe, Dòng xe', type: 'error' });
+    const nextVehErrors: Partial<Record<keyof VehicleFormData, string>> = {
+      licensePlate: validateVehicleField('licensePlate', vehicleForm.licensePlate, vehicleModalMode),
+      make: validateVehicleField('make', vehicleForm.make, vehicleModalMode),
+      model: validateVehicleField('model', vehicleForm.model, vehicleModalMode),
+      year: validateVehicleField('year', vehicleForm.year, vehicleModalMode),
+      color: validateVehicleField('color', vehicleForm.color, vehicleModalMode),
+    };
+    setVehicleErrors(nextVehErrors);
+    if (Object.values(nextVehErrors).some(Boolean)) {
       return;
     }
 
@@ -666,11 +794,12 @@ export default function ProfilePage() {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  const inputClass = (editable: boolean) =>
-    `w-full px-4 py-2.5 rounded-xl border text-sm transition-all duration-150 ${
-      editable
-        ? 'border-blue-500 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-        : 'border-slate-200 bg-slate-50 text-slate-800 cursor-default'
+  const inputClass = (editable: boolean, hasError = false) =>
+    `w-full px-4 py-2.5 rounded-xl border text-sm transition-all duration-150 ${!editable
+      ? 'border-slate-200 bg-slate-50 text-slate-800 cursor-default'
+      : hasError
+        ? 'border-red-500 bg-red-50/20 text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500'
+        : 'border-blue-500 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
     }`;
 
   // Filtered Service History records
@@ -737,7 +866,7 @@ export default function ProfilePage() {
 
       {/* Main Grid: Left Sidebar Tabs + Right Content */}
       <div className="flex flex-col md:flex-row items-start gap-8">
-        
+
         {/* Left Column: Sidebar Tabs */}
         <aside className="w-full md:w-64 lg:w-72 shrink-0 space-y-4">
           {/* User Card */}
@@ -774,16 +903,14 @@ export default function ProfilePage() {
                   key={tab.key}
                   type="button"
                   onClick={() => handleTabChange(tab.key)}
-                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left ${
-                    isActive
+                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left ${isActive
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 font-semibold'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
-                  }`}
+                    }`}
                 >
                   <span
-                    className={`material-symbols-outlined text-xl transition-colors ${
-                      isActive ? 'text-white' : 'text-slate-400'
-                    }`}
+                    className={`material-symbols-outlined text-xl transition-colors ${isActive ? 'text-white' : 'text-slate-400'
+                      }`}
                   >
                     {tab.icon}
                   </span>
@@ -796,7 +923,7 @@ export default function ProfilePage() {
 
         {/* Right Column: Tab Content */}
         <main className="flex-1 min-w-0 w-full">
-          
+
           {/* TAB 1: HỒ SƠ CÁ NHÂN */}
           {activeTab === 'profile' && (
             <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100 space-y-6">
@@ -828,46 +955,70 @@ export default function ProfilePage() {
                       <input
                         type="text"
                         value={form.fullName}
-                        onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                        onChange={(e) => handleProfileInputChange('fullName', e.target.value)}
+                        onBlur={(e) => isEditing && handleProfileInputChange('fullName', e.target.value)}
                         readOnly={!isEditing}
-                        className={`${inputClass(isEditing)} pl-10`}
+                        aria-invalid={Boolean(profileErrors.fullName)}
+                        className={`${inputClass(isEditing, Boolean(profileErrors.fullName))} pl-10`}
                         placeholder="Nhập họ và tên"
                       />
                     </div>
+                    {isEditing && profileErrors.fullName && (
+                      <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">error</span>
+                        <span>{profileErrors.fullName}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
-                      Số điện thoại
+                      Số điện thoại <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">phone</span>
                       <input
                         type="tel"
                         value={form.phone}
-                        onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                        onChange={(e) => handleProfileInputChange('phone', e.target.value)}
+                        onBlur={(e) => isEditing && handleProfileInputChange('phone', e.target.value)}
                         readOnly={!isEditing}
-                        className={`${inputClass(isEditing)} pl-10`}
-                        placeholder="Nhập số điện thoại"
+                        aria-invalid={Boolean(profileErrors.phone)}
+                        className={`${inputClass(isEditing, Boolean(profileErrors.phone))} pl-10`}
+                        placeholder="Nhập số điện thoại (VD: 0901234567)"
                       />
                     </div>
+                    {isEditing && profileErrors.phone && (
+                      <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">error</span>
+                        <span>{profileErrors.phone}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
-                      Email
+                      Email <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">mail</span>
                       <input
                         type="email"
                         value={form.email}
-                        onChange={(e) => setForm({ ...form, email: e.target.value })}
+                        onChange={(e) => handleProfileInputChange('email', e.target.value)}
+                        onBlur={(e) => isEditing && handleProfileInputChange('email', e.target.value)}
                         readOnly={!isEditing}
-                        className={`${inputClass(isEditing)} pl-10`}
-                        placeholder="Nhập email"
+                        aria-invalid={Boolean(profileErrors.email)}
+                        className={`${inputClass(isEditing, Boolean(profileErrors.email))} pl-10`}
+                        placeholder="Nhập email (VD: example@gmail.com)"
                       />
                     </div>
+                    {isEditing && profileErrors.email && (
+                      <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">error</span>
+                        <span>{profileErrors.email}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -879,12 +1030,20 @@ export default function ProfilePage() {
                       <input
                         type="text"
                         value={form.address}
-                        onChange={(e) => setForm({ ...form, address: e.target.value })}
+                        onChange={(e) => handleProfileInputChange('address', e.target.value)}
+                        onBlur={(e) => isEditing && handleProfileInputChange('address', e.target.value)}
                         readOnly={!isEditing}
-                        className={`${inputClass(isEditing)} pl-10`}
+                        aria-invalid={Boolean(profileErrors.address)}
+                        className={`${inputClass(isEditing, Boolean(profileErrors.address))} pl-10`}
                         placeholder="Nhập địa chỉ của bạn"
                       />
                     </div>
+                    {isEditing && profileErrors.address && (
+                      <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">error</span>
+                        <span>{profileErrors.address}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -988,17 +1147,19 @@ export default function ProfilePage() {
                             </span>
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {activeWO && (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                <span
+                                  title={`Phiếu công việc ${activeWO.woNumber} đang xử lý tại xưởng`}
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200"
+                                >
                                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                  Đang làm dịch vụ tại xưởng
+                                  Đang có phiếu công việc ({activeWO.woNumber})
                                 </span>
                               )}
                               <span
-                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                  v.isActive
+                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${v.isActive
                                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                     : 'bg-slate-100 text-slate-500'
-                                }`}
+                                  }`}
                               >
                                 {v.isActive ? 'Hoạt động' : 'Tạm dừng'}
                               </span>
@@ -1030,43 +1191,39 @@ export default function ProfilePage() {
                             <span className="material-symbols-outlined text-[15px]">edit</span>
                             Chỉnh sửa
                           </button>
-                          {v.isActive ? (
-                            <button
-                              type="button"
-                              aria-disabled={!!activeWO}
-                              title={
-                                activeWO
-                                  ? `Phương tiện đang có Phiếu công việc đang xử lý tại xưởng (${activeWO.woNumber}). Không thể xóa phương tiện này.`
-                                  : 'Xóa phương tiện'
-                              }
-                              onClick={() => {
-                                if (activeWO) {
-                                  setVehicleToast({
-                                    message: `Phương tiện đang có Phiếu công việc đang xử lý tại xưởng (${activeWO.woNumber}). Không thể xóa phương tiện này.`,
-                                    type: 'error',
-                                  });
-                                  return;
-                                }
-                                setVehicleDeleteConfirm(v);
-                              }}
-                              className={`flex items-center gap-1 px-3 py-1.5 border rounded-xl text-xs font-semibold transition-all ${
-                                activeWO
-                                  ? 'border-slate-200 bg-slate-50 text-slate-400 opacity-50 cursor-not-allowed'
-                                  : 'border-red-100 text-red-600 hover:bg-red-50'
-                              }`}
-                            >
-                              <span className="material-symbols-outlined text-[15px]">delete</span>
-                              Xóa
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleRestoreVehicle(v.id)}
-                              className="flex items-center gap-1 px-3 py-1.5 border border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl text-xs font-semibold transition-all"
-                            >
-                              <span className="material-symbols-outlined text-[15px]">restart_alt</span>
-                              Kích hoạt lại
-                            </button>
+                          {!activeWO && (
+                            v.isActive ? (
+                              v.hasTransactions ? (
+                                <button
+                                  type="button"
+                                  title="Xe đã phát sinh giao dịch, chỉ có thể vô hiệu hóa"
+                                  onClick={() => setVehicleDeleteConfirm(v)}
+                                  className="flex items-center gap-1 px-3 py-1.5 border border-amber-200 text-amber-700 hover:bg-amber-50 rounded-xl text-xs font-semibold transition-all"
+                                >
+                                  <span className="material-symbols-outlined text-[15px]">block</span>
+                                  Vô hiệu hóa
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  title="Xóa phương tiện"
+                                  onClick={() => setVehicleDeleteConfirm(v)}
+                                  className="flex items-center gap-1 px-3 py-1.5 border border-red-100 text-red-600 hover:bg-red-50 rounded-xl text-xs font-semibold transition-all"
+                                >
+                                  <span className="material-symbols-outlined text-[15px]">delete</span>
+                                  Xóa
+                                </button>
+                              )
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleRestoreVehicle(v.id)}
+                                className="flex items-center gap-1 px-3 py-1.5 border border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl text-xs font-semibold transition-all"
+                              >
+                                <span className="material-symbols-outlined text-[15px]">restart_alt</span>
+                                Kích hoạt lại
+                              </button>
+                            )
                           )}
                         </div>
                       </div>
@@ -1154,24 +1311,22 @@ export default function ProfilePage() {
                           handleOpen3StepBooking(cell.date);
                         }
                       }}
-                      className={`min-h-[110px] p-2 flex flex-col justify-between transition-colors cursor-pointer group ${
-                        !cell.isCurrentMonth
+                      className={`min-h-[110px] p-2 flex flex-col justify-between transition-colors cursor-pointer group ${!cell.isCurrentMonth
                           ? 'bg-slate-50/50 text-slate-300'
                           : cell.isToday
-                          ? 'bg-blue-50/40'
-                          : 'hover:bg-blue-50/20'
-                      }`}
+                            ? 'bg-blue-50/40'
+                            : 'hover:bg-blue-50/20'
+                        }`}
                     >
                       {/* Date Header */}
                       <div className="flex items-center justify-between">
                         <span
-                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
-                            cell.isToday
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${cell.isToday
                               ? 'bg-blue-600 text-white shadow-sm font-bold'
                               : cell.isCurrentMonth
-                              ? 'text-slate-800'
-                              : 'text-slate-400'
-                          }`}
+                                ? 'text-slate-800'
+                                : 'text-slate-400'
+                            }`}
                         >
                           {cell.dateNum}
                         </span>
@@ -1191,15 +1346,14 @@ export default function ProfilePage() {
                               e.stopPropagation();
                               setSelectedAptDetail(apt);
                             }}
-                            className={`p-1.5 rounded-lg text-[11px] font-medium transition-all shadow-xs flex items-center justify-between ${
-                              apt.status === 'ARRIVED'
+                            className={`p-1.5 rounded-lg text-[11px] font-medium transition-all shadow-xs flex items-center justify-between ${apt.status === 'ARRIVED'
                                 ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
                                 : apt.status === 'CONFIRMED'
-                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                                : apt.status === 'CANCELLED'
-                                ? 'bg-red-100 text-red-800 hover:bg-red-200 line-through'
-                                : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                            }`}
+                                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                  : apt.status === 'CANCELLED'
+                                    ? 'bg-red-100 text-red-800 hover:bg-red-200 line-through'
+                                    : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                              }`}
                           >
                             <span className="truncate">
                               {apt.scheduled_time_str || apt.scheduled_time} • {apt.vehicle?.license_plate || 'Xe'}
@@ -1267,16 +1421,14 @@ export default function ProfilePage() {
               {/* Step 1 Pill */}
               <div
                 onClick={() => setBookingStep(1)}
-                className={`flex items-center gap-2 cursor-pointer ${
-                  bookingStep === 1 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'
-                }`}
+                className={`flex items-center gap-2 cursor-pointer ${bookingStep === 1 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'
+                  }`}
               >
                 <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
-                    bookingStep === 1
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${bookingStep === 1
                       ? 'bg-blue-600 text-white font-bold'
                       : 'bg-blue-100 text-blue-700 font-semibold'
-                  }`}
+                    }`}
                 >
                   1
                 </div>
@@ -1288,18 +1440,16 @@ export default function ProfilePage() {
               {/* Step 2 Pill */}
               <div
                 onClick={() => setBookingStep(2)}
-                className={`flex items-center gap-2 cursor-pointer ${
-                  bookingStep === 2 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'
-                }`}
+                className={`flex items-center gap-2 cursor-pointer ${bookingStep === 2 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'
+                  }`}
               >
                 <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
-                    bookingStep === 2
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${bookingStep === 2
                       ? 'bg-blue-600 text-white font-bold'
                       : bookingStep > 2
-                      ? 'bg-blue-100 text-blue-700 font-semibold'
-                      : 'bg-slate-100 text-slate-500'
-                  }`}
+                        ? 'bg-blue-100 text-blue-700 font-semibold'
+                        : 'bg-slate-100 text-slate-500'
+                    }`}
                 >
                   2
                 </div>
@@ -1311,16 +1461,14 @@ export default function ProfilePage() {
               {/* Step 3 Pill */}
               <div
                 onClick={() => setBookingStep(3)}
-                className={`flex items-center gap-2 cursor-pointer ${
-                  bookingStep === 3 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'
-                }`}
+                className={`flex items-center gap-2 cursor-pointer ${bookingStep === 3 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'
+                  }`}
               >
                 <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
-                    bookingStep === 3
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${bookingStep === 3
                       ? 'bg-blue-600 text-white font-bold'
                       : 'bg-slate-100 text-slate-500'
-                  }`}
+                    }`}
                 >
                   3
                 </div>
@@ -1381,11 +1529,10 @@ export default function ProfilePage() {
                             setBookingVehicleId(v.id);
                             setCustomPlateInput('');
                           }}
-                          className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between gap-3 ${
-                            isSelected
+                          className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between gap-3 ${isSelected
                               ? 'border-blue-600 bg-blue-50/20 shadow-sm'
                               : 'border-slate-200 bg-white hover:border-slate-300'
-                          }`}
+                            }`}
                         >
                           <div>
                             <div className="flex items-center justify-between mb-2">
@@ -1393,9 +1540,8 @@ export default function ProfilePage() {
                                 {v.licensePlate}
                               </span>
                               <div
-                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                  isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
-                                }`}
+                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
+                                  }`}
                               >
                                 {isSelected && <span className="material-symbols-outlined text-[13px]">check</span>}
                               </div>
@@ -1478,16 +1624,14 @@ export default function ProfilePage() {
                       <div
                         key={srv.id}
                         onClick={() => handleToggleService(srv.id)}
-                        className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
-                          isChecked
+                        className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-start gap-3 ${isChecked
                             ? 'border-blue-600 bg-blue-50/20 shadow-xs'
                             : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
+                          }`}
                       >
                         <div
-                          className={`w-5 h-5 mt-0.5 rounded-lg border flex items-center justify-center shrink-0 ${
-                            isChecked ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
-                          }`}
+                          className={`w-5 h-5 mt-0.5 rounded-lg border flex items-center justify-center shrink-0 ${isChecked ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
+                            }`}
                         >
                           {isChecked && <span className="material-symbols-outlined text-[13px]">check</span>}
                         </div>
@@ -1652,15 +1796,14 @@ export default function ProfilePage() {
                                       if (nextSlot) setBookingTime(nextSlot);
                                     }
                                   }}
-                                  className={`h-7 rounded-lg font-medium text-xs flex items-center justify-center transition-all ${
-                                    isPastDay
+                                  className={`h-7 rounded-lg font-medium text-xs flex items-center justify-center transition-all ${isPastDay
                                       ? 'text-slate-300 cursor-not-allowed line-through'
                                       : isDuplicateDay
                                         ? 'bg-amber-50 text-amber-500 border border-amber-200 cursor-not-allowed'
                                         : isSelectedDay
                                           ? 'bg-blue-600 text-white font-bold shadow-sm'
                                           : 'hover:bg-slate-100 text-slate-700'
-                                  }`}
+                                    }`}
                                 >
                                   {dayNum}
                                 </button>
@@ -1682,11 +1825,11 @@ export default function ProfilePage() {
                       bookingVehicleId,
                       `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}-${String(bookingDate.getDate()).padStart(2, '0')}`
                     ) && (
-                      <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-medium flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-sm text-amber-600">warning</span>
-                        <span>Xe này đã có lịch hẹn vào ngày đang chọn. Vui lòng chọn ngày khác.</span>
-                      </div>
-                    )}
+                        <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-medium flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-sm text-amber-600">warning</span>
+                          <span>Xe này đã có lịch hẹn vào ngày đang chọn. Vui lòng chọn ngày khác.</span>
+                        </div>
+                      )}
                   </div>
 
                   {/* Right: Morning & Afternoon Slots */}
@@ -1712,13 +1855,12 @@ export default function ProfilePage() {
                               type="button"
                               disabled={isPastSlot}
                               onClick={() => setBookingTime(slot)}
-                              className={`py-2 rounded-xl text-xs font-semibold transition-all border ${
-                                isPastSlot
+                              className={`py-2 rounded-xl text-xs font-semibold transition-all border ${isPastSlot
                                   ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed line-through'
                                   : isSelected
                                     ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                                     : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                              }`}
+                                }`}
                             >
                               {slot}
                             </button>
@@ -1748,13 +1890,12 @@ export default function ProfilePage() {
                               type="button"
                               disabled={isPastSlot}
                               onClick={() => setBookingTime(slot)}
-                              className={`py-2 rounded-xl text-xs font-semibold transition-all border ${
-                                isPastSlot
+                              className={`py-2 rounded-xl text-xs font-semibold transition-all border ${isPastSlot
                                   ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed line-through'
                                   : isSelected
                                     ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                                     : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                              }`}
+                                }`}
                             >
                               {slot}
                             </button>
@@ -1960,13 +2101,12 @@ export default function ProfilePage() {
                       return (
                         <div
                           key={item.step}
-                          className={`flex items-center gap-2 p-2 rounded-lg border text-xs ${
-                            active
+                          className={`flex items-center gap-2 p-2 rounded-lg border text-xs ${active
                               ? 'bg-blue-50 border-blue-200 text-blue-800 font-bold'
                               : done
                                 ? 'bg-emerald-50/70 border-emerald-200 text-emerald-800 font-semibold'
                                 : 'bg-white border-slate-200 text-slate-400'
-                          }`}
+                            }`}
                         >
                           <span className="material-symbols-outlined text-base shrink-0">
                             {done && !active ? 'check_circle' : item.icon}
@@ -2127,8 +2267,8 @@ export default function ProfilePage() {
                       {selectedAptDetail.status === 'CONFIRMED'
                         ? 'Đơn đã xác nhận không thể hủy hoặc dời (Vui lòng liên hệ hotline)'
                         : selectedAptDetail.status === 'ARRIVED'
-                        ? 'Xe đã tiếp nhận tại xưởng, không thể thay đổi'
-                        : 'Lịch hẹn đã hủy'}
+                          ? 'Xe đã tiếp nhận tại xưởng, không thể thay đổi'
+                          : 'Lịch hẹn đã hủy'}
                     </span>
                   </div>
                 )}
@@ -2247,7 +2387,7 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveVehicle} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSaveVehicle} noValidate className="space-y-3.5 text-xs">
               <div>
                 <label className="block font-bold text-slate-600 uppercase mb-1">
                   Biển số xe <span className="text-red-500">*</span>
@@ -2255,13 +2395,23 @@ export default function ProfilePage() {
                 <input
                   type="text"
                   value={vehicleForm.licensePlate}
-                  onChange={(e) => setVehicleForm({ ...vehicleForm, licensePlate: e.target.value.toUpperCase() })}
+                  onChange={(e) => handleVehicleInputChange('licensePlate', e.target.value.toUpperCase())}
                   disabled={vehicleModalMode === 'edit'}
+                  aria-invalid={Boolean(vehicleErrors.licensePlate)}
                   placeholder="Ví dụ: 51G-123.45"
-                  className={`w-full px-3 py-2 rounded-xl border border-slate-200 font-mono tracking-wider text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${
-                    vehicleModalMode === 'edit' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white'
-                  }`}
+                  className={`w-full px-3 py-2 rounded-xl border font-mono tracking-wider text-sm focus:outline-none focus:ring-2 ${vehicleModalMode === 'edit'
+                      ? 'border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed'
+                      : vehicleErrors.licensePlate
+                        ? 'border-red-500 bg-red-50/20 focus:ring-red-500/20 focus:border-red-500'
+                        : 'border-slate-200 bg-white focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
                 />
+                {vehicleErrors.licensePlate && (
+                  <p className="mt-1 text-[11px] font-medium text-red-600 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[13px]">error</span>
+                    <span>{vehicleErrors.licensePlate}</span>
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -2272,10 +2422,20 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     value={vehicleForm.make}
-                    onChange={(e) => setVehicleForm({ ...vehicleForm, make: e.target.value })}
+                    onChange={(e) => handleVehicleInputChange('make', e.target.value)}
+                    aria-invalid={Boolean(vehicleErrors.make)}
                     placeholder="Toyota, Honda, Ford..."
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs focus:outline-none focus:ring-2 ${vehicleErrors.make
+                        ? 'border-red-500 bg-red-50/20 focus:ring-red-500/20 focus:border-red-500'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
                   />
+                  {vehicleErrors.make && (
+                    <p className="mt-1 text-[11px] font-medium text-red-600 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px]">error</span>
+                      <span>{vehicleErrors.make}</span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block font-bold text-slate-600 uppercase mb-1">
@@ -2284,10 +2444,20 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     value={vehicleForm.model}
-                    onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })}
+                    onChange={(e) => handleVehicleInputChange('model', e.target.value)}
+                    aria-invalid={Boolean(vehicleErrors.model)}
                     placeholder="Santa Fe, Everest, Vios..."
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs focus:outline-none focus:ring-2 ${vehicleErrors.model
+                        ? 'border-red-500 bg-red-50/20 focus:ring-red-500/20 focus:border-red-500'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
                   />
+                  {vehicleErrors.model && (
+                    <p className="mt-1 text-[11px] font-medium text-red-600 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px]">error</span>
+                      <span>{vehicleErrors.model}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -2296,23 +2466,43 @@ export default function ProfilePage() {
                   <label className="block font-bold text-slate-600 uppercase mb-1">Năm sản xuất</label>
                   <input
                     type="number"
-                    min="1990"
+                    min="1980"
                     max="2030"
                     value={vehicleForm.year}
-                    onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })}
+                    onChange={(e) => handleVehicleInputChange('year', e.target.value)}
+                    aria-invalid={Boolean(vehicleErrors.year)}
                     placeholder="2022"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs focus:outline-none focus:ring-2 ${vehicleErrors.year
+                        ? 'border-red-500 bg-red-50/20 focus:ring-red-500/20 focus:border-red-500'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
                   />
+                  {vehicleErrors.year && (
+                    <p className="mt-1 text-[11px] font-medium text-red-600 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px]">error</span>
+                      <span>{vehicleErrors.year}</span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block font-bold text-slate-600 uppercase mb-1">Màu sơn</label>
                   <input
                     type="text"
                     value={vehicleForm.color}
-                    onChange={(e) => setVehicleForm({ ...vehicleForm, color: e.target.value })}
+                    onChange={(e) => handleVehicleInputChange('color', e.target.value)}
+                    aria-invalid={Boolean(vehicleErrors.color)}
                     placeholder="Trắng, Đen, Xanh..."
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs focus:outline-none focus:ring-2 ${vehicleErrors.color
+                        ? 'border-red-500 bg-red-50/20 focus:ring-red-500/20 focus:border-red-500'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
                   />
+                  {vehicleErrors.color && (
+                    <p className="mt-1 text-[11px] font-medium text-red-600 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px]">error</span>
+                      <span>{vehicleErrors.color}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -2357,13 +2547,17 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Delete Vehicle Confirm Modal */}
+      {/* Delete / Deactivate Vehicle Confirm Modal */}
       {vehicleDeleteConfirm && (
         <ConfirmModal
           isOpen={!!vehicleDeleteConfirm}
-          title="Xác nhận xóa xe"
-          message={`Bạn có chắc chắn muốn xóa phương tiện biển số ${vehicleDeleteConfirm.licensePlate} (${vehicleDeleteConfirm.make} ${vehicleDeleteConfirm.model}) khỏi danh sách xe của bạn không?`}
-          confirmText="Xác nhận xóa"
+          title={vehicleDeleteConfirm.hasTransactions ? 'Xác nhận vô hiệu hóa xe' : 'Xác nhận xóa xe'}
+          message={
+            vehicleDeleteConfirm.hasTransactions
+              ? `Phương tiện biển số ${vehicleDeleteConfirm.licensePlate} (${vehicleDeleteConfirm.make} ${vehicleDeleteConfirm.model}) đã phát sinh giao dịch nên không thể xóa vĩnh viễn. Bạn có muốn vô hiệu hóa xe này không? (Bạn có thể kích hoạt lại bất cứ lúc nào)`
+              : `Bạn có chắc chắn muốn xóa phương tiện biển số ${vehicleDeleteConfirm.licensePlate} (${vehicleDeleteConfirm.make} ${vehicleDeleteConfirm.model}) khỏi danh sách xe của bạn không?`
+          }
+          confirmText={vehicleDeleteConfirm.hasTransactions ? 'Xác nhận' : 'Xác nhận'}
           onConfirm={handleDeleteVehicle}
           onCancel={() => setVehicleDeleteConfirm(null)}
         />
