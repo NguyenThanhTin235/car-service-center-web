@@ -384,15 +384,15 @@ export default function EmployeesPage() {
         </div>
 
         <div className="w-full overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[900px]">
+          <table className="w-full text-left border-collapse min-w-[980px]">
             <thead>
               <tr className="bg-slate-50/80 text-slate-500 text-[11px] uppercase tracking-wider font-semibold border-b border-slate-200/80">
-                <th className="py-3.5 px-5 font-mono">ID</th>
-                <th className="py-3.5 px-5">Họ và tên</th>
-                <th className="py-3.5 px-5">Chức vụ</th>
-                <th className="py-3.5 px-5">Tài khoản liên kết</th>
-                <th className="py-3.5 px-5">Kỹ năng</th>
-                <th className="py-3.5 px-5 text-right pr-6">Thao tác</th>
+                <th className="py-3.5 px-4 pl-5 font-mono whitespace-nowrap">ID</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Họ và tên</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Chức vụ</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Tài khoản liên kết</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Kỹ năng</th>
+                <th className="py-3.5 px-4 pr-5 text-right whitespace-nowrap">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/60">
@@ -416,12 +416,12 @@ export default function EmployeesPage() {
                       !emp.isActive ? 'opacity-65' : ''
                     }`}
                   >
-                    <td className="py-3.5 px-5 font-mono text-xs font-bold text-[#0866ff]">
+                    <td className="py-3.5 px-4 pl-5 font-mono tabular-nums text-xs font-bold text-[#0866ff] whitespace-nowrap align-middle">
                       EMP-{String(emp.id).padStart(4, '0')}
                     </td>
-                    <td className="py-3.5 px-5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                    <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
                           {emp.fullName
                             .split(' ')
                             .map((n: string) => n[0])
@@ -429,34 +429,40 @@ export default function EmployeesPage() {
                             .join('')
                             .toUpperCase()}
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-slate-900">{emp.fullName}</span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="text-sm font-semibold text-slate-900 leading-tight">
+                            {emp.fullName}
+                          </span>
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 ${
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${
                               emp.isActive
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
                                 : 'bg-rose-50 text-rose-600 border-rose-200/80'
                             }`}
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full ${emp.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                emp.isActive ? 'bg-emerald-500' : 'bg-rose-500'
+                              }`}
+                            />
                             {emp.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
                           </span>
                         </div>
                       </div>
                     </td>
-                    <td className="py-3.5 px-5">
+                    <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                       {(() => {
                         const meta = getPositionMeta(emp.position, emp.user?.email);
                         return (
                           <span
-                            className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${meta.color}`}
+                            className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border whitespace-nowrap ${meta.color}`}
                           >
                             {meta.label}
                           </span>
                         );
                       })()}
                     </td>
-                    <td className="py-3.5 px-5">
+                    <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                       {emp.user ? (
                         <div>
                           <div className="font-mono text-xs font-semibold text-slate-800">{emp.user.email}</div>
@@ -475,35 +481,35 @@ export default function EmployeesPage() {
                         <span className="text-xs text-slate-500 italic">Chưa liên kết</span>
                       )}
                     </td>
-                    <td className="py-3.5 px-5">
+                    <td className="py-3.5 px-4 align-middle">
                       {(() => {
                         const meta = getPositionMeta(emp.position, emp.user?.email);
                         if (!isTechRole(meta.key)) {
                           return (
-                            <span className="text-xs text-slate-400 italic">
+                            <span className="text-xs text-slate-400 italic whitespace-nowrap">
                               Không áp dụng
                             </span>
                           );
                         }
                         if (!emp.skills || emp.skills.length === 0) {
                           return (
-                            <span className="text-xs text-slate-400 italic">
+                            <span className="text-xs text-slate-400 italic whitespace-nowrap">
                               Chưa gán kỹ năng
                             </span>
                           );
                         }
                         return (
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex items-center flex-wrap gap-1.5">
                             {emp.skills.slice(0, 2).map((s) => (
                               <span
                                 key={s.id}
-                                className="px-2 py-0.5 rounded-lg bg-blue-50/70 text-slate-700 text-xs border border-blue-200/60"
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-blue-50/70 text-slate-700 text-xs border border-blue-200/60 whitespace-nowrap"
                               >
                                 {s.name}
                               </span>
                             ))}
                             {emp.skills.length > 2 && (
-                              <span className="text-xs font-mono text-slate-400">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-100 text-xs font-mono font-semibold text-slate-500 whitespace-nowrap">
                                 +{emp.skills.length - 2}
                               </span>
                             )}
@@ -511,7 +517,7 @@ export default function EmployeesPage() {
                         );
                       })()}
                     </td>
-                    <td className="py-3.5 px-5 pr-6">
+                    <td className="py-3.5 px-4 pr-5 align-middle whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => setSelectedEmpDetail(emp)}
