@@ -807,11 +807,11 @@ export default function ProfilePage() {
   };
 
   const inputClass = (editable: boolean, hasError = false) =>
-    `w-full px-4 py-2.5 rounded-xl border text-sm transition-all duration-150 ${!editable
-      ? 'border-slate-200 bg-slate-50 text-slate-800 cursor-default'
+    `w-full min-h-[44px] px-4 py-2.5 rounded-xl border text-sm transition-all duration-150 ${!editable
+      ? 'border-hairline bg-surface-subtle text-ink-primary cursor-default'
       : hasError
-        ? 'border-red-500 bg-red-50/20 text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500'
-        : 'border-blue-500 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+        ? 'border-status-danger bg-status-danger-soft/30 text-ink-primary focus:outline-none focus:ring-2 focus:ring-status-danger/20 focus:border-status-danger'
+        : 'border-accent bg-surface-elevated text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent'
     }`;
 
   // Filtered Service History records
@@ -867,36 +867,43 @@ export default function ProfilePage() {
   return (
     <div className="w-full">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-500 mb-6">
-        <Link href="/" className="hover:text-blue-600 transition-colors">Trang chủ</Link>
-        <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-        <span className="text-slate-800 font-medium">
+      <nav className="flex items-center gap-1.5 text-xs text-ink-muted mb-5">
+        <Link href="/home" className="hover:text-accent transition-colors">
+          Trang chủ
+        </Link>
+        <span className="material-symbols-outlined text-sm" aria-hidden="true">
+          chevron_right
+        </span>
+        <span className="text-ink-primary font-semibold">
           {navTabs.find((t) => t.key === activeTab)?.label || 'Tổng quan'}
         </span>
       </nav>
 
       {/* Main Grid: Left Sidebar Tabs + Right Content */}
-      <div className="flex flex-col md:flex-row items-start gap-8">
+      <div className="flex flex-col md:flex-row items-start gap-6 lg:gap-8">
 
         {/* Left Column: Sidebar Tabs */}
         <aside className="w-full md:w-64 lg:w-72 shrink-0 space-y-4">
           {/* User Card */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-full bg-blue-700 text-white flex items-center justify-center font-bold text-base shadow-sm shrink-0">
+          <div className="bg-surface-elevated rounded-2xl p-4 border border-hairline flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center font-bold text-base shrink-0">
               {getInitials(data?.fullName)}
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-bold text-slate-800 truncate">
+              <h2 className="text-sm font-bold text-ink-primary truncate">
                 {data?.fullName || 'Khách hàng'}
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Thành viên Tiêu chuẩn
+              <p className="text-xs text-ink-muted mt-0.5">
+                Khách hàng AutoCare Pro
               </p>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <nav className="space-y-1">
+          {/* Navigation Tabs (horizontal scrollable strip on mobile, vertical list on md+) */}
+          <nav
+            className="flex md:flex-col gap-1.5 overflow-x-auto no-scrollbar pb-1 md:pb-0 -mx-1 px-1 md:mx-0 md:px-0"
+            aria-label="Điều hướng cổng khách hàng"
+          >
             {navTabs.map((tab) => {
               const isActive = activeTab === tab.key;
               return (
@@ -904,14 +911,17 @@ export default function ProfilePage() {
                   key={tab.key}
                   type="button"
                   onClick={() => handleTabChange(tab.key)}
-                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left ${isActive
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
-                    }`}
+                  className={`shrink-0 md:w-full min-h-[44px] flex items-center gap-2.5 md:gap-3.5 px-4 py-2.5 md:py-3 rounded-xl md:rounded-2xl text-sm font-medium transition-colors text-left cursor-pointer whitespace-nowrap ${
+                    isActive
+                      ? 'bg-accent text-white font-semibold'
+                      : 'bg-surface-elevated md:bg-transparent border border-hairline md:border-transparent text-ink-secondary hover:text-ink-primary hover:bg-surface-subtle'
+                  }`}
                 >
                   <span
-                    className={`material-symbols-outlined text-xl transition-colors ${isActive ? 'text-white' : 'text-slate-400'
-                      }`}
+                    className={`material-symbols-outlined text-lg md:text-xl transition-colors ${
+                      isActive ? 'text-white' : 'text-ink-muted'
+                    }`}
+                    aria-hidden="true"
                   >
                     {tab.icon}
                   </span>
@@ -932,18 +942,23 @@ export default function ProfilePage() {
 
           {/* TAB 1: HỒ SƠ CÁ NHÂN */}
           {activeTab === 'profile' && (
-            <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100 space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div className="bg-surface-elevated rounded-2xl p-5 sm:p-8 border border-hairline space-y-6">
+              <div className="flex items-center justify-between gap-4 pb-4 border-b border-hairline">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">Hồ sơ cá nhân</h2>
-                  <p className="text-xs text-slate-500 mt-1">Quản lý và cập nhật thông tin hồ sơ của bạn</p>
+                  <h2 className="text-xl font-bold text-ink-primary">Hồ sơ cá nhân</h2>
+                  <p className="text-xs text-ink-secondary mt-1">
+                    Quản lý và cập nhật thông tin hồ sơ của bạn
+                  </p>
                 </div>
                 {!isEditing && (
                   <button
+                    type="button"
                     onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-all shadow-sm"
+                    className="inline-flex items-center gap-1.5 min-h-[44px] px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0"
                   >
-                    <span className="material-symbols-outlined text-[16px]">edit</span>
+                    <span className="material-symbols-outlined text-base" aria-hidden="true">
+                      edit
+                    </span>
                     Chỉnh sửa
                   </button>
                 )}
@@ -1053,18 +1068,26 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-100">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Thông tin tài khoản</p>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="pt-4 border-t border-hairline">
+                  <p className="text-xs font-bold text-ink-muted uppercase tracking-wide mb-3">
+                    Thông tin tài khoản
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-xs text-slate-400 mb-0.5">Ngày tham gia</p>
-                      <p className="font-semibold text-slate-800">
+                      <p className="text-xs text-ink-muted mb-0.5">Ngày tham gia</p>
+                      <p className="font-semibold text-ink-primary font-mono tabular-nums">
                         {data?.createdAt ? new Date(data.createdAt).toLocaleDateString('vi-VN') : '—'}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400 mb-0.5">Trạng thái</p>
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${data?.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                      <p className="text-xs text-ink-muted mb-0.5">Trạng thái</p>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                          data?.isActive
+                            ? 'bg-status-success-soft text-on-secondary-container'
+                            : 'bg-status-danger-soft text-on-error-container'
+                        }`}
+                      >
                         <span className="w-1.5 h-1.5 rounded-full bg-current" />
                         {data?.isActive ? 'Đang hoạt động' : 'Bị vô hiệu hóa'}
                       </span>
@@ -1073,23 +1096,27 @@ export default function ProfilePage() {
                 </div>
 
                 {isEditing && (
-                  <div className="flex items-center gap-3 pt-2">
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
                     <button
+                      type="button"
                       onClick={requestSave}
                       disabled={updateLoading}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition-all shadow-sm"
+                      className="inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-xl text-sm font-semibold disabled:opacity-60 transition-colors cursor-pointer"
                     >
                       {updateLoading ? (
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       ) : (
-                        <span className="material-symbols-outlined text-[18px]">save</span>
+                        <span className="material-symbols-outlined text-lg" aria-hidden="true">
+                          save
+                        </span>
                       )}
                       {updateLoading ? 'Đang lưu...' : 'Lưu thay đổi'}
                     </button>
                     <button
+                      type="button"
                       onClick={handleCancel}
                       disabled={updateLoading}
-                      className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition-all"
+                      className="min-h-[44px] px-5 py-2.5 border border-hairline-strong text-ink-secondary rounded-xl text-sm font-medium hover:bg-surface-subtle transition-colors cursor-pointer"
                     >
                       Hủy
                     </button>

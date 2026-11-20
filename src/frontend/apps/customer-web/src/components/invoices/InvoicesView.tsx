@@ -251,7 +251,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
       <div className="hidden print:block border-b-2 border-blue-800 pb-3 mb-4">
         <div className="flex items-end justify-between">
           <div>
-            <h1 className="text-base font-bold text-blue-900 uppercase">TRUNG TÂM BẢO DƯỠNG &amp; SỬA CHỮA Ô TÔ CAR SERVICE CENTER</h1>
+            <h1 className="text-base font-bold text-blue-900 uppercase">TRUNG TÂM BẢO DƯỠNG &amp; SỬA CHỮA Ô TÔ AUTOCARE PRO</h1>
             <p className="text-xs text-slate-600">Địa chỉ: Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh • Hotline: 1900 6868</p>
           </div>
           <div className="text-right text-xs text-slate-600">
@@ -542,20 +542,24 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
         
         {/* Payment Methods & Financial Clearance */}
         <div className="lg:col-span-2 bg-white dark:bg-surface-container-lowest border border-slate-200 dark:border-surface-container-highest rounded-2xl p-5 sm:p-6 shadow-2xs">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-            <div className="flex items-center space-x-2.5">
-              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
-                <span className="material-symbols-outlined text-[20px]">payments</span>
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-on-surface">Phương thức thanh toán & Quyết toán tài chính</h4>
-                <p className="text-xs text-on-surface-variant">Thanh toán linh hoạt, tự động đối soát mở cổng xuất xưởng (Financial Clearance).</p>
-              </div>
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0 mt-0.5">
+              <span className="material-symbols-outlined text-[20px]">payments</span>
             </div>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-[11px] font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              Đối soát tự động 24/7
-            </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-sm font-bold text-on-surface">
+                  Phương thức thanh toán &amp; Quyết toán tài chính
+                </h4>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Đối soát tự động 24/7
+                </span>
+              </div>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                Thanh toán linh hoạt, tự động đối soát mở cổng xuất xưởng (Financial Clearance).
+              </p>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
@@ -565,7 +569,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
                 <span className="material-symbols-outlined text-[20px]">qr_code_scanner</span>
               </div>
               <div className="min-w-0">
-                <span className="font-bold text-xs text-on-surface block">Chuyển khoản VietQR</span>
+                <span className="font-bold text-xs text-on-surface block">Chuyển khoản SePay</span>
                 <span className="text-[11px] text-on-surface-variant leading-tight block mt-0.5">
                   Quét mã QR SePay 24/7, xác nhận tức thì không cần chụp bill
                 </span>
@@ -810,7 +814,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
                         <div key={p.id} className="p-2.5 rounded-lg bg-surface-container-low border border-surface-container-highest flex justify-between items-center">
                           <div>
                             <span className="font-semibold text-on-surface">
-                              Hình thức: {p.paymentMethod === 'CASH' ? 'Tiền mặt' : p.paymentMethod === 'CARD' ? 'Thẻ POS' : 'Chuyển khoản VietQR'}
+                              Hình thức: {p.paymentMethod === 'CASH' ? 'Tiền mặt' : p.paymentMethod === 'CARD' ? 'Thẻ POS' : 'Chuyển khoản SePay'}
                             </span>
                             {p.transactionRef && (
                               <p className="text-[10px] text-outline font-mono">Mã giao dịch: {p.transactionRef}</p>

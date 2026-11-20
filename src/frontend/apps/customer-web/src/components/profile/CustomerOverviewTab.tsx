@@ -31,60 +31,57 @@ export default function CustomerOverviewTab({ onSelectTab }: CustomerOverviewTab
   const activeOrder = orders.length > 0 ? orders[0] : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-primary to-primary/80 text-on-primary rounded-2xl p-6 sm:p-8 shadow-sm overflow-hidden relative">
+      <div className="hero-banner-surface text-white rounded-2xl p-6 sm:p-7 overflow-hidden relative">
         <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-1.5">
             <span
-              className="material-symbols-outlined text-[22px]"
-              style={{ fontVariationSettings: "'FILL' 1" }}
+              className="material-symbols-outlined text-lg text-white/90"
+              aria-hidden="true"
             >
               waving_hand
             </span>
-            <p className="text-sm font-medium opacity-90">Chào mừng trở lại</p>
+            <p className="text-xs sm:text-sm font-medium text-white/85">Chào mừng trở lại</p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold mb-1">
-            {user?.fullName || 'Khách hàng'}!
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-[-0.02em] mb-1.5">
+            {user?.fullName || 'Khách hàng'}
           </h1>
-          <p className="text-sm opacity-85 max-w-lg">
-            Cổng thông tin khách hàng Car Service Center. Quản lý phương tiện, theo dõi tiến độ sửa chữa và tra cứu hóa đơn dịch vụ.
+          <p className="text-sm text-white/80 max-w-xl leading-relaxed">
+            Cổng thông tin khách hàng AutoCare Pro. Quản lý phương tiện, theo dõi tiến độ sửa chữa
+            và thanh toán hóa đơn SePay trực tuyến.
           </p>
-        </div>
-        <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-10">
-          <span className="material-symbols-outlined text-[140px]">directions_car</span>
         </div>
       </div>
 
       {/* Active Work Order Banner */}
       {activeOrder && (
-        <div className="bg-surface-container-lowest border-2 border-primary/40 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+        <div className="bg-surface-elevated border border-accent/30 rounded-2xl p-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start space-x-3.5">
-              <div className="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center shrink-0">
-                <span
-                  className="material-symbols-outlined text-[24px] animate-spin"
-                  style={{ animationDuration: '6s' }}
-                >
+            <div className="flex items-start gap-3.5 min-w-0">
+              <div className="w-11 h-11 rounded-xl bg-accent text-white flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-xl" aria-hidden="true">
                   build
                 </span>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-md border border-on-surface bg-white text-on-surface font-mono font-extrabold text-xs">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md border border-hairline-strong bg-surface-elevated text-ink-primary font-mono tabular-nums font-bold text-xs uppercase tracking-wider">
                     {activeOrder.vehicle.licensePlate}
                   </span>
-                  <span className="text-xs font-bold text-primary">
-                    Xe đang thực hiện dịch vụ ({activeOrder.progressPercent}%)
+                  <span className="text-xs font-semibold text-accent font-mono tabular-nums">
+                    Đang thực hiện ({activeOrder.progressPercent}%)
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-on-surface mt-1">
-                  {activeOrder.vehicle.make} {activeOrder.vehicle.model} • Giai đoạn:{' '}
+                <p className="text-sm font-semibold text-ink-primary mt-1.5">
+                  {activeOrder.vehicle.make} {activeOrder.vehicle.model} · Giai đoạn:{' '}
                   {activeOrder.steps[activeOrder.currentStep - 1]?.title}
                 </p>
-                <p className="text-xs text-on-surface-variant mt-0.5">
+                <p className="text-xs text-ink-secondary mt-0.5">
                   Cố vấn phụ trách:{' '}
-                  <strong className="text-on-surface">{activeOrder.advisor.fullName}</strong>
+                  <strong className="font-semibold text-ink-primary">
+                    {activeOrder.advisor.fullName}
+                  </strong>
                 </p>
               </div>
             </div>
@@ -92,67 +89,78 @@ export default function CustomerOverviewTab({ onSelectTab }: CustomerOverviewTab
             <button
               type="button"
               onClick={() => onSelectTab('tracking')}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-primary text-on-primary rounded-xl text-xs sm:text-sm font-semibold hover:bg-primary/90 transition-all shadow-2xs shrink-0 cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors shrink-0 cursor-pointer"
             >
               <span>Theo dõi trực tiếp</span>
-              <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              <span className="material-symbols-outlined text-base" aria-hidden="true">
+                arrow_forward
+              </span>
             </button>
           </div>
         </div>
       )}
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <div className="bg-surface-container-lowest rounded-xl border border-surface-container-highest p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center text-primary">
-              <span
-                className="material-symbols-outlined text-[20px]"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <button
+          type="button"
+          onClick={() => onSelectTab('vehicles')}
+          className="text-left bg-surface-elevated rounded-2xl border border-hairline hover:border-hairline-strong p-4 sm:p-5 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-accent-soft flex items-center justify-center text-accent shrink-0">
+              <span className="material-symbols-outlined text-xl" aria-hidden="true">
                 directions_car
               </span>
             </div>
             <div>
-              <p className="text-xs text-on-surface-variant">Xe đang sở hữu</p>
-              <p className="text-xl font-bold text-on-surface tabular-nums">{activeVehicles}</p>
+              <p className="text-xs font-medium text-ink-secondary">Xe đang sở hữu</p>
+              <p className="text-xl font-bold text-ink-primary font-mono tabular-nums mt-0.5">
+                {activeVehicles}
+              </p>
             </div>
           </div>
-        </div>
+        </button>
 
-        <div className="bg-surface-container-lowest rounded-xl border border-surface-container-highest p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-secondary-fixed flex items-center justify-center text-secondary">
-              <span
-                className="material-symbols-outlined text-[20px]"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
+        <button
+          type="button"
+          onClick={() => onSelectTab('tracking')}
+          className="text-left bg-surface-elevated rounded-2xl border border-hairline hover:border-hairline-strong p-4 sm:p-5 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-status-success-soft flex items-center justify-center text-status-success shrink-0">
+              <span className="material-symbols-outlined text-xl" aria-hidden="true">
                 receipt_long
               </span>
             </div>
             <div>
-              <p className="text-xs text-on-surface-variant">Xe tại xưởng</p>
-              <p className="text-xl font-bold text-on-surface tabular-nums">{orders.length}</p>
+              <p className="text-xs font-medium text-ink-secondary">Xe tại xưởng</p>
+              <p className="text-xl font-bold text-ink-primary font-mono tabular-nums mt-0.5">
+                {orders.length}
+              </p>
             </div>
           </div>
-        </div>
+        </button>
 
-        <div className="col-span-2 sm:col-span-1 bg-surface-container-lowest rounded-xl border border-surface-container-highest p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100">
-              <span
-                className="material-symbols-outlined text-[20px]"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                workspace_premium
+        <button
+          type="button"
+          onClick={() => onSelectTab('profile')}
+          className="text-left bg-surface-elevated rounded-2xl border border-hairline hover:border-hairline-strong p-4 sm:p-5 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-bronze-soft flex items-center justify-center text-bronze-ink shrink-0">
+              <span className="material-symbols-outlined text-xl" aria-hidden="true">
+                verified_user
               </span>
             </div>
-            <div>
-              <p className="text-xs text-on-surface-variant">Hạng thành viên</p>
-              <p className="text-base font-bold text-on-surface">Thành viên VIP</p>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-ink-secondary">Tài khoản</p>
+              <p className="text-sm font-bold text-ink-primary truncate mt-0.5">
+                Khách hàng AutoCare Pro
+              </p>
             </div>
           </div>
-        </div>
+        </button>
       </div>
     </div>
   );

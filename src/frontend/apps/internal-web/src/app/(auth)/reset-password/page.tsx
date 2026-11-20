@@ -105,8 +105,8 @@ export default function ResetPasswordPage() {
         </div>
       ) : (
         <>
-          <div className="mb-6">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0050cd] flex items-center justify-center mb-4">
+          <div className="mb-6 text-center">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0050cd] flex items-center justify-center mx-auto mb-4">
               <span className="material-symbols-outlined text-[26px]">key</span>
             </div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-[-0.02em]">
@@ -114,7 +114,7 @@ export default function ResetPasswordPage() {
             </h1>
             <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
               Thiết lập mật khẩu mới cho tài khoản{' '}
-              <strong className="font-semibold text-slate-900 break-all">{email}</strong>.
+              <strong className="font-semibold text-slate-900 break-words">{email}</strong>.
             </p>
           </div>
 

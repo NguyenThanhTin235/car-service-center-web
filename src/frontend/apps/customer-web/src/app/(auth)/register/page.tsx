@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
@@ -33,11 +33,11 @@ export default function RegisterPage() {
     confirmPassword: '',
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     setMounted(true);
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (mounted && isAuthenticated && user) {
       window.location.href = getDashboardPathByRole(user.roles);
     }
@@ -53,10 +53,10 @@ export default function RegisterPage() {
 
   if (mounted && isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f6f8fc]">
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-9 h-9 border-3 border-[#0050cd] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-600 font-medium">Đang chuyển hướng...</p>
+          <div className="w-9 h-9 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-ink-secondary font-medium">Đang chuyển hướng...</p>
         </div>
       </div>
     );
@@ -110,11 +110,11 @@ export default function RegisterPage() {
 
   return (
     <AuthSplitShell topAction={{ href: '/login', label: 'Đăng nhập' }}>
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-[-0.02em]">
+      <div className="mb-6 text-center">
+        <h1 className="text-2xl font-bold text-ink-primary tracking-[-0.02em]">
           Đăng ký tài khoản
         </h1>
-        <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
+        <p className="text-sm text-ink-secondary mt-1.5 leading-relaxed">
           Tạo tài khoản khách hàng để đặt lịch bảo dưỡng và quản lý phương tiện.
         </p>
       </div>
@@ -198,24 +198,24 @@ export default function RegisterPage() {
           />
         </div>
 
-        {/* Password hints */}
-        <div className="rounded-xl bg-slate-50 px-3.5 py-2.5 flex flex-wrap gap-x-5 gap-y-1.5 text-xs">
+        {/* Password rules (tonal inset, zero nested border) */}
+        <div className="rounded-xl bg-surface-subtle px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">
           <span
             className={`inline-flex items-center gap-1.5 ${
-              passwordChecks.minLen ? 'text-emerald-700 font-medium' : 'text-slate-500'
+              passwordChecks.minLen ? 'text-on-secondary-container font-medium' : 'text-ink-muted'
             }`}
           >
-            <span className="material-symbols-outlined text-[15px]">
+            <span className="material-symbols-outlined text-base" aria-hidden="true">
               {passwordChecks.minLen ? 'check_circle' : 'radio_button_unchecked'}
             </span>
             Tối thiểu 8 ký tự
           </span>
           <span
             className={`inline-flex items-center gap-1.5 ${
-              passwordChecks.matches ? 'text-emerald-700 font-medium' : 'text-slate-500'
+              passwordChecks.matches ? 'text-on-secondary-container font-medium' : 'text-ink-muted'
             }`}
           >
-            <span className="material-symbols-outlined text-[15px]">
+            <span className="material-symbols-outlined text-base" aria-hidden="true">
               {passwordChecks.matches ? 'check_circle' : 'radio_button_unchecked'}
             </span>
             Khớp mật khẩu xác nhận
@@ -224,14 +224,14 @@ export default function RegisterPage() {
 
         <div className="pt-1">
           <AuthSubmitButton id="btn-register" loading={loading} loadingText="Đang gửi mã OTP...">
-            Đăng ký & Nhận mã OTP
+            Đăng ký &amp; Nhận mã OTP
           </AuthSubmitButton>
         </div>
       </form>
 
-      <div className="mt-6 pt-5 border-t border-slate-100 text-center text-xs text-slate-600">
+      <div className="mt-6 pt-5 border-t border-hairline text-center text-xs text-ink-secondary">
         Đã có tài khoản?{' '}
-        <Link href="/login" className="font-bold text-[#0050cd] hover:underline">
+        <Link href="/login" className="font-semibold text-accent hover:text-accent-hover hover:underline">
           Đăng nhập
         </Link>
       </div>

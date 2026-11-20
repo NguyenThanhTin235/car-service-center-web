@@ -33,8 +33,8 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthSplitShell topAction={{ href: '/login', label: 'Đăng nhập' }}>
-      <div className="mb-6">
-        <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
+      <div className="mb-6 text-center">
+        <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4">
           <span className="material-symbols-outlined text-[26px]">lock_reset</span>
         </div>
         <h1 className="text-2xl font-extrabold text-slate-900 tracking-[-0.02em]">
@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
       ) : (
         <div className="space-y-5">
           <AuthAlert variant="success">
-            Nếu email <strong className="break-all">{email}</strong> tồn tại trong hệ thống, mã OTP 6 chữ số đã được gửi tới hộp thư của bạn.
+            Nếu email <strong className="break-words">{email}</strong> tồn tại trong hệ thống, mã OTP 6 chữ số đã được gửi tới hộp thư của bạn.
           </AuthAlert>
 
           <button

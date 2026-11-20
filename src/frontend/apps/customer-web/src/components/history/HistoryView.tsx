@@ -256,13 +256,13 @@ export default function HistoryView({ isEmbedded = false }: { isEmbedded?: boole
               <span className="text-on-surface font-semibold">Lịch sử dịch vụ</span>
             </nav>
           )}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-[22px]">history_edu</span>
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Sổ Bảo Dưỡng & Lịch Sử Sửa Chữa
+                Lịch sử bảo dưỡng
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
                 Tra cứu toàn bộ hồ sơ kỹ thuật, biên bản bàn giao điện tử và phụ tùng đã thay thế.
@@ -272,20 +272,20 @@ export default function HistoryView({ isEmbedded = false }: { isEmbedded?: boole
         </div>
 
         {/* Quick action buttons */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <Link
             href="/customer/tracking"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold rounded-xl shadow-2xs transition-all active:scale-95"
+            className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold rounded-xl shadow-2xs transition-all active:scale-95 whitespace-nowrap shrink-0"
           >
-            <span className="material-symbols-outlined text-[18px] text-blue-600">timeline</span>
-            Xem tiến độ xe hiện tại
+            <span className="material-symbols-outlined text-[18px] text-accent shrink-0">timeline</span>
+            <span>Xem tiến độ xe hiện tại</span>
           </Link>
           <Link
             href="/customer/appointments/new"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all active:scale-95"
+            className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 bg-accent hover:bg-accent-hover text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all active:scale-95 whitespace-nowrap shrink-0"
           >
-            <span className="material-symbols-outlined text-[18px]">add_circle</span>
-            Đặt lịch mới
+            <span className="material-symbols-outlined text-[18px] shrink-0">add_circle</span>
+            <span>Đặt lịch mới</span>
           </Link>
         </div>
       </div>

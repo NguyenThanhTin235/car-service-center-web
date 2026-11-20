@@ -96,7 +96,7 @@ export default function RegisterPage() {
 
   return (
     <AuthSplitShell topAction={{ href: '/login', label: 'Đăng nhập' }}>
-      <div className="mb-6">
+      <div className="mb-6 text-center">
         <h1 className="text-2xl font-extrabold text-slate-900 tracking-[-0.02em]">
           Đăng ký tài khoản
         </h1>

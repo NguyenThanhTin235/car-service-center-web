@@ -64,6 +64,7 @@ export default function OtpInput({ value, onChange, length = 6, disabled = false
           }}
           type="text"
           inputMode="numeric"
+          autoComplete="one-time-code"
           aria-label={`Mã OTP chữ số thứ ${i + 1}`}
           maxLength={1}
           value={value[i] || ''}
@@ -71,11 +72,11 @@ export default function OtpInput({ value, onChange, length = 6, disabled = false
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={handlePaste}
-          className={`w-10 h-12 sm:w-12 sm:h-14 text-center font-mono tabular-nums text-xl sm:text-2xl font-bold rounded-xl border-2 transition-colors outline-none bg-white text-slate-900 ${
+          className={`w-11 h-12 sm:w-12 sm:h-14 text-center font-mono tabular-nums text-xl sm:text-2xl font-bold rounded-xl border transition-colors outline-none text-ink-primary ${
             value[i]
-              ? 'border-[#0050cd] bg-blue-50/70'
-              : 'border-slate-200 hover:border-slate-300'
-          } focus:border-[#0050cd] focus:ring-2 focus:ring-[#0050cd]/20 disabled:bg-slate-100 disabled:cursor-not-allowed`}
+              ? 'border-accent bg-accent-soft/40'
+              : 'border-hairline-strong bg-surface-elevated hover:border-ink-muted'
+          } focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-surface-subtle disabled:text-ink-muted disabled:cursor-not-allowed`}
         />
       ))}
     </div>

@@ -180,7 +180,7 @@ export default function CustomerPaymentModal({
           ) : loading ? (
             <div className="py-16 flex flex-col items-center justify-center gap-2">
               <div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
-              <p className="text-xs text-on-surface-variant font-medium">Đang tạo mã VietQR SePay...</p>
+              <p className="text-xs text-on-surface-variant font-medium">Đang khởi tạo mã QR SePay...</p>
             </div>
           ) : sepayData ? (
             /* Layout 2 cột: Mã QR bên trái, Thông tin bên phải */
@@ -294,7 +294,7 @@ export default function CustomerPaymentModal({
                 <span>Thanh toán an toàn qua SePay</span>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Hỗ trợ quét mã VietQR trên mọi ứng dụng ngân hàng. Tiền vào tài khoản tự động xác nhận tức thì.
+                Hỗ trợ quét mã QR SePay trên mọi ứng dụng ngân hàng. Tiền vào tài khoản tự động xác nhận tức thì.
               </p>
             </div>
           )}

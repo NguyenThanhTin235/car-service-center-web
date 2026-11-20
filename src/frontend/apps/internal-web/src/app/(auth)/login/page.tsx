@@ -155,7 +155,7 @@ export default function LoginPage() {
 
   return (
     <AuthSplitShell>
-      <div className="mb-6">
+      <div className="mb-6 text-center">
         <h1 className="text-2xl font-extrabold text-slate-900 tracking-[-0.02em]">
           Đăng nhập hệ thống
         </h1>

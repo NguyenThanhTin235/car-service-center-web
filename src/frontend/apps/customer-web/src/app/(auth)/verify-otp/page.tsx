@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useDispatch } from 'react-redux';
@@ -110,16 +110,18 @@ export default function VerifyOtpPage() {
 
   return (
     <AuthSplitShell topAction={{ href: '/login', label: 'Đăng nhập' }}>
-      <div className="mb-6">
-        <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0050cd] flex items-center justify-center mb-4">
-          <span className="material-symbols-outlined text-[26px]">mark_email_read</span>
+      <div className="mb-6 text-center">
+        <div className="w-11 h-11 rounded-xl bg-accent-soft text-accent flex items-center justify-center mx-auto mb-4">
+          <span className="material-symbols-outlined text-2xl" aria-hidden="true">
+            mark_email_read
+          </span>
         </div>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-[-0.02em]">
+        <h1 className="text-2xl font-bold text-ink-primary tracking-[-0.02em]">
           Xác thực mã OTP
         </h1>
-        <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
+        <p className="text-sm text-ink-secondary mt-1.5 leading-relaxed">
           Nhập mã 6 chữ số đã được gửi tới{' '}
-          <strong className="font-semibold text-slate-900 break-all">{email}</strong>.
+          <strong className="font-semibold text-ink-primary break-words">{email}</strong>.
         </p>
       </div>
 
@@ -129,20 +131,20 @@ export default function VerifyOtpPage() {
       <form onSubmit={handleVerify} className="space-y-6">
         <OtpInput value={otp} onChange={setOtp} disabled={loading} />
 
-        <div className="text-center text-xs text-slate-600">
+        <div className="text-center text-xs text-ink-secondary">
           {canResend ? (
             <button
               type="button"
               onClick={handleResend}
               disabled={resendLoading}
-              className="font-bold text-[#0050cd] hover:underline disabled:opacity-60 cursor-pointer min-h-[36px] px-2"
+              className="font-semibold text-accent hover:text-accent-hover hover:underline disabled:opacity-60 cursor-pointer min-h-[44px] px-3"
             >
               {resendLoading ? 'Đang gửi lại...' : 'Gửi lại mã OTP'}
             </button>
           ) : (
-            <span>
+            <span className="inline-flex items-center min-h-[44px]">
               Chưa nhận được mã?{' '}
-              <strong className="font-mono tabular-nums text-slate-900">
+              <strong className="font-mono tabular-nums text-ink-primary ml-1">
                 Gửi lại sau {countdown}s
               </strong>
             </span>
@@ -160,12 +162,14 @@ export default function VerifyOtpPage() {
         </AuthSubmitButton>
       </form>
 
-      <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+      <div className="mt-6 pt-5 border-t border-hairline text-center">
         <Link
           href={purpose === 'register' ? '/register' : '/forgot-password'}
-          className="text-xs font-semibold text-slate-600 hover:text-slate-900 inline-flex items-center gap-1.5 transition-colors"
+          className="min-h-[44px] text-xs font-semibold text-ink-secondary hover:text-ink-primary inline-flex items-center gap-1.5 transition-colors"
         >
-          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+          <span className="material-symbols-outlined text-base" aria-hidden="true">
+            arrow_back
+          </span>
           <span>Quay lại bước trước</span>
         </Link>
       </div>

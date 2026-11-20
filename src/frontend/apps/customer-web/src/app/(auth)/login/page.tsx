@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useDispatch, useSelector } from 'react-redux';
 import api from '@/lib/axios';
@@ -29,11 +29,11 @@ export default function LoginPage() {
   const [lockSeconds, setLockSeconds] = useState(0);
   const isLocked = lockSeconds > 0;
 
-  React.useEffect(() => {
+  useEffect(() => {
     setMounted(true);
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (lockSeconds <= 0) return;
     const timer = setTimeout(() => {
       setLockSeconds((s) => {
@@ -44,13 +44,13 @@ export default function LoginPage() {
     return () => clearTimeout(timer);
   }, [lockSeconds]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (mounted && isAuthenticated && user) {
       window.location.href = getDashboardPathByRole(user.roles);
     }
   }, [mounted, isAuthenticated, user]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('registered') === 'true') {
@@ -69,39 +69,35 @@ export default function LoginPage() {
 
     try {
       const res = await api.post('/api/auth/login', { email, password });
-      const { user, token, refreshToken } = res.data.data;
-      dispatch(setCredentials({ user, token, refreshToken }));
-      window.location.href = getDashboardPathByRole(user.roles);
+      const { user: loggedInUser, token, refreshToken } = res.data.data;
+      dispatch(setCredentials({ user: loggedInUser, token, refreshToken }));
+      window.location.href = getDashboardPathByRole(loggedInUser.roles);
     } catch (err: any) {
       if (err.response?.status === 429) {
         setLockSeconds(Number(err.response.data?.retryAfter) || 900);
         setPassword('');
       }
-      setError(
-        err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại sau.'
-      );
+      setError(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại sau.');
       setLoading(false);
     }
   };
 
   if (mounted && isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f6f8fc]">
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-9 h-9 border-3 border-[#0050cd] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-600 font-medium">Đang chuyển hướng...</p>
+          <div className="w-9 h-9 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-ink-secondary font-medium">Đang chuyển hướng...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <AuthSplitShell>
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-[-0.02em]">
-          Đăng nhập
-        </h1>
-        <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
+    <AuthSplitShell topAction={{ href: '/register', label: 'Đăng ký' }}>
+      <div className="mb-6 text-center">
+        <h1 className="text-2xl font-bold text-ink-primary tracking-[-0.02em]">Đăng nhập</h1>
+        <p className="text-sm text-ink-secondary mt-1.5 leading-relaxed">
           Truy cập hồ sơ xe, đặt lịch hẹn và theo dõi tiến độ sửa chữa của bạn.
         </p>
       </div>
@@ -120,7 +116,7 @@ export default function LoginPage() {
                   {String(lockSeconds % 60).padStart(2, '0')}
                 </strong>
                 {' · '}
-                <Link href="/forgot-password" className="underline font-bold">
+                <Link href="/forgot-password" className="underline font-semibold">
                   Quên mật khẩu?
                 </Link>
               </p>
@@ -165,18 +161,18 @@ export default function LoginPage() {
           }
         />
 
-        <div className="flex items-center justify-between pt-0.5">
-          <label className="inline-flex items-center gap-2 cursor-pointer select-none min-h-[36px]">
+        <div className="flex items-center justify-between gap-2 pt-0.5">
+          <label className="inline-flex items-center gap-2 cursor-pointer select-none min-h-[44px]">
             <input
               suppressHydrationWarning
               type="checkbox"
-              className="h-4 w-4 rounded border-slate-300 text-[#0050cd] focus:ring-[#0050cd]/30 cursor-pointer"
+              className="h-4 w-4 rounded border-hairline-strong accent-accent focus:ring-accent/30 cursor-pointer"
             />
-            <span className="text-xs font-medium text-slate-600">Ghi nhớ đăng nhập</span>
+            <span className="text-xs font-medium text-ink-secondary">Ghi nhớ đăng nhập</span>
           </label>
           <Link
             href="/forgot-password"
-            className="text-xs font-semibold text-[#0050cd] hover:text-[#0866ff] hover:underline"
+            className="inline-flex items-center min-h-[44px] text-xs font-semibold text-accent hover:text-accent-hover hover:underline"
           >
             Quên mật khẩu?
           </Link>
@@ -193,9 +189,9 @@ export default function LoginPage() {
         </div>
       </form>
 
-      <div className="mt-6 pt-5 border-t border-slate-100 text-center text-xs text-slate-600">
+      <div className="mt-6 pt-5 border-t border-hairline text-center text-xs text-ink-secondary">
         Chưa có tài khoản?{' '}
-        <Link href="/register" className="font-bold text-[#0050cd] hover:underline">
+        <Link href="/register" className="font-semibold text-accent hover:text-accent-hover hover:underline">
           Đăng ký ngay
         </Link>
       </div>

@@ -11,59 +11,51 @@ export interface AuthSplitShellProps {
   children: React.ReactNode;
 }
 
-export default function AuthSplitShell({ topAction, children }: AuthSplitShellProps) {
+export default function AuthSplitShell({ children }: AuthSplitShellProps) {
   return (
-    <div className="min-h-screen w-full bg-[#f6f8fc] text-slate-900 antialiased flex flex-col justify-between">
-      {/* Compact Enterprise Header */}
-      <header className="w-full bg-white border-b border-slate-200/80 sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <Link href="/home" className="inline-flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-[#0050cd] text-white flex items-center justify-center transition-transform duration-150 group-hover:scale-105">
-              <span className="material-symbols-outlined text-[20px]">directions_car</span>
+    <div className="min-h-screen w-full bg-canvas text-ink-primary antialiased flex flex-col justify-between">
+      {/* Compact Header */}
+      <header className="w-full bg-surface-elevated border-b border-hairline shrink-0">
+        <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+          <Link href="/home" className="inline-flex items-center gap-2.5 group min-h-[44px]">
+            <div className="w-9 h-9 rounded-xl bg-accent text-white flex items-center justify-center shrink-0 transition-transform duration-150 group-hover:scale-[1.03]">
+              <span className="material-symbols-outlined text-xl" aria-hidden="true">
+                directions_car
+              </span>
             </div>
-            <div>
-              <div className="text-sm sm:text-base font-extrabold text-slate-900 leading-tight tracking-tight">
-                AutoCare Pro
-              </div>
-              <div className="text-[11px] font-medium text-slate-500">
-                Cổng Dịch Vụ Khách Hàng
-              </div>
-            </div>
+            <span className="font-bold text-base tracking-[-0.02em] text-ink-primary">
+              AutoCare Pro
+            </span>
           </Link>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/home"
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors px-2 py-1.5"
-            >
-              <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-              <span>Về trang chủ</span>
-            </Link>
-          </div>
+          <Link
+            href="/home"
+            className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl text-sm font-medium text-ink-secondary hover:text-ink-primary hover:bg-surface-subtle transition-colors"
+          >
+            <span className="material-symbols-outlined text-lg" aria-hidden="true">
+              arrow_back
+            </span>
+            <span>Về trang chủ</span>
+          </Link>
         </div>
       </header>
 
-      {/* Centered Form Surface */}
+      {/* Centered Form Card */}
       <main className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12">
-        <div className="w-full max-w-[480px] bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 shadow-xs">
+        <div className="w-full max-w-[460px] bg-surface-elevated border border-hairline rounded-2xl p-6 sm:p-8">
           {children}
         </div>
       </main>
 
-      {/* Minimal Enterprise Footer */}
-      <footer className="w-full bg-white border-t border-slate-200/80 py-4 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
-          <span>© 2026 AutoCare Pro Service Center</span>
-          <div className="flex items-center gap-4">
-            <span className="inline-flex items-center gap-1">
-              <span className="material-symbols-outlined text-[15px] text-emerald-600">
-                verified
-              </span>
-              SSL 256-bit
-            </span>
-            <span className="font-mono tabular-nums">Hotline 24/7: 1900 6868</span>
-          </div>
-        </div>
+      {/* Subtle Footer */}
+      <footer className="w-full px-4 sm:px-8 py-5 text-center text-xs text-ink-muted shrink-0">
+        <span>© 2026 AutoCare Pro · Hỗ trợ kỹ thuật </span>
+        <a
+          href="tel:19006868"
+          className="font-mono tabular-nums font-semibold text-ink-secondary hover:text-accent"
+        >
+          1900 6868
+        </a>
       </footer>
     </div>
   );

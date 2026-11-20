@@ -33,14 +33,16 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthSplitShell topAction={{ href: '/login', label: 'Đăng nhập' }}>
-      <div className="mb-6">
-        <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
-          <span className="material-symbols-outlined text-[26px]">lock_reset</span>
+      <div className="mb-6 text-center">
+        <div className="w-11 h-11 rounded-xl bg-bronze-soft text-bronze-ink flex items-center justify-center mx-auto mb-4">
+          <span className="material-symbols-outlined text-2xl" aria-hidden="true">
+            lock_reset
+          </span>
         </div>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-[-0.02em]">
+        <h1 className="text-2xl font-bold text-ink-primary tracking-[-0.02em]">
           Khôi phục mật khẩu
         </h1>
-        <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
+        <p className="text-sm text-ink-secondary mt-1.5 leading-relaxed">
           Nhập email đăng ký để nhận mã OTP xác thực đặt lại mật khẩu mới.
         </p>
       </div>
@@ -69,27 +71,32 @@ export default function ForgotPasswordPage() {
       ) : (
         <div className="space-y-5">
           <AuthAlert variant="success">
-            Nếu email <strong className="break-all">{email}</strong> tồn tại trong hệ thống, mã OTP 6 chữ số đã được gửi tới hộp thư của bạn.
+            Nếu email <strong className="break-words">{email}</strong> tồn tại trong hệ thống, mã
+            OTP 6 chữ số đã được gửi tới hộp thư của bạn.
           </AuthAlert>
 
           <button
             type="button"
             id="btn-go-to-otp"
             onClick={() => router.push('/verify-otp')}
-            className="w-full min-h-[48px] px-5 rounded-xl bg-[#0050cd] hover:bg-[#0866ff] text-white text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            className="w-full min-h-[48px] px-5 rounded-xl bg-accent hover:bg-accent-hover text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[19px]">pin</span>
+            <span className="material-symbols-outlined text-lg" aria-hidden="true">
+              pin
+            </span>
             <span>Nhập mã OTP ngay</span>
           </button>
         </div>
       )}
 
-      <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+      <div className="mt-6 pt-5 border-t border-hairline text-center">
         <Link
           href="/login"
-          className="text-xs font-semibold text-slate-600 hover:text-slate-900 inline-flex items-center gap-1.5 transition-colors"
+          className="min-h-[44px] text-xs font-semibold text-ink-secondary hover:text-ink-primary inline-flex items-center gap-1.5 transition-colors"
         >
-          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+          <span className="material-symbols-outlined text-base" aria-hidden="true">
+            arrow_back
+          </span>
           <span>Quay lại Đăng nhập</span>
         </Link>
       </div>
