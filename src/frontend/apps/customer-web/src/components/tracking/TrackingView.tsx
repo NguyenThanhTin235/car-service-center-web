@@ -1,16 +1,18 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchMyTrackingOrders, setSelectedOrder, WorkOrderTrackingDto } from '@/store/slices/trackingSlice';
 import Toast from '@/components/shared/Toast';
-import CustomerQuotationModal from './CustomerQuotationModal';
-import CustomerCheckInModal from './CustomerCheckInModal';
-import CustomerQCModal from './CustomerQCModal';
-import CustomerPaymentModal from '@/components/invoices/CustomerPaymentModal';
 import { downloadInvoicePdfBlob } from '@/lib/api/invoice.api';
 import { downloadHandoverPdfBlob } from '@/lib/api/work-order.api';
+
+const CustomerQuotationModal = dynamic(() => import('./CustomerQuotationModal'));
+const CustomerCheckInModal = dynamic(() => import('./CustomerCheckInModal'));
+const CustomerQCModal = dynamic(() => import('./CustomerQCModal'));
+const CustomerPaymentModal = dynamic(() => import('@/components/invoices/CustomerPaymentModal'));
 
 const parseComplaintText = (raw?: string | null): string => {
   if (!raw || !raw.trim()) return '';
@@ -1262,18 +1264,18 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
               </div>
 
               {/* Action buttons */}
-              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-between gap-2.5 pt-2">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-between gap-2 pt-2">
                 {activeOrder.checkIn ? (
                   <button
                     onClick={() => setIsCheckInModalOpen(true)}
-                    className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3.5 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                    className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-95 whitespace-nowrap"
                     type="button"
                   >
                     <span className="material-symbols-outlined text-[16px] text-primary shrink-0">assignment</span>
                     <span>Xem biên bản tiếp nhận &amp; ngoại thất</span>
                   </button>
                 ) : (
-                  <div className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3.5 py-2 bg-surface-container text-on-surface-variant rounded-xl text-xs font-medium whitespace-nowrap">
+                  <div className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 py-2 bg-surface-container text-on-surface-variant rounded-xl text-xs font-medium whitespace-nowrap">
                     <span className="material-symbols-outlined text-[16px] text-emerald-600 shrink-0">verified</span>
                     <span>Hồ sơ kỹ thuật đã đồng bộ</span>
                   </div>
@@ -1281,19 +1283,19 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
 
                 {activeOrder.advisor.phone ? (
                   <a
-                    className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-4 py-2 bg-primary text-white hover:bg-accent-hover rounded-xl text-xs font-semibold transition-colors active:scale-95 cursor-pointer whitespace-nowrap font-mono tabular-nums"
+                    className="sm:ml-auto inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3.5 py-2 bg-primary text-white hover:bg-accent-hover rounded-xl text-xs font-semibold transition-colors active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
                     href={`tel:${activeOrder.advisor.phone}`}
                   >
                     <span className="material-symbols-outlined text-[16px] shrink-0">phone_in_talk</span>
-                    <span>Gọi Cố vấn: {activeOrder.advisor.phone}</span>
+                    <span>Gọi Cố vấn: <span className="font-mono tabular-nums">{activeOrder.advisor.phone}</span></span>
                   </a>
                 ) : (
                   <a
-                    className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-4 py-2 bg-primary text-white hover:bg-accent-hover rounded-xl text-xs font-semibold transition-colors active:scale-95 cursor-pointer whitespace-nowrap font-mono tabular-nums"
+                    className="sm:ml-auto inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3.5 py-2 bg-primary text-white hover:bg-accent-hover rounded-xl text-xs font-semibold transition-colors active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
                     href="tel:19008888"
                   >
                     <span className="material-symbols-outlined text-[16px] shrink-0">phone_in_talk</span>
-                    <span>Hotline: 1900 8888</span>
+                    <span>Hotline: <span className="font-mono tabular-nums">1900 8888</span></span>
                   </a>
                 )}
               </div>
@@ -1302,7 +1304,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
           </div>
 
           {/* Customer Quotation Detail Modal */}
-          {activeOrder.activeQuotation && (
+          {isQuotationModalOpen && activeOrder.activeQuotation && (
             <CustomerQuotationModal
               isOpen={isQuotationModalOpen}
               onClose={() => setIsQuotationModalOpen(false)}
@@ -1320,7 +1322,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
           )}
 
           {/* Customer CheckIn Detail Modal */}
-          {activeOrder.checkIn && (
+          {isCheckInModalOpen && activeOrder.checkIn && (
             <CustomerCheckInModal
               isOpen={isCheckInModalOpen}
               onClose={() => setIsCheckInModalOpen(false)}
@@ -1332,7 +1334,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
           )}
 
           {/* Customer QC Certificate Modal */}
-          {activeOrder.qcReport && (
+          {isQCModalOpen && activeOrder.qcReport && (
             <CustomerQCModal
               isOpen={isQCModalOpen}
               onClose={() => setIsQCModalOpen(false)}

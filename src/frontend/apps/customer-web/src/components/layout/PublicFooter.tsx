@@ -4,10 +4,10 @@ import Link from 'next/link';
 export default function PublicFooter() {
   return (
     <footer className="w-full hero-banner-surface text-white no-print">
-      <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10 pb-10 border-b border-white/15">
-          {/* Brand Column (4 cols) */}
-          <div className="sm:col-span-2 lg:col-span-4 space-y-4">
+      <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <div className="grid grid-cols-2 lg:grid-cols-12 gap-x-6 gap-y-8 lg:gap-10 pb-8 sm:pb-10 border-b border-white/15">
+          {/* Brand Column (full width on mobile/tablet, 4 cols on desktop) */}
+          <div className="col-span-2 lg:col-span-4 space-y-3 sm:space-y-4">
             <Link href="/home" className="inline-flex items-center gap-2.5 min-h-[44px]">
               <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/20 text-white flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-xl" aria-hidden="true">
@@ -35,12 +35,12 @@ export default function PublicFooter() {
             </div>
           </div>
 
-          {/* Explore Links (2 cols) */}
-          <div className="lg:col-span-2 space-y-3">
+          {/* Explore Links (1 col on mobile/tablet side-by-side, 2 cols on desktop) */}
+          <div className="col-span-1 lg:col-span-2 space-y-2.5 sm:space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-[0.06em] text-white/60">
               Khám phá
             </h3>
-            <ul className="space-y-1 text-sm">
+            <ul className="space-y-0.5 text-sm">
               <li>
                 <Link
                   href="/home"
@@ -76,12 +76,12 @@ export default function PublicFooter() {
             </ul>
           </div>
 
-          {/* Portal Links (3 cols) */}
-          <div className="lg:col-span-3 space-y-3">
+          {/* Portal Links (1 col on mobile/tablet side-by-side, 3 cols on desktop) */}
+          <div className="col-span-1 lg:col-span-3 space-y-2.5 sm:space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-[0.06em] text-white/60">
               Cổng khách hàng
             </h3>
-            <ul className="space-y-1 text-sm">
+            <ul className="space-y-0.5 text-sm">
               <li>
                 <Link
                   href="/customer"
@@ -125,9 +125,9 @@ export default function PublicFooter() {
             </ul>
           </div>
 
-          {/* Support Hotline Card (3 cols) */}
-          <div className="sm:col-span-2 lg:col-span-3">
-            <div className="rounded-2xl bg-white/10 border border-white/15 p-5 space-y-3">
+          {/* Support Hotline Card (full width on mobile/tablet, 3 cols on desktop) */}
+          <div className="col-span-2 lg:col-span-3">
+            <div className="rounded-2xl bg-white/10 border border-white/15 p-4 sm:p-5 space-y-3">
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-white">Tổng đài cố vấn</h3>
                 <p className="text-xs text-white/75">

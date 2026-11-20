@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSelector } from 'react-redux';
 import api from '@/lib/axios';
@@ -10,7 +10,6 @@ import {
   EmptyState,
   ErrorState,
   LoadingSkeleton,
-  StatusBadge,
   SurfaceCard,
 } from '@/components/ui';
 
@@ -180,26 +179,16 @@ function getServicePriceMeta(svc: ServiceTemplate): { text: string; isNumeric: b
   return { text: 'Khảo sát & báo giá', isNumeric: false };
 }
 
-export default function HomePage() {
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
-  const [mounted, setMounted] = useState(false);
-
-  const [categories, setCategories] = useState<ServiceCategory[]>([]);
-  const [services, setServices] = useState<ServiceTemplate[]>([]);
-  const [activeCategory, setActiveCategory] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showAllServices, setShowAllServices] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
+const HeroSection = memo(function HeroSection({
+  bookingHref,
+  trackingHref,
+}: {
+  bookingHref: string;
+  trackingHref: string;
+}) {
   const [activePillar, setActivePillar] = useState(0);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [isPhotoPaused, setIsPhotoPaused] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeProcessStep, setActiveProcessStep] = useState(0);
-  const [isProcessPaused, setIsProcessPaused] = useState(false);
-  const [directionsOrigin, setDirectionsOrigin] = useState('');
-  const [locating, setLocating] = useState(false);
-  const [geoError, setGeoError] = useState('');
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -216,6 +205,147 @@ export default function HomePage() {
     return () => clearInterval(photoTimer);
   }, [isPhotoPaused]);
 
+  return (
+    <section className="w-full hero-banner-surface text-white">
+      <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 lg:py-14">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+          {/* Left Editorial Narrative (7 cols) */}
+          <div className="lg:col-span-7 space-y-6">
+            <h1 className="hero-reveal text-3xl sm:text-4xl font-bold text-white tracking-[-0.03em] leading-[1.16] max-w-2xl">
+              Chăm sóc xe minh bạch từ lúc tiếp nhận đến khi bàn giao.
+            </h1>
+
+            <p className="hero-reveal hero-reveal-1 text-base sm:text-lg text-white/85 leading-relaxed max-w-[58ch]">
+              Đặt lịch bảo dưỡng trực tuyến, theo dõi từng hạng mục kỹ thuật theo thời gian
+              thực, duyệt báo giá chi tiết 0% VAT và thanh toán SePay ngay trên điện thoại.
+            </p>
+
+            <div className="hero-reveal hero-reveal-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
+              <Link
+                href={bookingHref}
+                className="group inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-xl bg-surface-elevated hover:bg-surface-subtle text-accent text-sm font-semibold active:scale-[0.98] transition-all duration-150"
+              >
+                <span>Đặt lịch bảo dưỡng</span>
+                <span
+                  className="material-symbols-outlined text-lg transition-transform duration-150 group-hover:translate-x-1"
+                  aria-hidden="true"
+                >
+                  arrow_forward
+                </span>
+              </Link>
+              <Link
+                href={trackingHref}
+                className="inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white text-sm font-semibold active:scale-[0.98] transition-all duration-150"
+              >
+                <span className="material-symbols-outlined text-lg text-white" aria-hidden="true">
+                  timeline
+                </span>
+                <span>Theo dõi tiến độ xe</span>
+              </Link>
+            </div>
+
+            {/* Factual Portal Capabilities Strip (Automatic Highlight Cycle) */}
+            <div className="hero-reveal hero-reveal-3 grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 border-t border-white/15">
+              {HERO_PILLARS.map((pillar, index) => {
+                const isActive = activePillar === index;
+                return (
+                  <div
+                    key={pillar.title}
+                    onMouseEnter={() => setActivePillar(index)}
+                    className={`rounded-xl p-3 border transition-all duration-300 ${
+                      isActive
+                        ? 'bg-white/12 border-white/25'
+                        : 'bg-transparent border-transparent'
+                    }`}
+                  >
+                    <div className="inline-flex items-center gap-1.5 text-sm font-semibold text-white">
+                      <span
+                        className="material-symbols-outlined text-lg text-white"
+                        aria-hidden="true"
+                      >
+                        {pillar.icon}
+                      </span>
+                      <span>{pillar.title}</span>
+                    </div>
+                    <p className="text-xs text-white/80 leading-relaxed mt-1">
+                      {pillar.description}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Right Real Garage Photo Carousel (5 cols) */}
+          <div className="lg:col-span-5 hero-card-enter">
+            <div
+              onMouseEnter={() => setIsPhotoPaused(true)}
+              onMouseLeave={() => setIsPhotoPaused(false)}
+              className="group rounded-2xl bg-surface-elevated p-2.5 text-ink-primary overflow-hidden"
+            >
+              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-surface-subtle">
+                {HERO_GARAGE_PHOTOS.map((photo, idx) => {
+                  const isCurrent = idx === activePhotoIndex;
+                  return (
+                    <img
+                      key={photo.src}
+                      src={photo.src}
+                      alt={photo.alt}
+                      loading={idx === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
+                      fetchPriority={idx === 0 ? 'high' : 'auto'}
+                      className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-out ${
+                        isCurrent
+                          ? 'opacity-100 z-10 hero-photo-motion'
+                          : 'opacity-0 z-0 pointer-events-none'
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+              <div className="px-2.5 pt-3 pb-1 flex items-center justify-between gap-3 text-xs">
+                <span className="font-medium text-ink-secondary truncate">
+                  {HERO_GARAGE_PHOTOS[activePhotoIndex].caption}
+                </span>
+                <div
+                  className="flex items-center gap-0.5 shrink-0"
+                  role="tablist"
+                  aria-label="Chọn ảnh xưởng dịch vụ"
+                >
+                  {HERO_GARAGE_PHOTOS.map((photo, idx) => {
+                    const isCurrent = idx === activePhotoIndex;
+                    return (
+                      <button
+                        key={photo.src}
+                        type="button"
+                        role="tab"
+                        aria-selected={isCurrent}
+                        aria-label={`Ảnh xưởng ${idx + 1}: ${photo.caption}`}
+                        onClick={() => setActivePhotoIndex(idx)}
+                        className="min-h-[28px] px-1 inline-flex items-center justify-center cursor-pointer"
+                      >
+                        <span
+                          className={`h-1.5 rounded-full transition-all duration-300 ${
+                            isCurrent ? 'w-5 bg-accent' : 'w-1.5 bg-surface-muted'
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+});
+
+const ProcessStepperSection = memo(function ProcessStepperSection() {
+  const [activeProcessStep, setActiveProcessStep] = useState(0);
+  const [isProcessPaused, setIsProcessPaused] = useState(false);
+
   useEffect(() => {
     if (isProcessPaused) return;
     const processTimer = setInterval(() => {
@@ -223,6 +353,153 @@ export default function HomePage() {
     }, 3500);
     return () => clearInterval(processTimer);
   }, [isProcessPaused]);
+
+  return (
+    <section id="process" className="w-full bg-canvas border-b border-hairline py-10 sm:py-12 scroll-mt-16">
+      <div
+        className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8"
+        onMouseEnter={() => setIsProcessPaused(true)}
+        onMouseLeave={() => setIsProcessPaused(false)}
+      >
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+          <div className="max-w-2xl">
+            <h2 className="text-2xl sm:text-3xl font-bold text-ink-primary tracking-[-0.02em]">
+              Quy trình tiếp nhận &amp; bàn giao 8 bước
+            </h2>
+            <p className="text-sm sm:text-base text-ink-secondary mt-2 leading-relaxed">
+              Mọi thay đổi phát sinh đều cần xác nhận từ chủ xe và được lưu vết đầy đủ trên hồ
+              sơ bảo dưỡng điện tử.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 text-xs font-semibold text-ink-secondary bg-surface-elevated border border-hairline px-3.5 min-h-[40px] rounded-full shrink-0 self-start md:self-auto">
+            <span className="font-mono tabular-nums text-accent font-bold">
+              {PROCESS_STEPS[activeProcessStep].code} / 08
+            </span>
+            <span className="truncate max-w-[220px]">
+              {PROCESS_STEPS[activeProcessStep].title}
+            </span>
+          </div>
+        </div>
+
+        {/* Desktop Interactive Connected Stepper Track */}
+        <div className="hidden lg:block relative mb-8">
+          <div
+            className="absolute top-1/2 left-8 right-8 h-0.5 -translate-y-1/2 bg-surface-muted"
+            aria-hidden="true"
+          />
+          <div className="relative grid grid-cols-8 gap-3">
+            {PROCESS_STEPS.map((step, idx) => {
+              const isActive = idx === activeProcessStep;
+              const isCompleted = idx < activeProcessStep;
+              return (
+                <button
+                  key={step.code}
+                  type="button"
+                  onClick={() => setActiveProcessStep(idx)}
+                  className="flex flex-col items-center gap-2 cursor-pointer group"
+                >
+                  <span
+                    className={`w-11 h-11 rounded-full font-mono tabular-nums text-xs font-bold flex items-center justify-center transition-all duration-300 ${
+                      isActive
+                        ? 'bg-accent text-white scale-110'
+                        : isCompleted
+                        ? 'bg-accent-soft text-accent-ink'
+                        : 'bg-surface-elevated border border-hairline-strong text-ink-secondary group-hover:border-accent'
+                    }`}
+                  >
+                    {step.code}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 8-Step Cards Grid (4x2 on desktop, 2x4 on tablet) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          {PROCESS_STEPS.map((step, idx) => {
+            const isActive = idx === activeProcessStep;
+            return (
+              <button
+                key={step.code}
+                type="button"
+                onClick={() => setActiveProcessStep(idx)}
+                onMouseEnter={() => setActiveProcessStep(idx)}
+                className={`text-left rounded-2xl bg-surface-elevated border p-5 sm:p-6 flex flex-col justify-between gap-4 transition-all duration-300 cursor-pointer ${
+                  isActive
+                    ? 'border-accent -translate-y-0.5'
+                    : 'border-hairline hover:border-hairline-strong'
+                }`}
+              >
+                <div className="space-y-3 w-full">
+                  <div className="flex items-center justify-between gap-3">
+                    <span
+                      className={`font-mono tabular-nums text-xs font-bold px-2.5 py-1 rounded-full transition-colors duration-300 ${
+                        isActive
+                          ? 'bg-accent text-white'
+                          : 'bg-accent-soft text-accent-ink'
+                      }`}
+                    >
+                      Bước {step.code}
+                    </span>
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors duration-300 ${
+                        isActive
+                          ? 'bg-accent-soft text-accent'
+                          : 'bg-surface-subtle text-ink-muted'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-xl" aria-hidden="true">
+                        {step.icon}
+                      </span>
+                    </div>
+                  </div>
+
+                  <h3
+                    className={`text-base font-semibold transition-colors duration-200 ${
+                      isActive ? 'text-accent' : 'text-ink-primary'
+                    }`}
+                  >
+                    {step.title}
+                  </h3>
+                  <p className="text-sm text-ink-secondary leading-relaxed">
+                    {step.description}
+                  </p>
+                </div>
+
+                {/* Subtle animated step progress bar */}
+                <div className="w-full h-1 rounded-full bg-surface-subtle overflow-hidden">
+                  <div
+                    className={`h-full rounded-full bg-accent transition-all duration-500 ${
+                      isActive ? 'w-full' : 'w-0'
+                    }`}
+                  />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+});
+
+export default function HomePage() {
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const [mounted, setMounted] = useState(false);
+
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [services, setServices] = useState<ServiceTemplate[]>([]);
+  const [activeCategory, setActiveCategory] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showAllServices, setShowAllServices] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const [directionsOrigin, setDirectionsOrigin] = useState('');
+  const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -256,16 +533,18 @@ export default function HomePage() {
     fetchCatalog();
   }, [fetchCatalog]);
 
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-  const filteredServices = services.filter((s) => {
-    const matchesCat = activeCategory ? s.category.id === activeCategory : true;
-    const matchesQuery = normalizedQuery
-      ? s.name.toLowerCase().includes(normalizedQuery) ||
-        (s.description || '').toLowerCase().includes(normalizedQuery) ||
-        s.category.name.toLowerCase().includes(normalizedQuery)
-      : true;
-    return matchesCat && matchesQuery;
-  });
+  const normalizedQuery = deferredSearchQuery.trim().toLowerCase();
+  const filteredServices = useMemo(() => {
+    return services.filter((s) => {
+      const matchesCat = activeCategory ? s.category.id === activeCategory : true;
+      const matchesQuery = normalizedQuery
+        ? s.name.toLowerCase().includes(normalizedQuery) ||
+          (s.description || '').toLowerCase().includes(normalizedQuery) ||
+          s.category.name.toLowerCase().includes(normalizedQuery)
+        : true;
+      return matchesCat && matchesQuery;
+    });
+  }, [services, activeCategory, normalizedQuery]);
 
   const servicesToDisplay = showAllServices ? filteredServices : filteredServices.slice(0, 6);
 
@@ -310,136 +589,7 @@ export default function HomePage() {
       )}
 
       {/* ================= 1. EDITORIAL HERO BANNER (7/5 SPLIT) ================= */}
-      <section className="w-full hero-banner-surface text-white">
-        <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 lg:py-14">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-            {/* Left Editorial Narrative (7 cols) */}
-            <div className="lg:col-span-7 space-y-6">
-              <h1 className="hero-reveal text-3xl sm:text-4xl font-bold text-white tracking-[-0.03em] leading-[1.16] max-w-2xl">
-                Chăm sóc xe minh bạch từ lúc tiếp nhận đến khi bàn giao.
-              </h1>
-
-              <p className="hero-reveal hero-reveal-1 text-base sm:text-lg text-white/85 leading-relaxed max-w-[58ch]">
-                Đặt lịch bảo dưỡng trực tuyến, theo dõi từng hạng mục kỹ thuật theo thời gian
-                thực, duyệt báo giá chi tiết 0% VAT và thanh toán SePay ngay trên điện thoại.
-              </p>
-
-              <div className="hero-reveal hero-reveal-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
-                <Link
-                  href={bookingHref}
-                  className="group inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-xl bg-surface-elevated hover:bg-surface-subtle text-accent text-sm font-semibold active:scale-[0.98] transition-all duration-150"
-                >
-                  <span>Đặt lịch bảo dưỡng</span>
-                  <span
-                    className="material-symbols-outlined text-lg transition-transform duration-150 group-hover:translate-x-1"
-                    aria-hidden="true"
-                  >
-                    arrow_forward
-                  </span>
-                </Link>
-                <Link
-                  href={trackingHref}
-                  className="inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white text-sm font-semibold active:scale-[0.98] transition-all duration-150"
-                >
-                  <span className="material-symbols-outlined text-lg text-white" aria-hidden="true">
-                    timeline
-                  </span>
-                  <span>Theo dõi tiến độ xe</span>
-                </Link>
-              </div>
-
-              {/* Factual Portal Capabilities Strip (Automatic Highlight Cycle) */}
-              <div className="hero-reveal hero-reveal-3 grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 border-t border-white/15">
-                {HERO_PILLARS.map((pillar, index) => {
-                  const isActive = activePillar === index;
-                  return (
-                    <div
-                      key={pillar.title}
-                      onMouseEnter={() => setActivePillar(index)}
-                      className={`rounded-xl p-3 border transition-all duration-300 ${
-                        isActive
-                          ? 'bg-white/12 border-white/25'
-                          : 'bg-transparent border-transparent'
-                      }`}
-                    >
-                      <div className="inline-flex items-center gap-1.5 text-sm font-semibold text-white">
-                        <span
-                          className="material-symbols-outlined text-lg text-white"
-                          aria-hidden="true"
-                        >
-                          {pillar.icon}
-                        </span>
-                        <span>{pillar.title}</span>
-                      </div>
-                      <p className="text-xs text-white/80 leading-relaxed mt-1">
-                        {pillar.description}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Right Real Garage Photo Carousel (5 cols) */}
-            <div className="lg:col-span-5 hero-card-enter">
-              <div
-                onMouseEnter={() => setIsPhotoPaused(true)}
-                onMouseLeave={() => setIsPhotoPaused(false)}
-                className="group rounded-2xl bg-surface-elevated p-2.5 text-ink-primary overflow-hidden"
-              >
-                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-surface-subtle">
-                  {HERO_GARAGE_PHOTOS.map((photo, idx) => {
-                    const isCurrent = idx === activePhotoIndex;
-                    return (
-                      <img
-                        key={photo.src}
-                        src={photo.src}
-                        alt={photo.alt}
-                        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-out ${
-                          isCurrent
-                            ? 'opacity-100 z-10 hero-photo-motion'
-                            : 'opacity-0 z-0 pointer-events-none'
-                        }`}
-                      />
-                    );
-                  })}
-                </div>
-                <div className="px-2.5 pt-3 pb-1 flex items-center justify-between gap-3 text-xs">
-                  <span className="font-medium text-ink-secondary truncate">
-                    {HERO_GARAGE_PHOTOS[activePhotoIndex].caption}
-                  </span>
-                  <div
-                    className="flex items-center gap-0.5 shrink-0"
-                    role="tablist"
-                    aria-label="Chọn ảnh xưởng dịch vụ"
-                  >
-                    {HERO_GARAGE_PHOTOS.map((photo, idx) => {
-                      const isCurrent = idx === activePhotoIndex;
-                      return (
-                        <button
-                          key={photo.src}
-                          type="button"
-                          role="tab"
-                          aria-selected={isCurrent}
-                          aria-label={`Ảnh xưởng ${idx + 1}: ${photo.caption}`}
-                          onClick={() => setActivePhotoIndex(idx)}
-                          className="min-h-[28px] px-1 inline-flex items-center justify-center cursor-pointer"
-                        >
-                          <span
-                            className={`h-1.5 rounded-full transition-all duration-300 ${
-                              isCurrent ? 'w-5 bg-accent' : 'w-1.5 bg-surface-muted'
-                            }`}
-                          />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HeroSection bookingHref={bookingHref} trackingHref={trackingHref} />
 
       {/* ================= 2. DYNAMIC SERVICE CATALOG ================= */}
       <section id="services" className="w-full bg-surface-elevated border-b border-hairline py-10 sm:py-12 scroll-mt-16">
@@ -505,9 +655,9 @@ export default function HomePage() {
             />
           ) : (
             <>
-              {/* Category Filter Pills (horizontal scroll on mobile) */}
+              {/* Category Filter Pills (horizontal scroll with visible scrollbar) */}
               <div
-                className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 mb-8 -mx-4 px-4 sm:mx-0 sm:px-0"
+                className="flex items-center gap-2 overflow-x-auto styled-scrollbar-x pb-3 mb-7 -mx-4 px-4 sm:mx-0 sm:px-0"
                 role="tablist"
                 aria-label="Lọc theo nhóm dịch vụ"
               >
@@ -519,13 +669,22 @@ export default function HomePage() {
                     setActiveCategory(null);
                     setShowAllServices(false);
                   }}
-                  className={`shrink-0 min-h-[44px] px-4 rounded-full text-sm font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap ${
+                  className={`shrink-0 min-h-[42px] px-4 rounded-full text-sm font-semibold border transition-all duration-200 cursor-pointer whitespace-nowrap inline-flex items-center gap-2 ${
                     activeCategory === null
-                      ? 'bg-accent text-white'
-                      : 'bg-surface-subtle text-ink-secondary hover:bg-surface-muted hover:text-ink-primary'
+                      ? 'bg-accent text-white border-accent shadow-[0_6px_16px_-6px_rgba(0,80,205,0.55)]'
+                      : 'bg-white text-slate-700 border-slate-200/90 hover:border-accent/50 hover:bg-[#F4F8FF] hover:text-accent shadow-2xs'
                   }`}
                 >
-                  Tất cả ({services.length})
+                  <span>Tất cả</span>
+                  <span
+                    className={`font-mono tabular-nums text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                      activeCategory === null
+                        ? 'bg-white/20 text-white'
+                        : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {services.length}
+                  </span>
                 </button>
                 {categories.map((cat) => (
                   <button
@@ -537,13 +696,22 @@ export default function HomePage() {
                       setActiveCategory(cat.id);
                       setShowAllServices(false);
                     }}
-                    className={`shrink-0 min-h-[44px] px-4 rounded-full text-sm font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap ${
+                    className={`shrink-0 min-h-[42px] px-4 rounded-full text-sm font-semibold border transition-all duration-200 cursor-pointer whitespace-nowrap inline-flex items-center gap-2 ${
                       activeCategory === cat.id
-                        ? 'bg-accent text-white'
-                        : 'bg-surface-subtle text-ink-secondary hover:bg-surface-muted hover:text-ink-primary'
+                        ? 'bg-accent text-white border-accent shadow-[0_6px_16px_-6px_rgba(0,80,205,0.55)]'
+                        : 'bg-white text-slate-700 border-slate-200/90 hover:border-accent/50 hover:bg-[#F4F8FF] hover:text-accent shadow-2xs'
                     }`}
                   >
-                    {cat.name} ({cat._count.services})
+                    <span>{cat.name}</span>
+                    <span
+                      className={`font-mono tabular-nums text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                        activeCategory === cat.id
+                          ? 'bg-white/20 text-white'
+                          : 'bg-[#EEF4FF] text-accent'
+                      }`}
+                    >
+                      {cat._count.services}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -579,64 +747,81 @@ export default function HomePage() {
                         <div
                           key={svc.id}
                           style={{ animationDelay: `${Math.min(idx * 45, 270)}ms` }}
-                          className="svc-card-enter h-full"
+                          className="group svc-card-enter h-full"
                         >
-                          <SurfaceCard
-                            variant="interactive"
-                            padding="md"
-                            className="group flex flex-col justify-between h-full transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/40"
-                          >
-                            <div>
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="w-11 h-11 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
-                                  <span
-                                    className="material-symbols-outlined text-xl"
-                                    aria-hidden="true"
-                                  >
-                                    {iconName}
+                          {/* Child element animates on parent group-hover to prevent hover-boundary flicker (web-animation-design) */}
+                          <div className="relative flex flex-col justify-between h-full rounded-2xl bg-surface-elevated border border-accent/40 shadow-[0_10px_26px_-10px_rgba(0,80,205,0.16)] will-change-transform group-hover:-translate-y-1.5 group-hover:border-accent group-hover:ring-4 group-hover:ring-accent/10 group-hover:shadow-[0_20px_38px_-12px_rgba(0,80,205,0.28)] transition-[transform,border-color,box-shadow] duration-250 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 overflow-hidden">
+                            {/* Subtle Diagonal Light Sweep on Hover (GPU-only transform) */}
+                            <div
+                              className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-0 will-change-transform group-hover:opacity-100 group-hover:translate-x-[320%] transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:hidden z-20"
+                              aria-hidden="true"
+                            />
+
+                            {/* Top Royal Sapphire Accent Strip */}
+                            <div
+                              className="h-1 w-full bg-gradient-to-r from-[#0050CD] via-[#2563EB] to-[#60A5FA] group-hover:from-[#003EA3] group-hover:via-[#0050CD] group-hover:to-[#3B82F6] transition-colors duration-200 ease-out"
+                              aria-hidden="true"
+                            />
+
+                            <div className="relative z-10 p-5 sm:p-6 flex-1 flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="w-12 h-12 rounded-2xl bg-accent text-white border border-accent flex items-center justify-center shrink-0 shadow-xs will-change-transform transition-[transform,box-shadow] duration-250 ease-[cubic-bezier(0.165,0.84,0.44,1)] group-hover:scale-110 group-hover:-rotate-3 group-hover:shadow-[0_8px_18px_-4px_rgba(0,80,205,0.45)] motion-reduce:group-hover:scale-100 motion-reduce:group-hover:rotate-0">
+                                    <span
+                                      className="material-symbols-outlined text-[22px]"
+                                      aria-hidden="true"
+                                    >
+                                      {iconName}
+                                    </span>
+                                  </div>
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-accent text-white border border-accent shadow-2xs will-change-transform transition-transform duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] group-hover:scale-[1.03] motion-reduce:group-hover:scale-100">
+                                    <span
+                                      className="w-1.5 h-1.5 rounded-full bg-white shrink-0"
+                                      aria-hidden="true"
+                                    />
+                                    <span>{svc.category.name}</span>
                                   </span>
                                 </div>
-                                <StatusBadge tone="neutral">{svc.category.name}</StatusBadge>
-                              </div>
 
-                              <h3 className="text-base sm:text-lg font-semibold text-ink-primary group-hover:text-accent transition-colors mt-4">
-                                {svc.name}
-                              </h3>
-                              <p className="text-sm text-ink-secondary leading-relaxed mt-2 line-clamp-2">
-                                {svc.description ||
-                                  'Thực hiện theo quy trình kiểm tra kỹ thuật và nghiệm thu KCS tại xưởng.'}
-                              </p>
-                            </div>
-
-                            <div className="mt-6 pt-4 border-t border-hairline flex items-end justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-ink-muted">
-                                  Chi phí tham khảo
-                                </p>
-                                <p
-                                  className={
-                                    priceMeta.isNumeric
-                                      ? 'font-mono tabular-nums text-base font-bold text-ink-primary mt-0.5'
-                                      : 'text-sm font-semibold text-bronze-ink mt-0.5'
-                                  }
-                                >
-                                  {priceMeta.text}
+                                <h3 className="text-base sm:text-lg font-bold text-ink-primary group-hover:text-accent transition-colors duration-150 mt-4 leading-snug">
+                                  {svc.name}
+                                </h3>
+                                <p className="text-sm text-ink-secondary leading-relaxed mt-2 line-clamp-2 min-h-[2.75rem]">
+                                  {svc.description ||
+                                    'Thực hiện theo quy trình kiểm tra kỹ thuật và nghiệm thu KCS tại xưởng.'}
                                 </p>
                               </div>
-                              <Link
-                                href={quickBookHref}
-                                className="group/btn inline-flex items-center justify-center gap-1 min-h-[44px] px-3.5 rounded-xl bg-surface-subtle hover:bg-accent hover:text-white text-ink-primary text-xs font-semibold transition-colors shrink-0"
-                              >
-                                <span>Đặt lịch</span>
-                                <span
-                                  className="material-symbols-outlined text-base transition-transform duration-150 group-hover/btn:translate-x-0.5"
-                                  aria-hidden="true"
+
+                              <div className="mt-5 p-3.5 rounded-xl bg-[#F4F8FF] border border-accent/20 group-hover:bg-[#EBF2FF] group-hover:border-accent/40 transition-colors duration-200 flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+                                    Chi phí tham khảo
+                                  </p>
+                                  <p
+                                    className={
+                                      priceMeta.isNumeric
+                                        ? 'font-mono tabular-nums text-base sm:text-[17px] font-bold text-ink-primary group-hover:text-accent transition-colors duration-150 mt-0.5'
+                                        : 'text-sm font-semibold text-bronze-ink mt-0.5'
+                                    }
+                                  >
+                                    {priceMeta.text}
+                                  </p>
+                                </div>
+                                <Link
+                                  href={quickBookHref}
+                                  className="group/btn inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 rounded-xl bg-accent group-hover:bg-[#003EA3] active:scale-[0.97] text-white text-xs font-bold transition-[background-color,transform,box-shadow] duration-150 ease-out shrink-0 shadow-xs group-hover:shadow-[0_6px_14px_-4px_rgba(0,80,205,0.5)] whitespace-nowrap"
                                 >
-                                  chevron_right
-                                </span>
-                              </Link>
+                                  <span>Đặt lịch</span>
+                                  <span
+                                    className="material-symbols-outlined text-base transition-transform duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] group-hover:translate-x-0.5 group-hover/btn:translate-x-1"
+                                    aria-hidden="true"
+                                  >
+                                    arrow_forward
+                                  </span>
+                                </Link>
+                              </div>
                             </div>
-                          </SurfaceCard>
+                          </div>
                         </div>
                       );
                     })}
@@ -668,132 +853,7 @@ export default function HomePage() {
       </section>
 
       {/* ================= 3. 8-STEP CONCIERGE PROCESS ================= */}
-      <section id="process" className="w-full bg-canvas border-b border-hairline py-10 sm:py-12 scroll-mt-16">
-        <div
-          className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8"
-          onMouseEnter={() => setIsProcessPaused(true)}
-          onMouseLeave={() => setIsProcessPaused(false)}
-        >
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
-            <div className="max-w-2xl">
-              <h2 className="text-2xl sm:text-3xl font-bold text-ink-primary tracking-[-0.02em]">
-                Quy trình tiếp nhận &amp; bàn giao 8 bước
-              </h2>
-              <p className="text-sm sm:text-base text-ink-secondary mt-2 leading-relaxed">
-                Mọi thay đổi phát sinh đều cần xác nhận từ chủ xe và được lưu vết đầy đủ trên hồ
-                sơ bảo dưỡng điện tử.
-              </p>
-            </div>
-            <div className="inline-flex items-center gap-2 text-xs font-semibold text-ink-secondary bg-surface-elevated border border-hairline px-3.5 min-h-[40px] rounded-full shrink-0 self-start md:self-auto">
-              <span className="font-mono tabular-nums text-accent font-bold">
-                {PROCESS_STEPS[activeProcessStep].code} / 08
-              </span>
-              <span className="truncate max-w-[220px]">
-                {PROCESS_STEPS[activeProcessStep].title}
-              </span>
-            </div>
-          </div>
-
-          {/* Desktop Interactive Connected Stepper Track */}
-          <div className="hidden lg:block relative mb-8">
-            <div
-              className="absolute top-1/2 left-8 right-8 h-0.5 -translate-y-1/2 bg-surface-muted"
-              aria-hidden="true"
-            />
-            <div className="relative grid grid-cols-8 gap-3">
-              {PROCESS_STEPS.map((step, idx) => {
-                const isActive = idx === activeProcessStep;
-                const isCompleted = idx < activeProcessStep;
-                return (
-                  <button
-                    key={step.code}
-                    type="button"
-                    onClick={() => setActiveProcessStep(idx)}
-                    className="flex flex-col items-center gap-2 cursor-pointer group"
-                  >
-                    <span
-                      className={`w-11 h-11 rounded-full font-mono tabular-nums text-xs font-bold flex items-center justify-center transition-all duration-300 ${
-                        isActive
-                          ? 'bg-accent text-white scale-110'
-                          : isCompleted
-                          ? 'bg-accent-soft text-accent-ink'
-                          : 'bg-surface-elevated border border-hairline-strong text-ink-secondary group-hover:border-accent'
-                      }`}
-                    >
-                      {step.code}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 8-Step Cards Grid (4x2 on desktop, 2x4 on tablet) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-            {PROCESS_STEPS.map((step, idx) => {
-              const isActive = idx === activeProcessStep;
-              return (
-                <button
-                  key={step.code}
-                  type="button"
-                  onClick={() => setActiveProcessStep(idx)}
-                  onMouseEnter={() => setActiveProcessStep(idx)}
-                  className={`text-left rounded-2xl bg-surface-elevated border p-5 sm:p-6 flex flex-col justify-between gap-4 transition-all duration-300 cursor-pointer ${
-                    isActive
-                      ? 'border-accent -translate-y-0.5'
-                      : 'border-hairline hover:border-hairline-strong'
-                  }`}
-                >
-                  <div className="space-y-3 w-full">
-                    <div className="flex items-center justify-between gap-3">
-                      <span
-                        className={`font-mono tabular-nums text-xs font-bold px-2.5 py-1 rounded-full transition-colors duration-300 ${
-                          isActive
-                            ? 'bg-accent text-white'
-                            : 'bg-accent-soft text-accent-ink'
-                        }`}
-                      >
-                        Bước {step.code}
-                      </span>
-                      <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors duration-300 ${
-                          isActive
-                            ? 'bg-accent-soft text-accent'
-                            : 'bg-surface-subtle text-ink-muted'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-xl" aria-hidden="true">
-                          {step.icon}
-                        </span>
-                      </div>
-                    </div>
-
-                    <h3
-                      className={`text-base font-semibold transition-colors duration-200 ${
-                        isActive ? 'text-accent' : 'text-ink-primary'
-                      }`}
-                    >
-                      {step.title}
-                    </h3>
-                    <p className="text-sm text-ink-secondary leading-relaxed">
-                      {step.description}
-                    </p>
-                  </div>
-
-                  {/* Subtle animated step progress bar */}
-                  <div className="w-full h-1 rounded-full bg-surface-subtle overflow-hidden">
-                    <div
-                      className={`h-full rounded-full bg-accent transition-all duration-500 ${
-                        isActive ? 'w-full' : 'w-0'
-                      }`}
-                    />
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      <ProcessStepperSection />
 
       {/* ================= 4. WORKSHOP CONTACT & RECEPTION ================= */}
       <section id="contact" className="w-full bg-surface-elevated py-10 sm:py-12 scroll-mt-16">

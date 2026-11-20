@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { NotificationItem } from '@/lib/api/notification.api';
 import { useNotificationSocket } from '@/hooks/useNotificationSocket';
@@ -15,7 +16,8 @@ import {
   formatRelativeTimeVi,
   getNotificationIcon,
 } from './notificationUtils';
-import NotificationDetailModal from './NotificationDetailModal';
+
+const NotificationDetailModal = dynamic(() => import('./NotificationDetailModal'));
 
 export default function NotificationBell() {
   useNotificationSocket();
@@ -254,10 +256,12 @@ export default function NotificationBell() {
         </div>
       )}
 
-      <NotificationDetailModal
-        notification={selectedNotification}
-        onClose={() => setSelectedNotification(null)}
-      />
+      {selectedNotification && (
+        <NotificationDetailModal
+          notification={selectedNotification}
+          onClose={() => setSelectedNotification(null)}
+        />
+      )}
     </div>
   );
 }

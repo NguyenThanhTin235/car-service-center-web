@@ -1,4 +1,4 @@
-import { NotificationItem } from '@/lib/api/notification.api';
+import type { NotificationItem } from '@/lib/api/notification.api';
 
 export function getNotificationHref(item: NotificationItem): string {
   const entity = (item.entityType || '').toUpperCase();

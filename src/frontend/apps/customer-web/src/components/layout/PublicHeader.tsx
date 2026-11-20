@@ -334,57 +334,6 @@ export default function PublicHeader() {
                   </Link>
                 ))}
               </nav>
-
-              {mounted && isAuthenticated && user && (
-                <div className="pt-4 border-t border-hairline space-y-1">
-                  <div className="px-3.5 pb-2">
-                    <p className="text-sm font-semibold text-ink-primary truncate">
-                      {user.fullName || 'Khách hàng'}
-                    </p>
-                    <p className="text-xs text-ink-muted truncate">{user.email}</p>
-                  </div>
-                  <Link
-                    href="/customer"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2.5 min-h-[44px] px-3.5 rounded-xl text-sm font-semibold text-accent bg-accent-soft/60"
-                  >
-                    <span className="material-symbols-outlined text-lg" aria-hidden="true">
-                      home
-                    </span>
-                    <span>Vào cổng khách hàng</span>
-                  </Link>
-                  <Link
-                    href="/customer/tracking"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2.5 min-h-[44px] px-3.5 rounded-xl text-sm text-ink-primary hover:bg-surface-subtle"
-                  >
-                    <span className="material-symbols-outlined text-lg text-ink-secondary" aria-hidden="true">
-                      timeline
-                    </span>
-                    <span>Tiến độ sửa chữa</span>
-                  </Link>
-                  <Link
-                    href="/customer/invoices"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2.5 min-h-[44px] px-3.5 rounded-xl text-sm text-ink-primary hover:bg-surface-subtle"
-                  >
-                    <span className="material-symbols-outlined text-lg text-ink-secondary" aria-hidden="true">
-                      receipt_long
-                    </span>
-                    <span>Hóa đơn &amp; SePay</span>
-                  </Link>
-                  <Link
-                    href={profileHref}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2.5 min-h-[44px] px-3.5 rounded-xl text-sm text-ink-primary hover:bg-surface-subtle"
-                  >
-                    <span className="material-symbols-outlined text-lg text-ink-secondary" aria-hidden="true">
-                      person
-                    </span>
-                    <span>Hồ sơ cá nhân</span>
-                  </Link>
-                </div>
-              )}
             </div>
 
             <div className="pt-5 border-t border-hairline space-y-2.5 mt-6">
