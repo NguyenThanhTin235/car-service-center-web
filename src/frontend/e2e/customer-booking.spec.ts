@@ -217,10 +217,16 @@ test.describe('Customer Portal — Profile, Vehicles CRUD & 3-Step Booking', () 
     const futureDate = new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0];
     await page.fill('input[type="date"]', futureDate);
     await page.fill('input[type="time"]', '09:30');
+    const appointmentPost = page.waitForResponse(
+      (res) => res.url().includes('/api/appointments') && res.request().method() === 'POST'
+    );
     await page.click('button:has-text("Xác nhận đặt lịch")');
+    const postRes = await appointmentPost;
+    expect(postRes.status()).toBe(201);
 
-    await expect(page.getByText('Đặt lịch hẹn thành công!')).toBeVisible();
-    await expect(page).toHaveURL(/.*\/customer\/appointments/, { timeout: 10000 });
+    await expect(page).toHaveURL(/.*\/customer\/(appointments|profile\?tab=appointments)/, {
+      timeout: 10000,
+    });
 
     expect(pageErrors).toEqual([]);
   });

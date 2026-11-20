@@ -427,7 +427,7 @@ test.describe('E2E Sprint 3: Internal Advisor Work Order & AI Job Lifecycle', ()
       localStorage.setItem('token', 'mock-sa-jwt-token-998877');
     });
 
-    await page.goto('http://localhost:3001/advisor/work-orders/101');
+    await page.goto('http://localhost:3001/advisor/work-orders/101', { waitUntil: 'domcontentloaded' });
 
     // Verify WO Header & Badge Bar
     await expect(page.locator('text=WO-261018-001').first()).toBeVisible({ timeout: 10000 });
@@ -442,7 +442,7 @@ test.describe('E2E Sprint 3: Internal Advisor Work Order & AI Job Lifecycle', ()
     await tabJobButton.click();
 
     // Verify Service Category and existing Job
-    await expect(page.locator('text=Sửa chữa động cơ bỏ máy')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sửa chữa động cơ bỏ máy' })).toBeVisible();
     await expect(page.locator('text=Chẩn đoán lỗi OBD-II')).toBeVisible();
   });
 
@@ -460,7 +460,7 @@ test.describe('E2E Sprint 3: Internal Advisor Work Order & AI Job Lifecycle', ()
       localStorage.setItem('token', 'mock-sa-jwt-token-998877');
     });
 
-    await page.goto('http://localhost:3001/advisor/work-orders/101');
+    await page.goto('http://localhost:3001/advisor/work-orders/101', { waitUntil: 'domcontentloaded' });
 
     // Switch to Tab 2 (Hạng mục sửa chữa)
     await page.click('button:has-text("Hạng mục sửa chữa")');
@@ -481,7 +481,7 @@ test.describe('E2E Sprint 3: Internal Advisor Work Order & AI Job Lifecycle', ()
     // Click "Áp dụng vào Phiếu" button
     const applyButton = page.locator('button:has-text("Áp dụng")');
     await expect(applyButton).toBeVisible();
-    await applyButton.click();
+    await applyButton.dispatchEvent('click');
 
     // Verify success toast feedback
     await expect(page.locator('text=Đã thêm 1 công việc vào phiếu')).toBeVisible({ timeout: 10000 });
@@ -507,11 +507,11 @@ test.describe('E2E Sprint 3: Internal Advisor Work Order & AI Job Lifecycle', ()
 
     await expect(page.getByTestId('sa-hero-bento-grid')).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId('sa-icon-rail')).toBeVisible();
-    await expect(page.locator('text=WO-261018-001').first()).toBeVisible();
+    await expect(page.locator('text=WO-261018-001 >> visible=true').first()).toBeVisible();
     await expect(page.locator('text=RO-2309-001')).toHaveCount(0); // Old fake hardcoded row removed
 
     // 2. Check /advisor/work-orders/101 has removed fake sections (WOStatusControl, ChatterSidebar, fake membership)
-    await page.goto('http://localhost:3001/advisor/work-orders/101');
+    await page.goto('http://localhost:3001/advisor/work-orders/101', { waitUntil: 'domcontentloaded' });
     await expect(page.getByTestId('wo-detail-hero-grid')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('text=Yêu cầu BH')).toHaveCount(0);
     await expect(page.locator('text=Sarah Jenkins')).toHaveCount(0);

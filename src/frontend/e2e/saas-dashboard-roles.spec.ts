@@ -278,8 +278,10 @@ test.describe('SaaS Dashboard Redesign E2E: Staff, Manager & Admin Roles', () =>
 
     // On mobile (390px), open and verify slide-over drawer
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByTestId('saas-mobile-menu-btn').click({ force: true });
-    await expect(page.getByTestId('saas-mobile-drawer')).toBeVisible();
+    const mobileMenuBtn = page.getByTestId('saas-mobile-menu-btn');
+    await expect(mobileMenuBtn).toBeVisible({ timeout: 10000 });
+    await mobileMenuBtn.dispatchEvent('click');
+    await expect(page.getByTestId('saas-mobile-drawer')).toBeVisible({ timeout: 10000 });
   });
 
   test('2. Manager Dashboard (/dashboard): Blue SaaS Bento, Wave Chart, View Toggle & 4-Viewport Audit', async ({
