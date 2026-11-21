@@ -9,6 +9,17 @@ const { prismaMock } = vi.hoisted(() => {
     workOrder: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
+      count: vi.fn(),
+    },
+    goodwillClaim: {
+      create: vi.fn(),
+      findMany: vi.fn(),
+      count: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+    notification: {
+      create: vi.fn().mockResolvedValue({ id: 1 }),
     },
   };
   return { prismaMock: mock };
@@ -284,6 +295,303 @@ describe('Unit Tests - Phân hệ Bảo hành (UC-81 & UC-83)', () => {
       expect(result[0].woNumber).toBe('WO-00088');
       expect(result[0].releaseOdo).toBe(15000);
       expect(result[0].services).toHaveLength(1);
+    });
+  });
+
+  describe('UC-86: Bảo hành thiện chí (Goodwill Claims)', () => {
+    describe('createGoodwillClaim', () => {
+      it('báo lỗi khi để trống nội dung phản ánh hiện tượng sự cố / lý do đề xuất', async () => {
+        await expect(
+          warrantyService.createGoodwillClaim(
+            {
+              vehicleId: 10,
+              parentWoId: 50,
+              complaint: '   ',
+            },
+            1
+          )
+        ).rejects.toThrow('Vui lòng nhập mô tả hiện tượng sự cố phản ánh và lý do đề xuất.');
+      });
+
+      it('báo lỗi khi không tìm thấy phương tiện', async () => {
+        prismaMock.vehicle.findUnique.mockResolvedValue(null);
+
+        await expect(
+          warrantyService.createGoodwillClaim(
+            {
+              vehicleId: 9999,
+              parentWoId: 50,
+              complaint: 'Xe bị giật khi chuyển số, quá hạn bảo hành 5 ngày',
+            },
+            1
+          )
+        ).rejects.toThrow('Không tìm thấy phương tiện trong hệ thống.');
+      });
+
+      it('báo lỗi khi không tìm thấy phiếu dịch vụ gốc', async () => {
+        prismaMock.vehicle.findUnique.mockResolvedValue({ id: 10, customer_id: 100 });
+        prismaMock.workOrder.findUnique.mockResolvedValue(null);
+
+        await expect(
+          warrantyService.createGoodwillClaim(
+            {
+              vehicleId: 10,
+              parentWoId: 9999,
+              complaint: 'Xe bị giật khi chuyển số, quá hạn bảo hành 5 ngày',
+            },
+            1
+          )
+        ).rejects.toThrow('Không tìm thấy phiếu dịch vụ gốc.');
+      });
+
+      it('tạo yêu cầu bảo hành thiện chí thành công ở trạng thái PENDING', async () => {
+        prismaMock.vehicle.findUnique.mockResolvedValue({ id: 10, customer_id: 100 });
+        prismaMock.workOrder.findUnique.mockResolvedValue({ id: 50, wo_number: 'WO-00050' });
+
+        const mockClaim = {
+          id: 1,
+          vehicle_id: 10,
+          customer_id: 100,
+          parent_wo_id: 50,
+          overdue_days: 5,
+          overdue_km: 200,
+          complaint: 'Xe bị rung khi đạp phanh, quá hạn 5 ngày và 200km',
+          status: 'PENDING',
+          created_by_id: 15,
+        };
+        prismaMock.goodwillClaim.create.mockResolvedValue(mockClaim);
+
+        const result = await warrantyService.createGoodwillClaim(
+          {
+            vehicleId: 10,
+            parentWoId: 50,
+            overdueDays: 5,
+            overdueKm: 200,
+            complaint: 'Xe bị rung khi đạp phanh, quá hạn 5 ngày và 200km',
+          },
+          15
+        );
+
+        expect(result.id).toBe(1);
+        expect(result.status).toBe('PENDING');
+        expect(prismaMock.goodwillClaim.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              vehicle_id: 10,
+              parent_wo_id: 50,
+              overdue_days: 5,
+              overdue_km: 200,
+              status: 'PENDING',
+              created_by_id: 15,
+            }),
+          })
+        );
+      });
+    });
+
+    describe('listGoodwillClaims', () => {
+      it('lọc danh sách yêu cầu theo trạng thái PENDING và phân trang chuẩn', async () => {
+        prismaMock.goodwillClaim.findMany.mockResolvedValue([
+          { id: 1, status: 'PENDING', complaint: 'Lỗi phát sinh' },
+        ]);
+        prismaMock.goodwillClaim.count.mockResolvedValue(1);
+
+        const result = await warrantyService.listGoodwillClaims({
+          status: 'PENDING' as any,
+          page: 1,
+          limit: 10,
+        });
+
+        expect(result.claims).toHaveLength(1);
+        expect(result.pagination.total).toBe(1);
+        expect(result.pagination.totalPages).toBe(1);
+      });
+    });
+
+    describe('getGoodwillClaimDetail', () => {
+      it('báo lỗi nếu không tìm thấy hồ sơ', async () => {
+        prismaMock.goodwillClaim.findUnique.mockResolvedValue(null);
+
+        await expect(warrantyService.getGoodwillClaimDetail(999)).rejects.toThrow(
+          'Không tìm thấy hồ sơ yêu cầu bảo hành thiện chí.'
+        );
+      });
+
+      it('trả về hồ sơ thẩm định toàn diện kèm thống kê khách hàng thân thiết (UC-86 Bước 3)', async () => {
+        prismaMock.goodwillClaim.findUnique.mockResolvedValue({
+          id: 5,
+          customer_id: 20,
+          status: 'PENDING',
+          complaint: 'Khách hàng thân thiết làm dịch vụ 5 lần tại xưởng',
+          vehicle: { license_plate: '51G-88888' },
+          parent_wo: { wo_number: 'WO-00050' },
+        });
+        prismaMock.workOrder.findMany.mockResolvedValue([
+          { id: 1, wo_number: 'WO-01' },
+          { id: 2, wo_number: 'WO-02' },
+          { id: 3, wo_number: 'WO-03' },
+          { id: 4, wo_number: 'WO-04' },
+        ]);
+        prismaMock.workOrder.count.mockResolvedValue(4);
+
+        const result = await warrantyService.getGoodwillClaimDetail(5);
+
+        expect(result.claim.id).toBe(5);
+        expect(result.customerStats.totalCompletedOrders).toBe(4);
+        expect(result.customerStats.isLoyalCustomer).toBe(true);
+      });
+    });
+
+    describe('approveGoodwillClaim', () => {
+      it('báo lỗi ngoại lệ khi quản lý để trống ghi chú giải trình phê duyệt (UC-86 Luồng ngoại lệ)', async () => {
+        await expect(
+          warrantyService.approveGoodwillClaim(1, 2, {
+            supportType: 'FULL' as any,
+            approvalNote: '   ',
+          })
+        ).rejects.toThrow('Vui lòng nhập lý do giải trình phê duyệt/từ chối');
+      });
+
+      it('báo lỗi khi hồ sơ không ở trạng thái PENDING', async () => {
+        prismaMock.goodwillClaim.findUnique.mockResolvedValue({
+          id: 1,
+          status: 'APPROVED',
+        });
+
+        await expect(
+          warrantyService.approveGoodwillClaim(1, 2, {
+            supportType: 'FULL' as any,
+            approvalNote: 'Đồng ý hỗ trợ khách hàng',
+          })
+        ).rejects.toThrow('Hồ sơ bảo hành thiện chí này đã ở trạng thái APPROVED, không thể phê duyệt lại.');
+      });
+
+      it('báo lỗi khi chọn PERCENTAGE nhưng không nhập tỷ lệ hợp lệ (1-100%)', async () => {
+        prismaMock.goodwillClaim.findUnique.mockResolvedValue({
+          id: 1,
+          status: 'PENDING',
+        });
+
+        await expect(
+          warrantyService.approveGoodwillClaim(1, 2, {
+            supportType: 'PERCENTAGE' as any,
+            supportPct: 150,
+            approvalNote: 'Hỗ trợ 150%',
+          })
+        ).rejects.toThrow('Tỷ lệ phần trăm hỗ trợ thiện chí phải từ 1% đến 100%.');
+      });
+
+      it('phê duyệt thành công mức FULL (100% công + phụ tùng) và gửi thông báo cho Cố vấn (UC-86 Bước 7)', async () => {
+        prismaMock.goodwillClaim.findUnique.mockResolvedValue({
+          id: 1,
+          status: 'PENDING',
+          created_by_id: 10,
+        });
+
+        prismaMock.goodwillClaim.update.mockResolvedValue({
+          id: 1,
+          status: 'APPROVED',
+          support_type: 'FULL',
+          approval_note: 'Khách hàng thân thiết, quá hạn 3 ngày do bận công tác',
+          approved_by_id: 2,
+          vehicle: { license_plate: '51F-12345' },
+          customer: { full_name: 'Trần Văn A' },
+          approved_by: { full_name: 'Quản lý Dịch vụ' },
+        });
+
+        const result = await warrantyService.approveGoodwillClaim(1, 2, {
+          supportType: 'FULL' as any,
+          approvalNote: 'Khách hàng thân thiết, quá hạn 3 ngày do bận công tác',
+        });
+
+        expect(result.status).toBe('APPROVED');
+        expect(result.support_type).toBe('FULL');
+        expect(prismaMock.goodwillClaim.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { id: 1 },
+            data: expect.objectContaining({
+              status: 'APPROVED',
+              support_type: 'FULL',
+              approved_by_id: 2,
+            }),
+          })
+        );
+        expect(prismaMock.notification.create).toHaveBeenCalled();
+      });
+
+      it('phê duyệt thành công mức PERCENTAGE (giảm 50% chi phí)', async () => {
+        prismaMock.goodwillClaim.findUnique.mockResolvedValue({
+          id: 2,
+          status: 'PENDING',
+          created_by_id: 10,
+        });
+
+        prismaMock.goodwillClaim.update.mockResolvedValue({
+          id: 2,
+          status: 'APPROVED',
+          support_type: 'PERCENTAGE',
+          support_pct: 50,
+          approval_note: 'Hỗ trợ 50% tiền phụ tùng do lỗi hao mòn sớm',
+          approved_by_id: 2,
+          vehicle: { license_plate: '51F-12345' },
+          customer: { full_name: 'Nguyễn Văn B' },
+          approved_by: { full_name: 'Quản lý Dịch vụ' },
+        });
+
+        const result = await warrantyService.approveGoodwillClaim(2, 2, {
+          supportType: 'PERCENTAGE' as any,
+          supportPct: 50,
+          approvalNote: 'Hỗ trợ 50% tiền phụ tùng do lỗi hao mòn sớm',
+        });
+
+        expect(result.status).toBe('APPROVED');
+        expect(result.support_type).toBe('PERCENTAGE');
+        expect(result.support_pct).toBe(50);
+      });
+    });
+
+    describe('rejectGoodwillClaim', () => {
+      it('báo lỗi ngoại lệ khi để trống lý do từ chối (UC-86 Luồng ngoại lệ)', async () => {
+        await expect(
+          warrantyService.rejectGoodwillClaim(1, 2, {
+            approvalNote: '',
+          })
+        ).rejects.toThrow('Vui lòng nhập lý do giải trình phê duyệt/từ chối');
+      });
+
+      it('từ chối thành công, cập nhật trạng thái REJECTED và gửi thông báo giải thích cho khách (UC-86 Bước 6b)', async () => {
+        prismaMock.goodwillClaim.findUnique.mockResolvedValue({
+          id: 3,
+          status: 'PENDING',
+          created_by_id: 10,
+        });
+
+        prismaMock.goodwillClaim.update.mockResolvedValue({
+          id: 3,
+          status: 'REJECTED',
+          approval_note: 'Xe đã quá hạn hơn 90 ngày và hơn 5.000 km, không đủ điều kiện hỗ trợ thiện chí',
+          approved_by_id: 2,
+          vehicle: { license_plate: '51F-12345' },
+          customer: { full_name: 'Lê Văn C' },
+          approved_by: { full_name: 'Quản lý Dịch vụ' },
+        });
+
+        const result = await warrantyService.rejectGoodwillClaim(3, 2, {
+          approvalNote: 'Xe đã quá hạn hơn 90 ngày và hơn 5.000 km, không đủ điều kiện hỗ trợ thiện chí',
+        });
+
+        expect(result.status).toBe('REJECTED');
+        expect(prismaMock.goodwillClaim.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { id: 3 },
+            data: expect.objectContaining({
+              status: 'REJECTED',
+              approved_by_id: 2,
+            }),
+          })
+        );
+        expect(prismaMock.notification.create).toHaveBeenCalled();
+      });
     });
   });
 });
