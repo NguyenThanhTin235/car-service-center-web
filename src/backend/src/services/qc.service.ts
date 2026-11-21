@@ -1,6 +1,7 @@
 import prisma from '../utils/prisma';
 import { QcResult, JobStatus, ServiceStatus, WorkOrderStatus, InspectionTemplateType } from '@prisma/client';
 import { SubmitQcDto } from '../dtos/qc.dto';
+import { notificationService } from './notification.service';
 
 // Danh sách các tiêu chí kiểm định KCS ô tô tiêu chuẩn mặc định khi dịch vụ chưa gán template
 const DEFAULT_AUTOMOTIVE_QC_ITEMS = [
@@ -379,14 +380,104 @@ export class QcService {
   }
 
   /**
+   * Chặn nghiệm thu KCS nếu trong phiếu vẫn còn công việc chưa hoàn thành (PLANNED / IN_PROGRESS / REWORK)
+   */
+  private ensureAllJobsCompletedForQc(workOrder: any) {
+    const incompleteJobs: string[] = [];
+    for (const svc of workOrder.services || []) {
+      for (const job of svc.jobs || []) {
+        if (job.status !== JobStatus.COMPLETED && job.status !== JobStatus.PASSED) {
+          incompleteJobs.push(job.name);
+        }
+      }
+    }
+    if (incompleteJobs.length > 0) {
+      const preview = incompleteJobs.slice(0, 3).join(', ');
+      const suffix = incompleteJobs.length > 3 ? '...' : '';
+      throw new Error(
+        `Không thể thực hiện nghiệm thu chất lượng vì trong phiếu vẫn còn ${incompleteJobs.length} công việc thi công dở dang (${preview}${suffix}).`
+      );
+    }
+  }
+
+  private notifyQcOutcome(params: {
+    workOrderId: number;
+    woNumber: string;
+    advisorId: number | null;
+    overallResult: QcResult;
+    serviceLabel: string;
+    technicianUserIds: number[];
+  }) {
+    const { workOrderId, woNumber, advisorId, overallResult, serviceLabel, technicianUserIds } = params;
+    const isPass = overallResult === QcResult.PASS;
+    const type = isPass ? 'QC_PASSED' : 'QC_FAILED';
+    const title = isPass
+      ? `Kiểm định KCS đạt chuẩn (${woNumber})`
+      : `Kiểm định KCS chưa đạt - Cần sửa lại (${woNumber})`;
+    const message = isPass
+      ? `Dịch vụ [${serviceLabel}] của phiếu ${woNumber} đã đạt kiểm định chất lượng KCS.`
+      : `Dịch vụ [${serviceLabel}] của phiếu ${woNumber} không đạt KCS và cần thực hiện sửa lại (Rework).`;
+
+    if (advisorId) {
+      notificationService
+        .sendInApp({
+          userId: advisorId,
+          type,
+          title,
+          message,
+          entityType: 'WORK_ORDER',
+          entityId: workOrderId,
+        })
+        .catch((err) => console.error('Failed to notify advisor on QC outcome:', err));
+    } else {
+      notificationService
+        .sendInAppToRoles(['SA'], {
+          type,
+          title,
+          message,
+          entityType: 'WORK_ORDER',
+          entityId: workOrderId,
+        })
+        .catch((err) => console.error('Failed to notify SA on QC outcome:', err));
+    }
+
+    if (!isPass) {
+      for (const techUserId of technicianUserIds) {
+        notificationService
+          .sendInApp({
+            userId: techUserId,
+            type: 'QC_FAILED',
+            title,
+            message,
+            entityType: 'WORK_ORDER',
+            entityId: workOrderId,
+          })
+          .catch((err) => console.error('Failed to notify technician on QC failure:', err));
+      }
+    }
+  }
+
+  /**
    * Lưu kết quả đánh giá kiểm định chất lượng (QC / KCS) và tự động xử lý Rework nếu có lỗi
    */
   async submitQcEvaluation(workOrderId: number, inspectorId: number, dto: SubmitQcDto) {
-    return await prisma.$transaction(async (tx) => {
+    const { evaluation, woNumber, advisorId, serviceName, technicianUserIds } = await prisma.$transaction(async (tx) => {
       // 1. Kiểm tra Work Order hợp lệ
       const workOrder = await tx.workOrder.findUnique({
         where: { id: workOrderId },
-        include: { services: true },
+        include: {
+          services: {
+            include: {
+              jobs: {
+                include: {
+                  labours: {
+                    include: { employee: { select: { user_id: true } } },
+                  },
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!workOrder) {
@@ -402,9 +493,50 @@ export class QcService {
         );
       }
 
+      this.ensureAllJobsCompletedForQc(workOrder);
+
       const defaultJobType = await tx.jobType.findFirst({ select: { id: true } });
-      return await this.evaluateSingleService(tx, workOrder, inspectorId, dto, defaultJobType);
+      const evaluation = await this.evaluateSingleService(tx, workOrder, inspectorId, dto, defaultJobType);
+
+      const woService = workOrder.services.find((s: any) => s.id === dto.woServiceId);
+      const techUserIds = new Set<number>();
+      for (const job of woService?.jobs || []) {
+        for (const lab of (job as any).labours || []) {
+          if (lab.employee?.user_id) techUserIds.add(lab.employee.user_id);
+        }
+      }
+      if (dto.items) {
+        const assignedEmpIds = dto.items.map((i) => i.assignedEmployeeId).filter((id): id is number => Boolean(id));
+        if (assignedEmpIds.length > 0) {
+          const emps = await tx.employee.findMany({
+            where: { id: { in: assignedEmpIds }, user_id: { not: null } },
+            select: { user_id: true },
+          });
+          for (const emp of emps) {
+            if (emp.user_id) techUserIds.add(emp.user_id);
+          }
+        }
+      }
+
+      return {
+        evaluation,
+        woNumber: workOrder.wo_number,
+        advisorId: workOrder.advisor_id,
+        serviceName: woService?.name || `Dịch vụ #${dto.woServiceId}`,
+        technicianUserIds: Array.from(techUserIds),
+      };
     });
+
+    this.notifyQcOutcome({
+      workOrderId,
+      woNumber,
+      advisorId,
+      overallResult: evaluation.overallResult,
+      serviceLabel: serviceName,
+      technicianUserIds,
+    });
+
+    return evaluation;
   }
 
   /**
@@ -415,10 +547,22 @@ export class QcService {
       throw new Error('Danh sách đánh giá kiểm định không được rỗng');
     }
 
-    return await prisma.$transaction(async (tx) => {
+    const { batchResult, woNumber, advisorId, serviceLabel, overallResult, technicianUserIds } = await prisma.$transaction(async (tx) => {
       const workOrder = await tx.workOrder.findUnique({
         where: { id: workOrderId },
-        include: { services: true },
+        include: {
+          services: {
+            include: {
+              jobs: {
+                include: {
+                  labours: {
+                    include: { employee: { select: { user_id: true } } },
+                  },
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!workOrder) {
@@ -433,6 +577,8 @@ export class QcService {
           `Phiếu công việc đang ở trạng thái ${workOrder.status}, chỉ có thể kiểm định QC khi đang thi công (IN_PROGRESS).`
         );
       }
+
+      this.ensureAllJobsCompletedForQc(workOrder);
 
       const defaultJobType = await tx.jobType.findFirst({ select: { id: true } });
 
@@ -451,21 +597,48 @@ export class QcService {
         results.push(res);
       }
 
+      const techUserIds = new Set<number>();
+      for (const svc of workOrder.services || []) {
+        for (const job of svc.jobs || []) {
+          for (const lab of (job as any).labours || []) {
+            if (lab.employee?.user_id) techUserIds.add(lab.employee.user_id);
+          }
+        }
+      }
+
       return {
-        successCount: results.length,
-        overallPassCount,
-        totalFailCount,
-        allCreatedReworkJobs,
-        results,
+        batchResult: {
+          successCount: results.length,
+          overallPassCount,
+          totalFailCount,
+          allCreatedReworkJobs,
+          results,
+        },
+        woNumber: workOrder.wo_number,
+        advisorId: workOrder.advisor_id,
+        serviceLabel: `${results.length} dịch vụ`,
+        overallResult: totalFailCount > 0 ? QcResult.FAIL : QcResult.PASS,
+        technicianUserIds: Array.from(techUserIds),
       };
     });
+
+    this.notifyQcOutcome({
+      workOrderId,
+      woNumber,
+      advisorId,
+      overallResult,
+      serviceLabel,
+      technicianUserIds,
+    });
+
+    return batchResult;
   }
 
   /**
    * Kích hoạt Billing Gate: Chốt nghiệm thu KCS và gửi yêu cầu lập hóa đơn (UC-41 -> BILLING_REQUESTED)
    */
   async requestBilling(workOrderId: number, advisorId: number, notes?: string) {
-    return await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const workOrder = await tx.workOrder.findUnique({
         where: { id: workOrderId },
         include: {
@@ -532,43 +705,32 @@ export class QcService {
         },
       });
 
-      // Tạo thông báo cho quầy thu ngân (Desk staff / Cashier)
-      const deskStaffUsers = tx.userRole ? await tx.userRole.findMany({
-        where: { role: { name: 'DESK STAFF' } },
-        select: { user_id: true },
-      }) : [];
-
-      if (deskStaffUsers && deskStaffUsers.length > 0 && tx.notification.createMany) {
-        await tx.notification.createMany({
-          data: deskStaffUsers.map((u: any) => ({
-            user_id: u.user_id,
-            notification_type: 'BILLING_REQUEST',
-            title: `Yêu cầu thanh toán xe ${updatedWorkOrder.vehicle.license_plate}`,
-            message: `Phiếu công việc ${updatedWorkOrder.wo_number} đã hoàn tất kiểm định chất lượng KCS 100%. Sẵn sàng phát hành hóa đơn.`,
-            entity_type: 'WORK_ORDER',
-            entity_id: workOrderId,
-          })),
-        });
-      } else if (tx.notification.create) {
-        await tx.notification.create({
-          data: {
-            user_id: advisorId,
-            notification_type: 'BILLING_REQUEST',
-            title: `Yêu cầu thanh toán xe ${updatedWorkOrder.vehicle.license_plate}`,
-            message: `Phiếu công việc ${updatedWorkOrder.wo_number} đã hoàn tất kiểm định chất lượng KCS 100%. Sẵn sàng phát hành hóa đơn.`,
-            entity_type: 'WORK_ORDER',
-            entity_id: workOrderId,
-          },
-        });
-      }
-
       return {
         workOrderId: updatedWorkOrder.id,
         woNumber: updatedWorkOrder.wo_number,
+        licensePlate: updatedWorkOrder.vehicle.license_plate,
         status: updatedWorkOrder.status,
         message: 'Đã hoàn tất nghiệm thu KCS và gửi yêu cầu phát hành hóa đơn thành công.',
       };
     });
+
+    // Tạo thông báo cho quầy thu ngân (DESK STAFF)
+    notificationService
+      .sendInAppToRoles(['DESK STAFF'], {
+        type: 'BILLING_REQUEST',
+        title: `Yêu cầu thanh toán xe ${result.licensePlate}`,
+        message: `Phiếu công việc ${result.woNumber} đã hoàn tất kiểm định chất lượng KCS 100%. Sẵn sàng phát hành hóa đơn.`,
+        entityType: 'WORK_ORDER',
+        entityId: workOrderId,
+      })
+      .catch((err) => console.error('Failed to notify DESK STAFF on billing request:', err));
+
+    return {
+      workOrderId: result.workOrderId,
+      woNumber: result.woNumber,
+      status: result.status,
+      message: result.message,
+    };
   }
 }
 

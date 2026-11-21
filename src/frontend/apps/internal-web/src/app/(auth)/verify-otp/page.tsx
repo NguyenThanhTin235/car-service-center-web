@@ -8,6 +8,8 @@ import api from '@/lib/axios';
 import { setCredentials } from '@/store/slices/authSlice';
 import { getDashboardPathByRole } from '@/utils/roleRedirect';
 import OtpInput from '@/components/auth/OtpInput';
+import AuthSplitShell from '@/components/auth/AuthSplitShell';
+import { AuthAlert, AuthSubmitButton } from '@/components/auth/AuthPrimitives';
 
 export default function VerifyOtpPage() {
   const router = useRouter();
@@ -28,14 +30,13 @@ export default function VerifyOtpPage() {
     const storedEmail = sessionStorage.getItem('pendingEmail');
     const storedPurpose = sessionStorage.getItem('otpPurpose') as 'register' | 'reset';
     if (!storedEmail) {
-      router.push('/register');
+      router.push('/login');
       return;
     }
     setEmail(storedEmail);
-    setPurpose(storedPurpose || 'register');
+    setPurpose(storedPurpose || 'reset');
   }, [router]);
 
-  // Countdown timer
   useEffect(() => {
     if (countdown <= 0) {
       setCanResend(true);
@@ -59,14 +60,13 @@ export default function VerifyOtpPage() {
     try {
       if (purpose === 'register') {
         const res = await api.post('/api/auth/verify-otp-register', { email, otp: otpString });
-        const { user, token } = res.data.data;
-        dispatch(setCredentials({ user, token }));
+        const { user, token, refreshToken } = res.data.data;
+        dispatch(setCredentials({ user, token, refreshToken }));
         sessionStorage.removeItem('pendingEmail');
         sessionStorage.removeItem('otpPurpose');
-        const redirectPath = getDashboardPathByRole(user.roles);
-        router.push(redirectPath);
+        router.push(getDashboardPathByRole(user.roles));
       } else {
-        // reset password: redirect to reset-password page with otp
+        await api.post('/api/auth/verify-otp-reset', { email, otp: otpString });
         sessionStorage.setItem('verifiedOtp', otpString);
         router.push('/reset-password');
       }
@@ -96,129 +96,66 @@ export default function VerifyOtpPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col justify-between bg-[#F0F2F5] antialiased">
-      {/* Ambient */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-blue-400/15 blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-[650px] h-[650px] rounded-full bg-cyan-400/10 blur-3xl" />
+    <AuthSplitShell topAction={{ href: '/login', label: 'Đăng nhập' }}>
+      <div className="mb-6 text-center">
+        <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0050cd] flex items-center justify-center mx-auto mb-4">
+          <span className="material-symbols-outlined text-[26px]">mark_email_read</span>
+        </div>
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-[-0.02em]">
+          Xác thực mã OTP
+        </h1>
+        <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
+          Nhập mã 6 chữ số đã được gửi tới{' '}
+          <strong className="font-semibold text-slate-900 break-words">{email}</strong>.
+        </p>
       </div>
 
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-30">
-        <div className="flex justify-between items-center w-full px-6 py-3 max-w-7xl mx-auto">
-          <Link href="/login" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-[#0866FF] flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
-              <span className="material-symbols-outlined text-white text-[22px]">directions_car</span>
-            </div>
-            <div>
-              <div className="font-bold text-lg text-[#050505] leading-tight">AutoCare Pro</div>
-              <div className="text-xs text-[#65676B]">Hệ thống Dịch vụ Ô tô Thông minh</div>
-            </div>
-          </Link>
+      {error && <AuthAlert variant="error">{error}</AuthAlert>}
+      {success && <AuthAlert variant="success">{success}</AuthAlert>}
+
+      <form onSubmit={handleVerify} className="space-y-6">
+        <OtpInput value={otp} onChange={setOtp} disabled={loading} />
+
+        <div className="text-center text-xs text-slate-600">
+          {canResend ? (
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resendLoading}
+              className="font-bold text-[#0050cd] hover:underline disabled:opacity-60 cursor-pointer min-h-[36px] px-2"
+            >
+              {resendLoading ? 'Đang gửi lại...' : 'Gửi lại mã OTP'}
+            </button>
+          ) : (
+            <span>
+              Chưa nhận được mã?{' '}
+              <strong className="font-mono tabular-nums text-slate-900">
+                Gửi lại sau {countdown}s
+              </strong>
+            </span>
+          )}
         </div>
-      </header>
 
-      {/* Main */}
-      <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-[460px]">
-          <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-10 shadow-lg">
-            {/* Icon */}
-            <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[#0866FF] text-4xl">mark_email_read</span>
-              </div>
-            </div>
+        <AuthSubmitButton
+          id="btn-verify-otp"
+          loading={loading}
+          loadingText="Đang xác nhận..."
+          disabled={otpString.length !== 6}
+          icon="check_circle"
+        >
+          Xác nhận mã OTP
+        </AuthSubmitButton>
+      </form>
 
-            {/* Header */}
-            <div className="text-center mb-8">
-              <h1 className="text-2xl font-extrabold text-[#050505]">Xác thực mã OTP</h1>
-              <p className="text-sm text-[#65676B] mt-2 leading-relaxed">
-                Vui lòng nhập mã gồm 6 chữ số đã được gửi đến
-                <br />
-                <span className="font-semibold text-[#050505]">{email}</span>
-              </p>
-            </div>
-
-            {/* Error / Success */}
-            {error && (
-              <div className="mb-6 p-3 rounded-xl bg-error-container text-error text-body-sm font-medium flex items-center gap-2">
-                <span className="material-symbols-outlined text-[1.125rem]">error</span>
-                <span>{error}</span>
-              </div>
-            )}
-            {success && (
-              <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-700 text-sm font-medium flex items-start gap-2 border border-green-100">
-                <span className="material-symbols-outlined text-sm mt-0.5">check_circle</span>
-                {success}
-              </div>
-            )}
-
-            <form onSubmit={handleVerify} className="space-y-6">
-              {/* OTP Input */}
-              <OtpInput value={otp} onChange={setOtp} disabled={loading} />
-
-              {/* Resend */}
-              <div className="text-center text-sm text-[#65676B]">
-                {canResend ? (
-                  <button
-                    type="button"
-                    onClick={handleResend}
-                    disabled={resendLoading}
-                    className="font-semibold text-[#0866FF] hover:underline transition-colors disabled:opacity-60 cursor-pointer"
-                  >
-                    {resendLoading ? 'Đang gửi...' : 'Gửi lại mã OTP'}
-                  </button>
-                ) : (
-                  <span>
-                    Chưa nhận được mã?{' '}
-                    <span className="font-semibold text-[#050505]">
-                      Gửi lại sau {countdown}s
-                    </span>
-                  </span>
-                )}
-              </div>
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={loading || otpString.length !== 6}
-                id="btn-verify-otp"
-                className="w-full h-12 bg-[#0866FF] hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-200 transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Đang xác nhận...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-xl">check_circle</span>
-                    <span>Xác nhận</span>
-                  </>
-                )}
-              </button>
-            </form>
-
-            {/* Back link */}
-            <div className="mt-6 text-center">
-              <Link
-                href={purpose === 'register' ? '/register' : '/forgot-password'}
-                className="text-sm text-[#65676B] hover:text-[#050505] inline-flex items-center gap-1 transition-colors"
-              >
-                <span className="material-symbols-outlined text-base">arrow_back</span>
-                Quay lại
-              </Link>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-4 px-4 text-center z-10 relative">
-        <div className="max-w-7xl mx-auto text-xs text-[#65676B]">
-          © 2025 AutoCare Pro Service Center. Bản quyền được bảo lưu.
-        </div>
-      </footer>
-    </div>
+      <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+        <Link
+          href={purpose === 'register' ? '/register' : '/forgot-password'}
+          className="text-xs font-semibold text-slate-600 hover:text-slate-900 inline-flex items-center gap-1.5 transition-colors"
+        >
+          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+          <span>Quay lại bước trước</span>
+        </Link>
+      </div>
+    </AuthSplitShell>
   );
 }

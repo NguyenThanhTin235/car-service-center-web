@@ -5,6 +5,7 @@ import appointmentReducer from './slices/appointmentSlice';
 import intakeReducer from './slices/intakeSlice';
 import inventoryReducer from './slices/inventorySlice';
 import billingReducer from './slices/billingSlice';
+import notificationReducer from './slices/notificationSlice';
 
 export const store = configureStore({
   reducer: {
@@ -13,6 +14,7 @@ export const store = configureStore({
     intake: intakeReducer,
     inventory: inventoryReducer,
     billing: billingReducer,
+    notifications: notificationReducer,
   },
 });
 

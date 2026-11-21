@@ -13,16 +13,14 @@ export default function OtpInput({ value, onChange, length = 6, disabled = false
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    // Auto-focus first input on mount
     inputRefs.current[0]?.focus();
   }, []);
 
   const handleChange = (index: number, digit: string) => {
-    if (!/^\d?$/.test(digit)) return; // Only digits
+    if (!/^\d?$/.test(digit)) return;
     const newValue = [...value];
     newValue[index] = digit;
     onChange(newValue);
-    // Move to next input if digit entered
     if (digit && index < length - 1) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -31,7 +29,6 @@ export default function OtpInput({ value, onChange, length = 6, disabled = false
   const handleKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Backspace') {
       if (!value[index] && index > 0) {
-        // Move to previous if current is empty
         const newValue = [...value];
         newValue[index - 1] = '';
         onChange(newValue);
@@ -53,35 +50,33 @@ export default function OtpInput({ value, onChange, length = 6, disabled = false
       newValue[i] = pasted[i];
     }
     onChange(newValue);
-    // Focus last filled input
     const lastIndex = Math.min(pasted.length, length - 1);
     inputRefs.current[lastIndex]?.focus();
   };
 
   return (
-    <div className="flex gap-3 justify-center">
+    <div className="flex gap-2 sm:gap-3 justify-center">
       {Array.from({ length }, (_, i) => (
         <input
           key={i}
-          ref={(el) => { inputRefs.current[i] = el; }}
+          ref={(el) => {
+            inputRefs.current[i] = el;
+          }}
           type="text"
           inputMode="numeric"
+          autoComplete="one-time-code"
+          aria-label={`Mã OTP chữ số thứ ${i + 1}`}
           maxLength={1}
           value={value[i] || ''}
           disabled={disabled}
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={handlePaste}
-          className={`
-            w-12 h-14 text-center text-2xl font-bold rounded-xl border-2 transition-all outline-none
-            bg-white text-[#050505]
-            ${value[i]
-              ? 'border-[#0866FF] bg-blue-50 shadow-sm shadow-blue-100'
-              : 'border-gray-200 hover:border-gray-300'
-            }
-            focus:border-[#0866FF] focus:ring-2 focus:ring-blue-100
-            disabled:bg-gray-100 disabled:cursor-not-allowed
-          `}
+          className={`w-11 h-12 sm:w-12 sm:h-14 text-center font-mono tabular-nums text-xl sm:text-2xl font-bold rounded-xl border transition-colors outline-none text-ink-primary ${
+            value[i]
+              ? 'border-accent bg-accent-soft/40'
+              : 'border-hairline-strong bg-surface-elevated hover:border-ink-muted'
+          } focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-surface-subtle disabled:text-ink-muted disabled:cursor-not-allowed`}
         />
       ))}
     </div>

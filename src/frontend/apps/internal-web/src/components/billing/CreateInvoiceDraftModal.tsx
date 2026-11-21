@@ -82,7 +82,7 @@ export default function CreateInvoiceDraftModal({
               <h2 className="text-title-md font-bold text-on-surface">Tạo hóa đơn dịch vụ mới</h2>
               {preview && (
                 <p className="text-xs text-on-surface-variant">
-                  Phiếu công việc: <strong className="font-mono text-primary">{preview.woNumber}</strong> | Xe: <strong>{preview.vehicle.licensePlate}</strong> ({preview.vehicle.make} {preview.vehicle.model})
+                  Lệnh sửa chữa: <strong className="font-mono text-primary">{preview.woNumber}</strong> | Phương tiện: <strong>{preview.vehicle.licensePlate}</strong> ({preview.vehicle.make} {preview.vehicle.model})
                 </p>
               )}
             </div>
@@ -126,7 +126,7 @@ export default function CreateInvoiceDraftModal({
                     Cố vấn dịch vụ phụ trách
                   </span>
                   <div className="font-bold text-on-surface">{preview.advisor.fullName}</div>
-                  <div className="text-on-surface-variant text-xs mt-0.5">Báo giá nguồn: {preview.sourceQuotationNumbers.join(', ') || 'N/A'}</div>
+                  <div className="text-on-surface-variant text-xs mt-0.5">Báo giá nguồn: {preview.sourceQuotationNumbers.join(', ') || 'Không có'}</div>
                 </div>
               </div>
 
@@ -135,7 +135,7 @@ export default function CreateInvoiceDraftModal({
                 <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-sm space-y-1">
                   <div className="font-bold flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-[18px]">info</span>
-                    <span>Đối soát xuất kho phụ tùng thực tế (Case D):</span>
+                    <span>Đối soát xuất kho phụ tùng thực tế (Trường hợp D):</span>
                   </div>
                   <ul className="list-disc list-inside text-xs space-y-0.5 pl-1">
                     {preview.reconciliationNotes.map((n, i) => (

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, useDeferredValue } from 'react';
 import {
   WorkOrder,
   WoJobPart,
@@ -8,6 +8,7 @@ import {
   deleteJobPart,
 } from '@/lib/api/work-order.api';
 import AddPartModal from '../modals/AddPartModal';
+import TablePagination from '@/components/shared/TablePagination';
 import toast from 'react-hot-toast';
 
 interface TabPartsProps {
@@ -20,12 +21,26 @@ const PART_STATUS_MAP: Record<string, { label: string; bg: string; text: string 
   PLANNED: { label: 'Đã lên kế hoạch', bg: 'bg-blue-500/10 border-blue-500/20', text: 'text-blue-700 dark:text-blue-400' },
   RESERVED: { label: 'Đã giữ chỗ', bg: 'bg-amber-500/10 border-amber-500/20', text: 'text-amber-700 dark:text-amber-400' },
   ISSUED: { label: 'Đã xuất kho', bg: 'bg-purple-500/10 border-purple-500/20', text: 'text-purple-700 dark:text-purple-400' },
-  USED: { label: 'Đã lắp ráp', bg: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-700 dark:text-emerald-400' },
-  RETURNED: { label: 'Đã trả kho', bg: 'bg-slate-500/10 border-slate-500/20', text: 'text-slate-700 dark:text-slate-400' },
+  USED: { label: 'Đã sử dụng', bg: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-700 dark:text-emerald-400' },
+  RETURNED: { label: 'Đã trả lại kho', bg: 'bg-slate-500/10 border-slate-500/20', text: 'text-slate-700 dark:text-slate-400' },
 };
 
 // Đồng bộ trạng thái và SL xuất kho phụ tùng theo từng giai đoạn trạng thái công việc
 const getEffectivePartStatus = (part: WoJobPart) => {
+  if (part.status === 'RETURNED') {
+    return {
+      status: 'RETURNED',
+      issued: 0,
+      ...PART_STATUS_MAP.RETURNED,
+    };
+  }
+  if (part.status === 'USED') {
+    return {
+      status: 'USED',
+      issued: Number(part.issued_quantity) || Number(part.planned_quantity) || 0,
+      ...PART_STATUS_MAP.USED,
+    };
+  }
   const jStatus = part.job?.status;
   if (jStatus === 'COMPLETED' || jStatus === 'PASSED') {
     return {
@@ -36,9 +51,9 @@ const getEffectivePartStatus = (part: WoJobPart) => {
   }
   if (jStatus === 'IN_PROGRESS' || jStatus === 'REWORK') {
     return {
-      status: part.status === 'USED' ? 'USED' : 'ISSUED',
+      status: 'ISSUED',
       issued: Number(part.planned_quantity),
-      ...(part.status === 'USED' ? PART_STATUS_MAP.USED : PART_STATUS_MAP.ISSUED),
+      ...PART_STATUS_MAP.ISSUED,
     };
   }
   return {
@@ -50,28 +65,22 @@ const getEffectivePartStatus = (part: WoJobPart) => {
 
 const ITEMS_PER_PAGE = 5;
 
-function getPageNumbers(current: number, total: number): (number | string)[] {
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, i) => i + 1);
-  }
-  if (current <= 4) {
-    return [1, 2, 3, 4, 5, '...', total];
-  }
-  if (current >= total - 3) {
-    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
-  }
-  return [1, '...', current - 1, current, current + 1, '...', total];
-}
-
 export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: TabPartsProps) {
-  const [parts, setParts] = useState<WoJobPart[]>([]);
+  const [parts, setParts] = useState<WoJobPart[]>(
+    () => workOrder?.services?.flatMap((s) => s.jobs?.flatMap((j) => j.parts || []) || []) || []
+  );
   const [loading, setLoading] = useState(false);
+  const hasPartsRef = useRef(parts.length > 0);
+  useEffect(() => {
+    hasPartsRef.current = parts.length > 0;
+  }, [parts.length]);
 
   // Pagination state (5 items per page)
   const [currentPage, setCurrentPage] = useState(1);
 
   // Filters & search
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [selectedJobFilter, setSelectedJobFilter] = useState<string>('ALL');
   const [stockFilter, setStockFilter] = useState<'ALL' | 'IN_STOCK' | 'OUT_OF_STOCK'>('ALL');
 
@@ -88,7 +97,9 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
   const fetchParts = useCallback(async () => {
     if (!workOrder?.id) return;
     try {
-      setLoading(true);
+      if (!hasPartsRef.current) {
+        setLoading(true);
+      }
       const res = await getWorkOrderParts(workOrder.id);
       if (res.success && res.data) {
         setParts(res.data);
@@ -103,7 +114,7 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
 
   useEffect(() => {
     fetchParts();
-  }, [fetchParts]);
+  }, [workOrder, fetchParts]);
 
   // Handle successful save from modal
   const handleModalSuccess = () => {
@@ -152,7 +163,7 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
       const name = part.item?.part_category?.name?.toLowerCase() || '';
       const brand = part.item?.brand?.name?.toLowerCase() || '';
       const jobName = part.job?.name?.toLowerCase() || '';
-      const query = search.trim().toLowerCase();
+      const query = deferredSearch.trim().toLowerCase();
 
       const matchesSearch = !query || sku.includes(query) || name.includes(query) || brand.includes(query) || jobName.includes(query);
       const matchesJob = selectedJobFilter === 'ALL' || String(part.job_id) === selectedJobFilter;
@@ -168,12 +179,12 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
 
       return matchesSearch && matchesJob && matchesStock;
     });
-  }, [parts, search, selectedJobFilter, stockFilter]);
+  }, [parts, deferredSearch, selectedJobFilter, stockFilter]);
 
   // Reset to page 1 on filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selectedJobFilter, stockFilter]);
+  }, [deferredSearch, selectedJobFilter, stockFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredParts.length / ITEMS_PER_PAGE));
 
@@ -271,9 +282,9 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
 
       {/* 2. Toolbar: Search, Filters, Add Button */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-surface-container-lowest p-3.5 border border-outline-variant rounded-2xl shadow-sm">
-        <div className="flex flex-1 flex-wrap items-center gap-2.5">
+        <div className="flex flex-1 flex-wrap items-center gap-2">
           {/* Search input */}
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative flex-1 min-w-[160px]">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">
               search
             </span>
@@ -290,7 +301,7 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
           <select
             value={selectedJobFilter}
             onChange={(e) => setSelectedJobFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-body-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary max-w-[200px] truncate"
+            className="px-2.5 lg:px-3 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-body-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary max-w-[160px] lg:max-w-[200px] truncate"
           >
             <option value="ALL">Tất cả công việc</option>
             {allJobs.map((j) => (
@@ -366,16 +377,17 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
             <table className="w-full text-left border-collapse text-body-medium">
               <thead>
                 <tr className="border-b border-outline-variant/60 bg-surface-container-low/40 text-on-surface-variant text-label-medium uppercase tracking-wider font-semibold">
-                  <th className="py-3.5 px-4">Mã</th>
-                  <th className="py-3.5 px-4">Tên phụ tùng & Hãng</th>
-                  <th className="py-3.5 px-4">Công việc áp dụng</th>
-                  <th className="py-3.5 px-4 text-center">Tồn kho</th>
-                  <th className="py-3.5 px-4 text-center">SL Dự kiến</th>
-                  <th className="py-3.5 px-4 text-center">SL Xuất</th>
-                  <th className="py-3.5 px-4 text-right">Đơn giá</th>
-                  <th className="py-3.5 px-4 text-right">Thành tiền</th>
-                  <th className="py-3.5 px-4 text-center">Trạng thái</th>
-                  {!isWOClosed && <th className="py-3.5 px-4 text-center">Thao tác</th>}
+                  <th className="py-3 px-4 hidden xl:table-cell whitespace-nowrap">Mã</th>
+                  <th className="py-3 px-2.5 lg:px-4 min-w-[170px]">Tên phụ tùng & Hãng</th>
+                  <th className="py-3 px-2.5 lg:px-4 min-w-[150px]">Công việc áp dụng</th>
+                  <th className="py-3 px-2 lg:px-4 text-center whitespace-nowrap">Tồn kho</th>
+                  <th className="py-3 px-2 text-center lg:hidden whitespace-nowrap">DK / Xuất</th>
+                  <th className="py-3 px-4 text-center hidden lg:table-cell whitespace-nowrap">SL Dự kiến</th>
+                  <th className="py-3 px-4 text-center hidden lg:table-cell whitespace-nowrap">SL Xuất</th>
+                  <th className="py-3 px-4 text-right hidden lg:table-cell whitespace-nowrap">Đơn giá</th>
+                  <th className="py-3 px-2.5 lg:px-4 text-right whitespace-nowrap">Thành tiền</th>
+                  <th className="py-3 px-2.5 lg:px-4 text-center whitespace-nowrap">Trạng thái</th>
+                  {!isWOClosed && <th className="py-3 px-2 lg:px-4 text-center whitespace-nowrap">Thao tác</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/40">
@@ -392,23 +404,28 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                   return (
                     <tr key={part.id} className="hover:bg-surface-container-low/50 transition-colors">
                       {/* SKU */}
-                      <td className="py-3 px-4 font-mono font-bold text-primary text-body-small whitespace-nowrap">
+                      <td className="py-3 px-4 font-mono font-bold text-primary text-body-small whitespace-nowrap hidden xl:table-cell">
                         {part.item?.sku || 'N/A'}
                       </td>
 
                       {/* Part Name & Brand */}
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-2.5 lg:px-4">
+                        <div className="xl:hidden mb-1">
+                          <span className="inline-block font-mono font-bold text-primary text-[11px] bg-primary/10 px-1.5 py-0.5 rounded">
+                            {part.item?.sku || 'N/A'}
+                          </span>
+                        </div>
                         <div className="font-semibold text-on-surface">
                           {part.item?.part_category?.name || 'Phụ tùng chưa rõ'}
                         </div>
-                        <div className="text-body-small text-on-surface-variant flex items-center gap-2 mt-0.5">
-                          {part.item?.brand && <span>Hãng: {part.item.brand.name}</span>}
-                          <span>ĐVT: {part.item?.part_category?.uom?.name || 'Cái'}</span>
+                        <div className="text-body-small text-on-surface-variant flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                          {part.item?.brand && <span className="whitespace-nowrap">Hãng: {part.item.brand.name}</span>}
+                          <span className="whitespace-nowrap">ĐVT: {part.item?.part_category?.uom?.name || 'Cái'}</span>
                         </div>
                       </td>
 
                       {/* Job name */}
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-2.5 lg:px-4">
                         <div className="font-medium text-on-surface">{part.job?.name || 'Chưa rõ'}</div>
                         {part.job?.wo_service?.name && (
                           <div className="text-body-small text-on-surface-variant">
@@ -418,9 +435,9 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                       </td>
 
                       {/* Stock badge */}
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                      <td className="py-3 px-2 lg:px-4 text-center whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold tabular-nums ${
                             isShortage
                               ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20'
                               : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20'
@@ -433,30 +450,40 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                         </span>
                       </td>
 
-                      {/* Planned Qty */}
-                      <td className="py-3 px-4 text-center font-bold text-on-surface">
+                      {/* Compact Planned / Issued Qty (<lg) */}
+                      <td className="py-3 px-2 text-center lg:hidden whitespace-nowrap tabular-nums">
+                        <span className="font-bold text-on-surface">{planned}</span>
+                        <span className="text-on-surface-variant mx-1">/</span>
+                        <span className="font-medium text-on-surface-variant">{issued}</span>
+                      </td>
+
+                      {/* Planned Qty (lg+) */}
+                      <td className="py-3 px-4 text-center font-bold text-on-surface hidden lg:table-cell tabular-nums">
                         {planned}
                       </td>
 
-                      {/* Issued Qty */}
-                      <td className="py-3 px-4 text-center font-medium text-on-surface-variant">
+                      {/* Issued Qty (lg+) */}
+                      <td className="py-3 px-4 text-center font-medium text-on-surface-variant hidden lg:table-cell tabular-nums">
                         {issued}
                       </td>
 
-                      {/* Unit Price */}
-                      <td className="py-3 px-4 text-right font-medium text-on-surface whitespace-nowrap">
+                      {/* Unit Price (lg+) */}
+                      <td className="py-3 px-4 text-right font-medium text-on-surface whitespace-nowrap hidden lg:table-cell tabular-nums">
                         {unitPrice.toLocaleString('vi-VN')} đ
                       </td>
 
                       {/* Total */}
-                      <td className="py-3 px-4 text-right font-bold text-primary whitespace-nowrap">
-                        {total.toLocaleString('vi-VN')} đ
+                      <td className="py-3 px-2.5 lg:px-4 text-right font-bold text-primary whitespace-nowrap tabular-nums">
+                        <div>{total.toLocaleString('vi-VN')} đ</div>
+                        <div className="lg:hidden text-[11px] font-normal text-on-surface-variant mt-0.5">
+                          {planned} × {unitPrice.toLocaleString('vi-VN')} đ
+                        </div>
                       </td>
 
                       {/* Status */}
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                      <td className="py-3 px-2.5 lg:px-4 text-center whitespace-nowrap">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusInfo.bg} ${statusInfo.text}`}
+                          className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold border ${statusInfo.bg} ${statusInfo.text}`}
                         >
                           {statusInfo.label}
                         </span>
@@ -464,8 +491,8 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
 
                       {/* Actions */}
                       {!isWOClosed && (
-                        <td className="py-3 px-4 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
+                        <td className="py-3 px-2 lg:px-4 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-0.5">
                             {/* Edit */}
                             <button
                               onClick={() => {
@@ -473,7 +500,7 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                                 setIsModalOpen(true);
                               }}
                               title="Chỉnh sửa số lượng / đơn giá"
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors"
+                              className="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-[18px]">edit</span>
                             </button>
@@ -487,7 +514,7 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                                   ? 'Không thể xóa phụ tùng đã xuất kho'
                                   : 'Xóa phụ tùng khỏi công việc'
                               }
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-error/10 hover:text-error disabled:opacity-40 transition-colors"
+                              className="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-error/10 hover:text-error disabled:opacity-40 transition-colors cursor-pointer"
                             >
                               {deletingPartId === part.id ? (
                                 <span className="material-symbols-outlined animate-spin text-[16px]">
@@ -509,105 +536,34 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
 
           {/* Pagination Footer (5 items per page) */}
           {!loading && filteredParts.length > 0 && (
-            <div className="px-5 py-3 border-t border-outline-variant/50 bg-surface-container-low/30 flex flex-col sm:flex-row items-center justify-between gap-3 select-none">
-              {/* Left: Summary */}
-              <div className="text-body-xs text-on-surface-variant">
-                Hiển thị{' '}
-                <strong className="text-on-surface font-semibold">
-                  {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredParts.length)}
-                </strong>{' '}
-                trong <strong className="text-on-surface font-semibold">{filteredParts.length}</strong> phụ tùng
-              </div>
-
-              {/* Right: Page Buttons */}
-              {totalPages > 1 && (
-                <div className="flex items-center gap-1">
-                  {/* First Page */}
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    className="p-1.5 rounded-lg border border-outline-variant/60 bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-                    title="Trang đầu"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">first_page</span>
-                  </button>
-
-                  {/* Prev Page */}
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="p-1.5 rounded-lg border border-outline-variant/60 bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-                    title="Trang trước"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-                  </button>
-
-                  {/* Page Numbers */}
-                  {getPageNumbers(currentPage, totalPages).map((p, idx) =>
-                    p === '...' ? (
-                      <span key={`ellipsis-${idx}`} className="px-1.5 text-on-surface-variant font-mono text-body-xs">
-                        ...
-                      </span>
-                    ) : (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setCurrentPage(Number(p))}
-                        className={`min-w-[30px] h-7 px-2 rounded-lg text-label-xs font-bold font-mono transition-colors cursor-pointer ${
-                          p === currentPage
-                            ? 'bg-primary text-white shadow-2xs'
-                            : 'border border-outline-variant/60 bg-surface-container-lowest hover:bg-surface-container text-on-surface'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    )
-                  )}
-
-                  {/* Next Page */}
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="p-1.5 rounded-lg border border-outline-variant/60 bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-                    title="Trang sau"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                  </button>
-
-                  {/* Last Page */}
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                    className="p-1.5 rounded-lg border border-outline-variant/60 bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-                    title="Trang cuối"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">last_page</span>
-                  </button>
-                </div>
-              )}
-            </div>
+            <TablePagination
+              totalRecords={filteredParts.length}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+              currentCount={paginatedParts.length}
+              recordLabel="phụ tùng"
+            />
           )}
         </>
       )}
     </div>
 
       {/* 4. Modal Add/Edit Part */}
-      <AddPartModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingPart(null);
-          setPreselectedJobId(null);
-        }}
-        workOrder={workOrder}
-        preselectedJobId={preselectedJobId}
-        editingPart={editingPart}
-        onSuccess={handleModalSuccess}
-      />
+      {isModalOpen && (
+        <AddPartModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingPart(null);
+            setPreselectedJobId(null);
+          }}
+          workOrder={workOrder}
+          preselectedJobId={preselectedJobId}
+          editingPart={editingPart}
+          onSuccess={handleModalSuccess}
+        />
+      )}
     </div>
   );
 }

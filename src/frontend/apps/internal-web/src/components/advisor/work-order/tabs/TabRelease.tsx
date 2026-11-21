@@ -5,6 +5,7 @@ import { WorkOrder, downloadHandoverPdfBlob } from '@/lib/api/work-order.api';
 import VehicleReturnModal from '../modals/VehicleReturnModal';
 import StandardVehicleHandoverModal from '../modals/StandardVehicleHandoverModal';
 import CloseWorkOrderModal from '../modals/CloseWorkOrderModal';
+import { WO_STATUS_META, FUEL_LEVEL_LABELS } from '../work-order.constants';
 import toast from 'react-hot-toast';
 
 interface TabReleaseProps {
@@ -12,28 +13,6 @@ interface TabReleaseProps {
   refetchWO: () => void;
   isReadOnly?: boolean;
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Bản nháp',
-  ESTIMATING: 'Đang báo giá',
-  WAITING_CUSTOMER: 'Chờ khách duyệt',
-  APPROVED: 'Khách đã duyệt',
-  IN_PROGRESS: 'Đang thi công',
-  QC_IN_PROGRESS: 'Đang kiểm định KCS',
-  BILLING_REQUESTED: 'Chờ thanh toán',
-  FINANCIAL_CLEARED: 'Đã quyết toán tài chính',
-  RELEASED: 'ĐÃ XUẤT XƯỞNG',
-  CLOSED: 'ĐÃ ĐÓNG HỒ SƠ',
-  CANCELLED: 'Đã hủy',
-};
-
-const FUEL_LABELS: Record<string, string> = {
-  EMPTY: 'Bình cạn (E)',
-  QUARTER: '1/4 bình',
-  HALF: '1/2 bình',
-  THREE_QUARTER: '3/4 bình',
-  FULL: 'Đầy bình (F)',
-};
 
 export default function TabRelease({ workOrder, refetchWO, isReadOnly = false }: TabReleaseProps) {
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
@@ -96,7 +75,7 @@ export default function TabRelease({ workOrder, refetchWO, isReadOnly = false }:
                       Phương tiện đã hoàn tất bàn giao & xuất xưởng
                     </h3>
                     <span className="text-xs px-3 py-0.5 rounded-full font-extrabold uppercase tracking-wide bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 shadow-2xs">
-                      {STATUS_LABELS[workOrder.status] || workOrder.status}
+                      {WO_STATUS_META[workOrder.status]?.label || workOrder.status}
                     </span>
                   </div>
                   <p className="text-xs text-emerald-800 dark:text-emerald-300/90 mt-0.5">
@@ -228,7 +207,7 @@ export default function TabRelease({ workOrder, refetchWO, isReadOnly = false }:
                           <span className="material-symbols-outlined text-[17px] text-emerald-600">speed</span>
                           <span>ODO xuất xưởng</span>
                         </div>
-                        <div className="text-sm sm:text-base font-bold font-mono text-on-surface">
+                        <div className="text-sm sm:text-base font-bold font-mono tabular-nums text-on-surface">
                           {parsedNotes.returnMileage ? `${Number(parsedNotes.returnMileage).toLocaleString('vi-VN')} km` : 'Theo xe'}
                         </div>
                       </div>
@@ -239,7 +218,7 @@ export default function TabRelease({ workOrder, refetchWO, isReadOnly = false }:
                           <span>Mức nhiên liệu</span>
                         </div>
                         <div className="text-xs sm:text-sm font-bold text-on-surface">
-                          {FUEL_LABELS[parsedNotes.returnFuel] || parsedNotes.returnFuel || '-'}
+                          {FUEL_LEVEL_LABELS[parsedNotes.returnFuel] || parsedNotes.returnFuel || '-'}
                         </div>
                       </div>
 
@@ -320,7 +299,7 @@ export default function TabRelease({ workOrder, refetchWO, isReadOnly = false }:
                             alt="Chữ ký khách hàng"
                             className="h-12 max-w-[200px] object-contain"
                           />
-                          <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 font-bold border-l pl-2 border-outline-variant/60">
+                          <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-bold border-l pl-2 border-outline-variant/60">
                             XÁC THỰC
                           </span>
                         </div>

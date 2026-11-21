@@ -364,12 +364,14 @@ export async function removeServiceFromWO(
 /**
  * Lấy danh mục dịch vụ (ServiceTemplate) để chọn khi thêm
  */
-export async function getServiceCatalog(params?: { search?: string; all?: boolean }): Promise<ServiceTemplateOption[]> {
+export async function getServiceCatalog(params?: { search?: string; all?: boolean; isActive?: boolean }): Promise<ServiceTemplateOption[]> {
   const response = await api.get('/api/services', {
-    params: { all: 'true', limit: 1000, ...(params?.search ? { search: params.search } : {}) },
+    params: { all: 'true', limit: 1000, isActive: 'true', ...(params?.search ? { search: params.search } : {}) },
   });
-  return response.data?.data || response.data;
+  const rawList: any[] = response.data?.data || response.data || [];
+  return rawList.filter((item) => item.isActive !== false);
 }
+
 
 /**
  * Tạo nhanh Hạng mục sửa chữa & Công việc con từ 1 vết lỗi (Finding)
@@ -508,6 +510,7 @@ export interface CreateManualJobPayload {
   technician_id?: number | null;
   description?: string | null;
   estimated_hours?: number | null;
+  price?: number | null;
   labours?: Array<{
     task_name?: string;
     employee_id?: number | null;
@@ -541,6 +544,7 @@ export interface UpdateManualJobPayload {
   technician_id?: number | null;
   description?: string | null;
   estimated_hours?: number | null;
+  price?: number | null;
 }
 
 /**
@@ -709,9 +713,13 @@ export async function updateServiceStatus(
 export async function updateJobStatus(
   workOrderId: number,
   jobId: number,
-  status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'REWORK' | 'PASSED'
+  status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'REWORK' | 'PASSED',
+  partsUsage?: Array<{ jobPartId: number; usedQuantity: number }>
 ): Promise<ApiResponse<WoJob>> {
-  const response = await api.patch(`/api/work-orders/${workOrderId}/jobs/${jobId}/status`, { status });
+  const response = await api.patch(`/api/work-orders/${workOrderId}/jobs/${jobId}/status`, {
+    status,
+    ...(partsUsage ? { partsUsage } : {}),
+  });
   return response.data;
 }
 

@@ -64,8 +64,8 @@ export default function CustomerQCModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
-      <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl max-w-2xl w-full max-h-[90vh] shadow-2xl border border-outline-variant flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs cw-modal-overlay">
+      <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl max-w-2xl w-full max-h-[90vh] shadow-2xl border border-outline-variant flex flex-col overflow-hidden cw-modal-panel">
         {/* Certificate Header Banner */}
         <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-primary p-6 text-white relative">
           <button

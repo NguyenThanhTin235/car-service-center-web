@@ -374,12 +374,12 @@ export default function AddPartModal({
                               }}
                               className={`p-3 cursor-pointer transition-colors ${
                                 isSelected
-                                  ? 'bg-primary/10 border-l-4 border-l-primary'
+                                  ? 'bg-primary/10 ring-1 ring-inset ring-primary/30'
                                   : 'hover:bg-surface-container-low'
                               }`}
                             >
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-surface-container text-on-surface-variant">
+                                <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-surface-container text-on-surface-variant">
                                   {j.serviceName}
                                 </span>
                               </div>
@@ -404,10 +404,10 @@ export default function AddPartModal({
 
           {/* AI Parts Suggestion Section */}
           {!editingPart && selectedJobId && (
-            <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.04] via-surface to-surface-container-low/40 p-4 transition-all duration-300 shadow-sm">
+            <div className="rounded-2xl border border-blue-200/80 bg-[#edf4fe] p-4 transition-all duration-300 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary to-primary/80 text-on-primary flex items-center justify-center shrink-0 shadow-sm">
+                  <div className="w-8 h-8 rounded-xl bg-[#0050cd] text-white flex items-center justify-center shrink-0 shadow-sm">
                     <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
                   </div>
                   <div className="min-w-0">
@@ -415,7 +415,7 @@ export default function AddPartModal({
                       <h4 className="text-title-small font-bold text-on-surface truncate">
                         AI Đề xuất phụ tùng định mức
                       </h4>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 shrink-0">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/20 shrink-0">
                         RAG Gemini
                       </span>
                     </div>
@@ -521,7 +521,7 @@ export default function AddPartModal({
                                   {sug.part_name}
                                 </span>
                                 {sug.brand_name && (
-                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-container text-on-surface-variant">
+                                  <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-surface-container text-on-surface-variant">
                                     {sug.brand_name}
                                   </span>
                                 )}
@@ -621,7 +621,7 @@ export default function AddPartModal({
                         onClick={() => handleSelectItem(item)}
                         className={`p-3 flex items-center justify-between cursor-pointer transition-colors ${
                           isSelected
-                            ? 'bg-primary/10 border-l-4 border-l-primary'
+                            ? 'bg-primary/10 ring-1 ring-inset ring-primary/30'
                             : 'hover:bg-surface-container-low'
                         }`}
                       >
@@ -741,9 +741,8 @@ export default function AddPartModal({
               <div className="text-body-small">
                 <p className="font-semibold">Cảnh báo thiếu hụt kho:</p>
                 <p>
-                  Số lượng dự kiến ({plannedQuantity} {selectedItem.uom?.name || 'đơn vị'}) vượt quá số lượng tồn
-                  thực tế hiện có ({selectedItem.onHand} {selectedItem.uom?.name || 'đơn vị'}). Cần thông báo bộ phận kho
-                  chuẩn bị hoặc nhập thêm hàng.
+                  Số lượng dự kiến vượt quá số lượng tồn thực tế (Tồn: {selectedItem.onHand}, Cần: {plannedQuantity}). Cần
+                  thông báo bộ phận kho chuẩn bị hoặc nhập thêm hàng.
                 </p>
               </div>
             </div>

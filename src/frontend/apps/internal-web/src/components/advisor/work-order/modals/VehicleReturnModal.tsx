@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { WorkOrder, cancelAndReleaseWorkOrder } from '@/lib/api/work-order.api';
+import { FUEL_LEVEL_LABELS } from '../work-order.constants';
 import toast from 'react-hot-toast';
 
 interface VehicleReturnModalProps {
@@ -11,14 +12,6 @@ interface VehicleReturnModalProps {
   refetchWO: () => void;
   initialReason?: string;
 }
-
-const FUEL_LEVEL_LABELS: Record<string, string> = {
-  EMPTY: 'Bình cạn (E)',
-  QUARTER: '1/4 bình',
-  HALF: '1/2 bình',
-  THREE_QUARTER: '3/4 bình',
-  FULL: 'Đầy bình (F)',
-};
 
 export default function VehicleReturnModal({
   isOpen,
@@ -58,9 +51,18 @@ export default function VehicleReturnModal({
   if (!isOpen) return null;
 
   const checkIn = workOrder.check_in;
+  const isOdoInvalid =
+    checkIn?.mileage !== null &&
+    checkIn?.mileage !== undefined &&
+    returnMileage !== '' &&
+    Number(returnMileage) < Number(checkIn.mileage);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isOdoInvalid) {
+      toast.error(`Số ODO xuất xưởng (${returnMileage} km) không thể nhỏ hơn ODO lúc nhận (${checkIn?.mileage} km)`);
+      return;
+    }
     try {
       setLoading(true);
       const res = await cancelAndReleaseWorkOrder(workOrder.id, {
@@ -168,11 +170,20 @@ export default function VehicleReturnModal({
                   <input
                     type="number"
                     value={returnMileage}
-                    onChange={(e) => setReturnMileage(e.target.value ? Number(e.target.value) : '')}
+                    onChange={(e) => setReturnMileage(e.target.value !== '' ? Number(e.target.value) : '')}
                     placeholder="Nhập số ODO lúc trả xe"
-                    className="w-full pl-10 pr-3 py-2 text-xs rounded-lg border border-outline-variant bg-white dark:bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono"
+                    className={`w-full pl-10 pr-3 py-2 text-xs rounded-lg border bg-white dark:bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 font-mono ${
+                      isOdoInvalid
+                        ? 'border-rose-500 focus:ring-rose-500/30'
+                        : 'border-outline-variant focus:ring-primary'
+                    }`}
                   />
                 </div>
+                {isOdoInvalid && (
+                  <p className="text-[11px] font-medium text-rose-600">
+                    Số ODO xuất xưởng ({returnMileage} km) không thể nhỏ hơn ODO lúc nhận ({checkIn?.mileage} km).
+                  </p>
+                )}
               </div>
 
               {/* Nhiên liệu */}

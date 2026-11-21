@@ -77,10 +77,10 @@ export default function AppointmentCard({ appointment, onClick }: AppointmentCar
         <span className={`w-2 h-2 rounded-full ${dotClass}`}></span>
       </div>
       <div className="font-bold text-slate-900 text-xs truncate mt-1">
-        {appointment.customer?.full_name || 'Unknown Customer'}
+        {appointment.customer?.full_name || 'Khách vãng lai'}
       </div>
       <div className="font-mono text-xs text-slate-800 mt-0.5 font-semibold">
-        {appointment.vehicle?.license_plate || 'No Plate'}
+        {appointment.vehicle?.license_plate || 'Chưa có biển số'}
       </div>
       
       <div className="mt-1.5 flex flex-col gap-0.5">

@@ -62,9 +62,9 @@ export default function StaffWorkOrderDetailModal({ workOrderId, onClose }: Staf
     name: workOrder?.customer?.full_name || '...',
     phone: workOrder?.customer?.phone || '...',
     email: workOrder?.customer?.email || '...',
-    memberType: 'Gold',
+    memberType: 'Khách hàng thân thiết',
     memberId: 'M-04921',
-    packageDesc: 'Premium 10k svc (3 visits left)'
+    packageDesc: 'Gói bảo dưỡng định kỳ 10.000 km (Còn 3 lần)'
   };
 
   return (
@@ -92,7 +92,7 @@ export default function StaffWorkOrderDetailModal({ workOrderId, onClose }: Staf
             {/* Badge Bar (Fixed) */}
             <WOBadgeBar 
               licensePlate={workOrder.vehicle?.license_plate || '...'}
-              vehicleClass={workOrder.vehicle?.vehicle_size || 'N/A'}
+              vehicleClass={workOrder.vehicle?.vehicle_size || 'Chưa rõ'}
               vehicleName={`${workOrder.vehicle?.make || ''} ${workOrder.vehicle?.model || ''}`}
               customerName={workOrder.customer?.full_name || '...'}
               statusBadge={workOrder.status}
@@ -131,11 +131,11 @@ export default function StaffWorkOrderDetailModal({ workOrderId, onClose }: Staf
                 {/* Vehicle & Customer Profiles */}
                 <WOVehicleCustomerInfo 
                   isReadOnly={true}
-                  vehicle={{ vin: 'N/A', color: workOrder.vehicle?.color || 'N/A', class: workOrder.vehicle?.vehicle_size || 'N/A', classDesc: '' }} 
+                  vehicle={{ vin: 'Chưa rõ', color: workOrder.vehicle?.color || 'Chưa rõ', class: workOrder.vehicle?.vehicle_size || 'Chưa rõ', classDesc: '' }} 
                   customer={dummyCustomer} 
                   workOrderInfo={{
                     type: 'Sửa chữa Gầm/Điện & Đồng sơn',
-                    advisor: workOrder.advisor?.full_name || 'Mike',
+                    advisor: workOrder.advisor?.full_name || 'Chưa phân công',
                     planDate: '15 Thg 6 2026 → 20 Thg 6 2026'
                   }}
                 />

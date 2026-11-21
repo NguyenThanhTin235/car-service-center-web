@@ -18,7 +18,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ARG NEXT_PUBLIC_API_URL=http://localhost:5000
+ARG NEXT_PUBLIC_INTERNAL_URL=http://localhost:3001
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_INTERNAL_URL=$NEXT_PUBLIC_INTERNAL_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build -w @car-service-center/customer-web

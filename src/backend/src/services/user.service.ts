@@ -1,7 +1,8 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { setCache, deleteCache } from '../utils/redis.util';
+import { Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
-
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
+import { notificationService } from './notification.service';
 
 export interface CreateUserDto {
   email: string;
@@ -24,8 +25,22 @@ export class UserService {
   /**
    * UC-51: Lấy danh sách tài khoản với tìm kiếm và phân trang
    */
-  async getUsers(searchQuery?: string, role?: string, page: number = 1, limit: number = 10) {
+  async getUsers(
+    searchQuery?: string,
+    role?: string,
+    page: number = 1,
+    limit: number = 10,
+    status?: string
+  ) {
     let whereClause: Prisma.UserWhereInput = {};
+
+    if (status !== undefined && status !== null && status !== '') {
+      if (status === 'active' || status === 'true') {
+        whereClause.is_active = true;
+      } else if (status === 'inactive' || status === 'false') {
+        whereClause.is_active = false;
+      }
+    }
 
     if (role) {
       const normalizedRoles = [role];
@@ -205,13 +220,25 @@ export class UserService {
       },
     });
 
+    const createdRoles = newUser.roles.map((ur) => ur.role.name);
+
+    notificationService
+      .sendInAppToRoles(['ADMIN'], {
+        type: 'SYSTEM_ALERT',
+        title: `Tài khoản mới được tạo (${newUser.email})`,
+        message: `Tài khoản ${newUser.full_name} (${newUser.email}) vừa được tạo với vai trò ${createdRoles.join(', ')}.`,
+        entityType: 'USER',
+        entityId: newUser.id,
+      })
+      .catch((err) => console.error('Failed to notify ADMIN on user created:', err));
+
     return {
       id: newUser.id,
       email: newUser.email,
       fullName: newUser.full_name,
       phone: newUser.phone,
       isActive: newUser.is_active,
-      roles: newUser.roles.map((ur) => ur.role.name),
+      roles: createdRoles,
       createdAt: newUser.created_at,
     };
   }
@@ -229,7 +256,7 @@ export class UserService {
       if (existingByPhone) throw new Error('Số điện thoại đã tồn tại.');
     }
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const updatedUser = await tx.user.update({
         where: { id },
         data: {
@@ -293,20 +320,57 @@ export class UserService {
         roles: updatedUser.roles.map((ur) => ur.role.name),
       };
     });
+
+    const isStatusChanged = data.isActive !== undefined && data.isActive !== user.is_active;
+    if (data.role || isStatusChanged) {
+      const changes: string[] = [];
+      if (data.role) changes.push(`vai trò -> ${data.role}`);
+      if (isStatusChanged) changes.push(`trạng thái -> ${data.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}`);
+
+      notificationService
+        .sendInAppToRoles(['ADMIN'], {
+          type: 'SYSTEM_ALERT',
+          title: `Cập nhật bảo mật tài khoản (${result.email})`,
+          message: `Tài khoản ${result.fullName} (${result.email}) đã thay đổi: ${changes.join(', ')}.`,
+          entityType: 'USER',
+          entityId: result.id,
+        })
+        .catch((err) => console.error('Failed to notify ADMIN on user updated:', err));
+    }
+
+    return result;
   }
 
   /**
    * UC-53: Vô hiệu hóa tài khoản (soft delete)
    */
   async deactivateUser(id: number) {
-    const user = await prisma.user.findUnique({ where: { id } });
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: { roles: { include: { role: true } } },
+    });
     if (!user) throw new Error('Không tìm thấy tài khoản.');
+    const isAdmin = user.roles?.some((ur) => ur.role?.name?.toUpperCase() === 'ADMIN');
+    if (isAdmin) throw new Error('Không thể vô hiệu hóa tài khoản Quản trị viên hệ thống.');
     if (!user.is_active) throw new Error('Tài khoản đã bị vô hiệu hóa trước đó.');
 
     await prisma.user.update({
       where: { id },
       data: { is_active: false },
     });
+
+    // Thu hồi token lập tức qua Redis / In-memory blacklist
+    await setCache(`revoked_user:${id}`, 'true', 86400 * 7);
+
+    notificationService
+      .sendInAppToRoles(['ADMIN'], {
+        type: 'SYSTEM_ALERT',
+        title: `Tài khoản bị vô hiệu hóa (${user.email})`,
+        message: `Tài khoản ${user.full_name} (${user.email}) đã bị vô hiệu hóa và thu hồi phiên đăng nhập.`,
+        entityType: 'USER',
+        entityId: id,
+      })
+      .catch((err) => console.error('Failed to notify ADMIN on user deactivated:', err));
   }
 
   /**
@@ -320,6 +384,19 @@ export class UserService {
       where: { id },
       data: { is_active: true },
     });
+
+    // Xóa cờ thu hồi token trong Redis khi kích hoạt lại
+    await deleteCache(`revoked_user:${id}`);
+
+    notificationService
+      .sendInAppToRoles(['ADMIN'], {
+        type: 'SYSTEM_ALERT',
+        title: `Tài khoản được kích hoạt lại (${user.email})`,
+        message: `Tài khoản ${user.full_name} (${user.email}) đã được khôi phục trạng thái hoạt động.`,
+        entityType: 'USER',
+        entityId: id,
+      })
+      .catch((err) => console.error('Failed to notify ADMIN on user reactivated:', err));
   }
 
   /**
@@ -334,5 +411,15 @@ export class UserService {
       where: { id },
       data: { password_hash: passwordHash },
     });
+
+    notificationService
+      .sendInAppToRoles(['ADMIN'], {
+        type: 'SYSTEM_ALERT',
+        title: `Đặt lại mật khẩu tài khoản (${user.email})`,
+        message: `Mật khẩu của tài khoản ${user.full_name} (${user.email}) vừa được đặt lại bởi quản trị viên.`,
+        entityType: 'USER',
+        entityId: id,
+      })
+      .catch((err) => console.error('Failed to notify ADMIN on password reset:', err));
   }
 }

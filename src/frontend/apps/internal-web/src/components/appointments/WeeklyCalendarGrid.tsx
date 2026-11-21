@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Appointment } from '@/store/slices/appointmentSlice';
 import AppointmentCard from './AppointmentCard';
 
@@ -38,22 +38,32 @@ export default function WeeklyCalendarGrid({
     return `${String(i + 8).padStart(2, '0')}:00`;
   });
 
-  const getAppointmentsForSlot = (date: string, time: string) => {
-    return appointments.filter(a => {
-      // Just check date string matching for simplicity with mock data
+  const appointmentsBySlot = useMemo(() => {
+    const slotMap = new Map<string, Appointment[]>();
+    for (const a of appointments) {
       const aptDate = typeof a.scheduled_date === 'string'
         ? a.scheduled_date.substring(0, 10)
         : new Date(a.scheduled_date).toISOString().split('T')[0];
-      const aptTime = (a.scheduled_time_str || '').substring(0, 2); // '08:30' -> '08'
-      const slotTime = time.substring(0, 2);
-      
-      return aptDate === date && aptTime === slotTime;
-    });
+      const aptHour = (a.scheduled_time_str || '').substring(0, 2); // '08:30' -> '08'
+      const key = `${aptDate}_${aptHour}`;
+      const existing = slotMap.get(key);
+      if (existing) {
+        existing.push(a);
+      } else {
+        slotMap.set(key, [a]);
+      }
+    }
+    return slotMap;
+  }, [appointments]);
+
+  const getAppointmentsForSlot = (date: string, time: string) => {
+    const slotTime = time.substring(0, 2);
+    return appointmentsBySlot.get(`${date}_${slotTime}`) ?? [];
   };
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col relative">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto styled-scrollbar">
         <div className="min-w-[1100px]">
           {/* Header Row */}
           <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-slate-50 border-b border-slate-200 divide-x divide-slate-200">

@@ -1,28 +1,78 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import { userApi, UserData } from '@/lib/api/users';
 import SaaSWaveChart from '@/components/shared/SaaSWaveChart';
 import toast from 'react-hot-toast';
+import {
+  EMAIL_REGEX,
+  validateEmail,
+  validatePhone,
+  validateName,
+  validatePassword,
+  validateRequired,
+} from '@/lib/utils/validators';
 
 const ROLES = ['ADMIN', 'MANAGER', 'ADVISOR', 'FRONT_DESK', 'TECHNICIAN', 'CUSTOMER'];
 
 const normalizeRoleKey = (role: string): string => {
-  const r = (role || '').toUpperCase().trim().replace(/[\s-]+/g, '_');
-  if (r === 'SA' || r === 'SERVICE_ADVISOR' || r === 'CO_VAN') return 'ADVISOR';
-  if (r === 'DESK_STAFF' || r === 'DESKSTAFF' || r === 'LE_TAN') return 'FRONT_DESK';
-  if (r === 'QUAN_TRI' || r === 'ADMINISTRATOR') return 'ADMIN';
-  if (r === 'QUAN_LY') return 'MANAGER';
-  if (r === 'KY_THUAT_VIEN' || r === 'TECH') return 'TECHNICIAN';
-  if (r === 'KHACH_HANG') return 'CUSTOMER';
+  const r = (role || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .trim()
+    .replace(/[\s-]+/g, '_');
+
+  if (r.includes('CO_VAN') || r.includes('ADVISOR') || r === 'SA') return 'ADVISOR';
+  if (r.includes('LE_TAN') || r.includes('DESK') || r.includes('FRONT')) return 'FRONT_DESK';
+  if (r.includes('QUAN_TRI') || r.includes('ADMIN')) return 'ADMIN';
+  if (r.includes('QUAN_LY') || r.includes('MANAGER')) return 'MANAGER';
+  if (r.includes('KY_THUAT') || r.includes('TECH')) return 'TECHNICIAN';
+  if (r.includes('KHACH') || r.includes('CUSTOMER')) return 'CUSTOMER';
   return r;
+};
+
+const resolveUserRole = (u: UserData): string => {
+  if (!u) return 'ADVISOR';
+
+  // 1. Tìm vai trò nội bộ ưu tiên (khác CUSTOMER) trong mảng roles
+  if (Array.isArray(u.roles) && u.roles.length > 0) {
+    const internalRole = u.roles.find((r: string) => normalizeRoleKey(r) !== 'CUSTOMER');
+    if (internalRole) {
+      const normalized = normalizeRoleKey(internalRole);
+      if (ROLES.includes(normalized)) return normalized;
+    }
+    const firstNormalized = normalizeRoleKey(u.roles[0]);
+    if (ROLES.includes(firstNormalized)) return firstNormalized;
+  }
+
+  // 2. Tra cứu theo chức vụ nhân viên nếu có
+  if (u.employee?.position) {
+    const posKey = normalizeRoleKey(u.employee.position);
+    if (ROLES.includes(posKey)) return posKey;
+  }
+
+  // 3. Heuristics dự phòng theo email
+  if (u.email) {
+    const emailLower = u.email.toLowerCase();
+    if (emailLower.includes('advisor') || emailLower.includes('sa.')) return 'ADVISOR';
+    if (emailLower.includes('manager')) return 'MANAGER';
+    if (emailLower.includes('admin')) return 'ADMIN';
+    if (emailLower.includes('tech') || emailLower.includes('staff')) return 'TECHNICIAN';
+    if (emailLower.includes('desk')) return 'FRONT_DESK';
+  }
+
+  return 'ADVISOR';
 };
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Quản trị viên',
-  MANAGER: 'Quản lý',
-  ADVISOR: 'Cố vấn',
-  FRONT_DESK: 'Lễ tân',
+  MANAGER: 'Quản lý dịch vụ',
+  ADVISOR: 'Cố vấn dịch vụ',
+  FRONT_DESK: 'Nhân viên quầy',
   TECHNICIAN: 'Kỹ thuật viên',
   CUSTOMER: 'Khách hàng',
 };
@@ -48,19 +98,19 @@ const getRoleBg = (role: string): string => {
 
 const getPositionLabel = (pos?: string, roles?: string[]): string => {
   const roleName = roles?.[0] ? normalizeRoleKey(roles[0]) : '';
-  if (roleName === 'MANAGER') return 'Quản lý';
-  if (roleName === 'FRONT_DESK') return 'Lễ tân';
-  if (roleName === 'ADVISOR') return 'Cố vấn';
+  if (roleName === 'MANAGER') return 'Quản lý dịch vụ';
+  if (roleName === 'FRONT_DESK') return 'Nhân viên quầy';
+  if (roleName === 'ADVISOR') return 'Cố vấn dịch vụ';
   if (roleName === 'TECHNICIAN') return 'Kỹ thuật viên';
   if (roleName === 'ADMIN') return 'Quản trị viên';
   if (roleName === 'CUSTOMER') return 'Khách hàng';
 
   if (pos) {
     const p = pos.toUpperCase();
-    if (p === 'ADVISOR') return 'Cố vấn';
+    if (p === 'ADVISOR') return 'Cố vấn dịch vụ';
     if (p === 'TECHNICIAN' || p === 'DETAILER' || p === 'QC_STAFF') return 'Kỹ thuật viên';
-    if (p === 'MANAGER') return 'Quản lý';
-    if (p === 'FRONT_DESK' || p === 'OTHER') return 'Lễ tân';
+    if (p === 'MANAGER') return 'Quản lý dịch vụ';
+    if (p === 'FRONT_DESK' || p === 'OTHER') return 'Nhân viên quầy';
   }
   return 'Nhân viên';
 };
@@ -82,7 +132,10 @@ const defaultForm: FormData = {
   role: 'ADVISOR',
 };
 
-export default function AccountsPage() {
+function AccountsContent() {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get('search') || '';
+  const currentUser = useSelector((state: RootState) => state.auth?.user);
   const [users, setUsers] = useState<UserData[]>([]);
   const [pagination, setPagination] = useState({
     totalRecords: 0,
@@ -90,18 +143,41 @@ export default function AccountsPage() {
     currentPage: 1,
     limit: 10,
   });
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(initialSearch);
+
+  useEffect(() => {
+    if (initialSearch) {
+      setSearch(initialSearch);
+    }
+  }, [initialSearch]);
   const [filterRole, setFilterRole] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [toggleTargetUser, setToggleTargetUser] = useState<UserData | null>(null);
+  const [showToggleConfirmModal, setShowToggleConfirmModal] = useState(false);
+  const [togglingStatus, setTogglingStatus] = useState(false);
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
   const [formData, setFormData] = useState<FormData>(defaultForm);
   const [newPassword, setNewPassword] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [resetError, setResetError] = useState('');
+
+  const isCurrentUser = useCallback(
+    (u: UserData | null) => {
+      if (!u || !currentUser) return false;
+      if (currentUser.id && u.id === currentUser.id) return true;
+      if (currentUser.email && u.email && currentUser.email.toLowerCase() === u.email.toLowerCase()) return true;
+      return false;
+    },
+    [currentUser]
+  );
 
   const loadUsers = useCallback(
     async (page = 1) => {
@@ -111,6 +187,7 @@ export default function AccountsPage() {
         const res = await userApi.getAll({
           search,
           role: filterRole || undefined,
+          status: filterStatus || undefined,
           page,
           limit: 10,
         });
@@ -124,7 +201,7 @@ export default function AccountsPage() {
         setLoading(false);
       }
     },
-    [search, filterRole]
+    [search, filterRole, filterStatus]
   );
 
   useEffect(() => {
@@ -135,6 +212,7 @@ export default function AccountsPage() {
     setEditingUser(null);
     setFormData(defaultForm);
     setError('');
+    setFieldErrors({});
     setShowModal(true);
   };
 
@@ -146,69 +224,159 @@ export default function AccountsPage() {
       fullName: u.fullName,
       phone: u.phone || '',
       address: u.address || '',
-      role: u.roles.find((r: string) => r !== 'CUSTOMER') || u.roles[0] || 'ADVISOR',
+      role: resolveUserRole(u),
     });
     setError('');
+    setFieldErrors({});
     setShowModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errors: Record<string, string> = {};
+
+    if (!formData.fullName || !formData.fullName.trim()) {
+      errors.fullName = 'Họ và tên không được để trống';
+    } else {
+      const nameErr = validateName(formData.fullName, 'Họ và tên', 2, 100);
+      if (nameErr) errors.fullName = nameErr;
+    }
+
+    if (!editingUser) {
+      if (!formData.email || !formData.email.trim()) {
+        errors.email = 'Email không được để trống';
+      } else if (!EMAIL_REGEX.test(formData.email.trim())) {
+        errors.email = 'Định dạng email không hợp lệ.';
+      }
+
+      if (!formData.password) {
+        errors.password = 'Mật khẩu không được để trống';
+      } else if (formData.password.length < 6) {
+        errors.password = 'Mật khẩu mới phải có ít nhất 6 ký tự.';
+      }
+    }
+
+    const phoneErr = validatePhone(formData.phone, false);
+    if (phoneErr) errors.phone = phoneErr;
+
+    const roleErr = validateRequired(formData.role, 'Vai trò');
+    if (roleErr) errors.role = roleErr;
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
     setSubmitting(true);
     setError('');
+    setFieldErrors({});
     try {
       if (editingUser) {
         await userApi.update(editingUser.id, {
-          fullName: formData.fullName,
-          phone: formData.phone || undefined,
-          address: formData.address || undefined,
+          fullName: formData.fullName.trim(),
+          phone: formData.phone.trim() || undefined,
+          address: formData.address.trim() || undefined,
           role: formData.role,
         });
-        toast.success('Đã cập nhật thông tin tài khoản');
+        toast.success('Cập nhật thành công.');
       } else {
         await userApi.create({
-          email: formData.email,
+          email: formData.email.trim(),
           password: formData.password,
-          fullName: formData.fullName,
-          phone: formData.phone || undefined,
-          address: formData.address || undefined,
+          fullName: formData.fullName.trim(),
+          phone: formData.phone.trim() || undefined,
+          address: formData.address.trim() || undefined,
           role: formData.role,
         });
-        toast.success('Đã cấp tài khoản mới thành công');
+        toast.success('Tạo tài khoản thành công.');
       }
       setShowModal(false);
       loadUsers(pagination.currentPage);
     } catch (e: any) {
-      setError(e.response?.data?.message || 'Có lỗi xảy ra khi lưu tài khoản');
+      const msg = e.response?.data?.message || 'Có lỗi xảy ra khi lưu tài khoản';
+      if (
+        msg.toLowerCase().includes('email đã tồn tại') ||
+        msg.toLowerCase().includes('email exists') ||
+        msg.toLowerCase().includes('trùng email')
+      ) {
+        const dupEmailMsg = 'Email đã tồn tại trong hệ thống.';
+        setFieldErrors((prev) => ({ ...prev, email: dupEmailMsg }));
+        setError(dupEmailMsg);
+      } else if (
+        msg.toLowerCase().includes('số điện thoại đã tồn tại') ||
+        msg.toLowerCase().includes('phone exists') ||
+        msg.toLowerCase().includes('trùng số điện thoại') ||
+        msg.toLowerCase().includes('sđt đã tồn tại')
+      ) {
+        const dupPhoneMsg = 'Số điện thoại đã tồn tại trong hệ thống.';
+        setFieldErrors((prev) => ({ ...prev, phone: dupPhoneMsg }));
+        setError(dupPhoneMsg);
+      } else {
+        setError(msg);
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleToggle = async (u: UserData) => {
+  const handleToggle = (u: UserData) => {
+    if (isCurrentUser(u)) {
+      toast.error('Bạn không thể tự vô hiệu hóa tài khoản của chính mình để đảm bảo quyền quản trị hệ thống.');
+      return;
+    }
+    setToggleTargetUser(u);
+    setShowToggleConfirmModal(true);
+  };
+
+  const confirmToggleStatus = async () => {
+    if (!toggleTargetUser) return;
+    if (isCurrentUser(toggleTargetUser)) {
+      toast.error('Bạn không thể tự vô hiệu hóa tài khoản của chính mình để đảm bảo quyền quản trị hệ thống.');
+      setShowToggleConfirmModal(false);
+      setToggleTargetUser(null);
+      return;
+    }
+    setTogglingStatus(true);
     try {
-      if (u.isActive) {
-        await userApi.deactivate(u.id);
-        toast.success(`Đã tạm khóa tài khoản ${u.fullName}`);
+      if (toggleTargetUser.isActive) {
+        await userApi.deactivate(toggleTargetUser.id);
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          try {
+            const channel = new BroadcastChannel('csc_session_channel');
+            channel.postMessage({ type: 'ACCOUNT_DEACTIVATED', userId: toggleTargetUser.id });
+            channel.close();
+          } catch {}
+        }
+        toast.success(`Đã khóa tài khoản ${toggleTargetUser.fullName} thành công.`);
       } else {
-        await userApi.reactivate(u.id);
-        toast.success(`Đã kích hoạt lại tài khoản ${u.fullName}`);
+        await userApi.reactivate(toggleTargetUser.id);
+        toast.success(`Đã mở khóa tài khoản ${toggleTargetUser.fullName} thành công.`);
       }
+      setShowToggleConfirmModal(false);
+      setToggleTargetUser(null);
       loadUsers(pagination.currentPage);
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Không thể thay đổi trạng thái tài khoản');
+    } finally {
+      setTogglingStatus(false);
     }
   };
 
   const handleResetPassword = async () => {
-    if (!selectedUserId || !newPassword) return;
+    if (!selectedUserId) return;
+    if (!newPassword || newPassword.length < 6) {
+      setResetError('Mật khẩu mới phải có ít nhất 6 ký tự.');
+      return;
+    }
+    setResetError('');
     setSubmitting(true);
     try {
       await userApi.resetPassword(selectedUserId, newPassword);
       setShowResetModal(false);
-      toast.success('Đặt lại mật khẩu thành công');
+      setNewPassword('');
+      toast.success('Đặt lại mật khẩu thành công.');
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Không thể đặt lại mật khẩu');
+      setResetError(e.response?.data?.message || 'Không thể đặt lại mật khẩu');
     } finally {
       setSubmitting(false);
     }
@@ -223,31 +391,25 @@ export default function AccountsPage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. SAAS HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-          Tài khoản & Phân quyền
-        </h1>
+      {/* 1. SAAS HEADER (Actions) */}
+      <div className="flex items-center justify-end gap-2.5">
+        <button
+          type="button"
+          onClick={() => loadUsers(pagination.currentPage)}
+          className="h-10 px-3.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-[18px]">sync</span>
+          <span>Làm mới</span>
+        </button>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => loadUsers(pagination.currentPage)}
-            className="h-10 px-3.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px]">sync</span>
-            <span>Làm mới</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={openCreate}
-            className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px]">person_add</span>
-            <span>Cấp tài khoản mới</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={openCreate}
+          className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-[18px]">person_add</span>
+          <span>Thêm tài khoản mới</span>
+        </button>
       </div>
 
       {/* 2. ASYMMETRICAL BENTO GRID (Matches Ember Reference Layout) */}
@@ -257,82 +419,83 @@ export default function AccountsPage() {
       >
         {/* LEFT COLUMN (5/12): Hero IAM Card + Security Posture Card */}
         <div className="lg:col-span-5 flex flex-col gap-5 justify-between">
-          {/* HERO CARD 1: Deep Sapphire IAM Card with Pure SVG Security Badge Graphic */}
-            <div className="relative rounded-2xl bg-gradient-to-br from-[#091528] via-[#0c1f3d] to-[#0050cd] text-white p-6 border border-blue-900/60 shadow-sm flex items-center justify-between gap-4 min-h-[176px]">
-              <div className="relative z-10 flex flex-col justify-between">
-                <span className="text-xs font-medium text-slate-200">
-                  Tổng định danh đã cấp phát (IAM)
-                </span>
-                <div className="mt-2 font-mono tabular-nums text-4xl font-extrabold tracking-tight">
-                  {pagination.totalRecords || users.length}
-                  <span className="text-base font-semibold text-slate-200 ml-2">tài khoản</span>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-mono">
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/25 text-emerald-200 font-bold">
-                    {activeCount} đang hoạt động
-                  </span>
-                  <span className="text-slate-200">• {staffCount} nhân sự nội bộ</span>
-                </div>
+          {/* HERO CARD 1: Dark Navy (#0c2340) IAM Card */}
+          <div className="relative rounded-[24px] bg-[#0c2340] text-white p-6 shadow-md hover:shadow-lg transition-all flex items-center justify-between gap-4 min-h-[176px] overflow-hidden group">
+            <div className="absolute inset-0 saas-subtle-grid pointer-events-none opacity-40" />
+            <div className="relative z-10 flex flex-col justify-between">
+              <span className="text-xs font-semibold text-zinc-300 tracking-wide">
+                Tổng định danh đã cấp phát (IAM)
+              </span>
+              <div className="mt-2 font-mono tabular-nums text-4xl font-extrabold tracking-tight text-white">
+                {pagination.totalRecords || users.length}
+                <span className="text-base font-semibold text-zinc-300 ml-2">tài khoản</span>
               </div>
-
-              {/* Pure SVG Stylized IAM Keycard Illustration */}
-              <svg
-                width="140"
-                height="92"
-                viewBox="0 0 140 92"
-                fill="none"
-                aria-hidden="true"
-                className="relative z-10 hidden sm:block shrink-0 -rotate-6"
-              >
-                <defs>
-                  <linearGradient id="admCardGrad" x1="0" y1="92" x2="140" y2="0" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#0050cd" />
-                    <stop offset="55%" stopColor="#0866ff" />
-                    <stop offset="100%" stopColor="#60a5fa" />
-                  </linearGradient>
-                </defs>
-                <rect x="2" y="2" width="136" height="88" rx="14" fill="url(#admCardGrad)" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" />
-                <rect x="14" y="16" width="24" height="16" rx="4" fill="#fcd34d" />
-                <circle cx="114" cy="24" r="7" fill="rgba(255,255,255,0.35)" />
-                <circle cx="122" cy="24" r="7" fill="rgba(255,255,255,0.6)" />
-                <rect x="14" y="54" width="54" height="6" rx="3" fill="rgba(255,255,255,0.45)" />
-                <rect x="14" y="66" width="84" height="8" rx="4" fill="rgba(255,255,255,0.85)" />
-              </svg>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-mono">
+                <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                  {activeCount} đang hoạt động
+                </span>
+                <span className="text-zinc-300">• {staffCount} nhân sự nội bộ</span>
+              </div>
             </div>
 
-            {/* HERO CARD 2: Quick Role & Status Breakdown */}
-            <div className="rounded-2xl bg-white border border-slate-200/80 p-5 sm:p-6 shadow-xs flex flex-col justify-between flex-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-600">
-                  Trạng thái Kiểm soát Truy cập
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#0050cd] font-mono text-xs font-bold">
-                  Trang {pagination.currentPage}/{pagination.totalPages}
-                </span>
-              </div>
+            {/* Pure SVG Stylized IAM Keycard Illustration */}
+            <svg
+              width="140"
+              height="92"
+              viewBox="0 0 140 92"
+              fill="none"
+              aria-hidden="true"
+              className="relative z-10 hidden sm:block shrink-0 -rotate-6"
+            >
+              <defs>
+                <linearGradient id="admCardGrad" x1="0" y1="92" x2="140" y2="0" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#0050cd" />
+                  <stop offset="55%" stopColor="#0866ff" />
+                  <stop offset="100%" stopColor="#60a5fa" />
+                </linearGradient>
+              </defs>
+              <rect x="2" y="2" width="136" height="88" rx="14" fill="url(#admCardGrad)" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" />
+              <rect x="14" y="16" width="24" height="16" rx="4" fill="#fcd34d" />
+              <circle cx="114" cy="24" r="7" fill="rgba(255,255,255,0.35)" />
+              <circle cx="122" cy="24" r="7" fill="rgba(255,255,255,0.6)" />
+              <rect x="14" y="54" width="54" height="6" rx="3" fill="rgba(255,255,255,0.45)" />
+              <rect x="14" y="66" width="84" height="8" rx="4" fill="rgba(255,255,255,0.85)" />
+            </svg>
+          </div>
 
-              <div className="grid grid-cols-3 divide-x divide-slate-200 pt-4 mt-4 border-t border-slate-100">
-                <div className="pr-3">
-                  <div className="text-xs font-medium text-slate-600">Tổng số</div>
-                  <div className="font-mono tabular-nums text-2xl font-extrabold text-[#0050cd] mt-1">
-                    {pagination.totalRecords}
-                  </div>
+          {/* HERO CARD 2: Royal Blue (#0050cd) Breakdown */}
+          <div className="rounded-[24px] bg-[#0050cd] text-white p-5 sm:p-6 shadow-md shadow-[#0050cd]/20 hover:shadow-lg transition-all flex flex-col justify-between flex-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-blue-100 tracking-wide">
+                Trạng thái Kiểm soát Truy cập
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-white/15 text-white font-mono text-xs font-bold border border-white/20">
+                Trang {pagination.currentPage}/{pagination.totalPages}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 divide-x divide-white/20 pt-4 mt-4 border-t border-white/15">
+              <div className="pr-3">
+                <div className="text-xs font-medium text-blue-100">Tổng số</div>
+                <div className="font-mono tabular-nums text-2xl font-extrabold text-white mt-1">
+                  {pagination.totalRecords}
                 </div>
-                <div className="px-3">
-                  <div className="text-xs font-medium text-slate-600">Hoạt động</div>
-                  <div className="font-mono tabular-nums text-2xl font-extrabold text-emerald-700 mt-1">
-                    {activeCount}
-                  </div>
+              </div>
+              <div className="px-3">
+                <div className="text-xs font-medium text-blue-100">Hoạt động</div>
+                <div className="font-mono tabular-nums text-2xl font-extrabold text-emerald-300 mt-1">
+                  {activeCount}
                 </div>
-                <div className="pl-3">
-                  <div className="text-xs font-medium text-slate-600">Tạm khóa</div>
-                  <div className="font-mono tabular-nums text-2xl font-extrabold text-rose-700 mt-1">
-                    {inactiveCount}
-                  </div>
+              </div>
+              <div className="pl-3">
+                <div className="text-xs font-medium text-blue-100">Tạm khóa</div>
+                <div className="font-mono tabular-nums text-2xl font-extrabold text-rose-300 mt-1">
+                  {inactiveCount}
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
           {/* RIGHT COLUMN (7/12): SaaS Multi-Curve Wave Chart */}
           <div className="lg:col-span-7 flex flex-col">
@@ -381,10 +544,21 @@ export default function AccountsPage() {
           <div className="p-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 border-b border-slate-200/80">
             <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
               <div className="flex items-center gap-2 flex-1 max-w-lg h-10 px-3.5 rounded-xl bg-slate-50 border border-slate-200 focus-within:bg-white focus-within:border-[#0866ff] transition-all">
-                <span className="material-symbols-outlined text-slate-500 text-[18px] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => loadUsers(1)}
+                  className="material-symbols-outlined text-slate-500 hover:text-[#0866ff] text-[18px] shrink-0 cursor-pointer"
+                  title="Tìm kiếm"
+                  aria-label="Tìm kiếm"
+                >
                   search
-                </span>
+                </button>
                 <input
+                  type="search"
+                  name="accounts_table_search_query"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   className="flex-1 min-w-0 bg-transparent text-slate-900 placeholder:text-slate-500 text-xs focus:outline-none"
                   placeholder="Tìm theo Họ tên, Email, SĐT..."
                   value={search}
@@ -406,10 +580,21 @@ export default function AccountsPage() {
                   ))}
                 </select>
               </div>
+              <div className="w-full sm:w-44">
+                <select
+                  className="w-full h-10 px-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0866ff] cursor-pointer"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                >
+                  <option value="">Tất cả trạng thái</option>
+                  <option value="active">Đang hoạt động</option>
+                  <option value="inactive">Ngừng hoạt động</option>
+                </select>
+              </div>
             </div>
 
             <div className="flex items-center gap-1.5 flex-wrap">
-              {['', 'ADMIN', 'MANAGER', 'ADVISOR', 'FRONT_DESK', 'CUSTOMER'].map((r) => (
+              {['', 'ADMIN', 'MANAGER', 'ADVISOR', 'FRONT_DESK', 'TECHNICIAN', 'CUSTOMER'].map((r) => (
                 <button
                   key={r || 'ALL'}
                   type="button"
@@ -446,6 +631,7 @@ export default function AccountsPage() {
                   <th className="px-4 font-mono">User ID</th>
                   <th className="px-4">Họ và tên</th>
                   <th className="px-4">Email</th>
+                  <th className="px-4">Vai trò (RBAC)</th>
                   <th className="px-4">Số điện thoại</th>
                   <th className="px-4">Trạng thái</th>
                   <th className="px-4 text-right pr-6">Thao tác</th>
@@ -455,104 +641,152 @@ export default function AccountsPage() {
                 {loading ? (
                   [1, 2, 3, 4].map((row) => (
                     <tr key={row} className="h-14 animate-pulse">
-                      <td colSpan={6} className="px-4">
+                      <td colSpan={7} className="px-4">
                         <div className="h-8 bg-slate-100 rounded-lg w-full" />
                       </td>
                     </tr>
                   ))
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-14 text-center text-xs text-slate-600">
-                      Không tìm thấy tài khoản nào phù hợp với bộ lọc hiện tại.
+                    <td colSpan={7} className="py-14 text-center text-xs text-slate-600">
+                      Không tìm thấy tài khoản nào phù hợp với từ khóa tìm kiếm của bạn.
                     </td>
                   </tr>
                 ) : (
-                  users.map((user) => (
-                    <tr
-                      key={user.id}
-                      className={`h-14 hover:bg-blue-50/30 transition-colors ${!user.isActive ? 'opacity-65' : ''
-                        }`}
-                    >
-                      <td className="px-4 font-mono tabular-nums text-xs font-bold text-[#0050cd]">
-                        USR-{String(user.id).padStart(4, '0')}
-                      </td>
-                      <td className="px-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
-                            {user.fullName
-                              .split(' ')
-                              .map((n: string) => n[0])
-                              .slice(-2)
-                              .join('')
-                              .toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-slate-900">
-                              {user.fullName}
+                  users.map((user) => {
+                    const isSelf = isCurrentUser(user);
+                    const isAdminUser = user.roles?.some((r: string) => normalizeRoleKey(r) === 'ADMIN');
+                    return (
+                      <tr
+                        key={user.id}
+                        className={`h-14 hover:bg-blue-50/30 transition-colors ${!user.isActive ? 'opacity-65' : ''
+                          }`}
+                      >
+                        <td className="px-4 font-mono tabular-nums text-xs font-bold text-[#0050cd]">
+                          USR-{String(user.id).padStart(4, '0')}
+                        </td>
+                        <td className="px-4">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                              {user.fullName
+                                .split(' ')
+                                .map((n: string) => n[0])
+                                .slice(-2)
+                                .join('')
+                                .toUpperCase()}
                             </div>
-                            <div className="text-xs text-slate-600">
-                              {getPositionLabel(user.employee?.position, user.roles)}
+                            <div>
+                              <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                {user.fullName}
+                                {isSelf && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-[#0050cd]">
+                                    (Bạn)
+                                  </span>
+                                )}
+                                {isAdminUser && (
+                                  <span className="material-symbols-outlined text-purple-600 text-[14px]" title="Tài khoản Quản trị viên hệ thống (Được bảo vệ)">
+                                    shield_person
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-slate-600">
+                                {getPositionLabel(user.employee?.position, user.roles)}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 font-mono text-xs text-slate-600">{user.email}</td>
-                      <td className="px-4 font-mono tabular-nums text-xs text-slate-600">
-                        {user.phone || '—'}
-                      </td>
-                      <td className="px-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleToggle(user)}
-                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
-                              user.isActive ? 'bg-[#0866ff]' : 'bg-slate-300'
-                            } focus:outline-none`}
-                            role="switch"
-                            aria-checked={user.isActive}
-                            title="Đổi trạng thái hoạt động"
-                          >
+                        </td>
+                        <td className="px-4 font-mono text-xs text-slate-600">{user.email}</td>
+                        <td className="px-4">
+                          <div className="flex flex-wrap gap-1">
+                            {user.roles && user.roles.length > 0 ? (
+                              user.roles.map((r: string) => {
+                                const norm = normalizeRoleKey(r);
+                                return (
+                                  <span
+                                    key={r}
+                                    className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${getRoleBg(norm)}`}
+                                  >
+                                    {getRoleLabel(norm)}
+                                  </span>
+                                );
+                              })
+                            ) : (
+                              <span className="text-xs text-slate-400 italic">—</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 font-mono tabular-nums text-xs text-slate-600">
+                          {user.phone || '—'}
+                        </td>
+                        <td className="px-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleToggle(user)}
+                              className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${
+                                isSelf
+                                  ? 'opacity-50 cursor-pointer bg-slate-400'
+                                  : user.isActive
+                                  ? 'bg-[#0866ff] cursor-pointer'
+                                  : 'bg-slate-300 cursor-pointer'
+                              } focus:outline-none`}
+                              role="switch"
+                              aria-checked={user.isActive}
+                              title={
+                                isSelf
+                                  ? 'Bạn không thể tự vô hiệu hóa tài khoản của chính mình để đảm bảo quyền quản trị hệ thống.'
+                                  : user.isActive
+                                  ? 'Khóa tài khoản'
+                                  : 'Mở khóa tài khoản'
+                              }
+                              aria-label={user.isActive ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5 ${
+                                  user.isActive ? 'translate-x-4' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
                             <span
-                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5 ${
-                                user.isActive ? 'translate-x-4' : 'translate-x-0'
+                              className={`text-xs font-semibold ${
+                                user.isActive ? 'text-emerald-700' : 'text-slate-500'
                               }`}
-                            />
-                          </button>
-                          <span
-                            className={`text-xs font-semibold ${
-                              user.isActive ? 'text-emerald-700' : 'text-slate-500'
-                            }`}
-                          >
-                            {user.isActive ? 'Hoạt động' : 'Tạm khóa'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 pr-6">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(user)}
-                            className="w-8 h-8 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] flex items-center justify-center transition-colors cursor-pointer"
-                            title="Chỉnh sửa"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">edit</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedUserId(user.id);
-                              setNewPassword('');
-                              setShowResetModal(true);
-                            }}
-                            className="w-8 h-8 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] flex items-center justify-center transition-colors cursor-pointer"
-                            title="Đặt lại mật khẩu"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">key</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                            >
+                              {user.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 pr-6">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => openEdit(user)}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] cursor-pointer"
+                              title="Chỉnh sửa"
+                              aria-label="Chỉnh sửa"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedUserId(user.id);
+                                setSelectedUser(user);
+                                setNewPassword('');
+                                setResetError('');
+                                setShowResetModal(true);
+                              }}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] cursor-pointer"
+                              title="Đặt lại mật khẩu"
+                              aria-label="Đặt lại mật khẩu"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">key</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -595,7 +829,7 @@ export default function AccountsPage() {
             <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
               <div className="flex items-center justify-between p-5 border-b border-slate-100">
                 <h2 className="text-base font-bold text-slate-900">
-                  {editingUser ? 'Cập nhật tài khoản' : 'Cấp tài khoản mới'}
+                  {editingUser ? 'Cập nhật tài khoản' : 'Thêm tài khoản mới'}
                 </h2>
                 <button
                   type="button"
@@ -605,7 +839,7 @@ export default function AccountsPage() {
                   <span className="material-symbols-outlined text-base">close</span>
                 </button>
               </div>
-              <form onSubmit={handleSubmit} className="p-5 space-y-4">
+              <form onSubmit={handleSubmit} noValidate className="p-5 space-y-4">
                 {error && (
                   <div className="p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-semibold border border-rose-200">
                     {error}
@@ -617,12 +851,20 @@ export default function AccountsPage() {
                     <input
                       required
                       value={formData.fullName}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, fullName: e.target.value }))
-                      }
-                      className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-[#0866ff]"
+                      onChange={(e) => {
+                        setFormData((p) => ({ ...p, fullName: e.target.value }));
+                        if (fieldErrors.fullName) setFieldErrors((p) => ({ ...p, fullName: '' }));
+                      }}
+                      className={`h-10 px-3 border rounded-xl text-sm bg-white focus:outline-none transition-colors ${
+                        fieldErrors.fullName
+                          ? 'border-rose-400 focus:border-rose-500 ring-1 ring-rose-400/20'
+                          : 'border-slate-200 focus:border-[#0866ff]'
+                      }`}
                       placeholder="Nguyễn Văn A"
                     />
+                    {fieldErrors.fullName && (
+                      <p className="text-[11px] text-rose-500 font-medium mt-0.5">{fieldErrors.fullName}</p>
+                    )}
                   </label>
                   <label className="flex flex-col gap-1">
                     <span className="text-xs font-semibold text-slate-700">Email *</span>
@@ -631,13 +873,22 @@ export default function AccountsPage() {
                       type="email"
                       value={formData.email}
                       disabled={!!editingUser}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, email: e.target.value }))
-                      }
-                      className={`h-10 px-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#0866ff] ${editingUser ? 'bg-slate-100 text-slate-500' : 'bg-white'
-                        }`}
+                      onChange={(e) => {
+                        setFormData((p) => ({ ...p, email: e.target.value }));
+                        if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: '' }));
+                      }}
+                      className={`h-10 px-3 border rounded-xl text-sm focus:outline-none transition-colors ${
+                        editingUser
+                          ? 'bg-slate-100 text-slate-500 border-slate-200'
+                          : fieldErrors.email
+                          ? 'bg-white border-rose-400 focus:border-rose-500 ring-1 ring-rose-400/20'
+                          : 'bg-white border-slate-200 focus:border-[#0866ff]'
+                      }`}
                       placeholder="email@company.com"
                     />
+                    {fieldErrors.email && (
+                      <p className="text-[11px] text-rose-500 font-medium mt-0.5">{fieldErrors.email}</p>
+                    )}
                   </label>
                   {!editingUser && (
                     <label className="flex flex-col gap-1">
@@ -645,36 +896,59 @@ export default function AccountsPage() {
                       <input
                         required
                         type="password"
+                        name="account_new_password"
+                        autoComplete="new-password"
                         value={formData.password}
                         minLength={6}
-                        onChange={(e) =>
-                          setFormData((p) => ({ ...p, password: e.target.value }))
-                        }
-                        className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-[#0866ff]"
+                        onChange={(e) => {
+                          setFormData((p) => ({ ...p, password: e.target.value }));
+                          if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: '' }));
+                        }}
+                        className={`h-10 px-3 border rounded-xl text-sm bg-white focus:outline-none transition-colors ${
+                          fieldErrors.password
+                            ? 'border-rose-400 focus:border-rose-500 ring-1 ring-rose-400/20'
+                            : 'border-slate-200 focus:border-[#0866ff]'
+                        }`}
                         placeholder="Tối thiểu 6 ký tự"
                       />
+                      {fieldErrors.password && (
+                        <p className="text-[11px] text-rose-500 font-medium mt-0.5">{fieldErrors.password}</p>
+                      )}
                     </label>
                   )}
                   <label className="flex flex-col gap-1">
                     <span className="text-xs font-semibold text-slate-700">Số điện thoại</span>
                     <input
                       value={formData.phone}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, phone: e.target.value }))
-                      }
-                      className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-[#0866ff]"
+                      onChange={(e) => {
+                        setFormData((p) => ({ ...p, phone: e.target.value }));
+                        if (fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: '' }));
+                      }}
+                      className={`h-10 px-3 border rounded-xl text-sm bg-white focus:outline-none transition-colors ${
+                        fieldErrors.phone
+                          ? 'border-rose-400 focus:border-rose-500 ring-1 ring-rose-400/20'
+                          : 'border-slate-200 focus:border-[#0866ff]'
+                      }`}
                       placeholder="0901234567"
                     />
+                    {fieldErrors.phone && (
+                      <p className="text-[11px] text-rose-500 font-medium mt-0.5">{fieldErrors.phone}</p>
+                    )}
                   </label>
                   <label className="flex flex-col gap-1">
                     <span className="text-xs font-semibold text-slate-700">Vai trò *</span>
                     <select
                       required
                       value={formData.role}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, role: e.target.value }))
-                      }
-                      className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-[#0866ff] cursor-pointer"
+                      onChange={(e) => {
+                        setFormData((p) => ({ ...p, role: e.target.value }));
+                        if (fieldErrors.role) setFieldErrors((p) => ({ ...p, role: '' }));
+                      }}
+                      className={`w-full h-10 px-3 border rounded-xl text-sm bg-white focus:outline-none cursor-pointer transition-colors ${
+                        fieldErrors.role
+                          ? 'border-rose-400 focus:border-rose-500 ring-1 ring-rose-400/20'
+                          : 'border-slate-200 focus:border-[#0866ff]'
+                      }`}
                     >
                       {ROLES.map((r: string) => (
                         <option key={r} value={r}>
@@ -682,6 +956,9 @@ export default function AccountsPage() {
                         </option>
                       ))}
                     </select>
+                    {fieldErrors.role && (
+                      <p className="text-[11px] text-rose-500 font-medium mt-0.5">{fieldErrors.role}</p>
+                    )}
                   </label>
                   <label className="flex flex-col gap-1 sm:col-span-2">
                     <span className="text-xs font-semibold text-slate-700">Địa chỉ</span>
@@ -711,8 +988,8 @@ export default function AccountsPage() {
                     {submitting
                       ? 'Đang lưu...'
                       : editingUser
-                        ? 'Lưu cập nhật tài khoản'
-                        : 'Xác nhận cấp tài khoản'}
+                        ? 'Lưu thay đổi'
+                        : 'Xác nhận tạo'}
                   </button>
                 </div>
               </form>
@@ -723,9 +1000,17 @@ export default function AccountsPage() {
         {/* Reset password modal */}
         {showResetModal && (
           <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-slate-200">
+            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-slate-200 overflow-hidden">
               <div className="flex items-center justify-between p-5 border-b border-slate-100">
-                <h2 className="text-base font-bold text-slate-900">Đặt lại mật khẩu</h2>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#0050cd] flex items-center justify-center">
+                    <span className="material-symbols-outlined text-lg">key</span>
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">Đặt lại mật khẩu</h2>
+                    <p className="text-[11px] text-slate-500">Cấp lại mật khẩu đăng nhập tài khoản</p>
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowResetModal(false)}
@@ -734,18 +1019,69 @@ export default function AccountsPage() {
                   <span className="material-symbols-outlined text-base">close</span>
                 </button>
               </div>
-              <div className="p-5 space-y-4">
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleResetPassword();
+                }} noValidate
+                autoComplete="off"
+                className="p-5 space-y-4"
+              >
+                {/* User info summary badge */}
+                {selectedUser && (
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[#0866ff]/10 text-[#0866ff] flex items-center justify-center font-bold text-xs uppercase">
+                      {selectedUser.fullName?.charAt(0) || 'U'}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-slate-900 truncate">{selectedUser.fullName}</p>
+                      <p className="text-[11px] text-slate-500 font-mono truncate">{selectedUser.email}</p>
+                    </div>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-[#0050cd] border border-blue-200/60 shrink-0">
+                      {selectedUser.roles?.[0] ? getRoleLabel(selectedUser.roles[0]) : 'Tài khoản'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Hidden dummy username field so browser password managers don't hijack the page search bar */}
+                <input
+                  type="text"
+                  name="username"
+                  value={selectedUser?.email || ''}
+                  readOnly
+                  tabIndex={-1}
+                  autoComplete="username"
+                  className="sr-only hidden"
+                  aria-hidden="true"
+                />
+
                 <label className="flex flex-col gap-1">
                   <span className="text-xs font-semibold text-slate-700">Mật khẩu mới *</span>
                   <input
                     type="password"
+                    name="new-password"
+                    id="reset-account-new-password"
+                    autoComplete="new-password"
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="h-10 px-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-[#0866ff]"
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      if (resetError) setResetError('');
+                    }}
+                    className={`h-10 px-3 border rounded-xl text-sm bg-white focus:outline-none transition-colors ${
+                      resetError
+                        ? 'border-rose-400 focus:border-rose-500 ring-1 ring-rose-400/20'
+                        : 'border-slate-200 focus:border-[#0866ff]'
+                    }`}
                     placeholder="Tối thiểu 6 ký tự"
+                    autoFocus
                   />
+                  {resetError && (
+                    <p className="text-[11px] text-rose-500 font-medium mt-0.5">{resetError}</p>
+                  )}
                 </label>
-                <div className="flex gap-2 justify-end">
+
+                <div className="flex gap-2 justify-end pt-1">
                   <button
                     type="button"
                     onClick={() => setShowResetModal(false)}
@@ -754,18 +1090,140 @@ export default function AccountsPage() {
                     Hủy
                   </button>
                   <button
-                    type="button"
-                    onClick={handleResetPassword}
-                    disabled={submitting || newPassword.length < 6}
-                    className="h-10 px-5 rounded-xl bg-[#0866ff] text-white text-xs font-bold disabled:opacity-60 cursor-pointer"
+                    type="submit"
+                    disabled={submitting}
+                    className="h-10 px-5 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white text-xs font-bold disabled:opacity-60 cursor-pointer shadow-xs"
                   >
-                    {submitting ? 'Đang lưu...' : 'Xác nhận đổi mật khẩu'}
+                    {submitting ? 'Đang lưu...' : 'Xác nhận đổi'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Toggle Status Confirmation Modal */}
+        {showToggleConfirmModal && toggleTargetUser && (
+          <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden">
+              <div className="p-6">
+                <div className="flex items-start gap-4">
+                  <div
+                    className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+                      toggleTargetUser.isActive
+                        ? 'bg-rose-50 text-rose-600 border border-rose-200/80'
+                        : 'bg-emerald-50 text-emerald-600 border border-emerald-200/80'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-2xl">
+                      {toggleTargetUser.isActive ? 'lock' : 'lock_open'}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-bold text-slate-900">
+                      {toggleTargetUser.isActive
+                        ? 'Khóa tài khoản'
+                        : 'Mở khóa tài khoản'}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {toggleTargetUser.isActive
+                        ? 'Hành động này sẽ ngắt phiên làm việc của người dùng'
+                        : 'Cho phép người dùng tiếp tục đăng nhập hệ thống'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Target User Info Card */}
+                <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                    {toggleTargetUser.fullName?.charAt(0) || 'U'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-900 truncate">
+                      {toggleTargetUser.fullName}
+                    </p>
+                    <p className="text-[11px] text-slate-500 font-mono truncate">
+                      {toggleTargetUser.email}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-[#0050cd] border border-blue-200/60 shrink-0">
+                    {toggleTargetUser.roles?.[0]
+                      ? getRoleLabel(toggleTargetUser.roles[0])
+                      : 'Tài khoản'}
+                  </span>
+                </div>
+
+                {/* Warning message block */}
+                {toggleTargetUser.isActive ? (
+                  <div className="mt-4 p-3 rounded-xl bg-rose-50/70 border border-rose-200/70 flex items-start gap-2.5">
+                    <span className="material-symbols-outlined text-rose-600 text-base shrink-0 mt-0.5">
+                      warning
+                    </span>
+                    <p className="text-xs text-rose-800 leading-relaxed">
+                      <strong>Lưu ý:</strong> Khi tạm khóa, toàn bộ token đăng nhập hiện tại sẽ bị{' '}
+                      <strong>thu hồi ngay lập tức</strong>. Người dùng sẽ bị đăng xuất khỏi hệ thống
+                      và không thể thao tác tiếp cho đến khi được mở khóa.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-xs text-slate-600 leading-relaxed">
+                    Sau khi kích hoạt lại, tài khoản sẽ có thể đăng nhập bình thường vào hệ thống với
+                    đầy đủ quyền hạn đã được phân bổ.
+                  </p>
+                )}
+
+                {/* Action Buttons */}
+                <div className="mt-6 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    disabled={togglingStatus}
+                    onClick={() => {
+                      setShowToggleConfirmModal(false);
+                      setToggleTargetUser(null);
+                    }}
+                    className="h-10 px-4 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    Hủy bỏ
+                  </button>
+                  <button
+                    type="button"
+                    disabled={togglingStatus}
+                    onClick={confirmToggleStatus}
+                    className={`h-10 px-5 rounded-xl text-white text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-60 ${
+                      toggleTargetUser.isActive
+                        ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
+                        : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                    }`}
+                  >
+                    {togglingStatus
+                      ? 'Đang xử lý...'
+                      : toggleTargetUser.isActive
+                      ? 'Xác nhận khóa'
+                      : 'Xác nhận mở khóa'}
                   </button>
                 </div>
               </div>
             </div>
           </div>
         )}
+
       </div>
-      );
+  );
+}
+
+export default function AccountsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-8 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+          <span className="material-symbols-outlined text-[18px] animate-spin text-[#0050cd]">
+            progress_activity
+          </span>
+          <span>Đang tải danh sách tài khoản...</span>
+        </div>
+      }
+    >
+      <AccountsContent />
+    </Suspense>
+  );
 }

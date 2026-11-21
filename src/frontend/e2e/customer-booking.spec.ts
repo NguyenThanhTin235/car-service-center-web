@@ -1,8 +1,17 @@
 import { test, expect } from '@playwright/test';
+import {
+  CUSTOMER_BASE_URL,
+  MOCK_CUSTOMER_USER,
+  attachPageErrorGuard,
+  injectCustomerSession,
+  setupCustomerApiMocks,
+} from './helpers/customer-mocks';
 
-test.describe('E2E Sprint 3: Customer Portal Flows', () => {
-  test.beforeEach(async ({ page }) => {
-    // Intercept common APIs to ensure fully deterministic and hermetic test runs
+test.describe('Customer Portal — Profile, Vehicles CRUD & 3-Step Booking', () => {
+  test('UC-01 & UC-02: Login redirects customer to /home cleanly', async ({ page }) => {
+    const pageErrors = attachPageErrorGuard(page);
+    await setupCustomerApiMocks(page);
+
     await page.route('**/api/auth/login', async (route) => {
       const requestData = JSON.parse(route.request().postData() || '{}');
       if (requestData.email === 'invalid@customer.com' || requestData.password === 'wrongpass') {
@@ -26,262 +35,199 @@ test.describe('E2E Sprint 3: Customer Portal Flows', () => {
           code: 200,
           message: 'Đăng nhập thành công',
           data: {
-            user: {
-              id: 1,
-              email: requestData.email || 'customer@example.com',
-              fullName: 'Nguyễn Văn Khách',
-              roles: ['CUSTOMER'],
-            },
+            user: { ...MOCK_CUSTOMER_USER, email: requestData.email || MOCK_CUSTOMER_USER.email },
             token: 'mock-customer-jwt-token-12345',
+            refreshToken: 'mock-customer-refresh-token',
           },
           timestamp: Date.now(),
         }),
       });
     });
 
-    await page.route('**/api/auth/me**', async (route) => {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          code: 200,
-          message: 'OK',
-          data: {
-            id: 1,
-            fullName: 'Nguyễn Văn Khách',
-            phone: '0901234567',
-            email: 'customer@example.com',
-            address: '77 Nguyễn Huệ, Quận 1, TP.HCM',
-            roles: ['CUSTOMER'],
-            isActive: true,
-            createdAt: '2026-01-01T00:00:00.000Z',
-          },
-          timestamp: Date.now(),
-        }),
-      });
-    });
-
-    await page.route('**/api/vehicles**', async (route) => {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          code: 200,
-          message: 'Lấy danh sách xe thành công',
-          data: [
-            {
-              id: 10,
-              licensePlate: '51A-999.99',
-              make: 'Honda',
-              model: 'CR-V',
-              year: 2022,
-              color: 'Trắng',
-              vehicleSize: 'LARGE',
-              isActive: true,
-              createdAt: '2026-01-01T00:00:00.000Z',
-            },
-            {
-              id: 11,
-              licensePlate: '30E-888.88',
-              make: 'Toyota',
-              model: 'Camry',
-              year: 2021,
-              color: 'Đen',
-              vehicleSize: 'LARGE',
-              isActive: true,
-              createdAt: '2026-01-05T00:00:00.000Z',
-            },
-          ],
-          timestamp: Date.now(),
-        }),
-      });
-    });
-
-    await page.route('**/api/services**', async (route) => {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          code: 200,
-          message: 'Lấy danh mục dịch vụ thành công',
-          data: [
-            {
-              id: 1,
-              name: 'Bảo dưỡng định kỳ 10.000km',
-              description: 'Kiểm tra 48 hạng mục tiêu chuẩn',
-              isActive: true,
-            },
-            {
-              id: 2,
-              name: 'Thay dầu động cơ và lọc dầu',
-              description: 'Dầu tổng hợp toàn phần và lọc chính hãng',
-              isActive: true,
-            },
-            {
-              id: 3,
-              name: 'Kiểm tra hệ thống điều hòa',
-              description: 'Nội soi giàn lạnh và nạp bổ sung gas',
-              isActive: true,
-            },
-          ],
-          timestamp: Date.now(),
-        }),
-      });
-    });
-
-    await page.route('**/api/appointments**', async (route) => {
-      if (route.request().method() === 'POST') {
-        const body = JSON.parse(route.request().postData() || '{}');
-        return route.fulfill({
-          status: 201,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            success: true,
-            code: 201,
-            message: 'Đặt lịch hẹn thành công',
-            data: {
-              id: 999,
-              customer_id: 1,
-              vehicle_id: body.vehicle_id,
-              scheduled_date: body.scheduled_date,
-              scheduled_time: body.scheduled_time,
-              status: 'REQUESTED',
-            },
-            timestamp: Date.now(),
-          }),
-        });
-      }
-
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          code: 200,
-          message: 'OK',
-          data: [],
-          pagination: {
-            totalRecords: 0,
-            totalPages: 1,
-            currentPage: 1,
-            limit: 10,
-          },
-          timestamp: Date.now(),
-        }),
-      });
-    });
-  });
-
-  test('UC-01 & UC-02: Customer Login UI with validation and successful auth redirect', async ({ page }) => {
-    await page.goto('http://localhost:3000/login');
-
-    // Verify Login page heading
+    await page.goto(`${CUSTOMER_BASE_URL}/login`);
     await expect(page.locator('h1')).toContainText('Đăng nhập');
 
-    // 1. Test invalid login credentials
+    // Invalid login
     await page.fill('input[name="email"]', 'invalid@customer.com');
     await page.fill('input[name="password"]', 'wrongpass');
     await page.click('button[type="submit"]');
+    await expect(page.getByText('Email hoặc mật khẩu không chính xác.')).toBeVisible();
 
-    // Verify error message is rendered
-    await expect(page.locator('text=Email hoặc mật khẩu không chính xác.')).toBeVisible();
-
-    // 2. Test valid customer credentials
-    await page.fill('input[name="email"]', 'customer@example.com');
+    // Valid customer login redirects to /home per roleRedirect.ts
+    await page.fill('input[name="email"]', MOCK_CUSTOMER_USER.email);
     await page.fill('input[name="password"]', 'Secret123@');
     await page.click('button[type="submit"]');
+    await expect(page).toHaveURL(/\/home/, { timeout: 10000 });
 
-    // Verify redirected towards customer profile
-    await expect(page).toHaveURL(/.*\/customer\/profile/);
+    expect(pageErrors).toEqual([]);
   });
 
-  test('UC-04: Customer 3-Step Appointment Booking Wizard flow', async ({ page }) => {
-    // Inject pre-authenticated customer credentials into localStorage
-    await page.addInitScript(() => {
-      localStorage.setItem(
-        'user',
-        JSON.stringify({
-          id: 1,
-          email: 'customer@example.com',
-          fullName: 'Nguyễn Văn Khách',
-          roles: ['CUSTOMER'],
-        })
-      );
-      localStorage.setItem('token', 'mock-customer-jwt-token-12345');
-    });
+  test('Overview & Profile tabs: displays KPIs and updates customer profile via ConfirmModal', async ({
+    page,
+  }) => {
+    const pageErrors = attachPageErrorGuard(page);
+    await injectCustomerSession(page);
+    await setupCustomerApiMocks(page);
 
-    await page.goto('http://localhost:3000/customer/appointments/new');
+    await page.goto(`${CUSTOMER_BASE_URL}/customer/profile?tab=overview`);
 
-    // Verify Title & Wizard step 1
+    // Overview Tab assertions
+    await expect(
+      page.getByRole('heading', { level: 1, name: MOCK_CUSTOMER_USER.fullName })
+    ).toBeVisible();
+    await expect(page.getByText('51A-999.99').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Xe đang sở hữu')).toBeVisible();
+
+    // Switch to Profile tab
+    await page.getByRole('button', { name: /Hồ sơ cá nhân/i }).first().click();
+    await expect(page.getByRole('heading', { name: 'Hồ sơ cá nhân' })).toBeVisible();
+
+    // Enter edit mode
+    await page.getByRole('button', { name: 'Chỉnh sửa' }).click();
+
+    const phoneInput = page.getByPlaceholder('Nhập số điện thoại (VD: 0901234567)');
+    await phoneInput.fill('12345');
+    await expect(page.getByText(/Số điện thoại không đúng định dạng/i)).toBeVisible();
+
+    await phoneInput.fill('0909888777');
+    await page.getByPlaceholder('Nhập họ và tên').fill('Nguyễn Văn Khách Updated');
+
+    await page.getByRole('button', { name: /Lưu thay đổi/i }).click();
+    // ConfirmModal
+    await expect(page.getByText('Bạn có chắc chắn muốn lưu thông tin hồ sơ đã thay đổi không?')).toBeVisible();
+    await page.getByRole('button', { name: /Lưu$/ }).last().click();
+
+    await expect(page.getByText('Cập nhật hồ sơ thành công!')).toBeVisible();
+
+    expect(pageErrors).toEqual([]);
+  });
+
+  test('UC-03 Vehicles CRUD: redirect, validation, create, edit, soft-deactivate and restore', async ({
+    page,
+  }) => {
+    const pageErrors = attachPageErrorGuard(page);
+    await injectCustomerSession(page);
+    await setupCustomerApiMocks(page);
+
+    await page.goto(`${CUSTOMER_BASE_URL}/customer/vehicles`);
+    await expect(page).toHaveURL(/\/customer\/profile\?tab=vehicles/, { timeout: 10000 });
+
+    await expect(page.getByText('51A-999.99').first()).toBeVisible();
+    await expect(page.getByText('30E-888.88').first()).toBeVisible();
+
+    // Add vehicle with plate validation check first
+    await page.getByRole('button', { name: /Thêm xe mới/i }).click();
+    await page.getByPlaceholder('Ví dụ: 51G-123.45').fill('INVALID');
+    await page.getByPlaceholder('Toyota, Honda, Ford...').fill('Mazda');
+    await page.getByPlaceholder('Santa Fe, Everest, Vios...').fill('CX-5');
+    await page.locator('form button[type="submit"]').click();
+    await expect(page.getByText(/Biển số xe không đúng định dạng/i)).toBeVisible();
+
+    // Fix plate and save
+    await page.getByPlaceholder('Ví dụ: 51G-123.45').fill('51K-678.90');
+    await page.locator('form button[type="submit"]').click();
+    await expect(page.getByText('Thêm phương tiện mới thành công!')).toBeVisible();
+    await expect(page.getByText('51K-678.90').first()).toBeVisible();
+
+    // Soft-deactivate vehicle with transactions (51A-999.99) then restore it
+    await page.getByRole('button', { name: /Vô hiệu hóa/i }).first().click();
+    await expect(page.getByText(/Xác nhận vô hiệu hóa xe/i)).toBeVisible();
+    await page.getByRole('button', { name: /Xác nhận$/ }).last().click();
+    await expect(page.getByRole('button', { name: /Kích hoạt lại/i })).toBeVisible();
+
+    await page.getByRole('button', { name: /Kích hoạt lại/i }).click();
+    await expect(page.getByText(/Kích hoạt lại.*thành công/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Vô hiệu hóa/i }).first()).toBeVisible();
+
+    expect(pageErrors).toEqual([]);
+  });
+
+  test('UC-04 Lazy CustomerBookingModal (3-step) + Reschedule & Cancel existing appointment', async ({
+    page,
+  }) => {
+    const pageErrors = attachPageErrorGuard(page);
+    await injectCustomerSession(page);
+    await setupCustomerApiMocks(page);
+
+    await page.goto(`${CUSTOMER_BASE_URL}/customer/profile?tab=appointments`);
+    await expect(page.getByRole('heading', { name: 'Lịch hẹn dịch vụ' })).toBeVisible();
+
+    // Click existing REQUESTED appointment on calendar
+    await page.getByText(/09:00 • 51A-999\.99/).click();
+    await expect(page.getByText('Chi tiết lịch hẹn #501')).toBeVisible();
+
+    // Reschedule appointment
+    await page.getByRole('button', { name: 'Dời ngày/giờ' }).click();
+    await expect(page.getByText('Dời lịch hẹn #501')).toBeVisible();
+    await page.getByRole('button', { name: 'Xác nhận dời lịch' }).click();
+    await expect(page.getByText('Dời lịch hẹn thành công!')).toBeVisible();
+
+    // Open Appointment detail again and cancel
+    await page.getByText(/09:00 • 51A-999\.99/).click();
+    await page.getByRole('button', { name: 'Hủy lịch' }).click();
+    await page.getByPlaceholder('Tôi bận việc đột xuất...').fill('Thay đổi kế hoạch di chuyển');
+    await page.getByRole('button', { name: 'Xác nhận hủy' }).click();
+    await expect(page.getByText('Đã hủy lịch hẹn thành công.')).toBeVisible();
+
+    // Open lazy 3-Step CustomerBookingModal
+    await page.getByRole('button', { name: 'Đặt lịch mới' }).click();
+    await expect(page.getByText('Đặt lịch dịch vụ & sửa chữa')).toBeVisible({ timeout: 15000 });
+
+    // Step 1: Vehicle already selected -> Next
+    await page.getByRole('button', { name: 'Tiếp tục' }).click();
+
+    // Step 2: Add notes -> Next
+    await page
+      .getByPlaceholder('Nhập mô tả tình trạng xe của bạn (nếu có)...')
+      .fill('Kiểm tra hệ thống điều hòa trước chuyến đi');
+    await page.getByRole('button', { name: 'Tiếp tục' }).click();
+
+    // Step 3: Advance to next month so day 15 is always strictly in the future and free
+    await page.getByRole('button', { name: '›' }).click();
+    await page.getByRole('button', { name: '15', exact: true }).click();
+    await page.getByRole('button', { name: 'Lưu lịch hẹn' }).click();
+
+    await expect(page.getByText(/Đặt lịch dịch vụ thành công!/i)).toBeVisible();
+
+    expect(pageErrors).toEqual([]);
+  });
+
+  test('UC-04 Standalone /customer/appointments/new 3-Step Wizard flow', async ({ page }) => {
+    const pageErrors = attachPageErrorGuard(page);
+    await injectCustomerSession(page);
+    await setupCustomerApiMocks(page);
+
+    await page.goto(`${CUSTOMER_BASE_URL}/customer/appointments/new`);
+
     await expect(page.locator('h1')).toContainText('Đặt lịch hẹn mới');
-    await expect(page.locator('text=1. Chọn phương tiện của bạn')).toBeVisible();
+    await expect(page.getByText('1. Chọn phương tiện của bạn')).toBeVisible();
 
-    // Wait for vehicles to load and click on first vehicle
-    const vehicleCard = page.locator('text=51A-999.99').first();
+    const vehicleCard = page.getByText('51A-999.99').first();
     await expect(vehicleCard).toBeVisible();
     await vehicleCard.click();
 
-    // Proceed to Step 2
     await page.click('button:has-text("Tiếp theo")');
+    await expect(page.getByText('2. Bạn cần chúng tôi làm gì?')).toBeVisible();
 
-    // Verify Step 2: Dịch vụ
-    await expect(page.locator('text=2. Bạn cần chúng tôi làm gì?')).toBeVisible();
-
-    // Choose service checkbox: Thay dầu động cơ và lọc dầu
-    const serviceCheckbox = page.locator('input[type="checkbox"]').first();
-    await serviceCheckbox.check();
-
-    // Fill notes
+    await page.locator('input[type="checkbox"]').first().check();
     await page.fill('textarea', 'Xe có tiếng kêu nhẹ khi khởi động vào buổi sáng');
-
-    // Proceed to Step 3
     await page.click('button:has-text("Tiếp theo")');
 
-    // Verify Step 3: Thời gian
-    await expect(page.locator('text=3. Chọn ngày và giờ mang xe đến')).toBeVisible();
-
-    // Fill date and time
-    const today = new Date();
-    const futureDate = new Date(today.getTime() + 86400000 * 2); // 2 days later
-    const dateStr = futureDate.toISOString().split('T')[0];
-
-    await page.fill('input[type="date"]', dateStr);
+    await expect(page.getByText('3. Chọn ngày và giờ mang xe đến')).toBeVisible();
+    const futureDate = new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0];
+    await page.fill('input[type="date"]', futureDate);
     await page.fill('input[type="time"]', '09:30');
-
-    // Confirm booking
+    const appointmentPost = page.waitForResponse(
+      (res) => res.url().includes('/api/appointments') && res.request().method() === 'POST'
+    );
     await page.click('button:has-text("Xác nhận đặt lịch")');
+    const postRes = await appointmentPost;
+    expect(postRes.status()).toBe(201);
 
-    // Verify success toast notification
-    await expect(page.locator('text=Đặt lịch hẹn thành công!')).toBeVisible();
-
-    // Should redirect to appointments list
-    await expect(page).toHaveURL(/.*\/customer\/appointments/, { timeout: 10000 });
-  });
-
-  test('UC-03: Customer Vehicle Management view', async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem(
-        'user',
-        JSON.stringify({
-          id: 1,
-          email: 'customer@example.com',
-          fullName: 'Nguyễn Văn Khách',
-          roles: ['CUSTOMER'],
-        })
-      );
-      localStorage.setItem('token', 'mock-customer-jwt-token-12345');
+    await expect(page).toHaveURL(/.*\/customer\/(appointments|profile\?tab=appointments)/, {
+      timeout: 10000,
     });
 
-    await page.goto('http://localhost:3000/customer/vehicles');
-
-    // Route redirects to profile?tab=vehicles
-    await expect(page).toHaveURL(/.*\/customer\/profile\?tab=vehicles/);
-
-    // Verify vehicle cards are rendered with license plate and make/model
-    await expect(page.locator('text=51A-999.99').first()).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('text=Honda').first()).toBeVisible();
+    expect(pageErrors).toEqual([]);
   });
 });

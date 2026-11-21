@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
 
 export interface CreateJobTypeDto {
   name: string;
@@ -17,17 +15,20 @@ export class JobTypeService {
   /**
    * UC-63: Lấy danh sách loại công việc
    */
-  async getJobTypes(search?: string, page = 1, limit = 10) {
+  async getJobTypes(search?: string, page = 1, limit = 10, all = false, isActive?: boolean) {
     const where: any = {};
     if (search) where.name = { contains: search };
+    if (isActive !== undefined) where.is_active = isActive;
 
-    const skip = (page - 1) * limit;
+    const skip = all ? undefined : (page - 1) * limit;
+    const take = all ? undefined : limit;
+
     const [totalRecords, jobTypes] = await Promise.all([
       prisma.jobType.count({ where }),
       prisma.jobType.findMany({
         where,
         skip,
-        take: limit,
+        take,
         orderBy: { id: 'asc' },
       }),
     ]);
@@ -43,9 +44,9 @@ export class JobTypeService {
       data,
       pagination: {
         totalRecords,
-        totalPages: Math.ceil(totalRecords / limit),
+        totalPages: all ? 1 : Math.ceil(totalRecords / (limit || 10)),
         currentPage: page,
-        limit,
+        limit: all ? totalRecords : limit,
       },
     };
   }

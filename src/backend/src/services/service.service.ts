@@ -1,6 +1,5 @@
-import { PrismaClient, PricingType } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { PricingType } from '@prisma/client';
+import prisma from '../utils/prisma';
 
 export interface CreateServiceDto {
   categoryId: number;
@@ -25,10 +24,11 @@ export class ServiceService {
   /**
    * UC-59: Lấy danh sách danh mục dịch vụ
    */
-  async getServices(search?: string, categoryId?: number, page = 1, limit = 10, all = false) {
+  async getServices(search?: string, categoryId?: number, page = 1, limit = 10, all = false, isActive?: boolean) {
     const where: any = {};
     if (search) where.name = { contains: search };
     if (categoryId) where.category_id = categoryId;
+    if (isActive !== undefined) where.is_active = isActive;
 
     const skip = all ? undefined : (page - 1) * limit;
     const take = all ? undefined : limit;
@@ -87,6 +87,42 @@ export class ServiceService {
     const category = await prisma.serviceCategory.findUnique({ where: { id: data.categoryId } });
     if (!category) throw new Error('Không tìm thấy danh mục cha.');
 
+    // Ràng buộc kiểm tra đơn giá
+    if (data.pricingType === 'FIXED') {
+      if (data.fixedPrice === undefined || data.fixedPrice === null || isNaN(Number(data.fixedPrice))) {
+        throw new Error('Vui lòng nhập đơn giá cố định hợp lệ.');
+      }
+      const fp = Number(data.fixedPrice);
+      if (!Number.isInteger(fp)) {
+        throw new Error('Đơn giá cố định phải là số nguyên (VNĐ), không được là số thập phân.');
+      }
+      if (fp < 1000) {
+        throw new Error('Đơn giá cố định tối thiểu phải từ 1.000 ₫ trở lên.');
+      }
+      if (fp % 1000 !== 0) {
+        throw new Error('Đơn giá cố định phải tròn theo đơn vị nghìn đồng (bội số của 1.000 ₫, VD: 1.000.000 ₫, không được lẻ như 1.000.232 ₫).');
+      }
+    } else if (data.pricingType === 'VEHICLE_SIZE') {
+      if (!data.sizePrices || data.sizePrices.length === 0) {
+        throw new Error('Vui lòng nhập đơn giá cho ít nhất một cỡ xe.');
+      }
+      for (const sp of data.sizePrices) {
+        if (sp.price === undefined || sp.price === null || isNaN(Number(sp.price))) {
+          throw new Error(`Đơn giá cho cỡ xe ${sp.vehicleSize} không hợp lệ.`);
+        }
+        const p = Number(sp.price);
+        if (!Number.isInteger(p)) {
+          throw new Error(`Đơn giá cho cỡ xe ${sp.vehicleSize} phải là số nguyên (VNĐ), không được là số thập phân.`);
+        }
+        if (p < 1000) {
+          throw new Error(`Đơn giá cho cỡ xe ${sp.vehicleSize} tối thiểu phải từ 1.000 ₫ trở lên.`);
+        }
+        if (p % 1000 !== 0) {
+          throw new Error(`Đơn giá cho cỡ xe ${sp.vehicleSize} phải tròn theo đơn vị nghìn đồng (bội số của 1.000 ₫, VD: 1.000.000 ₫, không được lẻ như 1.000.232 ₫).`);
+        }
+      }
+    }
+
     return prisma.$transaction(async (tx) => {
       const template = await tx.service.create({
         data: {
@@ -122,6 +158,44 @@ export class ServiceService {
   async updateService(id: number, data: UpdateServiceDto) {
     const existing = await prisma.service.findUnique({ where: { id } });
     if (!existing) throw new Error('Không tìm thấy danh mục dịch vụ.');
+
+    // Ràng buộc kiểm tra đơn giá
+    if (data.pricingType === 'FIXED') {
+      if (data.fixedPrice === undefined || data.fixedPrice === null || isNaN(Number(data.fixedPrice))) {
+        throw new Error('Vui lòng nhập đơn giá cố định hợp lệ.');
+      }
+      const fp = Number(data.fixedPrice);
+      if (!Number.isInteger(fp)) {
+        throw new Error('Đơn giá cố định phải là số nguyên (VNĐ), không được là số thập phân.');
+      }
+      if (fp < 1000) {
+        throw new Error('Đơn giá cố định tối thiểu phải từ 1.000 ₫ trở lên.');
+      }
+      if (fp % 1000 !== 0) {
+        throw new Error('Đơn giá cố định phải tròn theo đơn vị nghìn đồng (bội số của 1.000 ₫, VD: 1.000.000 ₫, không được lẻ như 1.000.232 ₫).');
+      }
+    } else if (data.pricingType === 'VEHICLE_SIZE') {
+      if (data.sizePrices !== undefined) {
+        if (!data.sizePrices || data.sizePrices.length === 0) {
+          throw new Error('Vui lòng nhập đơn giá cho ít nhất một cỡ xe.');
+        }
+        for (const sp of data.sizePrices) {
+          if (sp.price === undefined || sp.price === null || isNaN(Number(sp.price))) {
+            throw new Error(`Đơn giá cho cỡ xe ${sp.vehicleSize} không hợp lệ.`);
+          }
+          const p = Number(sp.price);
+          if (!Number.isInteger(p)) {
+            throw new Error(`Đơn giá cho cỡ xe ${sp.vehicleSize} phải là số nguyên (VNĐ), không được là số thập phân.`);
+          }
+          if (p < 1000) {
+            throw new Error(`Đơn giá cho cỡ xe ${sp.vehicleSize} tối thiểu phải từ 1.000 ₫ trở lên.`);
+          }
+          if (p % 1000 !== 0) {
+            throw new Error(`Đơn giá cho cỡ xe ${sp.vehicleSize} phải tròn theo đơn vị nghìn đồng (bội số của 1.000 ₫, VD: 1.000.000 ₫, không được lẻ như 1.000.232 ₫).`);
+          }
+        }
+      }
+    }
 
     return prisma.$transaction(async (tx) => {
       await tx.service.update({
@@ -169,5 +243,83 @@ export class ServiceService {
       data: { is_active: !existing.is_active },
     });
     return { isActive: !existing.is_active };
+  }
+
+  /**
+   * UC-61b: Xóa dịch vụ
+   * - Trường hợp 1: Chặn xóa vĩnh viễn dịch vụ đã từng được sử dụng trong phiếu sửa chữa của khách hàng
+   *   -> Từ chối xóa vĩnh viễn và chuyển dịch vụ sang trạng thái Ngừng cung cấp để bảo toàn lịch sử.
+   * - Trường hợp 2: Xóa vĩnh viễn dịch vụ vừa tạo nhầm chưa từng phát sinh bất kỳ giao dịch nào
+   *   -> Xóa hoàn toàn khỏi cơ sở dữ liệu.
+   */
+  async deleteService(id: number) {
+    const existing = await prisma.service.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            wo_services: true,
+            appt_services: true,
+            intake_services: true,
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new Error('Không tìm thấy danh mục dịch vụ.');
+    }
+
+    const hasHistory =
+      existing._count.wo_services > 0 ||
+      existing._count.appt_services > 0 ||
+      existing._count.intake_services > 0;
+
+    if (hasHistory) {
+      // Trường hợp 1: Chặn xóa vĩnh viễn dịch vụ đã từng được sử dụng trong phiếu sửa chữa của khách hàng
+      await prisma.service.update({
+        where: { id },
+        data: { is_active: false },
+      });
+
+      return {
+        deleted: false,
+        isDeactivated: true,
+        message:
+          'Không thể xóa dịch vụ này vì đã có lịch sử sửa chữa của khách hàng tham chiếu. Hệ thống sẽ chuyển dịch vụ sang trạng thái Ngừng cung cấp để bảo toàn lịch sử.',
+        data: { id, isActive: false },
+      };
+    }
+
+    // Trường hợp 2: Xóa vĩnh viễn dịch vụ vừa tạo nhầm chưa từng phát sinh bất kỳ giao dịch nào
+    await prisma.$transaction(async (tx) => {
+      // Xóa cấu hình đơn giá theo cỡ xe nếu có
+      await tx.vehicleSizePrice.deleteMany({
+        where: { service_id: id },
+      });
+
+      // Ngắt liên kết các mẫu công việc / kiểm định nếu có
+      await tx.jobTemplate.updateMany({
+        where: { service_id: id },
+        data: { service_id: null },
+      });
+
+      await tx.inspectionTemplate.updateMany({
+        where: { service_id: id },
+        data: { service_id: null },
+      });
+
+      // Xóa vĩnh viễn dịch vụ
+      await tx.service.delete({
+        where: { id },
+      });
+    });
+
+    return {
+      deleted: true,
+      isDeactivated: false,
+      message: 'Đã xóa dịch vụ thành công',
+      data: { id },
+    };
   }
 }

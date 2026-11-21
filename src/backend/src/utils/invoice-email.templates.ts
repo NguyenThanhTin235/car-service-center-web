@@ -1,4 +1,5 @@
 import { buildEmailLayout } from './appointment-email.templates';
+import { getFrontendBaseUrl } from './cors.util';
 
 export interface InvoiceEmailData {
   customerName: string;
@@ -21,7 +22,7 @@ const formatVND = (amount: number): string => {
  * Email gửi khách hàng khi hóa đơn được phát hành chính thức (UC-27)
  */
 export function buildInvoiceIssuedEmail(data: InvoiceEmailData): { subject: string; html: string } {
-  const portalLink = data.portalUrl || 'http://localhost:3000/customer/invoices';
+  const portalLink = data.portalUrl || `${getFrontendBaseUrl()}/customer/invoices`;
   const subject = `[Car Service Center] Hóa đơn dịch vụ xe ${data.licensePlate} đã được phát hành - Mã: ${data.invoiceNumber}`;
 
   const contentHtml = `
@@ -89,7 +90,7 @@ export function buildInvoiceIssuedEmail(data: InvoiceEmailData): { subject: stri
  * Email gửi khách hàng khi thanh toán thành công (UC-28)
  */
 export function buildPaymentSuccessEmail(data: InvoiceEmailData): { subject: string; html: string } {
-  const portalLink = data.portalUrl || 'http://localhost:3000/customer/tracking';
+  const portalLink = data.portalUrl || `${getFrontendBaseUrl()}/customer/tracking`;
   const subject = `[Car Service Center] Xác nhận thanh toán thành công hóa đơn ${data.invoiceNumber} - Xe ${data.licensePlate}`;
 
   const contentHtml = `

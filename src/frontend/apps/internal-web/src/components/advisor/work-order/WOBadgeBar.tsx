@@ -35,6 +35,15 @@ const statusMap: Record<string, string> = {
   'CANCELLED': 'Đã hủy'
 };
 
+const VEHICLE_SIZE_MAP: Record<string, string> = {
+  SMALL: 'Cỡ nhỏ',
+  MEDIUM: 'Cỡ vừa',
+  LARGE: 'Cỡ lớn',
+  EXTRA_LARGE: 'Rất lớn',
+  SUV: 'SUV 7 chỗ',
+  TRUCK: 'Bán tải'
+};
+
 export default function WOBadgeBar({
   licensePlate,
   vehicleClass,
@@ -57,7 +66,7 @@ export default function WOBadgeBar({
           
           {/* Vehicle Class (PHV, Normal, etc) */}
           <span className="px-2 py-0.5 bg-tertiary-fixed text-on-tertiary-fixed rounded text-label-xs font-bold uppercase tracking-wide whitespace-nowrap">
-            {vehicleClass}
+            {VEHICLE_SIZE_MAP[vehicleClass] || vehicleClass}
           </span>
           
           {/* Vehicle Name & Customer */}
@@ -96,7 +105,7 @@ export default function WOBadgeBar({
         
         {/* Vehicle Class (PHV, Normal, etc) */}
         <span className="px-2 py-1 bg-tertiary-fixed text-on-tertiary-fixed rounded text-label-sm font-bold uppercase tracking-wide whitespace-nowrap">
-          {vehicleClass}
+          {VEHICLE_SIZE_MAP[vehicleClass] || vehicleClass}
         </span>
         
         {/* Vehicle Name & Customer */}

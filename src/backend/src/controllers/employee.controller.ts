@@ -6,12 +6,13 @@ const employeeService = new EmployeeService();
 // UC-55: Lấy danh sách nhân viên
 export const getEmployees = async (req: Request, res: Response) => {
   try {
-    const { search, position, page, limit } = req.query;
+    const { search, position, status, page, limit } = req.query;
     const result = await employeeService.getEmployees(
       search as string,
       position as string,
       page ? parseInt(page as string) : 1,
-      limit ? parseInt(limit as string) : 10
+      limit ? parseInt(limit as string) : 10,
+      status as string
     );
     res.json({ status: 'success', ...result });
   } catch (error: any) {
