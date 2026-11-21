@@ -319,6 +319,27 @@ export class WorkOrderService {
       throw new Error('Hạng mục dịch vụ không thuộc phiếu công việc này.');
     }
 
+    // 3b. Khóa xóa khi báo giá đã được khách hàng phê duyệt hoặc dịch vụ đang thi công
+    const approvedQuotation = await prisma.quotation.findFirst({
+      where: { work_order_id: workOrderId, status: 'APPROVED' },
+      select: { id: true },
+    });
+    const isApprovedOrExecutingWO = [
+      'APPROVED',
+      'IN_PROGRESS',
+      'BILLING_REQUESTED',
+      'FINANCIAL_CLEARED',
+    ].includes(wo.status);
+    const isServiceExecuting =
+      woService.status === 'IN_PROGRESS' ||
+      woService.jobs.some((j) => j.status === 'IN_PROGRESS');
+
+    if (approvedQuotation || isApprovedOrExecutingWO || isServiceExecuting) {
+      throw new Error(
+        'Không thể xóa dịch vụ khi báo giá đã được phê duyệt hoặc dịch vụ đang thực hiện.'
+      );
+    }
+
     // 4. Kiểm tra ràng buộc con: Cho phép xóa nếu chưa có việc hoặc việc chưa phân công
     const assignedJobs = woService.jobs.filter(
       (j) =>
@@ -607,14 +628,17 @@ export class WorkOrderService {
     if (data.technician_id) {
       const tech = await prisma.employee.findUnique({
         where: { id: data.technician_id },
-        select: { id: true, position: true, is_active: true },
+        select: { id: true, position: true, is_active: true, full_name: true },
       });
       if (!tech || tech.position !== 'TECHNICIAN') {
         throw new Error('Nhân viên được phân công phải là kỹ thuật viên (TECHNICIAN).');
       }
+      if (!tech.is_active) {
+        throw new Error(`Kỹ thuật viên "${tech.full_name}" đang ở trạng thái ngừng hoạt động, không thể phân công công việc.`);
+      }
     }
 
-    return await prisma.$transaction(async (tx) => {
+    const createdResult = await prisma.$transaction(async (tx) => {
       // 1. Xác định hoặc tạo WoService
       let targetServiceId = data.wo_service_id;
 
@@ -688,6 +712,27 @@ export class WorkOrderService {
         finalJobTypeId = defaultJobType?.id;
       }
 
+      // 2b. Validate giờ công và đơn giá nhân công phải > 0
+      if (
+        data.estimated_hours !== undefined &&
+        data.estimated_hours !== null &&
+        (!Number.isFinite(Number(data.estimated_hours)) || Number(data.estimated_hours) <= 0)
+      ) {
+        throw new Error('Số giờ công và đơn giá nhân công phải lớn hơn 0');
+      }
+      if (data.labours && data.labours.length > 0) {
+        for (const lab of data.labours) {
+          if (
+            !Number.isFinite(Number(lab.estimated_hours)) ||
+            Number(lab.estimated_hours) <= 0 ||
+            !Number.isFinite(Number(lab.price)) ||
+            Number(lab.price) <= 0
+          ) {
+            throw new Error('Số giờ công và đơn giá nhân công phải lớn hơn 0');
+          }
+        }
+      }
+
       // 3. Tính tổng giờ ước tính
       let totalEstHours = data.estimated_hours ? Number(data.estimated_hours) : 0;
       if (!totalEstHours && data.labours && data.labours.length > 0) {
@@ -750,8 +795,8 @@ export class WorkOrderService {
               job_type_id: lab.job_type_id || finalJobTypeId || 1,
               description: lab.task_name || data.name,
               employee_id: lab.employee_id || data.technician_id || null,
-              estimated_hours: Number(lab.estimated_hours) || 1.0,
-              price: Number(lab.price) || 150000,
+              estimated_hours: Number(lab.estimated_hours),
+              price: Number(lab.price),
             },
           });
         }
@@ -803,6 +848,27 @@ export class WorkOrderService {
         job: fullJob,
       };
     });
+
+    const techUserIds = new Set<number>();
+    for (const lab of createdResult.job?.labours || []) {
+      if (lab.employee?.user_id) {
+        techUserIds.add(lab.employee.user_id);
+      }
+    }
+    for (const techUserId of techUserIds) {
+      notificationService
+        .sendInApp({
+          userId: techUserId,
+          type: 'TASK_ASSIGNED',
+          title: `Phân công công việc mới: ${data.name.trim()}`,
+          message: `Bạn vừa được phân công công việc "${data.name.trim()}" trong phiếu ${wo.wo_number}.`,
+          entityType: 'WORK_ORDER',
+          entityId: workOrderId,
+        })
+        .catch((err) => console.error('Failed to notify technician on job created:', err));
+    }
+
+    return createdResult;
   }
 
   /**
@@ -818,6 +884,7 @@ export class WorkOrderService {
       technician_id?: number | null;
       description?: string | null;
       estimated_hours?: number | null;
+      price?: number | null;
     }
   ) {
     const job = await prisma.job.findUnique({
@@ -833,6 +900,15 @@ export class WorkOrderService {
       throw new Error('Công việc không thuộc phiếu công việc này.');
     }
 
+    if (
+      (data.estimated_hours !== undefined &&
+        (!Number.isFinite(Number(data.estimated_hours)) || Number(data.estimated_hours) <= 0)) ||
+      (data.price !== undefined &&
+        (!Number.isFinite(Number(data.price)) || Number(data.price) <= 0))
+    ) {
+      throw new Error('Số giờ công và đơn giá nhân công phải lớn hơn 0');
+    }
+
     // Chỉ có thể sửa khi chưa phân công (status === 'PLANNED') hoặc khi làm lại (status === 'REWORK')
     if (job.status !== 'PLANNED' && job.status !== 'REWORK') {
       throw new Error(
@@ -843,14 +919,19 @@ export class WorkOrderService {
     if (data.technician_id) {
       const tech = await prisma.employee.findUnique({
         where: { id: data.technician_id },
-        select: { id: true, position: true, is_active: true },
+        select: { id: true, position: true, is_active: true, full_name: true },
       });
       if (!tech || tech.position !== 'TECHNICIAN') {
         throw new Error('Nhân viên được phân công phải là kỹ thuật viên (TECHNICIAN).');
       }
+      if (!tech.is_active) {
+        throw new Error(`Kỹ thuật viên "${tech.full_name}" đang ở trạng thái ngừng hoạt động, không thể phân công công việc.`);
+      }
     }
 
-    return await prisma.$transaction(async (tx) => {
+    const prevEmployeeId = job.labours[0]?.employee_id ?? null;
+
+    const fullUpdatedJob = await prisma.$transaction(async (tx) => {
       // 1. Cập nhật Job
       const updatedJob = await tx.job.update({
         where: { id: jobId },
@@ -884,6 +965,7 @@ export class WorkOrderService {
               data.technician_id !== undefined ? data.technician_id : job.labours[0].employee_id,
             job_type_id: jTypeId || undefined,
             estimated_hours: estHours,
+            price: data.price !== undefined ? Number(data.price) : undefined,
             description: data.name?.trim() || job.name,
           },
         });
@@ -895,7 +977,7 @@ export class WorkOrderService {
             description: data.name?.trim() || job.name,
             job_type_id: jTypeId || 1,
             estimated_hours: estHours,
-            price: 150000,
+            price: data.price !== undefined ? Number(data.price) : 150000,
           },
         });
       }
@@ -911,6 +993,25 @@ export class WorkOrderService {
 
       return fullUpdatedJob;
     });
+
+    if (data.technician_id && data.technician_id !== prevEmployeeId) {
+      const assignedLab = fullUpdatedJob?.labours?.find((l) => l.employee_id === data.technician_id);
+      const techUserId = assignedLab?.employee?.user_id;
+      if (techUserId) {
+        notificationService
+          .sendInApp({
+            userId: techUserId,
+            type: 'TASK_ASSIGNED',
+            title: `Phân công công việc: ${fullUpdatedJob?.name || job.name}`,
+            message: `Bạn vừa được phân công thực hiện công việc "${fullUpdatedJob?.name || job.name}".`,
+            entityType: 'WORK_ORDER',
+            entityId: workOrderId,
+          })
+          .catch((err) => console.error('Failed to notify technician on job updated:', err));
+      }
+    }
+
+    return fullUpdatedJob;
   }
 
   /**
@@ -1650,13 +1751,18 @@ export class WorkOrderService {
 
     // Tự động đồng bộ trạng thái phụ tùng theo từng giai đoạn trạng thái của công việc
     for (const part of parts) {
+      if (part.status === 'RETURNED') continue;
+
       const jStatus = part.job?.status;
       let targetStatus = part.status;
       let targetIssued = Number(part.issued_quantity);
 
       if (jStatus === 'COMPLETED' || jStatus === 'PASSED') {
         targetStatus = 'USED';
-        targetIssued = Number(part.planned_quantity);
+        targetIssued =
+          part.status === 'USED' && Number(part.issued_quantity) > 0
+            ? Number(part.issued_quantity)
+            : Number(part.planned_quantity);
       } else if (jStatus === 'IN_PROGRESS' || jStatus === 'REWORK') {
         if (part.status !== 'USED') {
           targetStatus = 'ISSUED';
@@ -1782,10 +1888,9 @@ export class WorkOrderService {
       },
     });
 
-    // 5. Ghi nhận bút toán Xuất kho (ISSUE) vào Thẻ kho (Stock Movement) & trừ tồn kho
-    const qtyToIssue = initialIssuedQty > 0 ? initialIssuedQty : Number(data.planned_quantity);
-    if (qtyToIssue > 0) {
-      const newOnHand = Math.max(0, item.on_hand - qtyToIssue);
+    // 5. Ghi nhận bút toán Xuất kho (ISSUE) vào Thẻ kho (Stock Movement) & trừ tồn kho chỉ khi đã thực xuất (Job đang thi công/hoàn thành)
+    if (initialIssuedQty > 0) {
+      const newOnHand = Math.max(0, item.on_hand - initialIssuedQty);
       await prisma.inventoryItem.update({
         where: { id: item.id },
         data: { on_hand: newOnHand },
@@ -1799,13 +1904,25 @@ export class WorkOrderService {
           reference_id: jobId,
           job_id: jobId,
           job_part_id: jobPart.id,
-          quantity: -qtyToIssue,
+          quantity: -initialIssuedQty,
           unit_cost: item.average_cost,
           balance_after: newOnHand,
           notes: `Xuất phụ tùng cho công việc [${job.name}] · Lệnh sửa chữa #${wo.wo_number}`,
           created_by_id: userId || wo.advisor_id || 1,
         },
       });
+
+      if (newOnHand <= (item.reorder_level ?? 0)) {
+        notificationService
+          .sendInAppToRoles(['MANAGER'], {
+            type: 'LOW_STOCK_ALERT',
+            title: `Cảnh báo tồn kho thấp (${item.sku})`,
+            message: `Phụ tùng ${item.sku} chỉ còn ${newOnHand} trong kho (mức tối thiểu: ${item.reorder_level ?? 0}).`,
+            entityType: 'INVENTORY',
+            entityId: item.id,
+          })
+          .catch((err) => console.error('Failed to send low stock alert:', err));
+      }
     }
 
     return jobPart;
@@ -1967,6 +2084,28 @@ export class WorkOrderService {
         throw new Error('Không tìm thấy báo giá đã phê duyệt cho phiếu công việc này.');
       }
 
+      const serviceIds = (wo.services || []).map((s) => s.id);
+      const allJobParts =
+        serviceIds.length > 0 && (tx as any).jobPart
+          ? await (tx as any).jobPart.findMany({
+              where: {
+                job: {
+                  wo_service_id: { in: serviceIds },
+                },
+              },
+              include: {
+                item: {
+                  include: {
+                    part_category: true,
+                  },
+                },
+              },
+            })
+          : [];
+
+      // Chỉ cho phép bắt đầu công việc khi đủ phụ tùng trong kho
+      this.ensureSufficientPartsStock(allJobParts);
+
       // 1. Chuyển Work Order sang IN_PROGRESS
       const updatedWo = await tx.workOrder.update({
         where: { id: workOrderId },
@@ -1997,7 +2136,6 @@ export class WorkOrderService {
       });
 
       // 3. Chuyển tất cả Job thuộc các WoService của Work Order đang PLANNED sang IN_PROGRESS
-      const serviceIds = (wo.services || []).map((s) => s.id);
       if (serviceIds.length > 0) {
         await tx.job.updateMany({
           where: {
@@ -2011,22 +2149,15 @@ export class WorkOrderService {
 
         // Xuất kho phụ tùng cho tất cả các công việc bắt đầu thi công
         if ((tx as any).jobPart) {
-          const allJobParts = await (tx as any).jobPart.findMany({
-            where: {
-              job: {
-                wo_service_id: { in: serviceIds },
-              },
-            },
-          });
           for (const p of allJobParts) {
-            if (p.status !== 'USED') {
-              await (tx as any).jobPart.update({
-                where: { id: p.id },
-                data: {
-                  status: 'ISSUED',
-                  issued_quantity: p.planned_quantity,
-                },
-              });
+            if (p.status !== 'USED' && p.status !== 'ISSUED') {
+              await this.issueJobPartWithStock(
+                tx,
+                p,
+                `Lệnh sửa chữa #${wo.wo_number}`,
+                wo.wo_number,
+                userId || wo.advisor_id || 1
+              );
             }
           }
         }
@@ -2064,12 +2195,29 @@ export class WorkOrderService {
         `;
 
         notificationService
-          .sendEmail(
-            wo.customer.email,
-            `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công dịch vụ`,
-            emailHtml
-          )
-          .catch((err: any) => console.warn('[StartWork Email Error]', err?.message));
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'WORK_ORDER_STARTED',
+            title: `Xe ${wo.vehicle.license_plate} đã bắt đầu thi công`,
+            message: `Phiếu công việc ${wo.wo_number} cho xe ${wo.vehicle.license_plate} đã chính thức bắt đầu thi công tại xưởng.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+            email: wo.customer.email,
+            subject: `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công dịch vụ`,
+            html: emailHtml,
+          })
+          .catch((err: any) => console.warn('[StartWork Notification Error]', err?.message));
+      } else {
+        notificationService
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'WORK_ORDER_STARTED',
+            title: `Xe ${wo.vehicle.license_plate} đã bắt đầu thi công`,
+            message: `Phiếu công việc ${wo.wo_number} cho xe ${wo.vehicle.license_plate} đã chính thức bắt đầu thi công tại xưởng.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+          })
+          .catch((err: any) => console.warn('[StartWork Notification Error]', err?.message));
       }
 
       return updatedWo;
@@ -2196,12 +2344,29 @@ export class WorkOrderService {
         `;
 
         notificationService
-          .sendEmail(
-            wo.customer.email,
-            `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công hạng mục ${woService.name}`,
-            emailHtml
-          )
-          .catch((err: any) => console.warn('[StartService Email Error]', err?.message));
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'SERVICE_ITEM_STARTED',
+            title: `Xe ${wo.vehicle.license_plate} bắt đầu hạng mục ${woService.name}`,
+            message: `Phiếu công việc ${wo.wo_number} đã bắt đầu thi công hạng mục: ${woService.name}.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+            email: wo.customer.email,
+            subject: `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công hạng mục ${woService.name}`,
+            html: emailHtml,
+          })
+          .catch((err: any) => console.warn('[StartService Notification Error]', err?.message));
+      } else if (transitionedWoToInProgress) {
+        notificationService
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'SERVICE_ITEM_STARTED',
+            title: `Xe ${wo.vehicle.license_plate} bắt đầu hạng mục ${woService.name}`,
+            message: `Phiếu công việc ${wo.wo_number} đã bắt đầu thi công hạng mục: ${woService.name}.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+          })
+          .catch((err: any) => console.warn('[StartService Notification Error]', err?.message));
       }
 
       return updatedService;
@@ -2310,6 +2475,73 @@ export class WorkOrderService {
   }
 
   /**
+   * Xuất kho 1 dòng JobPart: cập nhật status = ISSUED, trừ on_hand và ghi StockMovement(ISSUE)
+   */
+  private async issueJobPartWithStock(
+    tx: any,
+    part: any,
+    jobLabel: string,
+    woNumber: string,
+    userId: number
+  ) {
+    const qtyToIssue = Number(part.planned_quantity) || 0;
+    await tx.jobPart.update({
+      where: { id: part.id },
+      data: {
+        status: 'ISSUED',
+        issued_quantity: part.planned_quantity,
+      },
+    });
+
+    if (qtyToIssue > 0 && tx.inventoryItem) {
+      const invItem =
+        part.item ??
+        (await tx.inventoryItem.findUnique({
+          where: { id: part.item_id },
+        }));
+
+      if (invItem) {
+        const newOnHand = Math.max(0, Number(invItem.on_hand) - qtyToIssue);
+        await tx.inventoryItem.update({
+          where: { id: invItem.id },
+          data: { on_hand: newOnHand },
+        });
+
+        if (tx.stockMovement) {
+          await tx.stockMovement.create({
+            data: {
+              item_id: invItem.id,
+              movement_type: MovementType.ISSUE,
+              reference_type: ReferenceType.JOB,
+              reference_id: part.job_id,
+              job_id: part.job_id,
+              job_part_id: part.id,
+              quantity: -qtyToIssue,
+              unit_cost: invItem.average_cost ?? 0,
+              balance_after: newOnHand,
+              notes: `Xuất phụ tùng cho công việc [${jobLabel}] · Lệnh sửa chữa #${woNumber}`,
+              created_by_id: userId,
+            },
+          });
+        }
+
+        const reorderLevel = Number(invItem.reorder_level ?? 0);
+        if (newOnHand <= reorderLevel) {
+          notificationService
+            .sendInAppToRoles(['MANAGER'], {
+              type: 'LOW_STOCK_ALERT',
+              title: `Cảnh báo tồn kho thấp (${invItem.sku})`,
+              message: `Phụ tùng ${invItem.sku} chỉ còn ${newOnHand} trong kho (mức tối thiểu: ${reorderLevel}).`,
+              entityType: 'INVENTORY',
+              entityId: invItem.id,
+            })
+            .catch((err) => console.error('Failed to send low stock alert:', err));
+        }
+      }
+    }
+  }
+
+  /**
    * Đồng bộ trạng thái và số lượng xuất kho của phụ tùng theo từng giai đoạn trạng thái của công việc:
    * - COMPLETED / PASSED: Phụ tùng đã lắp ráp trên xe (USED), issued_quantity = planned_quantity
    * - IN_PROGRESS / REWORK: Phụ tùng đã xuất kho giao cho KTV (ISSUED), issued_quantity = planned_quantity
@@ -2319,31 +2551,122 @@ export class WorkOrderService {
     tx: any,
     jobId: number,
     jobStatus: string,
-    woStatus?: string
+    woStatus?: string,
+    meta?: {
+      jobName?: string;
+      woNumber?: string;
+      userId?: number;
+      partsUsage?: Array<{ jobPartId: number; usedQuantity: number }>;
+    }
   ) {
     const parts = await tx.jobPart.findMany({
       where: { job_id: jobId },
+      include: { item: true },
     });
     if (parts.length === 0) return;
 
     for (const part of parts) {
       if (jobStatus === 'COMPLETED' || jobStatus === 'PASSED') {
-        await tx.jobPart.update({
-          where: { id: part.id },
-          data: {
-            status: 'USED',
-            issued_quantity: part.planned_quantity,
-          },
-        });
-      } else if (jobStatus === 'IN_PROGRESS' || jobStatus === 'REWORK') {
-        if (part.status !== 'USED') {
+        if (part.status === 'RETURNED') continue;
+
+        const issuedQty =
+          Number(part.issued_quantity) > 0
+            ? Number(part.issued_quantity)
+            : Number(part.planned_quantity) || 0;
+        const usageOverride = meta?.partsUsage?.find((u) => u.jobPartId === part.id);
+        const usedQty =
+          usageOverride !== undefined ? Number(usageOverride.usedQuantity) : issuedQty;
+
+        if (!Number.isFinite(usedQty) || usedQty < 0 || usedQty > issuedQty) {
+          throw new Error(
+            `Số lượng thực dùng không hợp lệ (phải từ 0 đến ${issuedQty}).`
+          );
+        }
+
+        const returnedQty = Math.max(0, Number((issuedQty - usedQty).toFixed(2)));
+        const wasIssued = part.status === 'ISSUED' || Number(part.issued_quantity) > 0;
+
+        if (usedQty === 0) {
           await tx.jobPart.update({
             where: { id: part.id },
             data: {
-              status: 'ISSUED',
-              issued_quantity: part.planned_quantity,
+              status: 'RETURNED',
+              issued_quantity: 0,
+              returned_quantity: returnedQty,
             },
           });
+        } else if (returnedQty === 0) {
+          await tx.jobPart.update({
+            where: { id: part.id },
+            data: {
+              status: 'USED',
+              issued_quantity: usedQty,
+              returned_quantity: 0,
+            },
+          });
+        } else {
+          // Một phần đã sử dụng, phần dư thừa tách thành dòng RETURNED
+          await tx.jobPart.update({
+            where: { id: part.id },
+            data: {
+              status: 'USED',
+              planned_quantity: usedQty,
+              issued_quantity: usedQty,
+              returned_quantity: 0,
+            },
+          });
+          await tx.jobPart.create({
+            data: {
+              job_id: part.job_id,
+              item_id: part.item_id,
+              status: 'RETURNED',
+              is_warranty: part.is_warranty,
+              planned_quantity: returnedQty,
+              issued_quantity: 0,
+              returned_quantity: returnedQty,
+              unit_price: part.unit_price,
+            },
+          });
+        }
+
+        if (returnedQty > 0 && wasIssued && tx.inventoryItem) {
+          const invItem =
+            part.item ??
+            (await tx.inventoryItem.findUnique({ where: { id: part.item_id } }));
+          if (invItem) {
+            const newOnHand = Number(invItem.on_hand) + returnedQty;
+            await tx.inventoryItem.update({
+              where: { id: invItem.id },
+              data: { on_hand: newOnHand },
+            });
+            if (tx.stockMovement) {
+              await tx.stockMovement.create({
+                data: {
+                  item_id: invItem.id,
+                  movement_type: MovementType.RETURN,
+                  reference_type: ReferenceType.JOB,
+                  reference_id: jobId,
+                  job_id: jobId,
+                  job_part_id: part.id,
+                  quantity: returnedQty,
+                  unit_cost: invItem.average_cost ?? 0,
+                  balance_after: newOnHand,
+                  notes: `Hoàn trả vật tư thừa khi hoàn thành công việc [${meta?.jobName || `Job #${jobId}`}] · Lệnh sửa chữa #${meta?.woNumber || ''}`,
+                  created_by_id: meta?.userId || 1,
+                },
+              });
+            }
+          }
+        }
+      } else if (jobStatus === 'IN_PROGRESS' || jobStatus === 'REWORK') {
+        if (part.status !== 'USED' && part.status !== 'ISSUED') {
+          await this.issueJobPartWithStock(
+            tx,
+            part,
+            meta?.jobName || `Job #${jobId}`,
+            meta?.woNumber || '',
+            meta?.userId || 1
+          );
         }
       } else if (jobStatus === 'PLANNED') {
         const isApprovedOrLater = ['APPROVED', 'IN_PROGRESS', 'BILLING_REQUESTED', 'COMPLETED', 'CLOSED'].includes(
@@ -2361,13 +2684,68 @@ export class WorkOrderService {
   }
 
   /**
+   * Kiểm tra tồn kho đủ trước khi bắt đầu công việc (IN_PROGRESS)
+   */
+  private ensureSufficientPartsStock(
+    jobParts: Array<{
+      item_id: number;
+      status: string;
+      planned_quantity: any;
+      item?: {
+        sku?: string;
+        on_hand: number;
+        part_category?: { name?: string } | null;
+      } | null;
+    }>
+  ) {
+    const neededByItem = new Map<
+      number,
+      { name: string; onHand: number; needed: number }
+    >();
+
+    for (const part of jobParts) {
+      if (part.status === 'ISSUED' || part.status === 'USED') continue;
+      if (!part.item) continue;
+
+      const qty = Number(part.planned_quantity) || 0;
+      if (qty <= 0) continue;
+
+      const existing = neededByItem.get(part.item_id);
+      const itemName = part.item.part_category?.name || part.item.sku || `#${part.item_id}`;
+      if (existing) {
+        existing.needed += qty;
+      } else {
+        neededByItem.set(part.item_id, {
+          name: itemName,
+          onHand: Number(part.item.on_hand) || 0,
+          needed: qty,
+        });
+      }
+    }
+
+    const shortages: string[] = [];
+    for (const entry of neededByItem.values()) {
+      if (entry.needed > entry.onHand) {
+        shortages.push(`${entry.name} (Tồn: ${entry.onHand}, Cần: ${entry.needed})`);
+      }
+    }
+
+    if (shortages.length > 0) {
+      throw new Error(
+        `Không thể bắt đầu công việc vì thiếu phụ tùng trong kho: ${shortages.join('; ')}. Cần thông báo bộ phận kho nhập thêm hàng trước khi thi công.`
+      );
+    }
+  }
+
+  /**
    * Cập nhật trạng thái công việc (Job)
    * Trạng thái: PLANNED | IN_PROGRESS | COMPLETED | REWORK | PASSED
    */
   async updateJobStatus(
     workOrderId: number,
     jobId: number,
-    status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'REWORK' | 'PASSED'
+    status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'REWORK' | 'PASSED',
+    partsUsage?: Array<{ jobPartId: number; usedQuantity: number }>
   ) {
     return await prisma.$transaction(async (tx) => {
       const wo = await tx.workOrder.findUnique({
@@ -2401,6 +2779,34 @@ export class WorkOrderService {
         throw new Error('Không tìm thấy công việc trên phiếu.');
       }
 
+      const allowedNextStatuses: Record<string, string[]> = {
+        PLANNED: ['PLANNED', 'IN_PROGRESS', 'COMPLETED'],
+        IN_PROGRESS: ['IN_PROGRESS', 'COMPLETED'],
+        COMPLETED: ['COMPLETED', 'REWORK', 'PASSED'],
+        REWORK: ['REWORK', 'IN_PROGRESS', 'COMPLETED'],
+        PASSED: ['PASSED'],
+      };
+      const allowed = allowedNextStatuses[job.status] || [job.status];
+      if (!allowed.includes(status)) {
+        throw new Error(
+          `Không thể chuyển trạng thái công việc từ "${job.status}" sang "${status}".`
+        );
+      }
+
+      if (status === 'IN_PROGRESS' && (tx as any).jobPart) {
+        const jobParts = await (tx as any).jobPart.findMany({
+          where: { job_id: jobId },
+          include: {
+            item: {
+              include: {
+                part_category: true,
+              },
+            },
+          },
+        });
+        this.ensureSufficientPartsStock(jobParts);
+      }
+
       const updatedJob = await tx.job.update({
         where: { id: jobId },
         data: { status },
@@ -2414,7 +2820,12 @@ export class WorkOrderService {
       await this.syncServiceStatusFromJobs(tx, job.wo_service_id);
 
       // Đồng bộ trạng thái phụ tùng thuộc Job này theo từng giai đoạn trạng thái công việc
-      await this.syncJobPartsStatusFromJob(tx, jobId, status, wo.status);
+      await this.syncJobPartsStatusFromJob(tx, jobId, status, wo.status, {
+        jobName: job.name,
+        woNumber: wo.wo_number,
+        userId: wo.advisor_id || 1,
+        partsUsage,
+      });
 
       // Nếu lần đầu WorkOrder chuyển sang IN_PROGRESS, gửi email thông báo khách hàng
       if (transitionedWo && wo.customer?.email) {
@@ -2448,12 +2859,29 @@ export class WorkOrderService {
         `;
 
         notificationService
-          .sendEmail(
-            wo.customer.email,
-            `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công dịch vụ`,
-            emailHtml
-          )
-          .catch((err: any) => console.warn('[StartWork Email Error]', err?.message));
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'WORK_ORDER_STARTED',
+            title: `Xe ${wo.vehicle.license_plate} đã bắt đầu thi công`,
+            message: `Phiếu công việc ${wo.wo_number} cho xe ${wo.vehicle.license_plate} đã chính thức bắt đầu thi công tại xưởng.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+            email: wo.customer.email,
+            subject: `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công dịch vụ`,
+            html: emailHtml,
+          })
+          .catch((err: any) => console.warn('[StartWork Notification Error]', err?.message));
+      } else if (transitionedWo) {
+        notificationService
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'WORK_ORDER_STARTED',
+            title: `Xe ${wo.vehicle.license_plate} đã bắt đầu thi công`,
+            message: `Phiếu công việc ${wo.wo_number} cho xe ${wo.vehicle.license_plate} đã chính thức bắt đầu thi công tại xưởng.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+          })
+          .catch((err: any) => console.warn('[StartWork Notification Error]', err?.message));
       }
 
       return updatedJob;
@@ -2500,14 +2928,58 @@ export class WorkOrderService {
         throw new Error(`Phiếu công việc đã ở trạng thái ${wo.status}, không thể thực hiện xuất trả xe.`);
       }
 
-      // 1. Hủy giữ chỗ phụ tùng nếu có
+      if (
+        wo.check_in?.mileage !== null &&
+        wo.check_in?.mileage !== undefined &&
+        data.mileage !== undefined &&
+        Number(data.mileage) < Number(wo.check_in.mileage)
+      ) {
+        throw new Error(
+          `Số ODO xuất xưởng (${data.mileage} km) không được nhỏ hơn ODO tiếp nhận (${wo.check_in.mileage} km).`
+        );
+      }
+
+      // 1. Giải phóng toàn bộ phụ tùng giữ chỗ / kế hoạch / đã xuất chưa sử dụng về trạng thái Đã hoàn trả kho (RETURNED)
       for (const svc of wo.services) {
         for (const job of svc.jobs) {
           for (const part of job.parts) {
-            if (part.status === 'RESERVED') {
+            if (part.status === 'RESERVED' || part.status === 'PLANNED') {
               await tx.jobPart.update({
                 where: { id: part.id },
-                data: { status: 'RETURNED' },
+                data: { status: 'RETURNED', issued_quantity: 0 },
+              });
+            } else if (part.status === 'ISSUED') {
+              const qtyToReturn = Number(part.issued_quantity) || Number(part.planned_quantity) || 0;
+              if (qtyToReturn > 0 && tx.inventoryItem) {
+                const invItem = await tx.inventoryItem.findUnique({ where: { id: part.item_id } });
+                if (invItem) {
+                  const newOnHand = Number(invItem.on_hand) + qtyToReturn;
+                  await tx.inventoryItem.update({
+                    where: { id: invItem.id },
+                    data: { on_hand: newOnHand },
+                  });
+                  if (tx.stockMovement) {
+                    await tx.stockMovement.create({
+                      data: {
+                        item_id: invItem.id,
+                        movement_type: MovementType.RETURN,
+                        reference_type: ReferenceType.JOB,
+                        reference_id: job.id,
+                        job_id: job.id,
+                        job_part_id: part.id,
+                        quantity: qtyToReturn,
+                        unit_cost: invItem.average_cost ?? 0,
+                        balance_after: newOnHand,
+                        notes: `Hoàn trả kho do khách hủy dịch vụ · Lệnh sửa chữa #${wo.wo_number}`,
+                        created_by_id: userId,
+                      },
+                    });
+                  }
+                }
+              }
+              await tx.jobPart.update({
+                where: { id: part.id },
+                data: { status: 'RETURNED', issued_quantity: 0 },
               });
             }
           }
@@ -2582,12 +3054,29 @@ export class WorkOrderService {
         `;
 
         notificationService
-          .sendEmail(
-            wo.customer.email,
-            `[Car Service Center] Biên bản xuất trả xe ${wo.vehicle.license_plate}`,
-            emailHtml
-          )
-          .catch((err: any) => console.warn('[ReleaseVehicle Email Error]', err?.message));
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'VEHICLE_HANDOVER',
+            title: `Biên bản xuất trả xe ${wo.vehicle.license_plate}`,
+            message: `Phương tiện ${wo.vehicle.license_plate} theo phiếu ${wo.wo_number} đã hoàn tất thủ tục bàn giao và xuất trả xe.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+            email: wo.customer.email,
+            subject: `[Car Service Center] Biên bản xuất trả xe ${wo.vehicle.license_plate}`,
+            html: emailHtml,
+          })
+          .catch((err: any) => console.warn('[ReleaseVehicle Notification Error]', err?.message));
+      } else {
+        notificationService
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'VEHICLE_HANDOVER',
+            title: `Biên bản xuất trả xe ${wo.vehicle.license_plate}`,
+            message: `Phương tiện ${wo.vehicle.license_plate} theo phiếu ${wo.wo_number} đã hoàn tất thủ tục bàn giao và xuất trả xe.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+          })
+          .catch((err: any) => console.warn('[ReleaseVehicle Notification Error]', err?.message));
       }
 
       return {
@@ -2648,7 +3137,12 @@ export class WorkOrderService {
       }
 
       // Check ODO
-      if (wo.check_in?.mileage && data.returnMileage && Number(data.returnMileage) < Number(wo.check_in.mileage)) {
+      if (
+        wo.check_in?.mileage !== null &&
+        wo.check_in?.mileage !== undefined &&
+        data.returnMileage !== undefined &&
+        Number(data.returnMileage) < Number(wo.check_in.mileage)
+      ) {
         throw new Error(`Số ODO xuất xưởng (${data.returnMileage} km) không được nhỏ hơn ODO tiếp nhận (${wo.check_in.mileage} km).`);
       }
 
@@ -2701,21 +3195,9 @@ export class WorkOrderService {
         },
       });
 
-      // Tạo thông báo cho khách hàng
-      await tx.notification.create({
-        data: {
-          user_id: wo.customer_id,
-          notification_type: 'VEHICLE_READY',
-          title: `Bàn giao xe ${wo.vehicle.license_plate} thành công`,
-          message: `Phương tiện ${wo.vehicle.license_plate} (${wo.vehicle.make} ${wo.vehicle.model}) đã hoàn tất bàn giao xuất xưởng. Chân thành cảm ơn Quý khách!`,
-          entity_type: 'WORK_ORDER',
-          entity_id: workOrderId,
-        }
-      });
-
-      // Gửi email xác nhận kèm nội dung nghiệm thu bàn giao xe
-      if (wo.customer?.email) {
-        const emailHtml = `
+      // Gửi thông báo In-App + Socket.IO và email xác nhận kèm nội dung nghiệm thu bàn giao xe
+      const emailHtml = wo.customer?.email
+        ? `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
             <div style="background-color: #047857; padding: 24px; text-align: center; color: #ffffff;">
               <h2 style="margin: 0; font-size: 20px; font-weight: bold;">CAR SERVICE CENTER</h2>
@@ -2739,16 +3221,22 @@ export class WorkOrderService {
               Hotline hỗ trợ: 1900 8888 | Cảm ơn Quý khách đã đồng hành cùng trung tâm!
             </div>
           </div>
-        `;
+        `
+        : undefined;
 
-        notificationService
-          .sendEmail(
-            wo.customer.email,
-            `[Car Service Center] Biên bản bàn giao xuất xưởng xe ${wo.vehicle.license_plate}`,
-            emailHtml
-          )
-          .catch((err: any) => console.warn('[ReleaseVehicle Email Error]', err?.message));
-      }
+      notificationService
+        .notifyAndEmail({
+          userId: wo.customer_id,
+          type: 'VEHICLE_HANDOVER',
+          title: `Bàn giao xe ${wo.vehicle.license_plate} thành công`,
+          message: `Phương tiện ${wo.vehicle.license_plate} (${wo.vehicle.make} ${wo.vehicle.model}) đã hoàn tất bàn giao xuất xưởng. Chân thành cảm ơn Quý khách!`,
+          entityType: 'WORK_ORDER',
+          entityId: wo.id,
+          email: wo.customer?.email || undefined,
+          subject: `[Car Service Center] Biên bản bàn giao xuất xưởng xe ${wo.vehicle.license_plate}`,
+          html: emailHtml,
+        })
+        .catch((err: any) => console.warn('[ReleaseVehicle Notification Error]', err?.message));
 
       // Tự động đóng hồ sơ sau khi bàn giao thành công (nếu bật cấu hình)
       const finalWo = await this.tryAutoClose(tx, workOrderId, userId, updatedWo);

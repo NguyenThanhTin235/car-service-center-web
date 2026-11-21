@@ -15,10 +15,17 @@ import Toast from '@/components/shared/Toast';
 
 function generateCodeFromName(name: string): string {
   if (!name) return '';
-  const noAccents = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
-  return noAccents.toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  const noAccents = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D');
+  return noAccents
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 }
-
 
 interface PartCategoryModalProps {
   isOpen: boolean;
@@ -29,9 +36,15 @@ interface PartCategoryModalProps {
 }
 
 const inputClass =
-  'w-full h-10 px-3 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none';
+  'w-full h-10 px-3.5 rounded-xl border border-slate-200/90 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff]/20 transition-all';
 
-export function PartCategoryModal({ isOpen, onClose, category, onSuccess, uomOptions }: PartCategoryModalProps) {
+export function PartCategoryModal({
+  isOpen,
+  onClose,
+  category,
+  onSuccess,
+  uomOptions,
+}: PartCategoryModalProps) {
   const dispatch = useAppDispatch();
   const { actionLoading, actionError } = useAppSelector((state) => state.inventory);
 
@@ -42,7 +55,11 @@ export function PartCategoryModal({ isOpen, onClose, category, onSuccess, uomOpt
     uomId: '',
     description: '',
   });
-  const [toast, setToast] = useState<{ show: boolean; type: 'success' | 'error'; message: string }>({
+  const [toast, setToast] = useState<{
+    show: boolean;
+    type: 'success' | 'error';
+    message: string;
+  }>({
     show: false,
     type: 'success',
     message: '',
@@ -59,7 +76,13 @@ export function PartCategoryModal({ isOpen, onClose, category, onSuccess, uomOpt
           description: category.description || '',
         });
       } else {
-        setFormData({ code: '', name: '', itemType: 'PART', uomId: uomOptions[0]?.id?.toString() || '', description: '' });
+        setFormData({
+          code: '',
+          name: '',
+          itemType: 'PART',
+          uomId: uomOptions[0]?.id?.toString() || '',
+          description: '',
+        });
       }
       dispatch(clearActionError());
     }
@@ -80,24 +103,36 @@ export function PartCategoryModal({ isOpen, onClose, category, onSuccess, uomOpt
       : await dispatch(createPartCategory(data));
 
     if (resultAction.meta.requestStatus === 'fulfilled') {
-      setToast({ show: true, type: 'success', message: category ? 'Cập nhật danh mục thành công' : 'Thêm danh mục thành công' });
+      setToast({
+        show: true,
+        type: 'success',
+        message: category ? 'Cập nhật danh mục thành công' : 'Thêm danh mục thành công',
+      });
       setTimeout(() => {
         onSuccess();
         onClose();
       }, 1000);
     } else {
-      setToast({ show: true, type: 'error', message: (resultAction.payload as string) || 'Có lỗi xảy ra' });
+      setToast({
+        show: true,
+        type: 'error',
+        message: (resultAction.payload as string) || 'Có lỗi xảy ra',
+      });
     }
   };
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} title={category ? 'Cập nhật Danh mục phụ tùng' : 'Thêm Danh mục phụ tùng'}>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={category ? 'Cập nhật Danh mục phụ tùng' : 'Thêm Danh mục phụ tùng'}
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-label-sm text-on-surface font-medium mb-1">
-                Mã danh mục <span className="text-error">*</span>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Mã danh mục <span className="text-rose-500">*</span>
               </label>
               <input
                 id="part-category-code"
@@ -110,8 +145,8 @@ export function PartCategoryModal({ isOpen, onClose, category, onSuccess, uomOpt
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-label-sm text-on-surface font-medium mb-1">
-                Tên danh mục <span className="text-error">*</span>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Tên danh mục <span className="text-rose-500">*</span>
               </label>
               <input
                 id="part-category-name"
@@ -134,8 +169,8 @@ export function PartCategoryModal({ isOpen, onClose, category, onSuccess, uomOpt
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-label-sm text-on-surface font-medium mb-1">
-                Loại vật tư <span className="text-error">*</span>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Loại vật tư <span className="text-rose-500">*</span>
               </label>
               <select
                 id="part-category-type"
@@ -151,8 +186,8 @@ export function PartCategoryModal({ isOpen, onClose, category, onSuccess, uomOpt
               </select>
             </div>
             <div>
-              <label className="block text-label-sm text-on-surface font-medium mb-1">
-                Đơn vị tính <span className="text-error">*</span>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Đơn vị tính <span className="text-rose-500">*</span>
               </label>
               <select
                 id="part-category-uom"
@@ -172,31 +207,34 @@ export function PartCategoryModal({ isOpen, onClose, category, onSuccess, uomOpt
           </div>
 
           <div>
-            <label className="block text-label-sm text-on-surface font-medium mb-1">Mô tả</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">Mô tả</label>
             <textarea
               id="part-category-description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full min-h-[80px] px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none"
+              className="w-full min-h-[85px] p-3 rounded-xl border border-slate-200/90 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff]/20 transition-all"
+              placeholder="Ghi chú chi tiết về nhóm phụ tùng..."
             />
           </div>
 
           {actionError && (
-            <div className="p-3 bg-error-container text-error rounded-lg text-body-sm font-medium">{actionError}</div>
+            <div className="p-3 bg-rose-50 text-rose-700 rounded-xl text-xs font-semibold border border-rose-200">
+              {actionError}
+            </div>
           )}
 
-          <div className="flex justify-end gap-3 mt-6">
+          <div className="flex justify-end gap-2.5 mt-6 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-on-surface-variant font-medium hover:bg-surface-container-low rounded-lg transition-colors"
+              className="h-10 px-4 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all cursor-pointer"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={actionLoading}
-              className="px-4 py-2 bg-primary-container hover:bg-primary text-on-primary font-medium rounded-lg transition-colors disabled:opacity-50"
+              className="h-10 px-5 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
               {actionLoading ? 'Đang xử lý...' : 'Lưu lại'}
             </button>
@@ -204,7 +242,13 @@ export function PartCategoryModal({ isOpen, onClose, category, onSuccess, uomOpt
         </form>
       </Modal>
 
-      {toast.show && <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />}
+      {toast.show && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast({ ...toast, show: false })}
+        />
+      )}
     </>
   );
 }

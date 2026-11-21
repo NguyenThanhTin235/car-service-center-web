@@ -121,52 +121,62 @@ export class PaymentService {
     });
 
     // 5. Gửi thông báo cho Cố vấn dịch vụ (SA): Xe sẵn sàng để bàn giao
-    await tx.notification.create({
-      data: {
-        user_id: updatedInvoice.work_order.advisor_id,
-        notification_type: 'VEHICLE_READY',
-        title: `Xe ${updatedInvoice.work_order.vehicle.license_plate} đã quyết toán tài chính 100%`,
-        message: `Hóa đơn ${updatedInvoice.invoice_number} đã được thanh toán thành công. Xe sẵn sàng để thực hiện bàn giao cho khách hàng.`,
-        entity_type: 'WORK_ORDER',
-        entity_id: updatedInvoice.work_order_id,
-      },
-    });
+    if (updatedInvoice.work_order.advisor_id) {
+      notificationService
+        .sendInApp({
+          userId: updatedInvoice.work_order.advisor_id,
+          type: 'VEHICLE_READY',
+          title: `Xe ${updatedInvoice.work_order.vehicle.license_plate} đã quyết toán tài chính 100%`,
+          message: `Hóa đơn ${updatedInvoice.invoice_number} đã được thanh toán thành công. Xe sẵn sàng để thực hiện bàn giao cho khách hàng.`,
+          entityType: 'WORK_ORDER',
+          entityId: updatedInvoice.work_order_id,
+        })
+        .catch((err: any) => console.warn('[Payment Advisor InApp Error]', err?.message));
+    }
 
-    // 6. Gửi thông báo cho Khách hàng
-    await tx.notification.create({
-      data: {
-        user_id: updatedInvoice.work_order.customer_id,
-        notification_type: 'PAYMENT_SUCCESS',
+    // 6. Gửi thông báo In-App + Socket.IO + email xác nhận thanh toán cho Khách hàng
+    const emailData = updatedInvoice.work_order.customer?.email
+      ? buildPaymentSuccessEmail({
+          customerName: updatedInvoice.work_order.customer.full_name,
+          invoiceNumber: updatedInvoice.invoice_number,
+          licensePlate: updatedInvoice.work_order.vehicle.license_plate,
+          vehicleName: `${updatedInvoice.work_order.vehicle.make} ${updatedInvoice.work_order.vehicle.model}`,
+          totalAmount: Number(params.amount),
+          amountDue: 0,
+          paidAt,
+          paymentMethod:
+            params.paymentMethod === 'CASH'
+              ? 'Tiền mặt'
+              : params.paymentMethod === 'CARD'
+              ? 'Thẻ ngân hàng'
+              : 'Chuyển khoản trực tuyến',
+        })
+      : undefined;
+
+    notificationService
+      .notifyAndEmail({
+        userId: updatedInvoice.work_order.customer_id,
+        type: 'PAYMENT_SUCCESS',
         title: `Thanh toán thành công hóa đơn ${updatedInvoice.invoice_number}`,
         message: `Quý khách đã thanh toán ${Number(params.amount).toLocaleString('vi-VN')} đ. Xe của Quý khách đã sẵn sàng để nhận lại!`,
-        entity_type: 'INVOICE',
-        entity_id: updatedInvoice.id,
-      },
-    });
+        entityType: 'INVOICE',
+        entityId: updatedInvoice.id,
+        email: updatedInvoice.work_order.customer?.email || undefined,
+        subject: emailData?.subject,
+        html: emailData?.html,
+      })
+      .catch((err: any) => console.warn('[Payment Customer Notification Error]', err?.message));
 
-    // 7. Gửi email xác nhận thanh toán nếu khách hàng có email
-    if (updatedInvoice.work_order.customer?.email) {
-      const emailData = buildPaymentSuccessEmail({
-        customerName: updatedInvoice.work_order.customer.full_name,
-        invoiceNumber: updatedInvoice.invoice_number,
-        licensePlate: updatedInvoice.work_order.vehicle.license_plate,
-        vehicleName: `${updatedInvoice.work_order.vehicle.make} ${updatedInvoice.work_order.vehicle.model}`,
-        totalAmount: Number(params.amount),
-        amountDue: 0,
-        paidAt,
-        paymentMethod:
-          params.paymentMethod === 'CASH'
-            ? 'Tiền mặt'
-            : params.paymentMethod === 'CARD'
-            ? 'Thẻ ngân hàng'
-            : 'Chuyển khoản trực tuyến',
-      });
-      notificationService.sendEmail(
-        updatedInvoice.work_order.customer.email,
-        emailData.subject,
-        emailData.html
-      );
-    }
+    // 7. Gửi thông báo real-time tới quầy thu ngân (DESK STAFF)
+    notificationService
+      .sendInAppToRoles(['DESK STAFF'], {
+        type: 'PAYMENT_SUCCESS',
+        title: `Thanh toán thành công hóa đơn ${updatedInvoice.invoice_number}`,
+        message: `Hóa đơn ${updatedInvoice.invoice_number} (xe ${updatedInvoice.work_order.vehicle.license_plate}) đã thanh toán ${Number(params.amount).toLocaleString('vi-VN')} đ.`,
+        entityType: 'INVOICE',
+        entityId: updatedInvoice.id,
+      })
+      .catch((err: any) => console.warn('[Payment Roles InApp Error]', err?.message));
 
     return {
       payment: updatedPayment,

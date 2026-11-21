@@ -111,16 +111,23 @@ export function GoodsReceiptDetailModal({
     const printWindow = window.open('', '_blank', 'width=960,height=780');
     if (!printWindow) return;
 
+    const escapeHtml = (val: unknown): string =>
+      String(val ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
     const rowsHtml = receipt.items
       .map(
         (line, idx) => `
         <tr>
           <td style="text-align:center">${idx + 1}</td>
-          <td style="font-family:monospace;font-weight:700">${line.item?.sku || ''}</td>
-          <td>${line.item?.partCategory?.name || line.item?.name || ''}${
-          line.item?.brand ? ` (${line.item.brand.name})` : ''
+          <td style="font-family:monospace;font-weight:700">${escapeHtml(line.item?.sku || '')}</td>
+          <td>${escapeHtml(line.item?.partCategory?.name || line.item?.name || '')}${
+          line.item?.brand ? ` (${escapeHtml(line.item.brand.name)})` : ''
         }</td>
-          <td style="text-align:center">${line.item?.uom?.name || 'Cái'}</td>
+          <td style="text-align:center">${escapeHtml(line.item?.uom?.name || 'Cái')}</td>
           <td style="text-align:right;font-family:monospace">${line.quantity}</td>
           <td style="text-align:right;font-family:monospace">${line.unitCost.toLocaleString(
             'vi-VN'
@@ -133,37 +140,47 @@ export function GoodsReceiptDetailModal({
       )
       .join('');
 
+    const printedAt = `${new Date().toLocaleTimeString('vi-VN')} ${new Date().toLocaleDateString('vi-VN')}`;
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html lang="vi">
       <head>
         <meta charset="utf-8" />
-        <title>Phiếu Nhập Kho - ${receipt.receiptNumber}</title>
+        <title>Phiếu Nhập Kho - ${escapeHtml(receipt.receiptNumber)}</title>
         <style>
-          body { font-family: Arial, sans-serif; color: #0f172a; padding: 32px; font-size: 13px; }
-          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #0866ff; padding-bottom: 16px; margin-bottom: 20px; }
-          .title { text-align: center; margin: 16px 0 24px; }
-          .title h1 { margin: 0; font-size: 22px; text-transform: uppercase; color: #0f172a; }
-          .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-bottom: 20px; background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th, td { border: 1px solid #cbd5e1; padding: 8px 10px; }
-          th { background: #f1f5f9; text-transform: uppercase; font-size: 11px; }
-          .totals { width: 320px; margin-left: auto; margin-bottom: 32px; }
-          .totals div { display: flex; justify-content: space-between; padding: 5px 0; }
-          .totals .grand { font-size: 15px; font-weight: bold; color: #0866ff; border-top: 1px solid #94a3b8; padding-top: 8px; }
-          .signatures { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; margin-top: 40px; }
+          @page { size: A4 portrait; margin: 12mm; }
+          * { box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; color: #0f172a; padding: 20px; font-size: 12.5px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #0866ff; padding-bottom: 12px; margin-bottom: 16px; }
+          .title { text-align: center; margin: 12px 0 18px; }
+          .title h1 { margin: 0 0 4px; font-size: 20px; text-transform: uppercase; color: #0f172a; }
+          .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; margin-bottom: 16px; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 12px; }
+          thead { display: table-header-group; }
+          tr { page-break-inside: avoid; }
+          th, td { border: 1px solid #cbd5e1; padding: 7px 9px; }
+          th { background: #1e40af; color: #ffffff; text-transform: uppercase; font-size: 10.5px; }
+          tbody tr:nth-child(even) { background: #f8fafc; }
+          .totals { width: 320px; margin-left: auto; margin-bottom: 24px; page-break-inside: avoid; }
+          .totals div { display: flex; justify-content: space-between; padding: 4px 0; }
+          .totals .grand { font-size: 14px; font-weight: bold; color: #0866ff; border-top: 1px solid #94a3b8; padding-top: 6px; margin-top: 4px; }
+          .signatures { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; margin-top: 28px; page-break-inside: avoid; }
           .signatures p { font-size: 11px; color: #64748b; margin-top: 4px; }
+          .print-footer { margin-top: 48px; padding-top: 8px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 10.5px; color: #64748b; }
+          @media print { body { padding: 0; } }
         </style>
       </head>
       <body>
         <div class="header">
           <div>
-            <strong style="font-size:15px;color:#0866ff">TRUNG TÂM DỊCH VỤ Ô TÔ CAR SERVICE CENTER</strong><br/>
-            <span>Phân hệ Quản trị Kho & Vật tư Phụ tùng</span>
+            <strong style="font-size:14px;color:#1e40af">TRUNG TÂM BẢO DƯỠNG &amp; SỬA CHỮA Ô TÔ CAR SERVICE CENTER</strong><br/>
+            <span style="font-size:11px;color:#475569">Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh • Hotline: 1900 6868</span><br/>
+            <span style="font-size:11px;color:#475569">Phân hệ Quản trị Kho &amp; Vật tư Phụ tùng</span>
           </div>
           <div style="text-align:right">
-            <strong>Số phiếu: ${receipt.receiptNumber}</strong><br/>
-            <span>Trạng thái: ${badge.label}</span>
+            <strong>Số phiếu: ${escapeHtml(receipt.receiptNumber)}</strong><br/>
+            <span>Trạng thái: ${escapeHtml(badge.label)}</span>
           </div>
         </div>
         <div class="title">
@@ -174,11 +191,11 @@ export function GoodsReceiptDetailModal({
           <div><strong>Loại nghiệp vụ:</strong> ${
             receipt.receiptType === 'OPENING_STOCK' ? 'Nhập tồn đầu kỳ' : 'Nhập mua hàng từ NCC'
           }</div>
-          <div><strong>Số hóa đơn / Chứng từ:</strong> ${receipt.referenceNo || '—'}</div>
-          <div><strong>Nhà cung cấp:</strong> ${receipt.supplier?.name || '—'}</div>
-          <div><strong>Mã số thuế NCC:</strong> ${receipt.supplier?.taxCode || '—'}</div>
-          <div><strong>Người lập phiếu:</strong> ${receipt.createdBy?.fullName || 'Quản lý kho'}</div>
-          <div><strong>Ghi chú:</strong> ${receipt.notes || '—'}</div>
+          <div><strong>Số hóa đơn / Chứng từ:</strong> ${escapeHtml(receipt.referenceNo || '—')}</div>
+          <div><strong>Nhà cung cấp:</strong> ${escapeHtml(receipt.supplier?.name || '—')}</div>
+          <div><strong>Mã số thuế NCC:</strong> ${escapeHtml(receipt.supplier?.taxCode || '—')}</div>
+          <div><strong>Người lập phiếu:</strong> ${escapeHtml(receipt.createdBy?.fullName || 'Quản lý kho')}</div>
+          <div><strong>Ghi chú:</strong> ${escapeHtml(receipt.notes || '—')}</div>
         </div>
         <table>
           <thead>
@@ -214,6 +231,10 @@ export function GoodsReceiptDetailModal({
           <div><strong>Người giao hàng</strong><p>(Ký, ghi rõ họ tên)</p></div>
           <div><strong>Thủ kho</strong><p>(Ký, ghi rõ họ tên)</p></div>
           <div><strong>Quản lý phê duyệt</strong><p>(Ký, đóng dấu)</p></div>
+        </div>
+        <div class="print-footer">
+          <span>Chứng từ nội bộ — Car Service Center</span>
+          <span>Thời gian in: ${escapeHtml(printedAt)}</span>
         </div>
         <script>window.onload = () => { window.print(); }</script>
       </body>

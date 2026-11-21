@@ -997,9 +997,13 @@ async function main() {
   const qcStaffs = staffs.filter((_, i) => staffRoleMap[i].position === EmployeePosition.QC_STAFF);
   console.log('   ✅ 20 Staff Users + Employees');
 
-  // 3.3 EmployeeSkills
+  // 3.3 EmployeeSkills (Chỉ gán kỹ năng cho Kỹ thuật viên: TECHNICIAN, QC_STAFF, DETAILER)
   let empSkillCount = 0;
-  for (const staff of staffs) {
+  const techPositions: EmployeePosition[] = [EmployeePosition.TECHNICIAN, EmployeePosition.DETAILER, EmployeePosition.QC_STAFF];
+  const techStaffs = staffs.filter((_, i) =>
+    techPositions.includes(staffRoleMap[i].position)
+  );
+  for (const staff of techStaffs) {
     if (!staff.employee) continue;
     const numSkills = randomBetween(2, 4);
     const skillIndices = new Set<number>();

@@ -177,12 +177,13 @@ const appointmentSlice = createSlice({
       })
       // Confirm
       .addCase(confirmAppointment.fulfilled, (state, action) => {
-        const index = state.appointments.findIndex(a => a.id === action.payload.id);
+        const aptId = action.payload?.id ?? action.meta.arg;
+        const index = state.appointments.findIndex(a => a.id === aptId);
         if (index !== -1) {
           state.appointments[index].status = 'CONFIRMED';
-          if (state.selectedAppointment && state.selectedAppointment.id === action.payload.id) {
-            state.selectedAppointment.status = 'CONFIRMED';
-          }
+        }
+        if (state.selectedAppointment && state.selectedAppointment.id === aptId) {
+          state.selectedAppointment.status = 'CONFIRMED';
         }
       })
       // Cancel
@@ -197,12 +198,13 @@ const appointmentSlice = createSlice({
       })
       // Arrive
       .addCase(arriveAppointment.fulfilled, (state, action) => {
-        const index = state.appointments.findIndex(a => a.id === action.payload.id);
+        const aptId = action.payload?.appointment?.id ?? action.payload?.id ?? action.meta.arg;
+        const index = state.appointments.findIndex(a => a.id === aptId);
         if (index !== -1) {
           state.appointments[index].status = 'ARRIVED';
-          if (state.selectedAppointment && state.selectedAppointment.id === action.payload.id) {
-            state.selectedAppointment.status = 'ARRIVED';
-          }
+        }
+        if (state.selectedAppointment && state.selectedAppointment.id === aptId) {
+          state.selectedAppointment.status = 'ARRIVED';
         }
       });
   },

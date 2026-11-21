@@ -182,7 +182,25 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
   };
 
   // Gửi đánh giá QC cho service
+  const incompleteJobs = useMemo(() => {
+    const list: Array<{ id: number; name: string; status: string }> = [];
+    for (const svc of qcData?.services || []) {
+      for (const job of svc.jobs || []) {
+        if (job.status !== 'COMPLETED' && job.status !== 'PASSED') {
+          list.push({ id: job.id, name: job.name, status: job.status });
+        }
+      }
+    }
+    return list;
+  }, [qcData]);
+
   const handleSubmitServiceQc = async (service: QcServiceItem) => {
+    if (incompleteJobs.length > 0) {
+      toast.error(
+        `Không thể nghiệm thu chất lượng vì vẫn còn ${incompleteJobs.length} công việc thi công dở dang chưa hoàn thành.`
+      );
+      return;
+    }
     const serviceForm = evaluationForms[service.id];
     if (!serviceForm) return;
 
@@ -251,6 +269,12 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
 
   // Gửi đánh giá QC cho TOÀN BỘ các dịch vụ trong phiếu cùng một lúc
   const handleSubmitAllQc = async () => {
+    if (incompleteJobs.length > 0) {
+      toast.error(
+        `Không thể nghiệm thu chất lượng vì vẫn còn ${incompleteJobs.length} công việc thi công dở dang chưa hoàn thành.`
+      );
+      return;
+    }
     if (!qcData?.services || qcData.services.length === 0) return;
 
     // 1. Kiểm tra validation toàn bộ các dịch vụ
@@ -390,16 +414,16 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
   return (
     <div className="space-y-6">
       {/* 1. KPI STATS - Flattened Unified Strip */}
-      <div className="bg-[#f8fafc] border border-slate-200/90 rounded-2xl p-4 grid grid-cols-2 lg:grid-cols-4 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/80">
+      <div className="bg-[#f8fafc] border border-slate-200/90 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-0 lg:divide-x divide-slate-200/80">
         {/* Stat 1: Tiến độ kiểm định */}
-        <div className="sm:px-3 first:pl-0">
+        <div className="lg:pr-4 pb-3 sm:pb-0 border-b sm:border-b-0 border-slate-200/80">
           <div className="flex items-center justify-between text-slate-600 mb-1.5">
             <span className="text-xs font-bold">Tiến độ KCS</span>
             <span className="material-symbols-outlined text-[#0050cd] text-[18px]">verified</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl sm:text-2xl font-black text-zinc-900 font-mono">{stats.progressPercent}%</span>
-            <span className="text-xs text-slate-500 font-medium">({stats.passedServices}/{stats.totalServices} dịch vụ)</span>
+            <span className="text-xl sm:text-2xl font-black text-zinc-900 font-mono tabular-nums">{stats.progressPercent}%</span>
+            <span className="text-xs text-slate-500 font-medium tabular-nums">({stats.passedServices}/{stats.totalServices} dịch vụ)</span>
           </div>
           <div className="w-full bg-slate-200 h-2 rounded-full mt-2.5 overflow-hidden">
             <div
@@ -412,14 +436,14 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
         </div>
 
         {/* Stat 2: Công việc đã nghiệm thu */}
-        <div className="pt-3 sm:pt-0 sm:px-3">
+        <div className="lg:px-4 pb-3 sm:pb-0 border-b sm:border-b-0 border-slate-200/80">
           <div className="flex items-center justify-between text-slate-600 mb-1.5">
             <span className="text-xs font-bold">Hạng mục đã Pass</span>
             <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono">{stats.passedJobs}</span>
-            <span className="text-xs text-slate-500 font-medium">/ {stats.totalJobs} jobs kỹ thuật</span>
+            <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono tabular-nums">{stats.passedJobs}</span>
+            <span className="text-xs text-slate-500 font-medium tabular-nums">/ {stats.totalJobs} jobs kỹ thuật</span>
           </div>
           <p className="text-xs text-slate-500 mt-2 font-medium">
             Đã đạt chuẩn an toàn & chạy thử
@@ -427,7 +451,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
         </div>
 
         {/* Stat 3: Công việc Rework cần sửa lại */}
-        <div className="pt-3 sm:pt-0 sm:px-3">
+        <div className="lg:px-4 pb-3 sm:pb-0 sm:pt-3 lg:pt-0 border-b sm:border-b-0 sm:border-t lg:border-t-0 border-slate-200/80">
           <div className="flex items-center justify-between mb-1.5">
             <span className={`text-xs font-bold ${
               stats.reworkJobs > 0 ? 'text-rose-700' : 'text-slate-600'
@@ -441,7 +465,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
             </span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className={`text-xl sm:text-2xl font-black font-mono ${
+            <span className={`text-xl sm:text-2xl font-black font-mono tabular-nums ${
               stats.reworkJobs > 0 ? 'text-rose-600' : 'text-zinc-900'
             }`}>
               {stats.reworkJobs}
@@ -454,7 +478,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
         </div>
 
         {/* Stat 4: Trạng thái chốt cổng xuất xưởng */}
-        <div className="pt-3 sm:pt-0 sm:pl-3">
+        <div className="lg:pl-4 sm:pt-3 lg:pt-0 sm:border-t lg:border-t-0 border-slate-200/80">
           <div className="flex items-center justify-between text-slate-600 mb-1.5">
             <span className="text-xs font-bold">Cổng nghiệm thu</span>
             <span className="material-symbols-outlined text-amber-600 text-[18px]">door_front</span>
@@ -562,7 +586,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                 }`}
               >
                 <span
-                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold tabular-nums ${
                     isSelected ? 'bg-[#0050cd] text-white' : 'bg-slate-200 text-slate-700'
                   }`}
                 >
@@ -592,9 +616,9 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
 
         {/* Active Service QC Checklist Workspace */}
         {activeService && (
-          <div className="p-6 space-y-6">
+          <div className="p-4 sm:p-5 lg:p-6 space-y-5">
             {/* Header: Service Info & Jobs Summary */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 pb-4 border-b border-slate-200/80">
               <div>
                 <h3 className="text-base sm:text-lg font-extrabold text-zinc-900 flex items-center gap-2">
                   <span>{activeService.name}</span>
@@ -656,8 +680,17 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                     type="button"
                     onClick={() => handleSubmitServiceQc(activeService)}
                     disabled={actionLoading}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer disabled:opacity-50"
-                    title="Chỉ lưu kết quả kiểm định của dịch vụ hiện tại"
+                    aria-disabled={incompleteJobs.length > 0}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border ${
+                      incompleteJobs.length > 0
+                        ? 'bg-slate-100 text-slate-400 border-slate-200 opacity-60 cursor-not-allowed'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200 cursor-pointer disabled:opacity-50'
+                    }`}
+                    title={
+                      incompleteJobs.length > 0
+                        ? `Còn ${incompleteJobs.length} công việc chưa hoàn thành, chưa thể nghiệm thu`
+                        : 'Chỉ lưu kết quả kiểm định của dịch vụ hiện tại'
+                    }
                   >
                     <span className="material-symbols-outlined text-[16px]">save</span>
                     <span>Lưu mục này</span>
@@ -668,8 +701,17 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                     type="button"
                     onClick={handleSubmitAllQc}
                     disabled={actionLoading}
-                    className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#0050cd] hover:bg-[#0866ff] text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
-                    title="Lưu kết quả kiểm định cho toàn bộ các dịch vụ và công việc"
+                    aria-disabled={incompleteJobs.length > 0}
+                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-2xs ${
+                      incompleteJobs.length > 0
+                        ? 'bg-slate-200 text-slate-400 opacity-70 cursor-not-allowed'
+                        : 'bg-[#0050cd] hover:bg-[#0866ff] text-white active:scale-95 disabled:opacity-50 cursor-pointer'
+                    }`}
+                    title={
+                      incompleteJobs.length > 0
+                        ? `Còn ${incompleteJobs.length} công việc chưa hoàn thành, chưa thể nghiệm thu`
+                        : 'Lưu kết quả kiểm định cho toàn bộ các dịch vụ và công việc'
+                    }
                   >
                     <span className="material-symbols-outlined text-[18px]">
                       {actionLoading ? 'progress_activity' : 'fact_check'}
@@ -720,11 +762,11 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                         >
                           {index + 1}
                         </span>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-bold text-sm text-zinc-900">{item.name}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-bold text-sm text-zinc-900 leading-snug">{item.name}</p>
                             {isUnset && (
-                              <span className="text-xs text-amber-800 font-medium bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/80">
+                              <span className="text-[11px] text-amber-800 font-semibold bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200/80 whitespace-nowrap shrink-0">
                                 Chờ đánh giá
                               </span>
                             )}
@@ -735,7 +777,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                             value={itemState.notes || ''}
                             onChange={(e) => handleItemNoteChange(activeService.id, item.id, 'notes', e.target.value)}
                             disabled={isReadOnly}
-                            className={`mt-1.5 w-full sm:w-80 text-xs px-3 py-1.5 rounded-lg border text-zinc-900 placeholder:text-slate-400 ${
+                            className={`mt-1.5 w-full md:max-w-md text-xs px-3 py-2 rounded-lg border text-zinc-900 placeholder:text-slate-400 ${
                               isReadOnly
                                 ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-dashed border-slate-200'
                                 : 'bg-white border-slate-200/90 focus:outline-none focus:ring-1 focus:ring-[#0050cd] focus:border-[#0050cd]'
@@ -751,7 +793,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                           onClick={() => handleItemResultChange(activeService.id, item.id, 'PASS')}
                           disabled={isReadOnly}
                           title={isPass ? 'Nhấn lại để hủy chọn ĐẠT' : 'Đánh dấu ĐẠT'}
-                          className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                          className={`inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] whitespace-nowrap rounded-xl text-xs font-bold transition-all ${
                             isPass
                               ? 'bg-emerald-600 text-white shadow-2xs'
                               : 'bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-50'
@@ -770,7 +812,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                             onClick={() => handleItemResultChange(activeService.id, item.id, 'FAIL')}
                             disabled={isReadOnly}
                             title={isFail ? 'Nhấn lại để hủy chọn' : 'Đánh dấu KHÔNG ĐẠT'}
-                            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                            className={`inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] whitespace-nowrap rounded-xl text-xs font-bold transition-all ${
                               isFail
                                 ? 'bg-rose-600 text-white shadow-2xs'
                                 : 'bg-white text-rose-700 border border-rose-300 hover:bg-rose-50'

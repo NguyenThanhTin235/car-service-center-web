@@ -38,7 +38,8 @@ export const updateVehicle = async (req: Request, res: Response) => {
     res.json({ status: 'success', message: 'Cập nhật xe thành công.', data: updated });
   } catch (error: any) {
     const statusCode = error.message.includes('không có quyền') ? 403
-      : error.message.includes('Không tìm thấy') ? 404 : 400;
+      : error.message.includes('Không tìm thấy') ? 404
+      : error.message.includes('Không thể xóa phương tiện này') ? 409 : 400;
     res.status(statusCode).json({ status: 'error', message: error.message });
   }
 };
@@ -52,7 +53,23 @@ export const deleteVehicle = async (req: Request, res: Response) => {
     res.json({ status: 'success', ...result });
   } catch (error: any) {
     const statusCode = error.message.includes('không có quyền') ? 403
-      : error.message.includes('Không tìm thấy') ? 404 : 400;
+      : error.message.includes('Không tìm thấy') ? 404
+      : error.message.includes('Không thể xóa phương tiện này') ? 409 : 400;
+    res.status(statusCode).json({ status: 'error', message: error.message });
+  }
+};
+
+// Kích hoạt lại xe đã tạm dừng
+export const restoreVehicle = async (req: Request, res: Response) => {
+  try {
+    const customerId = req.user!.id;
+    const { id } = req.params;
+    const result = await vehicleService.restoreVehicle(Number(id), customerId);
+    res.json({ status: 'success', ...result });
+  } catch (error: any) {
+    const statusCode = error.message.includes('không có quyền') ? 403
+      : error.message.includes('Không tìm thấy') ? 404
+      : error.message.includes('Không thể xóa phương tiện này') ? 409 : 400;
     res.status(statusCode).json({ status: 'error', message: error.message });
   }
 };

@@ -15,7 +15,7 @@ import toast from 'react-hot-toast';
 
 export default function AppointmentsPage() {
   const dispatch = useAppDispatch();
-  const { appointments, loading, selectedAppointment } = useAppSelector(state => state.appointments);
+  const { appointments, loading, error, selectedAppointment } = useAppSelector(state => state.appointments);
 
   // Date state
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -24,6 +24,19 @@ export default function AppointmentsPage() {
   
   // Helper to format date without timezone shift
   const toApiDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  // Single-pass status counts for Bento filter tiles
+  const statusCounts = useMemo(() => {
+    let confirmed = 0;
+    let requested = 0;
+    let arrived = 0;
+    for (const a of appointments) {
+      if (a.status === 'CONFIRMED' || a.status === 'RESCHEDULED') confirmed += 1;
+      else if (a.status === 'REQUESTED') requested += 1;
+      else if (a.status === 'ARRIVED') arrived += 1;
+    }
+    return { confirmed, requested, arrived };
+  }, [appointments]);
 
   // Calculate date boundaries based on viewMode
   const dateBoundaries = useMemo(() => {
@@ -67,6 +80,7 @@ export default function AppointmentsPage() {
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createSlot, setCreateSlot] = useState<{ date?: Date; time?: string }>({});
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   
@@ -88,6 +102,14 @@ export default function AppointmentsPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   // Load appointments
+  const reloadAppointments = () => {
+    dispatch(fetchAppointments({
+      startDate: toApiDateStr(dateBoundaries.start),
+      endDate: toApiDateStr(dateBoundaries.end),
+      search: searchQuery
+    }));
+  };
+
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       dispatch(fetchAppointments({ 
@@ -189,66 +211,118 @@ export default function AppointmentsPage() {
     });
   }, [appointments, statusFilter]);
 
-  const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+  const STATUS_LABELS_MAP: Record<string, string> = {
+    REQUESTED: 'Chờ xác nhận',
+    CONFIRMED: 'Đã xác nhận',
+    RESCHEDULED: 'Đã dời lịch',
+    ARRIVED: 'Đã tiếp nhận',
+    CANCELLED: 'Đã hủy',
+  };
 
-    const tableRows = appointmentsToDisplay.map((apt: any) => {
-      const statusMap: Record<string, string> = {
-        REQUESTED: 'Chờ xác nhận',
-        CONFIRMED: 'Đã xác nhận',
-        RESCHEDULED: 'Đã dời lịch',
-        ARRIVED: 'Đã tiếp nhận',
-        CANCELLED: 'Đã hủy'
-      };
+  const escapeHtml = (val: unknown): string =>
+    String(val ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+  const getSortedAppointmentsForExport = () => {
+    return [...appointmentsToDisplay].sort((a: any, b: any) => {
+      const dateA = typeof a.scheduled_date === 'string' ? a.scheduled_date.substring(0, 10) : new Date(a.scheduled_date).toISOString().substring(0, 10);
+      const dateB = typeof b.scheduled_date === 'string' ? b.scheduled_date.substring(0, 10) : new Date(b.scheduled_date).toISOString().substring(0, 10);
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      return String(a.scheduled_time_str || '').localeCompare(String(b.scheduled_time_str || ''));
+    });
+  };
+
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank', 'width=1100,height=780');
+    if (!printWindow) {
+      toast.error('Trình duyệt đã chặn cửa sổ in. Vui lòng cho phép pop-up.');
+      return;
+    }
+
+    const sorted = getSortedAppointmentsForExport();
+    const tableRows = sorted.map((apt: any, idx: number) => {
       const rawDate = typeof apt.scheduled_date === 'string' ? apt.scheduled_date.substring(0, 10) : new Date(apt.scheduled_date).toISOString().substring(0, 10);
       const [y, m, d] = rawDate.split('-');
       const dateStr = `${d}/${m}/${y}`;
-      const vehicleStr = (apt.vehicle?.license_plate || '') + ' - ' + (apt.vehicle?.make || '') + ' ' + (apt.vehicle?.model || '');
-      const statusStr = statusMap[apt.status] || apt.status;
-      
+      const plate = apt.vehicle?.license_plate || '-';
+      const model = `${apt.vehicle?.make || ''} ${apt.vehicle?.model || ''}`.trim() || '-';
+      const statusStr = STATUS_LABELS_MAP[apt.status] || apt.status;
+      const notes = apt.notes || '-';
+
       return '<tr>' +
-        '<td>' + dateStr + '</td>' +
-        '<td>' + apt.scheduled_time_str + '</td>' +
-        '<td>' + (apt.customer?.full_name || '') + '</td>' +
-        '<td>' + (apt.customer?.phone || '') + '</td>' +
-        '<td>' + vehicleStr + '</td>' +
-        '<td class="status-' + apt.status + '"><strong>' + statusStr + '</strong></td>' +
+        '<td style="text-align:center">' + (idx + 1) + '</td>' +
+        '<td style="text-align:center;white-space:nowrap">' + escapeHtml(dateStr) + '</td>' +
+        '<td style="text-align:center;white-space:nowrap"><strong>' + escapeHtml(apt.scheduled_time_str || '-') + '</strong></td>' +
+        '<td>' + escapeHtml(apt.customer?.full_name || '-') + '</td>' +
+        '<td style="white-space:nowrap">' + escapeHtml(apt.customer?.phone || '-') + '</td>' +
+        '<td style="white-space:nowrap"><strong>' + escapeHtml(plate) + '</strong></td>' +
+        '<td>' + escapeHtml(model) + '</td>' +
+        '<td class="status-' + escapeHtml(apt.status) + '"><strong>' + escapeHtml(statusStr) + '</strong></td>' +
+        '<td>' + escapeHtml(notes) + '</td>' +
       '</tr>';
     }).join('');
 
-    const noDataRow = appointmentsToDisplay.length === 0 ? '<tr><td colspan="6" style="text-align:center;">Không có lịch hẹn nào</td></tr>' : '';
+    const noDataRow = sorted.length === 0 ? '<tr><td colspan="9" style="text-align:center;padding:24px;color:#64748b;">Không có lịch hẹn nào trong khoảng thời gian này</td></tr>' : '';
+    const printedAt = `${new Date().toLocaleTimeString('vi-VN')} ${new Date().toLocaleDateString('vi-VN')}`;
 
     const printContent = `
       <!DOCTYPE html>
-      <html>
+      <html lang="vi">
       <head>
-        <title>Lịch hẹn - Car Service Center</title>
+        <meta charset="utf-8" />
+        <title>Danh sách lịch hẹn - Car Service Center</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
-          h1 { text-align: center; color: #1a73e8; margin-bottom: 5px; }
-          .subtitle { text-align: center; margin-bottom: 20px; font-style: italic; color: #666; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-          th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-          th { background-color: #f1f3f4; font-weight: bold; }
+          @page { size: A4 landscape; margin: 12mm; }
+          * { box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 16px; color: #0f172a; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .brand-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #1e40af; padding-bottom: 10px; margin-bottom: 14px; }
+          .brand-name { font-size: 14px; font-weight: bold; color: #1e40af; text-transform: uppercase; }
+          .brand-sub { font-size: 11px; color: #475569; margin-top: 2px; }
+          .meta-right { text-align: right; font-size: 11px; color: #475569; }
+          h1 { text-align: center; color: #0f172a; font-size: 18px; margin: 8px 0 4px; text-transform: uppercase; }
+          .subtitle { text-align: center; margin-bottom: 14px; color: #475569; font-size: 12px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11.5px; }
+          thead { display: table-header-group; }
+          tr { page-break-inside: avoid; }
+          th, td { border: 1px solid #cbd5e1; padding: 7px 8px; text-align: left; vertical-align: middle; }
+          th { background-color: #1e40af; color: #ffffff; font-weight: bold; text-transform: uppercase; font-size: 10.5px; }
+          tbody tr:nth-child(even) { background-color: #f8fafc; }
           .status-REQUESTED { color: #d97706; }
           .status-CONFIRMED, .status-RESCHEDULED { color: #2563eb; }
           .status-ARRIVED { color: #059669; }
           .status-CANCELLED { color: #dc2626; }
+          .footer-note { margin-top: 12px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; }
+          @media print { body { padding: 0; } }
         </style>
       </head>
       <body>
-        <h1>Danh sách lịch hẹn</h1>
-        <div class="subtitle">Từ ngày ${formatDateStr(startOfWeek)} đến ngày ${formatDateStr(endOfWeek)}</div>
+        <div class="brand-header">
+          <div>
+            <div class="brand-name">TRUNG TÂM BẢO DƯỠNG &amp; SỬA CHỮA Ô TÔ CAR SERVICE CENTER</div>
+            <div class="brand-sub">Địa chỉ: Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh • Hotline: 1900 6868</div>
+          </div>
+          <div class="meta-right">
+            <div>Ngày in: ${escapeHtml(printedAt)}</div>
+            <div>Tổng số lịch hẹn: <strong>${sorted.length}</strong></div>
+          </div>
+        </div>
+        <h1>DANH SÁCH LỊCH HẸN KHÁCH HÀNG</h1>
+        <div class="subtitle">Từ ngày <strong>${escapeHtml(formatDateStr(startOfWeek))}</strong> đến ngày <strong>${escapeHtml(formatDateStr(endOfWeek))}</strong></div>
         <table>
           <thead>
             <tr>
-              <th>Ngày hẹn</th>
-              <th>Giờ</th>
+              <th style="text-align:center;width:36px;">STT</th>
+              <th style="text-align:center;width:85px;">Ngày hẹn</th>
+              <th style="text-align:center;width:60px;">Giờ</th>
               <th>Khách hàng</th>
-              <th>SĐT</th>
-              <th>Phương tiện</th>
-              <th>Trạng thái</th>
+              <th style="width:95px;">SĐT</th>
+              <th style="width:95px;">Biển số</th>
+              <th>Dòng xe</th>
+              <th style="width:105px;">Trạng thái</th>
+              <th>Ghi chú</th>
             </tr>
           </thead>
           <tbody>
@@ -256,6 +330,10 @@ export default function AppointmentsPage() {
             ${noDataRow}
           </tbody>
         </table>
+        <div class="footer-note">
+          <span>Tài liệu trích xuất từ Hệ thống Quản trị Car Service Center</span>
+          <span>Bộ phận Tiếp nhận &amp; Điều phối</span>
+        </div>
         <script>
           window.onload = function() {
             window.print();
@@ -269,126 +347,80 @@ export default function AppointmentsPage() {
     printWindow.document.close();
   };
 
-  const handleDownloadExcel = () => {
-    if (appointmentsToDisplay.length === 0) {
-      alert('Không có dữ liệu để tải xuống');
+  const handleDownloadExcel = async () => {
+    const sorted = getSortedAppointmentsForExport();
+    if (sorted.length === 0) {
+      toast.error('Không có dữ liệu lịch hẹn để tải xuống');
       return;
     }
 
-    const tableRows = appointmentsToDisplay.map((apt: any) => {
-      const statusMap: Record<string, string> = {
-        REQUESTED: 'Chờ xác nhận',
-        CONFIRMED: 'Đã xác nhận',
-        RESCHEDULED: 'Đã dời lịch',
-        ARRIVED: 'Đã tiếp nhận',
-        CANCELLED: 'Đã hủy'
-      };
-      
-      const rawDate = typeof apt.scheduled_date === 'string' ? apt.scheduled_date.substring(0, 10) : new Date(apt.scheduled_date).toISOString().substring(0, 10);
-      const [y, m, d] = rawDate.split('-');
-      const dateStr = `${d}/${m}/${y}`;
-      const vehicleStr = (apt.vehicle?.license_plate || '') + ' - ' + (apt.vehicle?.make || '') + ' ' + (apt.vehicle?.model || '');
-      const statusStr = statusMap[apt.status] || apt.status;
-      
-      return '<tr>' +
-        '<td>' + dateStr + '</td>' +
-        '<td>' + apt.scheduled_time_str + '</td>' +
-        '<td>' + (apt.customer?.full_name || '') + '</td>' +
-        '<td>' + (apt.customer?.phone || '') + '</td>' +
-        '<td>' + vehicleStr + '</td>' +
-        '<td>' + statusStr + '</td>' +
-      '</tr>';
-    }).join('');
+    try {
+      const excelData = sorted.map((apt: any, idx: number) => {
+        const rawDate = typeof apt.scheduled_date === 'string' ? apt.scheduled_date.substring(0, 10) : new Date(apt.scheduled_date).toISOString().substring(0, 10);
+        const [y, m, d] = rawDate.split('-');
+        const dateStr = `${d}/${m}/${y}`;
+        return {
+          'STT': idx + 1,
+          'Ngày hẹn': dateStr,
+          'Giờ hẹn': apt.scheduled_time_str || '-',
+          'Khách hàng': apt.customer?.full_name || '',
+          'Số điện thoại': apt.customer?.phone || '',
+          'Biển số xe': apt.vehicle?.license_plate || '',
+          'Dòng xe': `${apt.vehicle?.make || ''} ${apt.vehicle?.model || ''}`.trim(),
+          'Trạng thái': STATUS_LABELS_MAP[apt.status] || apt.status,
+          'Ghi chú': apt.notes || '',
+        };
+      });
 
-    const htmlContent = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head>
-        <meta charset="utf-8" />
-        <!--[if gte mso 9]>
-        <xml>
-          <x:ExcelWorkbook>
-            <x:ExcelWorksheets>
-              <x:ExcelWorksheet>
-                <x:Name>LichHen</x:Name>
-                <x:WorksheetOptions>
-                  <x:DisplayGridlines/>
-                </x:WorksheetOptions>
-              </x:ExcelWorksheet>
-            </x:ExcelWorksheets>
-          </x:ExcelWorkbook>
-        </xml>
-        <![endif]-->
-      </head>
-      <body>
-        <table border="1">
-          <thead>
-            <tr>
-              <th style="background-color: #f1f3f4;">Ngày hẹn</th>
-              <th style="background-color: #f1f3f4;">Giờ</th>
-              <th style="background-color: #f1f3f4;">Khách hàng</th>
-              <th style="background-color: #f1f3f4;">SĐT</th>
-              <th style="background-color: #f1f3f4;">Phương tiện</th>
-              <th style="background-color: #f1f3f4;">Trạng thái</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${tableRows}
-          </tbody>
-        </table>
-      </body>
-      </html>
-    `;
+      const exportTime = `${new Date().toLocaleTimeString('vi-VN')} ${new Date().toLocaleDateString('vi-VN')}`;
+      const reportHeader = [
+        ['TRUNG TÂM BẢO DƯỠNG & SỬA CHỮA Ô TÔ CAR SERVICE CENTER'],
+        ['BÁO CÁO DANH SÁCH LỊCH HẸN KHÁCH HÀNG'],
+        [],
+        ['Khoảng thời gian:', `${formatDateStr(startOfWeek)} - ${formatDateStr(endOfWeek)}`],
+        ['Ngày xuất báo cáo:', exportTime],
+        [],
+      ];
 
-    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `LichHen_${formatDateStr(startOfWeek).replace(/\//g, '-')}.xls`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      const XLSX = await import('xlsx');
+      const worksheet = XLSX.utils.aoa_to_sheet(reportHeader);
+      XLSX.utils.sheet_add_json(worksheet, excelData, { origin: 'A7' });
+
+      worksheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
+      ];
+
+      worksheet['!cols'] = [
+        { wch: 6 },  // STT
+        { wch: 13 }, // Ngày hẹn
+        { wch: 10 }, // Giờ hẹn
+        { wch: 24 }, // Khách hàng
+        { wch: 15 }, // SĐT
+        { wch: 15 }, // Biển số
+        { wch: 22 }, // Dòng xe
+        { wch: 16 }, // Trạng thái
+        { wch: 30 }, // Ghi chú
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Lịch hẹn');
+      XLSX.writeFile(workbook, `LichHen_${formatDateStr(startOfWeek).replace(/\//g, '-')}.xlsx`);
+      toast.success('Đã xuất danh sách lịch hẹn thành công!');
+    } catch (error) {
+      console.error('Lỗi xuất Excel lịch hẹn:', error);
+      toast.error('Có lỗi xảy ra khi xuất Excel!');
+    }
   };
 
   return (
     <div className="space-y-5">
-      {/* 1. SaaS Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
-          Lịch hẹn khách hàng
-        </h1>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={handleDownloadExcel}
-            className="h-10 px-3.5 bg-white border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[17px] text-emerald-700">download</span>
-            <span>Xuất Excel</span>
-          </button>
-          <button
-            onClick={handlePrint}
-            className="h-10 px-3.5 bg-white border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[17px] text-[#0866ff]">print</span>
-            <span>In lịch</span>
-          </button>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="h-10 px-4 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs active:scale-[0.98] transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px]">add_circle</span>
-            <span>+ Thêm lịch hẹn mới</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Asymmetrical Bento Summary & Navigation (5 + 7 cols) */}
+      {/* 1. Asymmetrical Bento Summary & Navigation (5 + 7 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Hero Calendar Control Card (5 cols) */}
         <div className="lg:col-span-5 rounded-2xl saas-hero-gradient text-white p-5 relative overflow-hidden flex flex-col justify-between">
           <div className="absolute inset-0 saas-subtle-grid pointer-events-none" />
-          <div className="relative z-10 flex items-start justify-between gap-3">
+          <div className="relative z-10 flex flex-wrap items-start justify-between gap-3">
             <div>
               <span className="text-xs font-medium text-white">Tổng lịch hẹn trong kỳ</span>
               <div className="text-3xl font-mono font-extrabold tabular-nums tracking-tight mt-1 text-white">
@@ -463,7 +495,7 @@ export default function AppointmentsPage() {
                 <span className="w-2.5 h-2.5 rounded-full bg-[#0866ff]" />
               </div>
               <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
-                {appointments.filter((a) => a.status === 'CONFIRMED' || a.status === 'RESCHEDULED').length}
+                {statusCounts.confirmed}
               </div>
               <span className="text-xs text-[#0050cd] font-medium">Sẵn sàng đón xe</span>
             </button>
@@ -482,7 +514,7 @@ export default function AppointmentsPage() {
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
               </div>
               <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
-                {appointments.filter((a) => a.status === 'REQUESTED').length}
+                {statusCounts.requested}
               </div>
               <span className="text-xs text-amber-800 font-medium">Cần gọi xác nhận</span>
             </button>
@@ -501,7 +533,7 @@ export default function AppointmentsPage() {
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
               </div>
               <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
-                {appointments.filter((a) => a.status === 'ARRIVED').length}
+                {statusCounts.arrived}
               </div>
               <span className="text-xs text-emerald-800 font-medium">Đã vào xưởng</span>
             </button>
@@ -521,12 +553,12 @@ export default function AppointmentsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px] text-slate-600">filter_list</span>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <span className="material-symbols-outlined text-[18px] text-slate-600 shrink-0">filter_list</span>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-9 px-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 focus:border-[#0866ff] focus:outline-none cursor-pointer"
+                className="w-full sm:w-auto h-9 px-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 focus:border-[#0866ff] focus:outline-none cursor-pointer"
               >
                 <option value="ALL">Tất cả trạng thái</option>
                 <option value="REQUESTED">Chờ xác nhận</option>
@@ -536,10 +568,89 @@ export default function AppointmentsPage() {
               </select>
             </div>
           </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              onClick={handleDownloadExcel}
+              className="h-9 px-3 bg-white border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px] text-emerald-700">download</span>
+              <span>Xuất Excel</span>
+            </button>
+            <button
+              onClick={handlePrint}
+              className="h-9 px-3 bg-white border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px] text-[#0866ff]">print</span>
+              <span>In lịch</span>
+            </button>
+            <button
+              onClick={() => {
+                setCreateSlot({});
+                setShowCreateModal(true);
+              }}
+              className="h-9 px-3.5 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs active:scale-[0.98] transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[17px]">add_circle</span>
+              <span>+ Thêm lịch hẹn mới</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* 3. Interactive Scheduler Grid Container */}
+      {error && (
+        <div className="rounded-2xl bg-rose-50/90 border border-rose-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 text-xs font-semibold text-rose-800">
+            <span className="material-symbols-outlined text-[20px] text-rose-600 shrink-0">error</span>
+            <span>Không thể tải lịch hẹn: {error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={reloadAppointments}
+            className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors shrink-0"
+          >
+            <span className="material-symbols-outlined text-[16px]">refresh</span>
+            <span>Thử lại</span>
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && appointmentsToDisplay.length === 0 && (
+        <div className="rounded-2xl bg-slate-50/90 border border-slate-200/80 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-slate-600">
+            <span className="material-symbols-outlined text-[18px] text-slate-400">event_busy</span>
+            <span>
+              {searchQuery || statusFilter !== 'ALL'
+                ? 'Không có lịch hẹn nào khớp với bộ lọc hiện tại.'
+                : 'Chưa có lịch hẹn nào trong khoảng thời gian này.'}
+            </span>
+          </div>
+          {(searchQuery || statusFilter !== 'ALL') ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setStatusFilter('ALL');
+              }}
+              className="text-xs font-bold text-[#0866ff] hover:underline self-start sm:self-auto cursor-pointer"
+            >
+              Xóa bộ lọc
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setCreateSlot({});
+                setShowCreateModal(true);
+              }}
+              className="text-xs font-bold text-[#0866ff] hover:underline self-start sm:self-auto cursor-pointer"
+            >
+              + Thêm lịch hẹn mới
+            </button>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div className="saas-card p-12 flex flex-col items-center justify-center text-slate-600 gap-2">
           <span className="material-symbols-outlined text-[32px] text-[#0866ff] animate-spin">
@@ -554,7 +665,8 @@ export default function AppointmentsPage() {
               appointments={appointmentsToDisplay}
               currentDate={currentDate}
               onAppointmentClick={handleAppointmentClick}
-              onTimeSlotClick={() => {
+              onTimeSlotClick={(date, timeStr) => {
+                setCreateSlot({ date, time: timeStr });
                 setShowCreateModal(true);
               }}
             />
@@ -564,7 +676,8 @@ export default function AppointmentsPage() {
               appointments={appointmentsToDisplay}
               startOfWeek={startOfWeek}
               onAppointmentClick={handleAppointmentClick}
-              onTimeSlotClick={() => {
+              onTimeSlotClick={(date, timeStr) => {
+                setCreateSlot({ date, time: timeStr });
                 setShowCreateModal(true);
               }}
             />
@@ -574,7 +687,8 @@ export default function AppointmentsPage() {
               appointments={appointmentsToDisplay}
               currentDate={currentDate}
               onAppointmentClick={handleAppointmentClick}
-              onTimeSlotClick={() => {
+              onTimeSlotClick={(date, timeStr) => {
+                setCreateSlot({ date, time: timeStr });
                 setShowCreateModal(true);
               }}
             />
@@ -595,12 +709,17 @@ export default function AppointmentsPage() {
       {/* Modals */}
       {showCreateModal && (
         <CreateAppointmentModal
-          onClose={() => setShowCreateModal(false)}
+          selectedDate={createSlot.date}
+          selectedTime={createSlot.time}
+          onClose={() => {
+            setShowCreateModal(false);
+            setCreateSlot({});
+          }}
           onSuccess={() => {
             dispatch(
               fetchAppointments({
-                startDate: startOfWeek.toISOString(),
-                endDate: endOfWeek.toISOString(),
+                startDate: toApiDateStr(startOfWeek),
+                endDate: toApiDateStr(endOfWeek),
                 search: searchQuery,
               })
             );

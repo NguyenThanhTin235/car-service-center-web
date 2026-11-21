@@ -52,3 +52,15 @@ export const toggleCatalog = async (req: Request, res: Response) => {
     res.status(statusCode).json({ status: 'error', message: error.message });
   }
 };
+
+// UC-74: Xóa danh mục chung
+export const deleteCatalog = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const result = await svc.deleteCatalog(parseInt(id as string));
+    res.json({ status: 'success', message: 'Xóa danh mục thành công', data: result });
+  } catch (error: any) {
+    const statusCode = error.message.includes('Không tìm thấy') ? 404 : 400;
+    res.status(statusCode).json({ status: 'error', message: error.message });
+  }
+};

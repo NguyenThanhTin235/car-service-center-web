@@ -4,6 +4,7 @@ import {
   createCatalog,
   updateCatalog,
   toggleCatalog,
+  deleteCatalog,
 } from '../controllers/system-catalog.controller';
 
 const router = Router();
@@ -19,5 +20,8 @@ router.put('/:id', updateCatalog);
 
 // UC-73: Toggle active/inactive
 router.patch('/:id/toggle', toggleCatalog);
+
+// UC-74: Xóa danh mục chung
+router.delete('/:id', deleteCatalog);
 
 export default router;

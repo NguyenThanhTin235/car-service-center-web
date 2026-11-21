@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-20T10:05:00+07:00",
+  "title": "Design System: AutoCare Pro — Automotive Concierge Editorial",
+  "extensions": {
+    "colorMeta": {
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Soft Cloud Canvas",
+        "canonical": "oklch(97.5% 0.008 264)",
+        "tonalRamp": ["#0F172A", "#1E293B", "#334155", "#475569", "#64748B", "#94A3B8", "#E2E8F0", "#F6F8FC"]
+      },
+      "surface-elevated": {
+        "role": "neutral",
+        "displayName": "Pure White",
+        "canonical": "oklch(100% 0 0)",
+        "tonalRamp": ["#0F172A", "#334155", "#475569", "#64748B", "#94A3B8", "#CBD5E1", "#F1F5F9", "#FFFFFF"]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Royal Sapphire Blue",
+        "canonical": "oklch(45% 0.21 262)",
+        "tonalRamp": ["#0A1E52", "#1E3A8A", "#0043AD", "#0050CD", "#0866FF", "#3B82F6", "#93C5FD", "#DBEAFE"]
+      },
+      "bronze": {
+        "role": "secondary",
+        "displayName": "Warm Amber",
+        "canonical": "oklch(55% 0.16 58)",
+        "tonalRamp": ["#2D1202", "#451A03", "#78350F", "#92400E", "#B45309", "#D97706", "#FCD34D", "#FEF3C7"]
+      },
+      "status-success": {
+        "role": "status",
+        "displayName": "QC Emerald",
+        "canonical": "oklch(50% 0.13 155)",
+        "tonalRamp": ["#042816", "#084527", "#0A5B34", "#0E7C47", "#239B61", "#55BC8A", "#9ADDC0", "#E3F3EA"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Landing page hero and editorial section headings." },
+      "headline": { "displayName": "Headline", "purpose": "Primary portal page headings (h1)." },
+      "title": { "displayName": "Title", "purpose": "Card headers and modal titles." },
+      "body": { "displayName": "Body", "purpose": "Readable descriptions and advisor notes." },
+      "label": { "displayName": "Label", "purpose": "Interactive controls, chips, and navigation labels." },
+      "mono": { "displayName": "Technical Mono", "purpose": "Tabular numerals for license plates, invoices, VND amounts, and timestamps." }
+    },
+    "shadows": [
+      {
+        "name": "overlay-elevation",
+        "value": "0 20px 50px rgba(20, 22, 25, 0.16)",
+        "purpose": "Floating dialogs, bottom sheets, and popovers where border is omitted."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-tactile",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Crisp interactive transitions (150ms) and modal/sheet reveals."
+      }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "390px" },
+      { "name": "tablet", "value": "768px" },
+      { "name": "laptop", "value": "1024px" },
+      { "name": "desktop", "value": "1440px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action trigger in Royal Sapphire Blue with 44px touch height.",
+      "html": "<button class=\"ds-btn-primary\">Đặt lịch bảo dưỡng</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 18px; border-radius: 12px; border: none; background: #0050CD; color: #FFFFFF; font-family: 'Be Vietnam Pro', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 150ms ease-out, transform 150ms ease-out; } .ds-btn-primary:hover { background: #0043AD; } .ds-btn-primary:active { transform: scale(0.98); } .ds-btn-primary:focus-visible { outline: 2px solid #0050CD; outline-offset: 2px; }"
+    },
+    {
+      "name": "Elevated Surface Card",
+      "kind": "card",
+      "refersTo": "card-elevated",
+      "description": "Primary white container anchored by a 1px hairline border without heavy shadows.",
+      "html": "<div class=\"ds-card-elevated\"><h3 class=\"ds-card-title\">Bảo dưỡng cấp 40.000 km</h3><p class=\"ds-card-body\">Kiểm tra 48 hạng mục an toàn tiêu chuẩn xưởng.</p></div>",
+      "css": ".ds-card-elevated { background: #FFFFFF; color: #0F172A; border: 1px solid rgba(15, 23, 42, 0.08); border-radius: 16px; padding: 24px; } .ds-card-title { margin: 0 0 6px; font-size: 16px; font-weight: 600; color: #0F172A; } .ds-card-body { margin: 0; font-size: 14px; line-height: 1.6; color: #475569; }"
+    },
+    {
+      "name": "License Plate Tag",
+      "kind": "custom",
+      "refersTo": "license-plate",
+      "description": "Tabular monospace vehicle registration badge.",
+      "html": "<span class=\"ds-plate-tag\">51A-123.45</span>",
+      "css": ".ds-plate-tag { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px; background: #FFFFFF; color: #0F172A; border: 1px solid rgba(15, 23, 42, 0.16); font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-status",
+      "description": "High-contrast status indicator pill.",
+      "html": "<span class=\"ds-badge-success\">Đã nghiệm thu QC</span>",
+      "css": ".ds-badge-success { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; background: #E3F3EA; color: #0A5B34; font-family: 'Be Vietnam Pro', sans-serif; font-size: 12px; font-weight: 600; }"
+    },
+    {
+      "name": "Text Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Accessible 44px input field with crisp sapphire focus ring.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Nhập biển số xe (VD: 51A-123.45)\" />",
+      "css": ".ds-input { width: 100%; min-height: 44px; padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(15, 23, 42, 0.16); background: #FFFFFF; color: #0F172A; font-family: 'Be Vietnam Pro', sans-serif; font-size: 14px; transition: border-color 150ms ease-out; } .ds-input::placeholder { color: #64748B; } .ds-input:focus { outline: 2px solid #0050CD; outline-offset: 1px; border-color: #0050CD; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Concierge Showroom",
+    "overview": "Hệ thống giao diện của AutoCare Pro mang lại cảm giác của một phòng tiếp đón dịch vụ ô tô cao cấp đồng bộ thương hiệu với cổng nội bộ: nền trắng xám dịu mắt (Soft Cloud #F6F8FC), chữ than xám đậm sắc nét (Deep Slate #0F172A), sắc xanh dương chuẩn hãng (Royal Sapphire #0050CD) và phân cấp không gian bằng sắc độ bề mặt.",
+    "keyCharacteristics": [
+      "Bảng màu sáng ấm dịu mắt ngoài trời lẫn trong xưởng tiếp nhận.",
+      "Phân tách thông tin bằng lớp sắc độ tone-on-tone và đường viền mảnh (hairline), không lạm dụng bóng đổ.",
+      "Dữ liệu kỹ thuật và tài chính sử dụng JetBrains Mono thẳng hàng (tabular-nums).",
+      "Thao tác ngón cái tự nhiên trên di động (390px) và cấu trúc đa cột cân bằng trên màn hình lớn (1440px)."
+    ],
+    "rules": [
+      {
+        "name": "The Quiet Accent Rule",
+        "body": "Màu nhấn chính (accent) chiếm tối đa 10% diện tích màn hình để mọi nút hành động và trạng thái đang diễn ra nổi bật tức thì.",
+        "section": "colors"
+      },
+      {
+        "name": "The Semantic Status Rule",
+        "body": "Các màu trạng thái chỉ dùng cho tiến độ sửa chữa, kết quả QC, trạng thái hóa đơn và cảnh báo hệ thống — không dùng làm màu trang trí.",
+        "section": "colors"
+      },
+      {
+        "name": "The Honest Heading Rule",
+        "body": "Không đặt nhãn phụ nhỏ (kicker/eyebrow) phía trên tiêu đề chính; bản thân tiêu đề phải đủ rõ ràng và tự đứng vững.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Integrity Rule",
+        "body": "Mọi giá trị tiền tệ, biển số, mã chứng từ và cột số liệu bắt buộc dùng tabular-nums để căn thẳng hàng dọc.",
+        "section": "typography"
+      },
+      {
+        "name": "The Single-Declaration Depth Rule",
+        "body": "Mỗi bề mặt chỉ khai báo độ nổi một lần duy nhất: đường viền mảnh cho thẻ tĩnh hoặc bóng đổ mềm cho lớp phủ nổi.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do sử dụng font-mono tabular-nums cho mọi biển số xe, mã WO, hóa đơn, số tiền VND và số km.",
+      "Do giữ vùng chạm tối thiểu 44×44px trên di động và chuyển modal phức tạp thành Bottom Sheet.",
+      "Do cài đặt đủ 4 trạng thái (Loading Skeleton, Empty State kèm CTA tiếng Việt, Error kèm nút Thử lại, Data) cho mọi khối tải dữ liệu bất đồng bộ.",
+      "Do tạo chiều sâu bằng lớp màu canvas → surface-elevated → surface-subtle."
+    ],
+    "donts": [
+      "Don't đặt nhãn phụ nhỏ (kicker/eyebrow) phía trên tiêu đề chính.",
+      "Don't kết hợp cả đường viền lẫn bóng đổ lớn trên cùng một thẻ (Ghost Card).",
+      "Don't dùng vạch màu dày bên trái (border-left > 1px) trên thẻ thông báo hay mục menu.",
+      "Don't dùng gradient xanh/tím, quả cầu phát sáng, icon xoay liên tục hay emoji thay cho hệ thống icon Material Symbols Outlined.",
+      "Don't dùng font-mono cho tiêu đề hay đoạn văn bản thông thường như một kiểu trang trí."
+    ]
+  }
+}

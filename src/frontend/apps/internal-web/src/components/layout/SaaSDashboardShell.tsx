@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAppSelector } from '@/store';
 import LogoutButton from '@/components/shared/LogoutButton';
+import NotificationBell from '@/components/notifications/NotificationBell';
+import UserAvatarMenu from '@/components/layout/UserAvatarMenu';
+import { resolveProfileHref } from '@/components/profile/profileUtils';
 
 export interface SaaSNavChildItem {
   label: string;
@@ -30,8 +33,8 @@ export interface SaaSTelemetryDotItem {
 
 export interface SaaSDashboardShellProps {
   roleTitle: string;
-  roleBadge: string;
-  brandSubtitle: string;
+  roleBadge?: string;
+  brandSubtitle?: string;
   navSectionTitle?: string;
   navItems: SaaSNavItem[];
   telemetryTitle?: string;
@@ -111,7 +114,7 @@ export default function SaaSDashboardShell({
 
   const isHrefActive = (href?: string) => {
     if (!href) return false;
-    if (href === '/staff' || href === '/dashboard') {
+    if (href === '/staff' || href === '/dashboard' || href === '/admin') {
       return pathname === href;
     }
     return pathname === href || pathname.startsWith(`${href}/`);
@@ -119,6 +122,12 @@ export default function SaaSDashboardShell({
 
   // Determine current active page title and icon for Top Context Bar
   const activePageMeta = useMemo(() => {
+    if (pathname.endsWith('/profile')) {
+      return { label: 'Thông tin cá nhân', icon: 'account_circle' };
+    }
+    if (pathname.endsWith('/notifications')) {
+      return { label: 'Trung tâm thông báo', icon: 'notifications' };
+    }
     for (const item of navItems) {
       if (item.href && isHrefActive(item.href)) {
         return { label: item.label, icon: item.icon };
@@ -180,6 +189,7 @@ export default function SaaSDashboardShell({
 
   const displayName = mounted ? user?.fullName || defaultRoleLabel : defaultRoleLabel;
   const displayRole = mounted ? formatRoleLabel(user?.roles?.[0]) || roleTitle : roleTitle;
+  const profileHref = mounted ? resolveProfileHref(user?.roles || []) : '/staff/profile';
   const initials =
     displayName
       .split(' ')
@@ -219,24 +229,13 @@ export default function SaaSDashboardShell({
                 <span className="material-symbols-outlined text-[18px]">directions_car</span>
               </div>
               {!isMini && (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span
-                    className={`text-[15px] font-bold tracking-tight truncate ${
-                      isLight ? 'text-slate-900' : 'text-white'
-                    }`}
-                  >
-                    AutoCare
-                  </span>
-                  <span
-                    className={`px-1.5 py-0.5 rounded-md font-mono text-xs font-bold uppercase tracking-wider border ${
-                      isLight
-                        ? 'bg-blue-50 border-blue-200 text-[#0050cd]'
-                        : 'bg-[#0866ff]/25 border-[#60a5fa]/40 text-white'
-                    }`}
-                  >
-                    {roleBadge}
-                  </span>
-                </div>
+                <span
+                  className={`text-[15px] font-bold tracking-tight truncate ${
+                    isLight ? 'text-slate-900' : 'text-white'
+                  }`}
+                >
+                  AutoCare
+                </span>
               )}
             </Link>
 
@@ -594,12 +593,14 @@ export default function SaaSDashboardShell({
         >
           {isMini ? (
             <div className="flex flex-col items-center gap-2">
-              <div
-                title={displayName}
-                className="w-9 h-9 rounded-full bg-[#0866ff] text-white font-mono text-xs font-bold flex items-center justify-center"
+              <Link
+                href={profileHref}
+                title={`${displayName} — Thông tin cá nhân`}
+                aria-label="Thông tin cá nhân"
+                className="w-9 h-9 rounded-full bg-[#0866ff] hover:bg-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center transition-colors"
               >
                 {initials}
-              </div>
+              </Link>
               <LogoutButton
                 iconOnly
                 className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
@@ -611,7 +612,13 @@ export default function SaaSDashboardShell({
             </div>
           ) : (
             <div className="flex items-center justify-between gap-2 px-1">
-              <div className="flex items-center gap-2.5 min-w-0">
+              <Link
+                href={profileHref}
+                title="Mở trang thông tin cá nhân"
+                className={`flex items-center gap-2.5 min-w-0 flex-1 rounded-xl p-1 -m-1 transition-colors ${
+                  isLight ? 'hover:bg-slate-200/60' : 'hover:bg-white/10'
+                }`}
+              >
                 <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0 shadow-xs">
                   {initials}
                   <span
@@ -633,10 +640,10 @@ export default function SaaSDashboardShell({
                       isLight ? 'text-slate-600' : 'text-slate-300'
                     }`}
                   >
-                    {brandSubtitle}
+                    {displayRole}
                   </div>
                 </div>
-              </div>
+              </Link>
               <LogoutButton
                 iconOnly
                 className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0 cursor-pointer ${
@@ -735,7 +742,7 @@ export default function SaaSDashboardShell({
                 {isLight ? 'dark_mode' : 'light_mode'}
               </span>
               <span className="hidden xl:inline">
-                {isLight ? 'Sidebar Sáng' : 'Sidebar Sapphire'}
+                {isLight ? 'Giao diện Sáng' : 'Giao diện Sapphire'}
               </span>
             </button>
 
@@ -744,18 +751,14 @@ export default function SaaSDashboardShell({
               <span>Ca trực • Hệ thống ổn định</span>
             </div>
 
-            <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
-                {initials}
-              </div>
-              <div className="hidden md:flex flex-col leading-tight">
-                <span className="text-xs font-bold text-slate-900 max-w-[130px] truncate">
-                  {displayName}
-                </span>
-                <span className="text-xs font-mono text-[#0050cd] font-semibold">
-                  {displayRole}
-                </span>
-              </div>
+            <NotificationBell variant="default" />
+
+            <div className="pl-2 border-l border-slate-200">
+              <UserAvatarMenu
+                variant="default"
+                defaultRoleLabel={defaultRoleLabel}
+                defaultInitials={defaultInitials}
+              />
             </div>
           </div>
         </header>

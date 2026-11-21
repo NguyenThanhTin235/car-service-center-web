@@ -6,12 +6,13 @@ const userService = new UserService();
 // UC-51: Lấy danh sách tài khoản
 export const getUsers = async (req: Request, res: Response) => {
   try {
-    const { search, role, page, limit } = req.query;
+    const { search, role, status, page, limit } = req.query;
     const result = await userService.getUsers(
       search as string,
       role as string,
       page ? parseInt(page as string) : 1,
-      limit ? parseInt(limit as string) : 10
+      limit ? parseInt(limit as string) : 10,
+      status as string
     );
     res.json({ status: 'success', ...result });
   } catch (error: any) {

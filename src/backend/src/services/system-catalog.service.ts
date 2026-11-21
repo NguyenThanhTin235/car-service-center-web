@@ -1,6 +1,5 @@
-import { PrismaClient, CatalogType } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { CatalogType } from '@prisma/client';
+import prisma from '../utils/prisma';
 
 export interface CreateCatalogDto {
   catalogType: CatalogType;
@@ -127,5 +126,38 @@ export class SystemCatalogService {
       data: { is_active: !existing.is_active },
     });
     return { isActive: !existing.is_active };
+  }
+
+  /**
+   * UC-74: Xóa danh mục chung (chỉ xóa được khi chưa phát sinh liên kết / giao dịch)
+   */
+  async deleteCatalog(id: number) {
+    const existing = await prisma.systemCatalog.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            part_categories: true,
+            brand_items: true,
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new Error('Không tìm thấy danh mục chung.');
+    }
+
+    if (existing._count.part_categories > 0 || existing._count.brand_items > 0) {
+      throw new Error(
+        'Không thể xóa danh mục này do đã phát sinh liên kết dữ liệu trong hệ thống. Bạn có thể chọn vô hiệu hóa thay thế.'
+      );
+    }
+
+    await prisma.systemCatalog.delete({
+      where: { id },
+    });
+
+    return { id, name: existing.name };
   }
 }

@@ -1,6 +1,7 @@
 import { IntakeType, IntakeStatus } from '@prisma/client';
 import prisma from '../utils/prisma';
 import { IntakeRepository, IntakeFilters } from '../repositories/intake.repository';
+import { notificationService } from './notification.service';
 
 const intakeRepo = new IntakeRepository();
 
@@ -40,7 +41,7 @@ export class IntakeService {
       throw new Error('Vui lòng nhập tên người/đơn vị bàn giao xe khi tiếp nhận Tow-in.');
     }
 
-    return prisma.$transaction(async (tx) => {
+    const intakeRecord = await prisma.$transaction(async (tx) => {
       let customerId = dto.customerId;
       let vehicleId = dto.vehicleId;
 
@@ -143,6 +144,18 @@ export class IntakeService {
 
       return intakeRecord;
     });
+
+    notificationService
+      .sendInAppToRoles(['SA'], {
+        type: 'CHECKIN_READY',
+        title: `Xe mới check-in chờ tiếp nhận (#${intakeRecord.id})`,
+        message: `Phiếu tiếp nhận #${intakeRecord.id} (${dto.intakeType}) đã sẵn sàng trong hàng đợi cho cố vấn dịch vụ.`,
+        entityType: 'INTAKE',
+        entityId: intakeRecord.id,
+      })
+      .catch((err) => console.error('Failed to notify SA on intake created:', err));
+
+    return intakeRecord;
   }
 
   /**
@@ -164,7 +177,7 @@ export class IntakeService {
   /**
    * Hủy phiếu tiếp nhận (chỉ khi đang QUEUED)
    */
-  async cancelIntake(id: number) {
+  async cancelIntake(id: number, reason?: string) {
     const record = await intakeRepo.findById(id);
     if (!record) throw new Error('Không tìm thấy phiếu tiếp nhận.');
 
@@ -172,6 +185,13 @@ export class IntakeService {
       throw new Error(`Chỉ có thể hủy phiếu đang ở trạng thái QUEUED. Trạng thái hiện tại: ${record.status}`);
     }
 
-    return intakeRepo.updateStatus(id, 'CANCELLED');
+    const trimmedReason = reason?.trim();
+    const updatedNotes = trimmedReason
+      ? record.notes
+        ? `${record.notes}\n\n[Lý do hủy]: ${trimmedReason}`
+        : `[Lý do hủy]: ${trimmedReason}`
+      : undefined;
+
+    return intakeRepo.updateStatus(id, 'CANCELLED', updatedNotes);
   }
 }
