@@ -1,0 +1,28 @@
+import { Router } from 'express';
+import { authenticate } from '../middlewares/auth.middleware';
+import {
+  checkVehicleWarrantyEligibility,
+  lookupWarranty,
+  validateOdoIntake,
+  getCompletedWorkOrdersForVehicle,
+} from '../controllers/warranty.controller';
+
+const router = Router();
+
+// Tất cả các route tra cứu và xác thực bảo hành đều yêu cầu đăng nhập
+router.use(authenticate);
+
+// UC-81: Tra cứu linh hoạt theo query params (?licensePlate=... hoặc ?vehicleId=...)
+router.get('/lookup', lookupWarranty);
+
+// UC-81: Tra cứu theo ID phương tiện
+router.get('/vehicles/:vehicleId/eligibility', checkVehicleWarrantyEligibility);
+
+// UC-83: Lấy danh sách phiếu sửa chữa đã hoàn tất của xe để chọn phiếu gốc
+router.get('/vehicles/:vehicleId/history', getCompletedWorkOrdersForVehicle);
+
+// UC-83: Xác thực chống tua lùi ODO khi tiếp nhận xe bảo hành
+router.post('/validate-odo', validateOdoIntake);
+
+export default router;
+
