@@ -1,9 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import {
+  consumePendingBookingIntent,
+  StoredChatActionPayload,
+} from '@/components/chat/aiChatUtils';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchProfile, updateProfile, clearUpdateStatus } from '@/store/slices/profileSlice';
 import {
@@ -74,6 +78,7 @@ const EMPTY_VEHICLE_FORM: VehicleFormData = {
 export default function ProfilePage() {
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
+  const authUser = useAppSelector((state) => state.auth.user);
   const { data, loading, error, updateLoading, updateError, updateSuccess } = useAppSelector(
     (state) => state.profile
   );
@@ -90,6 +95,40 @@ export default function ProfilePage() {
     }
   }, [searchParams]);
 
+  // Listen for instant tab switch events from PublicHeader / PublicFooter & browser history
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleCustomSwitch = (ev: Event) => {
+      const nextTab = (ev as CustomEvent<TabKey>).detail;
+      if (nextTab && VALID_TABS.includes(nextTab)) {
+        setActiveTab(nextTab);
+      }
+    };
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab') as TabKey;
+      if (tabParam && VALID_TABS.includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
+    };
+    window.addEventListener('csc:switch-tab', handleCustomSwitch);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('csc:switch-tab', handleCustomSwitch);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  // Preload heavy tab chunks right after initial mount so tab clicks render in <16ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      import('@/components/tracking/TrackingView');
+      import('@/components/invoices/InvoicesView');
+      import('@/components/history/HistoryView');
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const msg = sessionStorage.getItem('auth_toast');
@@ -100,10 +139,10 @@ export default function ProfilePage() {
     }
   }, []);
 
-  const handleTabChange = (key: TabKey) => {
+  const handleTabChange = useCallback((key: TabKey) => {
     setActiveTab(key);
     window.history.replaceState(null, '', `/customer/profile?tab=${key}`);
-  };
+  }, []);
   const [activeTab, setActiveTab] = useState<TabKey>(
     VALID_TABS.includes(initialTab) ? initialTab : 'overview'
   );
@@ -146,6 +185,13 @@ export default function ProfilePage() {
   const [bookingDate, setBookingDate] = useState<Date>(new Date());
   const [bookingTime, setBookingTime] = useState<string>('08:00');
   const [bookingPreselectedVehicleId, setBookingPreselectedVehicleId] = useState<number | null>(null);
+  const [bookingPreselectedServiceIds, setBookingPreselectedServiceIds] = useState<number[] | undefined>(
+    undefined
+  );
+  const [bookingPreselectedNotes, setBookingPreselectedNotes] = useState<string | undefined>(undefined);
+  const consumedBookingIntentRef = useRef(false);
+
+  const effectiveCustomerId = data?.id ?? authUser?.id;
 
   // Load initial data
   useEffect(() => {
@@ -153,14 +199,14 @@ export default function ProfilePage() {
     dispatch(fetchVehicles());
   }, [dispatch]);
 
-  // Fetch appointments strictly for this customer once profile loads
+  // Fetch appointments strictly once for this customer without double-firing on mount
   useEffect(() => {
-    if (data?.id) {
-      dispatch(fetchAppointments({ customer_id: data.id }));
-    } else {
+    if (effectiveCustomerId) {
+      dispatch(fetchAppointments({ customer_id: effectiveCustomerId }));
+    } else if (!loading) {
       dispatch(fetchAppointments({}));
     }
-  }, [data?.id, dispatch]);
+  }, [effectiveCustomerId, loading, dispatch]);
 
   // Sync profile form when data loads
   useEffect(() => {
@@ -524,8 +570,75 @@ export default function ProfilePage() {
       setBookingTime('08:00');
     }
 
+    setBookingPreselectedServiceIds(undefined);
+    setBookingPreselectedNotes(undefined);
     setBookingModalOpen(true);
   };
+
+  const openBookingModalWithIntent = useCallback((intent?: StoredChatActionPayload | null) => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    let targetDate = new Date();
+    if (intent?.preferredDate) {
+      const parsed = new Date(`${intent.preferredDate}T00:00:00`);
+      if (!isNaN(parsed.getTime()) && parsed >= todayStart) {
+        targetDate = parsed;
+      }
+    }
+
+    let targetTime =
+      intent?.preferredTime && ALL_BOOKING_SLOTS.includes(intent.preferredTime)
+        ? intent.preferredTime
+        : ALL_BOOKING_SLOTS.find((slot) => !isBookingSlotInPast(targetDate, slot)) || '';
+
+    if (!targetTime) {
+      const tomorrow = new Date(targetDate);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      if (tomorrow.getDay() === 0) {
+        tomorrow.setDate(tomorrow.getDate() + 1);
+      }
+      targetDate = tomorrow;
+      targetTime = '08:00';
+    }
+
+    setBookingDate(targetDate);
+    setBookingTime(targetTime);
+    setBookingPreselectedVehicleId(intent?.preselectedVehicleId ?? null);
+    setBookingPreselectedServiceIds(
+      intent?.preselectedServiceIds && intent.preselectedServiceIds.length > 0
+        ? intent.preselectedServiceIds
+        : undefined
+    );
+    setBookingPreselectedNotes(intent?.notes || undefined);
+    setBookingModalOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const shouldOpenFromQuery = searchParams.get('openBooking') === '1';
+    const pendingIntent = consumePendingBookingIntent(window.sessionStorage);
+
+    if ((shouldOpenFromQuery || pendingIntent) && !consumedBookingIntentRef.current) {
+      consumedBookingIntentRef.current = true;
+      openBookingModalWithIntent(pendingIntent);
+      if (shouldOpenFromQuery) {
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('openBooking');
+        window.history.replaceState(null, '', cleanUrl.pathname + cleanUrl.search);
+      }
+    }
+  }, [searchParams, openBookingModalWithIntent]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleEvent = (ev: Event) => {
+      const customEv = ev as CustomEvent<StoredChatActionPayload>;
+      openBookingModalWithIntent(customEv.detail || null);
+    };
+    window.addEventListener('csc:open-booking-modal', handleEvent);
+    return () => window.removeEventListener('csc:open-booking-modal', handleEvent);
+  }, [openBookingModalWithIntent]);
 
   // Appointment Action handlers
   const handleConfirmCancelApt = async () => {
@@ -594,7 +707,7 @@ export default function ProfilePage() {
     { key: 'history', label: 'Lịch sử sửa chữa', icon: 'history' },
   ];
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="flex flex-col items-center gap-3">
@@ -605,7 +718,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (error) {
+  if (error && !data) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-2xl text-sm flex items-center gap-2">
@@ -918,7 +1031,7 @@ export default function ProfilePage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {vehicles.map((v) => {
-                    const sizeText = VEHICLE_SIZES.find((s) => s.value === v.vehicleSize)?.label?.split(' ')[0] || v.vehicleSize;
+                    const sizeText = VEHICLE_SIZES.find((s) => s.value === v.vehicleSize)?.label?.split(' (')[0] || v.vehicleSize;
                     const activeWO = v.activeWorkOrder;
                     return (
                       <div
@@ -955,14 +1068,14 @@ export default function ProfilePage() {
                             {v.make} {v.model} {v.year ? `(${v.year})` : ''}
                           </h3>
 
-                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                            <div>
-                              <span className="text-[11px] text-slate-400 block">Màu sắc:</span>
-                              <strong className="text-slate-700 font-semibold">{v.color || 'Không rõ'}</strong>
+                          <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-[11px] text-slate-400 shrink-0">Màu sắc:</span>
+                              <strong className="text-slate-700 font-semibold truncate">{v.color || 'Không rõ'}</strong>
                             </div>
-                            <div>
-                              <span className="text-[11px] text-slate-400 block">Kích thước:</span>
-                              <strong className="text-slate-700 font-semibold">{sizeText || 'Tiêu chuẩn'}</strong>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-[11px] text-slate-400 shrink-0">Kích thước:</span>
+                              <strong className="text-slate-700 font-semibold truncate">{sizeText || 'Tiêu chuẩn'}</strong>
                             </div>
                           </div>
                         </div>
@@ -1193,6 +1306,8 @@ export default function ProfilePage() {
           initialDate={bookingDate}
           initialTime={bookingTime}
           initialVehicleId={bookingPreselectedVehicleId}
+          initialServiceIds={bookingPreselectedServiceIds}
+          initialNotes={bookingPreselectedNotes}
           customerId={data?.id}
           vehicles={vehicles}
           activeVehicles={activeVehicles}

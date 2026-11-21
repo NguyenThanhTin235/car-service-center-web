@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -8,6 +8,7 @@ import { fetchMyTrackingOrders, setSelectedOrder, WorkOrderTrackingDto } from '@
 import Toast from '@/components/shared/Toast';
 import { downloadInvoicePdfBlob } from '@/lib/api/invoice.api';
 import { downloadHandoverPdfBlob } from '@/lib/api/work-order.api';
+import { StoredChatActionPayload } from '@/components/chat/aiChatUtils';
 
 const CustomerQuotationModal = dynamic(() => import('./CustomerQuotationModal'));
 const CustomerCheckInModal = dynamic(() => import('./CustomerCheckInModal'));
@@ -130,6 +131,56 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
   }, [loadData]);
 
   const activeOrder: WorkOrderTrackingDto | null = selectedOrder || (orders.length > 0 ? orders[0] : null);
+  const consumedQuotationQueryRef = useRef(false);
+  const [requestedQuotationId, setRequestedQuotationId] = useState<number | null>(null);
+
+  const openQuotationFromAction = useCallback(
+    (workOrderId?: number | null, quotationId?: number | null) => {
+      if (orders.length === 0) return false;
+      const targetOrder = workOrderId
+        ? orders.find((o) => Number(o.id) === Number(workOrderId)) || orders[0]
+        : activeOrder || orders[0];
+      if (!targetOrder) return false;
+      if (Number(selectedOrder?.id) !== Number(targetOrder.id)) {
+        dispatch(setSelectedOrder(targetOrder));
+      }
+      setRequestedQuotationId(quotationId ? Number(quotationId) : null);
+      if (targetOrder.activeQuotation || (targetOrder.quotations && targetOrder.quotations.length > 0)) {
+        setIsQuotationModalOpen(true);
+      }
+      return true;
+    },
+    [orders, activeOrder, selectedOrder?.id, dispatch]
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || orders.length === 0 || consumedQuotationQueryRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('openQuotation') === '1') {
+      const woIdRaw = params.get('workOrderId');
+      const woId = woIdRaw ? Number(woIdRaw) : null;
+      const qIdRaw = params.get('quotationId');
+      const qId = qIdRaw ? Number(qIdRaw) : null;
+      if (openQuotationFromAction(woId, qId)) {
+        consumedQuotationQueryRef.current = true;
+        params.delete('openQuotation');
+        params.delete('workOrderId');
+        params.delete('quotationId');
+        const nextQuery = params.toString();
+        window.history.replaceState(null, '', `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`);
+      }
+    }
+  }, [orders, openQuotationFromAction]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleViewQuotation = (ev: Event) => {
+      const detail = (ev as CustomEvent<StoredChatActionPayload>).detail;
+      openQuotationFromAction(detail?.workOrderId, detail?.quotationId);
+    };
+    window.addEventListener('csc:view-quotation', handleViewQuotation);
+    return () => window.removeEventListener('csc:view-quotation', handleViewQuotation);
+  }, [openQuotationFromAction]);
 
   return (
     <div className="w-full max-w-[1440px] mx-auto space-y-6">
@@ -225,14 +276,28 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="/customer/appointments"
+              href="/customer/profile?tab=appointments"
+              onClick={(e) => {
+                if (typeof window !== 'undefined' && window.location.pathname === '/customer/profile') {
+                  e.preventDefault();
+                  window.history.replaceState(null, '', '/customer/profile?tab=appointments');
+                  window.dispatchEvent(new CustomEvent('csc:switch-tab', { detail: 'appointments' }));
+                }
+              }}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">calendar_today</span>
               Đặt lịch hẹn ngay
             </Link>
             <Link
-              href="/customer/invoices"
+              href="/customer/profile?tab=invoices"
+              onClick={(e) => {
+                if (typeof window !== 'undefined' && window.location.pathname === '/customer/profile') {
+                  e.preventDefault();
+                  window.history.replaceState(null, '', '/customer/profile?tab=invoices');
+                  window.dispatchEvent(new CustomEvent('csc:switch-tab', { detail: 'invoices' }));
+                }
+              }}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-surface-container-lowest border border-surface-container-highest text-on-surface hover:bg-surface-container-low rounded-xl text-sm font-semibold transition-all shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">receipt_long</span>
@@ -1309,6 +1374,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
               isOpen={isQuotationModalOpen}
               onClose={() => setIsQuotationModalOpen(false)}
               quotation={activeOrder.activeQuotation as any}
+              initialQuotationId={requestedQuotationId}
               allQuotations={activeOrder.quotations as any}
               cumulativeSummary={activeOrder.cumulativeSummary}
               advisorName={activeOrder.advisor.fullName}

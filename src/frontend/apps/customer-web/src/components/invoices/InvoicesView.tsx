@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useDeferredValue, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useState, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -12,6 +12,7 @@ import {
 } from '@/store/slices/invoiceSlice';
 import Toast from '@/components/shared/Toast';
 import { downloadInvoicePdfBlob } from '@/lib/api/invoice.api';
+import { StoredChatActionPayload } from '@/components/chat/aiChatUtils';
 
 const CustomerPaymentModal = dynamic(() => import('./CustomerPaymentModal'));
 const InvoiceDetailModal = dynamic(() => import('./InvoiceDetailModal'));
@@ -66,6 +67,52 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
   useEffect(() => {
     dispatch(fetchMyInvoices({ status: activeTab, search: searchTerm }));
   }, [dispatch, activeTab]);
+
+  const consumedInvoiceQueryRef = useRef(false);
+
+  const triggerInvoiceModal = useCallback(
+    (invoiceId?: number | null) => {
+      if (invoices.length === 0) return false;
+      const target =
+        (invoiceId ? invoices.find((inv) => Number(inv.id) === Number(invoiceId)) : null) ||
+        invoices.find((inv) => inv.status === 'ISSUED') ||
+        invoices[0];
+      if (!target) return false;
+
+      if (target.status === 'ISSUED') {
+        handleOpenPayModal(target);
+      } else {
+        openInvoiceDetail(target.id);
+      }
+      return true;
+    },
+    [invoices]
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || invoices.length === 0 || consumedInvoiceQueryRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const openInvParam = params.get('openInvoice');
+    if (openInvParam) {
+      const invId = openInvParam === 'latest' ? null : Number(openInvParam);
+      if (triggerInvoiceModal(Number.isFinite(invId as number) ? invId : null)) {
+        consumedInvoiceQueryRef.current = true;
+        params.delete('openInvoice');
+        const nextQuery = params.toString();
+        window.history.replaceState(null, '', `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`);
+      }
+    }
+  }, [invoices, triggerInvoiceModal]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleViewInvoice = (ev: Event) => {
+      const detail = (ev as CustomEvent<StoredChatActionPayload>).detail;
+      triggerInvoiceModal(detail?.invoiceId);
+    };
+    window.addEventListener('csc:view-invoice', handleViewInvoice);
+    return () => window.removeEventListener('csc:view-invoice', handleViewInvoice);
+  }, [triggerInvoiceModal]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,7 +206,14 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
         {/* CTA Buttons */}
         <div className="flex items-center gap-2.5">
           <Link
-            href="/customer/tracking"
+            href="/customer/profile?tab=tracking"
+            onClick={(e) => {
+              if (typeof window !== 'undefined' && window.location.pathname === '/customer/profile') {
+                e.preventDefault();
+                window.history.replaceState(null, '', '/customer/profile?tab=tracking');
+                window.dispatchEvent(new CustomEvent('csc:switch-tab', { detail: 'tracking' }));
+              }
+            }}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-surface-container-lowest border border-surface-container-highest hover:bg-surface-container-low text-on-surface text-xs sm:text-sm font-semibold rounded-lg shadow-2xs transition-all"
           >
             <span className="material-symbols-outlined text-[18px] text-primary">timeline</span>
@@ -353,7 +407,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-container-highest text-xs">
-              {loading ? (
+              {loading && invoices.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-on-surface-variant">
                     <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>

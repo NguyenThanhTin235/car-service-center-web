@@ -543,7 +543,7 @@ export default function HistoryView({
       </div>
 
       {/* ================= HISTORY LIST ================= */}
-      {loading ? (
+      {loading && items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-3xl space-y-3">
           <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
           <p className="text-sm font-medium text-slate-500">Đang tải sổ bảo dưỡng điện tử...</p>

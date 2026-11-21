@@ -59,7 +59,7 @@ export default function SessionWatcher() {
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
-    const interval = setInterval(checkSession, 3000);
+    const interval = setInterval(checkSession, 30000);
 
     return () => {
       clearInterval(interval);
