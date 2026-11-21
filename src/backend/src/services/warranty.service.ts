@@ -1,4 +1,32 @@
+import { GoodwillClaimStatus, GoodwillSupportType, NotificationType } from '@prisma/client';
 import prisma from '../utils/prisma';
+
+export interface CreateGoodwillClaimDto {
+  vehicleId: number;
+  customerId?: number;
+  parentWoId: number;
+  intakeId?: number | null;
+  overdueDays?: number | null;
+  overdueKm?: number | null;
+  complaint: string;
+}
+
+export interface ApproveGoodwillClaimDto {
+  supportType: GoodwillSupportType;
+  supportPct?: number;
+  approvalNote: string;
+}
+
+export interface RejectGoodwillClaimDto {
+  approvalNote: string;
+}
+
+export interface GoodwillClaimsFilter {
+  status?: GoodwillClaimStatus;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
 
 export interface WarrantyItemEligibility {
   type: 'SERVICE' | 'PART';
@@ -431,6 +459,337 @@ export class WarrantyService {
       releaseOdo: wo.release?.odometer_at_release ?? wo.check_in?.mileage ?? null,
       services: wo.services,
     }));
+  }
+
+  // ==========================================
+  // PHẦN 3: BẢO HÀNH THIỆN CHÍ (UC-86)
+  // ==========================================
+
+  /**
+   * UC-86 / UC-83: Tạo yêu cầu đề xuất bảo hành thiện chí (Goodwill Claim)
+   */
+  async createGoodwillClaim(data: CreateGoodwillClaimDto, createdById: number) {
+    if (!data.vehicleId || isNaN(Number(data.vehicleId))) {
+      throw new Error('Mã phương tiện (vehicleId) không hợp lệ.');
+    }
+    if (!data.parentWoId || isNaN(Number(data.parentWoId))) {
+      throw new Error('Mã phiếu dịch vụ gốc (parentWoId) không hợp lệ.');
+    }
+    if (!data.complaint || !data.complaint.trim()) {
+      throw new Error('Vui lòng nhập mô tả hiện tượng sự cố phản ánh và lý do đề xuất.');
+    }
+
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id: Number(data.vehicleId) },
+      include: { customer: true },
+    });
+    if (!vehicle) {
+      throw new Error('Không tìm thấy phương tiện trong hệ thống.');
+    }
+
+    const parentWo = await prisma.workOrder.findUnique({
+      where: { id: Number(data.parentWoId) },
+    });
+    if (!parentWo) {
+      throw new Error('Không tìm thấy phiếu dịch vụ gốc.');
+    }
+
+    const customerId = data.customerId || vehicle.customer_id;
+
+    const claim = await prisma.goodwillClaim.create({
+      data: {
+        vehicle_id: Number(data.vehicleId),
+        customer_id: customerId,
+        parent_wo_id: Number(data.parentWoId),
+        intake_id: data.intakeId ? Number(data.intakeId) : null,
+        overdue_days: data.overdueDays !== undefined && data.overdueDays !== null ? Number(data.overdueDays) : null,
+        overdue_km: data.overdueKm !== undefined && data.overdueKm !== null ? Number(data.overdueKm) : null,
+        complaint: data.complaint.trim(),
+        status: GoodwillClaimStatus.PENDING,
+        created_by_id: createdById,
+      },
+      include: {
+        vehicle: { select: { id: true, license_plate: true, make: true, model: true } },
+        customer: { select: { id: true, full_name: true, phone: true } },
+        created_by: { select: { id: true, full_name: true } },
+        parent_wo: { select: { id: true, wo_number: true } },
+      },
+    });
+
+    return claim;
+  }
+
+  /**
+   * UC-86: Lấy danh sách hồ sơ bảo hành thiện chí (có phân trang và bộ lọc)
+   */
+  async listGoodwillClaims(filter: GoodwillClaimsFilter = {}) {
+    const page = filter.page && Number(filter.page) > 0 ? Number(filter.page) : 1;
+    const limit = filter.limit && Number(filter.limit) > 0 ? Number(filter.limit) : 20;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (filter.status) {
+      where.status = filter.status;
+    }
+    if (filter.search && filter.search.trim()) {
+      const s = filter.search.trim();
+      where.OR = [
+        { vehicle: { license_plate: { contains: s } } },
+        { customer: { full_name: { contains: s } } },
+        { customer: { phone: { contains: s } } },
+        { complaint: { contains: s } },
+      ];
+    }
+
+    const [claims, total] = await Promise.all([
+      prisma.goodwillClaim.findMany({
+        where,
+        include: {
+          vehicle: { select: { id: true, license_plate: true, make: true, model: true } },
+          customer: { select: { id: true, full_name: true, phone: true } },
+          created_by: { select: { id: true, full_name: true } },
+          approved_by: { select: { id: true, full_name: true } },
+          parent_wo: { select: { id: true, wo_number: true } },
+        },
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.goodwillClaim.count({ where }),
+    ]);
+
+    return {
+      claims,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * UC-86: Xem hồ sơ thẩm định toàn diện bảo hành thiện chí
+   * Bao gồm thông tin xe, lịch sử dịch vụ của khách hàng, số lần sửa chữa và chi tiết phiếu gốc
+   */
+  async getGoodwillClaimDetail(claimId: number) {
+    if (!claimId || isNaN(Number(claimId))) {
+      throw new Error('Mã hồ sơ bảo hành thiện chí không hợp lệ.');
+    }
+
+    const claim = await prisma.goodwillClaim.findUnique({
+      where: { id: Number(claimId) },
+      include: {
+        vehicle: true,
+        customer: {
+          select: {
+            id: true,
+            full_name: true,
+            email: true,
+            phone: true,
+            address: true,
+            created_at: true,
+          },
+        },
+        created_by: { select: { id: true, full_name: true, email: true, phone: true } },
+        approved_by: { select: { id: true, full_name: true, email: true, phone: true } },
+        parent_wo: {
+          include: {
+            release: true,
+            check_in: true,
+            services: {
+              include: {
+                jobs: {
+                  include: {
+                    parts: {
+                      include: {
+                        item: {
+                          include: {
+                            part_category: { select: { name: true } },
+                            brand: { select: { name: true } },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!claim) {
+      throw new Error('Không tìm thấy hồ sơ yêu cầu bảo hành thiện chí.');
+    }
+
+    // Thống kê lịch sử tuân thủ dịch vụ của khách hàng (UC-86 Bước 3)
+    const customerCompletedOrders = await prisma.workOrder.findMany({
+      where: {
+        customer_id: claim.customer_id,
+        status: { in: ['RELEASED', 'CLOSED'] },
+      },
+      select: {
+        id: true,
+        wo_number: true,
+        order_type: true,
+        status: true,
+        created_at: true,
+        release: { select: { released_at: true, odometer_at_release: true } },
+      },
+      orderBy: { created_at: 'desc' },
+      take: 10,
+    });
+
+    const totalCompletedOrders = await prisma.workOrder.count({
+      where: {
+        customer_id: claim.customer_id,
+        status: { in: ['RELEASED', 'CLOSED'] },
+      },
+    });
+
+    return {
+      claim,
+      customerStats: {
+        totalCompletedOrders,
+        isLoyalCustomer: totalCompletedOrders >= 3,
+        historyOrders: customerCompletedOrders,
+      },
+    };
+  }
+
+  /**
+   * UC-86: Quản lý phê duyệt bảo hành thiện chí
+   * Hỗ trợ 3 mức: FULL (100%), LABOUR_ONLY (miễn công), PERCENTAGE (giảm %)
+   */
+  async approveGoodwillClaim(claimId: number, managerId: number, dto: ApproveGoodwillClaimDto) {
+    if (!claimId || isNaN(Number(claimId))) {
+      throw new Error('Mã hồ sơ bảo hành thiện chí không hợp lệ.');
+    }
+
+    // Luồng ngoại lệ: Bắt buộc nhập lý do giải trình khi duyệt
+    if (!dto.approvalNote || !dto.approvalNote.trim()) {
+      throw new Error('Vui lòng nhập lý do giải trình phê duyệt/từ chối');
+    }
+
+    const claim = await prisma.goodwillClaim.findUnique({
+      where: { id: Number(claimId) },
+    });
+    if (!claim) {
+      throw new Error('Không tìm thấy hồ sơ yêu cầu bảo hành thiện chí.');
+    }
+    if (claim.status !== GoodwillClaimStatus.PENDING) {
+      throw new Error(`Hồ sơ bảo hành thiện chí này đã ở trạng thái ${claim.status}, không thể phê duyệt lại.`);
+    }
+
+    const validTypes: GoodwillSupportType[] = ['FULL', 'LABOUR_ONLY', 'PERCENTAGE'];
+    if (!dto.supportType || !validTypes.includes(dto.supportType)) {
+      throw new Error('Mức độ hỗ trợ thiện chí không hợp lệ (FULL, LABOUR_ONLY, PERCENTAGE).');
+    }
+
+    if (dto.supportType === 'PERCENTAGE') {
+      const pct = Number(dto.supportPct);
+      if (isNaN(pct) || pct <= 0 || pct > 100) {
+        throw new Error('Tỷ lệ phần trăm hỗ trợ thiện chí phải từ 1% đến 100%.');
+      }
+    }
+
+    const updatedClaim = await prisma.goodwillClaim.update({
+      where: { id: Number(claimId) },
+      data: {
+        status: GoodwillClaimStatus.APPROVED,
+        support_type: dto.supportType,
+        support_pct: dto.supportType === 'PERCENTAGE' ? Number(dto.supportPct) : null,
+        approval_note: dto.approvalNote.trim(),
+        approved_by_id: managerId,
+        approved_at: new Date(),
+      },
+      include: {
+        vehicle: { select: { id: true, license_plate: true } },
+        customer: { select: { id: true, full_name: true } },
+        approved_by: { select: { id: true, full_name: true } },
+      },
+    });
+
+    // Thông báo cho nhân viên tạo đề xuất (Cố vấn/Lễ tân)
+    const supportLabel =
+      dto.supportType === 'FULL'
+        ? 'Miễn phí 100% (công + phụ tùng)'
+        : dto.supportType === 'LABOUR_ONLY'
+        ? 'Miễn phí 100% tiền công'
+        : `Hỗ trợ ${dto.supportPct}% chi phí`;
+
+    await prisma.notification
+      .create({
+        data: {
+          user_id: claim.created_by_id,
+          notification_type: NotificationType.GENERAL,
+          title: `Yêu cầu bảo hành thiện chí #${claim.id} đã được phê duyệt`,
+          message: `Quản lý đã phê duyệt hỗ trợ bảo hành thiện chí cho xe ${updatedClaim.vehicle.license_plate} với mức: ${supportLabel}. Ghi chú: ${dto.approvalNote.trim()}`,
+          entity_type: 'GOODWILL_CLAIM',
+          entity_id: claim.id,
+        },
+      })
+      .catch(() => {});
+
+    return updatedClaim;
+  }
+
+  /**
+   * UC-86: Quản lý từ chối bảo hành thiện chí
+   */
+  async rejectGoodwillClaim(claimId: number, managerId: number, dto: RejectGoodwillClaimDto) {
+    if (!claimId || isNaN(Number(claimId))) {
+      throw new Error('Mã hồ sơ bảo hành thiện chí không hợp lệ.');
+    }
+
+    // Luồng ngoại lệ: Bắt buộc nhập lý do từ chối
+    if (!dto.approvalNote || !dto.approvalNote.trim()) {
+      throw new Error('Vui lòng nhập lý do giải trình phê duyệt/từ chối');
+    }
+
+    const claim = await prisma.goodwillClaim.findUnique({
+      where: { id: Number(claimId) },
+    });
+    if (!claim) {
+      throw new Error('Không tìm thấy hồ sơ yêu cầu bảo hành thiện chí.');
+    }
+    if (claim.status !== GoodwillClaimStatus.PENDING) {
+      throw new Error(`Hồ sơ bảo hành thiện chí này đã ở trạng thái ${claim.status}, không thể từ chối.`);
+    }
+
+    const updatedClaim = await prisma.goodwillClaim.update({
+      where: { id: Number(claimId) },
+      data: {
+        status: GoodwillClaimStatus.REJECTED,
+        approval_note: dto.approvalNote.trim(),
+        approved_by_id: managerId,
+        approved_at: new Date(),
+      },
+      include: {
+        vehicle: { select: { id: true, license_plate: true } },
+        customer: { select: { id: true, full_name: true } },
+        approved_by: { select: { id: true, full_name: true } },
+      },
+    });
+
+    // Thông báo cho nhân viên tạo đề xuất để giải thích với khách (UC-86 Bước 6b)
+    await prisma.notification
+      .create({
+        data: {
+          user_id: claim.created_by_id,
+          notification_type: NotificationType.GENERAL,
+          title: `Yêu cầu bảo hành thiện chí #${claim.id} bị từ chối`,
+          message: `Quản lý từ chối yêu cầu bảo hành thiện chí cho xe ${updatedClaim.vehicle.license_plate}. Lý do: ${dto.approvalNote.trim()}`,
+          entity_type: 'GOODWILL_CLAIM',
+          entity_id: claim.id,
+        },
+      })
+      .catch(() => {});
+
+    return updatedClaim;
   }
 }
 
