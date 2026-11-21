@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -15,18 +16,34 @@ import {
 } from '@/store/slices/vehicleSlice';
 import {
   fetchAppointments,
-  createAppointment,
   cancelAppointment,
   rescheduleAppointment,
   Appointment,
 } from '@/store/slices/appointmentSlice';
 import Toast from '@/components/shared/Toast';
 import ConfirmModal from '@/components/shared/ConfirmModal';
-import TrackingView from '@/components/tracking/TrackingView';
-import InvoicesView from '@/components/invoices/InvoicesView';
-import HistoryView from '@/components/history/HistoryView';
+import CustomerOverviewTab from '@/components/profile/CustomerOverviewTab';
+import { LoadingSkeleton } from '@/components/ui';
 
-export type TabKey = 'profile' | 'vehicles' | 'appointments' | 'tracking' | 'invoices' | 'history';
+const TabLoadingFallback = () => (
+  <div className="py-2">
+    <LoadingSkeleton variant="cards" count={3} />
+  </div>
+);
+
+const TrackingView = dynamic(() => import('@/components/tracking/TrackingView'), {
+  loading: TabLoadingFallback,
+});
+const InvoicesView = dynamic(() => import('@/components/invoices/InvoicesView'), {
+  loading: TabLoadingFallback,
+});
+const HistoryView = dynamic(() => import('@/components/history/HistoryView'), {
+  loading: TabLoadingFallback,
+});
+const CustomerBookingModal = dynamic(() => import('@/components/profile/CustomerBookingModal'));
+
+export type TabKey = 'overview' | 'profile' | 'vehicles' | 'appointments' | 'tracking' | 'invoices' | 'history';
+const VALID_TABS: TabKey[] = ['overview', 'profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history'];
 
 // Vehicle Form Types & Presets
 interface VehicleFormData {
@@ -54,125 +71,6 @@ const EMPTY_VEHICLE_FORM: VehicleFormData = {
   vehicleSize: 'MEDIUM',
 };
 
-// 6 Available Service Packages matching the 3-step UI mockup
-const AVAILABLE_SERVICES = [
-  {
-    id: 1,
-    title: 'Bảo dưỡng định kỳ theo số km',
-    badge: 'Phổ biến',
-    desc: 'Cấp 40.000 km: Bao gồm kiểm tra toàn diện 48 hạng mục tiêu chuẩn.',
-    icon: 'verified',
-  },
-  {
-    id: 2,
-    title: 'Kiểm tra hệ thống phanh & láng đĩa phanh',
-    badge: null,
-    desc: 'Đo độ mòn má phanh, kiểm tra dầu phanh và loại bỏ tiếng rít cọ xát.',
-    icon: 'car_repair',
-  },
-  {
-    id: 3,
-    title: 'Thay dầu máy & lọc dầu cao cấp',
-    badge: null,
-    desc: 'Dầu động cơ tổng hợp toàn phần nhập khẩu và lọc dầu chính hãng.',
-    icon: 'oil_barrel',
-  },
-  {
-    id: 4,
-    title: 'Kiểm tra hệ thống điều hòa & nạp gas',
-    badge: null,
-    desc: 'Đo áp suất gas R134a/R1234yf, vệ sinh giàn lạnh bằng nội soi công nghệ cao.',
-    icon: 'ac_unit',
-  },
-  {
-    id: 5,
-    title: 'Vệ sinh buồng đốt & kim phun điện tử',
-    badge: null,
-    desc: 'Khử muội carbon, tối ưu mức tiêu hao nhiên liệu và phục hồi công suất động cơ.',
-    icon: 'cleaning_services',
-  },
-  {
-    id: 6,
-    title: 'Đảo lốp & cân bằng động bánh xe',
-    badge: null,
-    desc: 'Chống mòn vẹt lốp không đều và khử rung lắc vô lăng khi chạy tốc độ cao.',
-    icon: 'tire_repair',
-  },
-];
-
-// Mock service history records for UI demonstration
-interface HistoryRecord {
-  id: string;
-  orderCode: string;
-  completedDate: string;
-  licensePlate: string;
-  vehicleModel: string;
-  odometer: string;
-  serviceAdvisor: string;
-  servicePackage: string;
-  items: string[];
-  totalCost: string;
-  status: 'COMPLETED' | 'IN_PROGRESS';
-  invoiceUrl?: string;
-}
-
-const mockHistoryData: HistoryRecord[] = [
-  {
-    id: '1',
-    orderCode: 'WO-202610-0042',
-    completedDate: '12/10/2026',
-    licensePlate: '51G-678.24',
-    vehicleModel: 'Hyundai Santa Fe 2.2D',
-    odometer: '24.500 km',
-    serviceAdvisor: 'Trần Quốc Bảo',
-    servicePackage: 'Bảo dưỡng định kỳ Cấp 2 (20.000 - 30.000 km)',
-    items: [
-      'Thay dầu nhớt động cơ Castrol Magnatec 5W-30 (4.5L)',
-      'Thay cốc lọc dầu nhớt & lọc gió động cơ',
-      'Vệ sinh bugi đánh lửa, họng hút và bướm ga',
-      'Bảo dưỡng phanh 4 bánh & đảo lốp',
-      'Xịt rửa khoang máy & kiểm tra 24 hạng mục an toàn',
-    ],
-    totalCost: '2.450.000 ₫',
-    status: 'COMPLETED',
-  },
-  {
-    id: '2',
-    orderCode: 'WO-202604-0018',
-    completedDate: '05/04/2026',
-    licensePlate: '92C-300.35',
-    vehicleModel: 'Ford Everest Titanium 4x4',
-    odometer: '15.200 km',
-    serviceAdvisor: 'Nguyễn Minh Tuấn',
-    servicePackage: 'Thay thế lốp & Cân chỉnh thước lái vi tính Hunter',
-    items: [
-      'Thay 02 lốp trước Michelin Primacy SUV 265/50R20',
-      'Cân bằng động điện tử 4 bánh xe',
-      'Căn chỉnh góc đặt bánh xe và độ chụm thước lái 3D',
-      'Kiểm tra toàn bộ hệ thống rotuyn và cao su gầm',
-    ],
-    totalCost: '6.800.000 ₫',
-    status: 'COMPLETED',
-  },
-  {
-    id: '3',
-    orderCode: 'WO-202511-0089',
-    completedDate: '20/11/2025',
-    licensePlate: '51G-678.24',
-    vehicleModel: 'Hyundai Santa Fe 2.2D',
-    odometer: '10.000 km',
-    serviceAdvisor: 'Trần Quốc Bảo',
-    servicePackage: 'Bảo dưỡng định kỳ Cấp 1 (10.000 km)',
-    items: [
-      'Thay dầu máy động cơ & chêm nước làm mát',
-      'Vệ sinh lọc gió điều hòa và khử khuẩn cabin',
-      'Siết lại ốc gầm và kiểm tra áp suất lốp',
-    ],
-    totalCost: '1.250.000 ₫',
-    status: 'COMPLETED',
-  },
-];
-
 export default function ProfilePage() {
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
@@ -183,21 +81,31 @@ export default function ProfilePage() {
   const { appointments } = useAppSelector((state) => state.appointments);
 
   // Active Tab State
-  const initialTab = (searchParams.get('tab') as TabKey) || 'profile';
-    // Sync activeTab when searchParams changes
+  const initialTab = (searchParams.get('tab') as TabKey) || 'overview';
+  // Sync activeTab when searchParams changes
   useEffect(() => {
     const tabParam = searchParams.get('tab') as TabKey;
-    if (tabParam && ['profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history'].includes(tabParam)) {
+    if (tabParam && VALID_TABS.includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const msg = sessionStorage.getItem('auth_toast');
+      if (msg) {
+        setVehicleToast({ message: msg, type: 'success' });
+        sessionStorage.removeItem('auth_toast');
+      }
+    }
+  }, []);
 
   const handleTabChange = (key: TabKey) => {
     setActiveTab(key);
     window.history.replaceState(null, '', `/customer/profile?tab=${key}`);
   };
   const [activeTab, setActiveTab] = useState<TabKey>(
-    ['profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history'].includes(initialTab) ? initialTab : 'profile'
+    VALID_TABS.includes(initialTab) ? initialTab : 'overview'
   );
 
   // Profile Form States
@@ -208,6 +116,7 @@ export default function ProfilePage() {
     email: '',
     address: '',
   });
+  const [profileErrors, setProfileErrors] = useState<Partial<Record<'fullName' | 'phone' | 'email' | 'address', string>>>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Vehicle Management State in child panel
@@ -215,6 +124,7 @@ export default function ProfilePage() {
   const [vehicleModalMode, setVehicleModalMode] = useState<'add' | 'edit'>('add');
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [vehicleForm, setVehicleForm] = useState<VehicleFormData>(EMPTY_VEHICLE_FORM);
+  const [vehicleErrors, setVehicleErrors] = useState<Partial<Record<keyof VehicleFormData, string>>>({});
   const [vehicleDeleteConfirm, setVehicleDeleteConfirm] = useState<Vehicle | null>(null);
   const [vehicleToast, setVehicleToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -230,23 +140,12 @@ export default function ProfilePage() {
   const [cancelReason, setCancelReason] = useState('');
 
   // ----------------------------------------------------
-  // 3-STEP APPOINTMENT BOOKING MODAL STATE (EXACT UI)
+  // 3-STEP APPOINTMENT BOOKING MODAL TRIGGER STATE
   // ----------------------------------------------------
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
-  const [bookingStep, setBookingStep] = useState<1 | 2 | 3>(1);
-  const [bookingVehicleId, setBookingVehicleId] = useState<number | null>(null);
-  const [customPlateInput, setCustomPlateInput] = useState('');
-  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([1, 2]);
-  const [bookingNotes, setBookingNotes] = useState('');
   const [bookingDate, setBookingDate] = useState<Date>(new Date());
   const [bookingTime, setBookingTime] = useState<string>('08:00');
-  const [bookingSubmitting, setBookingSubmitting] = useState(false);
-
-  // History Tab Filter States
-  const [historySearch, setHistorySearch] = useState('');
-  const [selectedVehicleFilter, setSelectedVehicleFilter] = useState('ALL');
-  const [viewInvoiceItem, setViewInvoiceItem] = useState<HistoryRecord | null>(null);
-  const [viewProgressItem, setViewProgressItem] = useState<HistoryRecord | null>(null);
+  const [bookingPreselectedVehicleId, setBookingPreselectedVehicleId] = useState<number | null>(null);
 
   // Load initial data
   useEffect(() => {
@@ -275,13 +174,6 @@ export default function ProfilePage() {
     }
   }, [data]);
 
-  // Set default vehicle for booking when vehicles load
-  useEffect(() => {
-    if (vehicles.length > 0 && bookingVehicleId === null) {
-      setBookingVehicleId(vehicles[0].id);
-    }
-  }, [vehicles, bookingVehicleId]);
-
   // Auto-dismiss profile success message
   useEffect(() => {
     if (updateSuccess) {
@@ -291,17 +183,133 @@ export default function ProfilePage() {
     }
   }, [updateSuccess, dispatch]);
 
+  const EMAIL_REGEX =
+    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  const VN_PHONE_REGEX = /^(0|\+84)(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-9])[0-9]{7}$/;
+  const FULL_NAME_REGEX = /^[\p{L}\s'.-]+$/u;
+  const VN_LICENSE_PLATE_REGEX =
+    /^[0-9]{2}[A-Z]{1,2}[A-Z0-9]?[-\s.]?[0-9]{3,5}(?:\.[0-9]{2})?$/;
+
+  const validateProfileField = (
+    field: 'fullName' | 'phone' | 'email' | 'address',
+    value: string
+  ): string | undefined => {
+    const trimmed = value.trim();
+    if (field === 'fullName') {
+      if (!trimmed) return 'Họ và tên không được để trống';
+      if (trimmed.length < 2) return 'Họ và tên phải có tối thiểu 2 ký tự';
+      if (trimmed.length > 120) return 'Họ và tên không được vượt quá 120 ký tự';
+      if (!FULL_NAME_REGEX.test(trimmed)) {
+        return 'Họ và tên không đúng định dạng (chỉ chứa chữ cái và khoảng trắng)';
+      }
+      return undefined;
+    }
+    if (field === 'phone') {
+      if (!trimmed) return 'Số điện thoại không được để trống';
+      const cleaned = trimmed.replace(/[\s.-]/g, '');
+      if (!VN_PHONE_REGEX.test(cleaned)) {
+        return 'Số điện thoại không đúng định dạng (gồm 10 chữ số, VD: 0901234567)';
+      }
+      return undefined;
+    }
+    if (field === 'email') {
+      if (!trimmed) return 'Email không được để trống';
+      if (!EMAIL_REGEX.test(trimmed)) {
+        return 'Email không đúng định dạng (VD: example@gmail.com)';
+      }
+      return undefined;
+    }
+    if (field === 'address') {
+      if (!trimmed) return undefined;
+      if (trimmed.length < 5) return 'Địa chỉ liên hệ phải có tối thiểu 5 ký tự';
+      if (trimmed.length > 255) return 'Địa chỉ liên hệ không được vượt quá 255 ký tự';
+      return undefined;
+    }
+    return undefined;
+  };
+
+  const handleProfileInputChange = (
+    field: 'fullName' | 'phone' | 'email' | 'address',
+    value: string
+  ) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (isEditing) {
+      const errMsg = validateProfileField(field, value);
+      setProfileErrors((prev) => ({ ...prev, [field]: errMsg }));
+    }
+  };
+
+  const validateVehicleField = (
+    field: keyof VehicleFormData,
+    value: string,
+    mode: 'add' | 'edit' = vehicleModalMode
+  ): string | undefined => {
+    const trimmed = value.trim();
+    if (field === 'licensePlate') {
+      if (mode === 'edit') return undefined;
+      if (!trimmed) return 'Biển số xe không được để trống';
+      if (!VN_LICENSE_PLATE_REGEX.test(trimmed.toUpperCase())) {
+        return 'Biển số xe không đúng định dạng (VD: 51G-123.45 hoặc 30A-12345)';
+      }
+      return undefined;
+    }
+    if (field === 'make') {
+      if (!trimmed) return 'Hãng xe không được để trống';
+      if (trimmed.length < 2 || trimmed.length > 50) {
+        return 'Hãng xe phải có từ 2 đến 50 ký tự';
+      }
+      return undefined;
+    }
+    if (field === 'model') {
+      if (!trimmed) return 'Dòng xe không được để trống';
+      if (trimmed.length > 50) return 'Dòng xe không được vượt quá 50 ký tự';
+      return undefined;
+    }
+    if (field === 'year') {
+      if (!trimmed) return undefined;
+      const maxYear = new Date().getFullYear() + 1;
+      const num = Number(trimmed);
+      if (!Number.isInteger(num) || num < 1980 || num > maxYear) {
+        return `Năm sản xuất không hợp lệ (1980 - ${maxYear})`;
+      }
+      return undefined;
+    }
+    if (field === 'color') {
+      if (!trimmed) return undefined;
+      if (!/^[\p{L}\s/-]{1,30}$/u.test(trimmed)) {
+        return 'Màu sơn không đúng định dạng (chỉ chứa chữ cái, tối đa 30 ký tự)';
+      }
+      return undefined;
+    }
+    return undefined;
+  };
+
+  const handleVehicleInputChange = (field: keyof VehicleFormData, value: string) => {
+    setVehicleForm((prev) => ({ ...prev, [field]: value }));
+    const errMsg = validateVehicleField(field, value);
+    setVehicleErrors((prev) => ({ ...prev, [field]: errMsg }));
+  };
+
   const requestSave = () => {
-    if (!form.fullName.trim()) return;
+    const nextErrors: Partial<Record<'fullName' | 'phone' | 'email' | 'address', string>> = {
+      fullName: validateProfileField('fullName', form.fullName),
+      phone: validateProfileField('phone', form.phone),
+      email: validateProfileField('email', form.email),
+      address: validateProfileField('address', form.address),
+    };
+    setProfileErrors(nextErrors);
+    if (Object.values(nextErrors).some(Boolean)) {
+      return;
+    }
     setConfirmOpen(true);
   };
 
   const handleSave = async () => {
     dispatch(updateProfile({
-      fullName: form.fullName,
-      phone: form.phone,
-      email: form.email,
-      address: form.address,
+      fullName: form.fullName.trim(),
+      phone: form.phone.trim().replace(/[\s.-]/g, ''),
+      email: form.email.trim(),
+      address: form.address.trim(),
     }));
     setConfirmOpen(false);
   };
@@ -315,6 +323,7 @@ export default function ProfilePage() {
         address: data.address || '',
       });
     }
+    setProfileErrors({});
     setIsEditing(false);
     dispatch(clearUpdateStatus());
   };
@@ -324,6 +333,7 @@ export default function ProfilePage() {
     setVehicleModalMode('add');
     setSelectedVehicle(null);
     setVehicleForm(EMPTY_VEHICLE_FORM);
+    setVehicleErrors({});
     setVehicleModalOpen(true);
   };
 
@@ -338,13 +348,21 @@ export default function ProfilePage() {
       color: v.color || '',
       vehicleSize: (v.vehicleSize as VehicleFormData['vehicleSize']) || 'MEDIUM',
     });
+    setVehicleErrors({});
     setVehicleModalOpen(true);
   };
 
   const handleSaveVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!vehicleForm.licensePlate.trim() || !vehicleForm.make.trim() || !vehicleForm.model.trim()) {
-      setVehicleToast({ message: 'Vui lòng điền các trường bắt buộc: Biển số, Hãng xe, Dòng xe', type: 'error' });
+    const nextVehErrors: Partial<Record<keyof VehicleFormData, string>> = {
+      licensePlate: validateVehicleField('licensePlate', vehicleForm.licensePlate, vehicleModalMode),
+      make: validateVehicleField('make', vehicleForm.make, vehicleModalMode),
+      model: validateVehicleField('model', vehicleForm.model, vehicleModalMode),
+      year: validateVehicleField('year', vehicleForm.year, vehicleModalMode),
+      color: validateVehicleField('color', vehicleForm.color, vehicleModalMode),
+    };
+    setVehicleErrors(nextVehErrors);
+    if (Object.values(nextVehErrors).some(Boolean)) {
       return;
     }
 
@@ -359,8 +377,7 @@ export default function ProfilePage() {
           vehicleSize: vehicleForm.vehicleSize,
         })).unwrap();
         if (bookingModalOpen && created?.id) {
-          setBookingVehicleId(created.id);
-          setCustomPlateInput('');
+          setBookingPreselectedVehicleId(created.id);
         }
         setVehicleToast({ message: 'Thêm phương tiện mới thành công!', type: 'success' });
       } else if (selectedVehicle) {
@@ -476,28 +493,11 @@ export default function ProfilePage() {
     });
   }, [calendarDate, appointments, data?.id]);
 
-  const MORNING_BOOKING_SLOTS = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30'];
-  const AFTERNOON_BOOKING_SLOTS = ['13:30', '14:00', '14:30', '15:00', '16:00'];
-  const ALL_BOOKING_SLOTS = [...MORNING_BOOKING_SLOTS, ...AFTERNOON_BOOKING_SLOTS];
+  const ALL_BOOKING_SLOTS = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '13:30', '14:00', '14:30', '15:00', '16:00'];
 
   const isBookingSlotInPast = (dateObj: Date, slot: string) => {
     const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
     return new Date(`${dateStr}T${slot}:00`) < new Date();
-  };
-
-  const hasVehicleAppointmentOnDate = (vehicleId: number | string | null | undefined, dateStr: string) => {
-    if (!vehicleId) return false;
-    const vid = Number(vehicleId);
-    return appointments.some((apt) => {
-      if (!['REQUESTED', 'CONFIRMED', 'RESCHEDULED', 'ARRIVED'].includes(apt.status)) return false;
-      const aptVid = Number(apt.vehicle_id || apt.vehicle?.id);
-      if (aptVid !== vid) return false;
-      const aptDateStr =
-        typeof apt.scheduled_date === 'string'
-          ? apt.scheduled_date.substring(0, 10)
-          : new Date(apt.scheduled_date).toISOString().substring(0, 10);
-      return aptDateStr === dateStr;
-    });
   };
 
   const handleOpen3StepBooking = (initialDate?: Date) => {
@@ -524,103 +524,7 @@ export default function ProfilePage() {
       setBookingTime('08:00');
     }
 
-    setBookingNotes('');
-    setBookingStep(1);
     setBookingModalOpen(true);
-  };
-
-  const handleToggleService = (id: number) => {
-    setSelectedServiceIds((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    );
-  };
-
-  const handleConfirm3StepBooking = async () => {
-    if (!bookingVehicleId && !customPlateInput.trim()) {
-      setVehicleToast({ message: 'Vui lòng chọn hoặc nhập thông tin xe.', type: 'error' });
-      return;
-    }
-    if (selectedServiceIds.length === 0 && !bookingNotes.trim()) {
-      setVehicleToast({ message: 'Vui lòng chọn ít nhất 1 dịch vụ hoặc mô tả tình trạng xe.', type: 'error' });
-      return;
-    }
-    if (!bookingDate || !bookingTime) {
-      setVehicleToast({ message: 'Vui lòng chọn ngày và giờ hẹn.', type: 'error' });
-      return;
-    }
-
-    const formattedDate = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}-${String(bookingDate.getDate()).padStart(2, '0')}`;
-    const selectedDateTime = new Date(`${formattedDate}T${bookingTime}:00`);
-    if (selectedDateTime < new Date()) {
-      setVehicleToast({ message: 'Không thể đặt lịch hẹn trong quá khứ. Vui lòng chọn ngày giờ hợp lệ.', type: 'error' });
-      return;
-    }
-
-    setBookingSubmitting(true);
-    try {
-
-      let chosenVehicleId = bookingVehicleId;
-      // If user entered custom plate
-      if (customPlateInput.trim()) {
-        const plate = customPlateInput.trim().toUpperCase();
-        const existing = vehicles.find((v) => v.licensePlate.toUpperCase() === plate);
-        if (existing) {
-          chosenVehicleId = existing.id;
-        } else {
-          try {
-            const newVehRes = await dispatch(
-              createVehicle({
-                licensePlate: plate,
-                make: 'Khác',
-                model: 'Khác',
-                vehicleSize: 'MEDIUM',
-              })
-            ).unwrap();
-            chosenVehicleId = newVehRes.id;
-            dispatch(fetchVehicles());
-          } catch {
-            chosenVehicleId = vehicles[0]?.id;
-          }
-        }
-      } else if (!chosenVehicleId) {
-        if (vehicles.length > 0) {
-          chosenVehicleId = vehicles[0].id;
-        } else {
-          setVehicleToast({ message: 'Vui lòng chọn xe hoặc nhập biển số xe.', type: 'error' });
-          setBookingSubmitting(false);
-          return;
-        }
-      }
-
-      if (chosenVehicleId && hasVehicleAppointmentOnDate(chosenVehicleId, formattedDate)) {
-        setVehicleToast({
-          message: 'Xe này đã có lịch hẹn trong ngày được chọn. Vui lòng chọn ngày khác.',
-          type: 'error',
-        });
-        setBookingSubmitting(false);
-        return;
-      }
-
-      await dispatch(
-        createAppointment({
-          customer_id: data?.id,
-          vehicle_id: chosenVehicleId || vehicles[0]?.id || 1,
-          scheduled_date: formattedDate,
-          scheduled_time: bookingTime,
-          notes: bookingNotes,
-          service_ids: selectedServiceIds,
-        })
-      ).unwrap();
-
-      setVehicleToast({ message: 'Đặt lịch dịch vụ thành công! Hệ thống đã ghi nhận lịch hẹn.', type: 'success' });
-      setBookingModalOpen(false);
-      setBookingNotes('');
-      dispatch(fetchAppointments(data?.id ? { customer_id: data.id } : {}));
-    } catch (err: any) {
-      setVehicleToast({ message: typeof err === 'string' ? err : 'Không thể đặt lịch. Vui lòng thử lại.', type: 'error' });
-    } finally {
-      setBookingSubmitting(false);
-    }
   };
 
   // Appointment Action handlers
@@ -666,29 +570,22 @@ export default function ProfilePage() {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  const inputClass = (editable: boolean) =>
-    `w-full px-4 py-2.5 rounded-xl border text-sm transition-all duration-150 ${
-      editable
-        ? 'border-blue-500 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-        : 'border-slate-200 bg-slate-50 text-slate-800 cursor-default'
+  const inputClass = (editable: boolean, hasError = false) =>
+    `w-full min-h-[44px] px-4 py-2.5 rounded-xl border text-sm transition-all duration-150 ${!editable
+      ? 'border-hairline bg-surface-subtle text-ink-primary cursor-default'
+      : hasError
+        ? 'border-status-danger bg-status-danger-soft/30 text-ink-primary focus:outline-none focus:ring-2 focus:ring-status-danger/20 focus:border-status-danger'
+        : 'border-accent bg-surface-elevated text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent'
     }`;
 
-  // Filtered Service History records
-  const filteredHistory = useMemo(() => {
-    return mockHistoryData.filter((item: HistoryRecord) => {
-      const matchVehicle =
-        selectedVehicleFilter === 'ALL' || item.licensePlate === selectedVehicleFilter;
-      const matchSearch =
-        !historySearch.trim() ||
-        item.orderCode.toLowerCase().includes(historySearch.toLowerCase()) ||
-        item.servicePackage.toLowerCase().includes(historySearch.toLowerCase()) ||
-        item.licensePlate.toLowerCase().includes(historySearch.toLowerCase());
-      return matchVehicle && matchSearch;
-    });
-  }, [historySearch, selectedVehicleFilter]);
+  const activeVehicles = useMemo(
+    () => vehicles.filter((v) => v.isActive !== false),
+    [vehicles]
+  );
 
-  // 6 Tabs in Vertical Sidebar (including UC-15 Tracking & UC-16 Invoices)
+  // 7 Tabs in Vertical Sidebar (including Overview, UC-15 Tracking & UC-16 Invoices)
   const navTabs: { key: TabKey; label: string; icon: string }[] = [
+    { key: 'overview', label: 'Tổng quan', icon: 'dashboard' },
     { key: 'profile', label: 'Hồ sơ cá nhân', icon: 'account_circle' },
     { key: 'vehicles', label: 'Xe của tôi', icon: 'directions_car' },
     { key: 'appointments', label: 'Đặt lịch', icon: 'calendar_today' },
@@ -696,9 +593,6 @@ export default function ProfilePage() {
     { key: 'invoices', label: 'Hóa đơn dịch vụ', icon: 'receipt_long' },
     { key: 'history', label: 'Lịch sử sửa chữa', icon: 'history' },
   ];
-
-  // Selected vehicle for step 3 summary
-  const selectedVehicleObj = vehicles.find((v) => v.id === bookingVehicleId) || vehicles[0];
 
   if (loading) {
     return (
@@ -725,48 +619,43 @@ export default function ProfilePage() {
   return (
     <div className="w-full">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-500 mb-6">
-        <Link href="/" className="hover:text-blue-600 transition-colors">Trang chủ</Link>
-        <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-        <Link href="/customer" className="hover:text-blue-600 transition-colors">Tổng quan</Link>
-        <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-        <span className="text-slate-800 font-medium">
-          {navTabs.find((t) => t.key === activeTab)?.label || 'Hồ sơ cá nhân'}
+      <nav className="flex items-center gap-1.5 text-xs text-ink-muted mb-5">
+        <Link href="/home" className="hover:text-accent transition-colors">
+          Trang chủ
+        </Link>
+        <span className="material-symbols-outlined text-sm" aria-hidden="true">
+          chevron_right
+        </span>
+        <span className="text-ink-primary font-semibold">
+          {navTabs.find((t) => t.key === activeTab)?.label || 'Tổng quan'}
         </span>
       </nav>
 
       {/* Main Grid: Left Sidebar Tabs + Right Content */}
-      <div className="flex flex-col md:flex-row items-start gap-8">
-        
+      <div className="flex flex-col md:flex-row items-start gap-6 lg:gap-8">
+
         {/* Left Column: Sidebar Tabs */}
         <aside className="w-full md:w-64 lg:w-72 shrink-0 space-y-4">
           {/* User Card */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-full bg-blue-700 text-white flex items-center justify-center font-bold text-base shadow-sm shrink-0">
+          <div className="bg-surface-elevated rounded-2xl p-4 border border-hairline flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center font-bold text-base shrink-0">
               {getInitials(data?.fullName)}
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-bold text-slate-800 truncate">
+              <h2 className="text-sm font-bold text-ink-primary truncate">
                 {data?.fullName || 'Khách hàng'}
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Thành viên Tiêu chuẩn
+              <p className="text-xs text-ink-muted mt-0.5">
+                Khách hàng AutoCare Pro
               </p>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <nav className="space-y-1">
-            {/* Quick link back to Customer Dashboard */}
-            <Link
-              href="/customer"
-              className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-semibold transition-all text-slate-700 bg-slate-50 hover:bg-blue-50 hover:text-blue-700 border border-slate-200/60 mb-2 group shadow-2xs"
-            >
-              <span className="material-symbols-outlined text-xl text-blue-600 transition-transform group-hover:-translate-x-0.5">
-                dashboard
-              </span>
-              <span>Trang tổng quan</span>
-            </Link>
+          {/* Navigation Tabs (horizontal scrollable strip with scrollbar on mobile, vertical list on md+) */}
+          <nav
+            className="flex md:flex-col gap-1.5 overflow-x-auto styled-scrollbar-x pb-2.5 md:pb-0 -mx-1 px-1 md:mx-0 md:px-0"
+            aria-label="Điều hướng cổng khách hàng"
+          >
             {navTabs.map((tab) => {
               const isActive = activeTab === tab.key;
               return (
@@ -774,16 +663,17 @@ export default function ProfilePage() {
                   key={tab.key}
                   type="button"
                   onClick={() => handleTabChange(tab.key)}
-                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left ${
+                  className={`shrink-0 md:w-full min-h-[44px] flex items-center gap-2.5 md:gap-3.5 px-4 py-2.5 md:py-3 rounded-xl md:rounded-2xl text-sm font-medium transition-colors text-left cursor-pointer whitespace-nowrap ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                      ? 'bg-accent text-white font-semibold'
+                      : 'bg-surface-elevated md:bg-transparent border border-hairline md:border-transparent text-ink-secondary hover:text-ink-primary hover:bg-surface-subtle'
                   }`}
                 >
                   <span
-                    className={`material-symbols-outlined text-xl transition-colors ${
-                      isActive ? 'text-white' : 'text-slate-400'
+                    className={`material-symbols-outlined text-lg md:text-xl transition-colors ${
+                      isActive ? 'text-white' : 'text-ink-muted'
                     }`}
+                    aria-hidden="true"
                   >
                     {tab.icon}
                   </span>
@@ -796,21 +686,31 @@ export default function ProfilePage() {
 
         {/* Right Column: Tab Content */}
         <main className="flex-1 min-w-0 w-full">
-          
+
+          {/* TAB 0: TỔNG QUAN */}
+          {activeTab === 'overview' && (
+            <CustomerOverviewTab onSelectTab={handleTabChange} />
+          )}
+
           {/* TAB 1: HỒ SƠ CÁ NHÂN */}
           {activeTab === 'profile' && (
-            <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100 space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div className="bg-surface-elevated rounded-2xl p-5 sm:p-8 border border-hairline space-y-6">
+              <div className="flex items-center justify-between gap-4 pb-4 border-b border-hairline">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">Hồ sơ cá nhân</h2>
-                  <p className="text-xs text-slate-500 mt-1">Quản lý và cập nhật thông tin hồ sơ của bạn</p>
+                  <h2 className="text-xl font-bold text-ink-primary">Hồ sơ cá nhân</h2>
+                  <p className="text-xs text-ink-secondary mt-1">
+                    Quản lý và cập nhật thông tin hồ sơ của bạn
+                  </p>
                 </div>
                 {!isEditing && (
                   <button
+                    type="button"
                     onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-all shadow-sm"
+                    className="inline-flex items-center gap-1.5 min-h-[44px] px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0"
                   >
-                    <span className="material-symbols-outlined text-[16px]">edit</span>
+                    <span className="material-symbols-outlined text-base" aria-hidden="true">
+                      edit
+                    </span>
                     Chỉnh sửa
                   </button>
                 )}
@@ -828,46 +728,70 @@ export default function ProfilePage() {
                       <input
                         type="text"
                         value={form.fullName}
-                        onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                        onChange={(e) => handleProfileInputChange('fullName', e.target.value)}
+                        onBlur={(e) => isEditing && handleProfileInputChange('fullName', e.target.value)}
                         readOnly={!isEditing}
-                        className={`${inputClass(isEditing)} pl-10`}
+                        aria-invalid={Boolean(profileErrors.fullName)}
+                        className={`${inputClass(isEditing, Boolean(profileErrors.fullName))} pl-10`}
                         placeholder="Nhập họ và tên"
                       />
                     </div>
+                    {isEditing && profileErrors.fullName && (
+                      <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">error</span>
+                        <span>{profileErrors.fullName}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
-                      Số điện thoại
+                      Số điện thoại <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">phone</span>
                       <input
                         type="tel"
                         value={form.phone}
-                        onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                        onChange={(e) => handleProfileInputChange('phone', e.target.value)}
+                        onBlur={(e) => isEditing && handleProfileInputChange('phone', e.target.value)}
                         readOnly={!isEditing}
-                        className={`${inputClass(isEditing)} pl-10`}
-                        placeholder="Nhập số điện thoại"
+                        aria-invalid={Boolean(profileErrors.phone)}
+                        className={`${inputClass(isEditing, Boolean(profileErrors.phone))} pl-10`}
+                        placeholder="Nhập số điện thoại (VD: 0901234567)"
                       />
                     </div>
+                    {isEditing && profileErrors.phone && (
+                      <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">error</span>
+                        <span>{profileErrors.phone}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
-                      Email
+                      Email <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">mail</span>
                       <input
                         type="email"
                         value={form.email}
-                        onChange={(e) => setForm({ ...form, email: e.target.value })}
+                        onChange={(e) => handleProfileInputChange('email', e.target.value)}
+                        onBlur={(e) => isEditing && handleProfileInputChange('email', e.target.value)}
                         readOnly={!isEditing}
-                        className={`${inputClass(isEditing)} pl-10`}
-                        placeholder="Nhập email"
+                        aria-invalid={Boolean(profileErrors.email)}
+                        className={`${inputClass(isEditing, Boolean(profileErrors.email))} pl-10`}
+                        placeholder="Nhập email (VD: example@gmail.com)"
                       />
                     </div>
+                    {isEditing && profileErrors.email && (
+                      <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">error</span>
+                        <span>{profileErrors.email}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -879,27 +803,43 @@ export default function ProfilePage() {
                       <input
                         type="text"
                         value={form.address}
-                        onChange={(e) => setForm({ ...form, address: e.target.value })}
+                        onChange={(e) => handleProfileInputChange('address', e.target.value)}
+                        onBlur={(e) => isEditing && handleProfileInputChange('address', e.target.value)}
                         readOnly={!isEditing}
-                        className={`${inputClass(isEditing)} pl-10`}
+                        aria-invalid={Boolean(profileErrors.address)}
+                        className={`${inputClass(isEditing, Boolean(profileErrors.address))} pl-10`}
                         placeholder="Nhập địa chỉ của bạn"
                       />
                     </div>
+                    {isEditing && profileErrors.address && (
+                      <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">error</span>
+                        <span>{profileErrors.address}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-100">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Thông tin tài khoản</p>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="pt-4 border-t border-hairline">
+                  <p className="text-xs font-bold text-ink-muted uppercase tracking-wide mb-3">
+                    Thông tin tài khoản
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-xs text-slate-400 mb-0.5">Ngày tham gia</p>
-                      <p className="font-semibold text-slate-800">
+                      <p className="text-xs text-ink-muted mb-0.5">Ngày tham gia</p>
+                      <p className="font-semibold text-ink-primary font-mono tabular-nums">
                         {data?.createdAt ? new Date(data.createdAt).toLocaleDateString('vi-VN') : '—'}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400 mb-0.5">Trạng thái</p>
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${data?.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                      <p className="text-xs text-ink-muted mb-0.5">Trạng thái</p>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                          data?.isActive
+                            ? 'bg-status-success-soft text-on-secondary-container'
+                            : 'bg-status-danger-soft text-on-error-container'
+                        }`}
+                      >
                         <span className="w-1.5 h-1.5 rounded-full bg-current" />
                         {data?.isActive ? 'Đang hoạt động' : 'Bị vô hiệu hóa'}
                       </span>
@@ -908,23 +848,27 @@ export default function ProfilePage() {
                 </div>
 
                 {isEditing && (
-                  <div className="flex items-center gap-3 pt-2">
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
                     <button
+                      type="button"
                       onClick={requestSave}
                       disabled={updateLoading}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition-all shadow-sm"
+                      className="inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-xl text-sm font-semibold disabled:opacity-60 transition-colors cursor-pointer"
                     >
                       {updateLoading ? (
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       ) : (
-                        <span className="material-symbols-outlined text-[18px]">save</span>
+                        <span className="material-symbols-outlined text-lg" aria-hidden="true">
+                          save
+                        </span>
                       )}
                       {updateLoading ? 'Đang lưu...' : 'Lưu thay đổi'}
                     </button>
                     <button
+                      type="button"
                       onClick={handleCancel}
                       disabled={updateLoading}
-                      className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition-all"
+                      className="min-h-[44px] px-5 py-2.5 border border-hairline-strong text-ink-secondary rounded-xl text-sm font-medium hover:bg-surface-subtle transition-colors cursor-pointer"
                     >
                       Hủy
                     </button>
@@ -988,17 +932,19 @@ export default function ProfilePage() {
                             </span>
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {activeWO && (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                <span
+                                  title={`Phiếu công việc ${activeWO.woNumber} đang xử lý tại xưởng`}
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200"
+                                >
                                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                  Đang làm dịch vụ tại xưởng
+                                  Đang có phiếu công việc ({activeWO.woNumber})
                                 </span>
                               )}
                               <span
-                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                  v.isActive
+                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${v.isActive
                                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                     : 'bg-slate-100 text-slate-500'
-                                }`}
+                                  }`}
                               >
                                 {v.isActive ? 'Hoạt động' : 'Tạm dừng'}
                               </span>
@@ -1030,43 +976,39 @@ export default function ProfilePage() {
                             <span className="material-symbols-outlined text-[15px]">edit</span>
                             Chỉnh sửa
                           </button>
-                          {v.isActive ? (
-                            <button
-                              type="button"
-                              aria-disabled={!!activeWO}
-                              title={
-                                activeWO
-                                  ? `Phương tiện đang có Phiếu công việc đang xử lý tại xưởng (${activeWO.woNumber}). Không thể xóa phương tiện này.`
-                                  : 'Xóa phương tiện'
-                              }
-                              onClick={() => {
-                                if (activeWO) {
-                                  setVehicleToast({
-                                    message: `Phương tiện đang có Phiếu công việc đang xử lý tại xưởng (${activeWO.woNumber}). Không thể xóa phương tiện này.`,
-                                    type: 'error',
-                                  });
-                                  return;
-                                }
-                                setVehicleDeleteConfirm(v);
-                              }}
-                              className={`flex items-center gap-1 px-3 py-1.5 border rounded-xl text-xs font-semibold transition-all ${
-                                activeWO
-                                  ? 'border-slate-200 bg-slate-50 text-slate-400 opacity-50 cursor-not-allowed'
-                                  : 'border-red-100 text-red-600 hover:bg-red-50'
-                              }`}
-                            >
-                              <span className="material-symbols-outlined text-[15px]">delete</span>
-                              Xóa
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleRestoreVehicle(v.id)}
-                              className="flex items-center gap-1 px-3 py-1.5 border border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl text-xs font-semibold transition-all"
-                            >
-                              <span className="material-symbols-outlined text-[15px]">restart_alt</span>
-                              Kích hoạt lại
-                            </button>
+                          {!activeWO && (
+                            v.isActive ? (
+                              v.hasTransactions ? (
+                                <button
+                                  type="button"
+                                  title="Xe đã phát sinh giao dịch, chỉ có thể vô hiệu hóa"
+                                  onClick={() => setVehicleDeleteConfirm(v)}
+                                  className="flex items-center gap-1 px-3 py-1.5 border border-amber-200 text-amber-700 hover:bg-amber-50 rounded-xl text-xs font-semibold transition-all"
+                                >
+                                  <span className="material-symbols-outlined text-[15px]">block</span>
+                                  Vô hiệu hóa
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  title="Xóa phương tiện"
+                                  onClick={() => setVehicleDeleteConfirm(v)}
+                                  className="flex items-center gap-1 px-3 py-1.5 border border-red-100 text-red-600 hover:bg-red-50 rounded-xl text-xs font-semibold transition-all"
+                                >
+                                  <span className="material-symbols-outlined text-[15px]">delete</span>
+                                  Xóa
+                                </button>
+                              )
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleRestoreVehicle(v.id)}
+                                className="flex items-center gap-1 px-3 py-1.5 border border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl text-xs font-semibold transition-all"
+                              >
+                                <span className="material-symbols-outlined text-[15px]">restart_alt</span>
+                                Kích hoạt lại
+                              </button>
+                            )
                           )}
                         </div>
                       </div>
@@ -1154,24 +1096,22 @@ export default function ProfilePage() {
                           handleOpen3StepBooking(cell.date);
                         }
                       }}
-                      className={`min-h-[110px] p-2 flex flex-col justify-between transition-colors cursor-pointer group ${
-                        !cell.isCurrentMonth
+                      className={`min-h-[110px] p-2 flex flex-col justify-between transition-colors cursor-pointer group ${!cell.isCurrentMonth
                           ? 'bg-slate-50/50 text-slate-300'
                           : cell.isToday
-                          ? 'bg-blue-50/40'
-                          : 'hover:bg-blue-50/20'
-                      }`}
+                            ? 'bg-blue-50/40'
+                            : 'hover:bg-blue-50/20'
+                        }`}
                     >
                       {/* Date Header */}
                       <div className="flex items-center justify-between">
                         <span
-                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
-                            cell.isToday
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${cell.isToday
                               ? 'bg-blue-600 text-white shadow-sm font-bold'
                               : cell.isCurrentMonth
-                              ? 'text-slate-800'
-                              : 'text-slate-400'
-                          }`}
+                                ? 'text-slate-800'
+                                : 'text-slate-400'
+                            }`}
                         >
                           {cell.dateNum}
                         </span>
@@ -1191,15 +1131,14 @@ export default function ProfilePage() {
                               e.stopPropagation();
                               setSelectedAptDetail(apt);
                             }}
-                            className={`p-1.5 rounded-lg text-[11px] font-medium transition-all shadow-xs flex items-center justify-between ${
-                              apt.status === 'ARRIVED'
+                            className={`p-1.5 rounded-lg text-[11px] font-medium transition-all shadow-xs flex items-center justify-between ${apt.status === 'ARRIVED'
                                 ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
                                 : apt.status === 'CONFIRMED'
-                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                                : apt.status === 'CANCELLED'
-                                ? 'bg-red-100 text-red-800 hover:bg-red-200 line-through'
-                                : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                            }`}
+                                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                  : apt.status === 'CANCELLED'
+                                    ? 'bg-red-100 text-red-800 hover:bg-red-200 line-through'
+                                    : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                              }`}
                           >
                             <span className="truncate">
                               {apt.scheduled_time_str || apt.scheduled_time} • {apt.vehicle?.license_plate || 'Xe'}
@@ -1232,7 +1171,14 @@ export default function ProfilePage() {
           {/* TAB 4: LỊCH SỬ DỊCH VỤ */}
           {activeTab === 'history' && (
             <div className="space-y-6">
-              <HistoryView isEmbedded={true} />
+              <HistoryView
+                isEmbedded={true}
+                onViewTracking={() => handleTabChange('tracking')}
+                onBookNew={() => {
+                  handleTabChange('appointments');
+                  handleOpen3StepBooking(new Date());
+                }}
+              />
             </div>
           )}
 
@@ -1240,628 +1186,26 @@ export default function ProfilePage() {
       </div>
 
       {/* ============================================================== */}
-      {/* 3-STEP APPOINTMENT BOOKING MODAL (IDENTICAL TO PROVIDED UI MOCKUP) */}
+      {/* 3-STEP APPOINTMENT BOOKING MODAL (LAZY-LOADED)                 */}
       {/* ============================================================== */}
       {bookingModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-6 max-h-[92vh] overflow-y-auto">
-            {/* Header with Title & Stepper */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Đặt lịch dịch vụ & sửa chữa</h2>
-                <p className="text-xs text-slate-500 mt-1">
-                  Quy trình 3 bước đơn giản – Tiết kiệm thời gian, nhận xe đúng hẹn với đội ngũ kỹ thuật viên chuẩn hãng.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setBookingModalOpen(false)}
-                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center self-start sm:self-center transition-colors"
-              >
-                <span className="material-symbols-outlined text-lg">close</span>
-              </button>
-            </div>
-
-            {/* Stepper Progress Bar */}
-            <div className="flex items-center justify-center gap-3 py-1">
-              {/* Step 1 Pill */}
-              <div
-                onClick={() => setBookingStep(1)}
-                className={`flex items-center gap-2 cursor-pointer ${
-                  bookingStep === 1 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'
-                }`}
-              >
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
-                    bookingStep === 1
-                      ? 'bg-blue-600 text-white font-bold'
-                      : 'bg-blue-100 text-blue-700 font-semibold'
-                  }`}
-                >
-                  1
-                </div>
-                <span className="text-xs">1. Chọn xe</span>
-              </div>
-
-              <div className="w-12 h-0.5 bg-blue-500/40" />
-
-              {/* Step 2 Pill */}
-              <div
-                onClick={() => setBookingStep(2)}
-                className={`flex items-center gap-2 cursor-pointer ${
-                  bookingStep === 2 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'
-                }`}
-              >
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
-                    bookingStep === 2
-                      ? 'bg-blue-600 text-white font-bold'
-                      : bookingStep > 2
-                      ? 'bg-blue-100 text-blue-700 font-semibold'
-                      : 'bg-slate-100 text-slate-500'
-                  }`}
-                >
-                  2
-                </div>
-                <span className="text-xs">2. Dịch vụ & Mô tả</span>
-              </div>
-
-              <div className="w-12 h-0.5 bg-blue-500/40" />
-
-              {/* Step 3 Pill */}
-              <div
-                onClick={() => setBookingStep(3)}
-                className={`flex items-center gap-2 cursor-pointer ${
-                  bookingStep === 3 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'
-                }`}
-              >
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
-                    bookingStep === 3
-                      ? 'bg-blue-600 text-white font-bold'
-                      : 'bg-slate-100 text-slate-500'
-                  }`}
-                >
-                  3
-                </div>
-                <span className="text-xs">3. Ngày & Giờ</span>
-              </div>
-            </div>
-
-            {/* ---------------------------------------------------- */}
-            {/* STEP 1: CHỌN XE CẦN LÀM DỊCH VỤ */}
-            {/* ---------------------------------------------------- */}
-            {bookingStep === 1 && (
-              <div className="space-y-5 animate-fadeIn">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
-                      1
-                    </div>
-                    <h3 className="font-bold text-slate-900 text-sm">1. Chọn xe cần làm dịch vụ</h3>
-                  </div>
-                  <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    Hồ sơ xe cập nhật
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 -mt-3">
-                  Chọn từ danh sách xe đã đăng ký hồ sơ hoặc thêm xe mới vào xưởng
-                </p>
-
-                {/* Vehicle Selection Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                  {/* Default / Registered Vehicles */}
-                  {vehicles.filter((v) => v.isActive !== false).length === 0 ? (
-                    <div className="col-span-full p-6 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
-                      <span className="material-symbols-outlined text-3xl text-slate-400 mb-1">directions_car</span>
-                      <p className="text-sm font-semibold text-slate-700">Chưa có phương tiện trong hồ sơ</p>
-                      <p className="text-xs text-slate-500 mt-1">Thêm nhanh phương tiện vào hồ sơ hoặc nhập biển số xe bên dưới để tiếp tục đặt lịch.</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setVehicleModalMode('add');
-                          setSelectedVehicle(null);
-                          setVehicleForm(EMPTY_VEHICLE_FORM);
-                          setVehicleModalOpen(true);
-                        }}
-                        className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">add</span>
-                        + Thêm phương tiện
-                      </button>
-                    </div>
-                  ) : (
-                    vehicles.filter((v) => v.isActive !== false).map((v) => {
-                      const isSelected = !customPlateInput && bookingVehicleId === v.id;
-                      return (
-                        <div
-                          key={v.id}
-                          onClick={() => {
-                            setBookingVehicleId(v.id);
-                            setCustomPlateInput('');
-                          }}
-                          className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between gap-3 ${
-                            isSelected
-                              ? 'border-blue-600 bg-blue-50/20 shadow-sm'
-                              : 'border-slate-200 bg-white hover:border-slate-300'
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="px-2.5 py-0.5 bg-slate-100 rounded text-xs font-mono font-bold text-slate-800">
-                                {v.licensePlate}
-                              </span>
-                              <div
-                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                  isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
-                                }`}
-                              >
-                                {isSelected && <span className="material-symbols-outlined text-[13px]">check</span>}
-                              </div>
-                            </div>
-                            <h4 className="font-bold text-sm text-slate-900 leading-snug">
-                              {v.make} {v.model}
-                            </h4>
-                            <p className="text-[11px] text-slate-500 mt-0.5">
-                              {v.color ? `Màu: ${v.color}` : 'Phương tiện'} {v.year ? `• Đời: ${v.year}` : ''}
-                            </p>
-                          </div>
-                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                            <span className="text-emerald-700 flex items-center gap-1 font-medium">
-                              <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                              Hoạt động
-                            </span>
-                            <span className={isSelected ? 'text-blue-600 font-bold' : 'text-slate-400'}>
-                              {isSelected ? 'Đang chọn' : 'Chọn xe'}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Input New / Custom Plate Option */}
-                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-blue-700">
-                    <span className="material-symbols-outlined text-base">add_circle</span>
-                    <span>+ Sử dụng xe khác / Nhập biển số mới</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={customPlateInput}
-                      onChange={(e) => {
-                        setCustomPlateInput(e.target.value.toUpperCase());
-                        setBookingVehicleId(null);
-                      }}
-                      placeholder="Ví dụ: 51K-999.88 (Dòng xe)"
-                      className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono tracking-wider focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (customPlateInput.trim()) {
-                          setBookingVehicleId(0);
-                        }
-                      }}
-                      className="px-4 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-xl hover:bg-slate-900 transition-colors"
-                    >
-                      Áp dụng
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ---------------------------------------------------- */}
-            {/* STEP 2: DỊCH VỤ YÊU CẦU & MÔ TẢ TÌNH TRẠNG */}
-            {/* ---------------------------------------------------- */}
-            {bookingStep === 2 && (
-              <div className="space-y-5 animate-fadeIn">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
-                    2
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-sm">2. Dịch vụ yêu cầu & Mô tả tình trạng</h3>
-                </div>
-                <p className="text-xs text-slate-500 -mt-3">
-                  Lựa chọn các hạng mục cần thực hiện hoặc ghi rõ triệu chứng bất thường
-                </p>
-
-                {/* 6 Services Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {AVAILABLE_SERVICES.map((srv) => {
-                    const isChecked = selectedServiceIds.includes(srv.id);
-                    return (
-                      <div
-                        key={srv.id}
-                        onClick={() => handleToggleService(srv.id)}
-                        className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
-                          isChecked
-                            ? 'border-blue-600 bg-blue-50/20 shadow-xs'
-                            : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
-                      >
-                        <div
-                          className={`w-5 h-5 mt-0.5 rounded-lg border flex items-center justify-center shrink-0 ${
-                            isChecked ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
-                          }`}
-                        >
-                          {isChecked && <span className="material-symbols-outlined text-[13px]">check</span>}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="material-symbols-outlined text-blue-600 text-[16px]">
-                              {srv.icon}
-                            </span>
-                            <h4 className="font-bold text-xs text-slate-900">{srv.title}</h4>
-                            {srv.badge && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-white">
-                                {srv.badge}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-slate-500 leading-relaxed">{srv.desc}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Detailed Symptom Notes Textarea */}
-                <div>
-                  <div className="mb-1.5">
-                    <label className="text-xs font-bold text-slate-700">
-                      Mô tả chi tiết tình trạng xe (Tiếng kêu lạ, đèn cảnh báo taplo, yêu cầu riêng...)
-                    </label>
-                  </div>
-                  <textarea
-                    rows={3}
-                    value={bookingNotes}
-                    onChange={(e) => setBookingNotes(e.target.value)}
-                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none leading-relaxed"
-                    placeholder="Nhập mô tả tình trạng xe của bạn (nếu có)..."
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">info</span>
-                    Quý khách có thể đính kèm ảnh hoặc video âm thanh bất thường khi mang xe đến xưởng.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* ---------------------------------------------------- */}
-            {/* STEP 3: CHỌN NGÀY & KHUNG GIỜ TIẾP NHẬN */}
-            {/* ---------------------------------------------------- */}
-            {bookingStep === 3 && (
-              <div className="space-y-5 animate-fadeIn">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
-                    3
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-sm">3. Chọn ngày & khung giờ tiếp nhận</h3>
-                </div>
-                <p className="text-xs text-slate-500 -mt-3">
-                  Hệ thống phân bổ khoang sửa chữa thông minh tránh tình trạng chờ đợi quá 10 phút
-                </p>
-
-                {/* Calendar Picker + Time Slots */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                  {/* Left: Mini Calendar */}
-                  <div className="lg:col-span-5 p-4 rounded-2xl border border-slate-200 bg-white">
-                    <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-blue-600 text-lg">calendar_month</span>
-                        <h4 className="font-bold text-xs text-slate-900">
-                          Tháng {bookingDate.getMonth() + 1} / {bookingDate.getFullYear()}
-                        </h4>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {(() => {
-                          const now = new Date();
-                          const isPrevMonthDisabled =
-                            bookingDate.getFullYear() < now.getFullYear() ||
-                            (bookingDate.getFullYear() === now.getFullYear() &&
-                              bookingDate.getMonth() <= now.getMonth());
-                          return (
-                            <button
-                              type="button"
-                              disabled={isPrevMonthDisabled}
-                              onClick={() => {
-                                const d = new Date(bookingDate);
-                                d.setMonth(d.getMonth() - 1);
-                                const todayStart = new Date();
-                                todayStart.setHours(0, 0, 0, 0);
-                                if (
-                                  d.getFullYear() === todayStart.getFullYear() &&
-                                  d.getMonth() === todayStart.getMonth() &&
-                                  d < todayStart
-                                ) {
-                                  d.setDate(todayStart.getDate());
-                                }
-                                setBookingDate(d);
-                              }}
-                              className="w-6 h-6 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-slate-500"
-                            >
-                              ‹
-                            </button>
-                          );
-                        })()}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const d = new Date(bookingDate);
-                            d.setMonth(d.getMonth() + 1);
-                            setBookingDate(d);
-                          }}
-                          className="w-6 h-6 rounded hover:bg-slate-100 flex items-center justify-center text-slate-500"
-                        >
-                          ›
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Mini Day of Week Header */}
-                    <div className="grid grid-cols-7 text-center text-[10px] font-bold text-slate-500 mb-2">
-                      <span>T2</span>
-                      <span>T3</span>
-                      <span>T4</span>
-                      <span>T5</span>
-                      <span>T6</span>
-                      <span>T7</span>
-                      <span className="text-red-500">CN</span>
-                    </div>
-
-                    {/* Mini Day Grid */}
-                    <div className="grid grid-cols-7 gap-1 text-center text-xs">
-                      {(() => {
-                        const year = bookingDate.getFullYear();
-                        const month = bookingDate.getMonth();
-                        const daysInMonth = new Date(year, month + 1, 0).getDate();
-                        const firstDayOffset = (new Date(year, month, 1).getDay() + 6) % 7;
-                        const todayStart = new Date();
-                        todayStart.setHours(0, 0, 0, 0);
-
-                        return (
-                          <>
-                            {Array.from({ length: firstDayOffset }, (_, idx) => (
-                              <div key={`empty-${idx}`} className="h-7" />
-                            ))}
-                            {Array.from({ length: daysInMonth }, (_, i) => {
-                              const dayNum = i + 1;
-                              const cellDate = new Date(year, month, dayNum);
-                              const cellDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-                              const isPastDay = cellDate < todayStart;
-                              const isDuplicateDay = !isPastDay && hasVehicleAppointmentOnDate(bookingVehicleId, cellDateStr);
-                              const isSelectedDay = bookingDate.getDate() === dayNum;
-                              return (
-                                <button
-                                  key={dayNum}
-                                  type="button"
-                                  disabled={isPastDay || isDuplicateDay}
-                                  title={isDuplicateDay ? 'Xe này đã có lịch hẹn trong ngày này' : undefined}
-                                  onClick={() => {
-                                    const newD = new Date(year, month, dayNum);
-                                    setBookingDate(newD);
-                                    if (isBookingSlotInPast(newD, bookingTime)) {
-                                      const nextSlot = ALL_BOOKING_SLOTS.find(
-                                        (s) => !isBookingSlotInPast(newD, s)
-                                      );
-                                      if (nextSlot) setBookingTime(nextSlot);
-                                    }
-                                  }}
-                                  className={`h-7 rounded-lg font-medium text-xs flex items-center justify-center transition-all ${
-                                    isPastDay
-                                      ? 'text-slate-300 cursor-not-allowed line-through'
-                                      : isDuplicateDay
-                                        ? 'bg-amber-50 text-amber-500 border border-amber-200 cursor-not-allowed'
-                                        : isSelectedDay
-                                          ? 'bg-blue-600 text-white font-bold shadow-sm'
-                                          : 'hover:bg-slate-100 text-slate-700'
-                                  }`}
-                                >
-                                  {dayNum}
-                                </button>
-                              );
-                            })}
-                          </>
-                        );
-                      })()}
-                    </div>
-
-                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-blue-600" />
-                        Ngày đang chọn: <strong>{bookingDate.getDate()}/{bookingDate.getMonth() + 1}</strong>
-                      </span>
-                      <span>Xưởng mở cửa (07:30 - 17:30)</span>
-                    </div>
-                    {hasVehicleAppointmentOnDate(
-                      bookingVehicleId,
-                      `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}-${String(bookingDate.getDate()).padStart(2, '0')}`
-                    ) && (
-                      <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-medium flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-sm text-amber-600">warning</span>
-                        <span>Xe này đã có lịch hẹn vào ngày đang chọn. Vui lòng chọn ngày khác.</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Right: Morning & Afternoon Slots */}
-                  <div className="lg:col-span-7 space-y-4">
-                    {/* Morning Slots */}
-                    <div>
-                      <div className="flex items-center justify-between text-xs mb-2">
-                        <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-amber-500 text-base">wb_sunny</span>
-                          Buổi sáng (07:30 - 11:30)
-                        </span>
-                        <span className="text-[11px] text-slate-400">
-                          {MORNING_BOOKING_SLOTS.filter((s) => !isBookingSlotInPast(bookingDate, s)).length}/{MORNING_BOOKING_SLOTS.length} khung giờ sẵn sàng
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        {MORNING_BOOKING_SLOTS.map((slot) => {
-                          const isPastSlot = isBookingSlotInPast(bookingDate, slot);
-                          const isSelected = bookingTime === slot && !isPastSlot;
-                          return (
-                            <button
-                              key={slot}
-                              type="button"
-                              disabled={isPastSlot}
-                              onClick={() => setBookingTime(slot)}
-                              className={`py-2 rounded-xl text-xs font-semibold transition-all border ${
-                                isPastSlot
-                                  ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed line-through'
-                                  : isSelected
-                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                              }`}
-                            >
-                              {slot}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Afternoon Slots */}
-                    <div>
-                      <div className="flex items-center justify-between text-xs mb-2">
-                        <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-blue-500 text-base">wb_twilight</span>
-                          Buổi chiều (13:30 - 17:30)
-                        </span>
-                        <span className="text-[11px] text-slate-400">
-                          {AFTERNOON_BOOKING_SLOTS.filter((s) => !isBookingSlotInPast(bookingDate, s)).length}/{AFTERNOON_BOOKING_SLOTS.length} khung giờ sẵn sàng
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        {AFTERNOON_BOOKING_SLOTS.map((slot) => {
-                          const isPastSlot = isBookingSlotInPast(bookingDate, slot);
-                          const isSelected = bookingTime === slot && !isPastSlot;
-                          return (
-                            <button
-                              key={slot}
-                              type="button"
-                              disabled={isPastSlot}
-                              onClick={() => setBookingTime(slot)}
-                              className={`py-2 rounded-xl text-xs font-semibold transition-all border ${
-                                isPastSlot
-                                  ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed line-through'
-                                  : isSelected
-                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                              }`}
-                            >
-                              {slot}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* VIP Lounge Note */}
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-2.5 text-xs text-slate-600">
-                      <span className="material-symbols-outlined text-blue-600 text-base shrink-0 mt-0.5">
-                        schedule
-                      </span>
-                      <p className="text-[11px] leading-relaxed">
-                        <strong>Thời gian hoàn tất dự kiến:</strong> 1.5 – 2.5 giờ làm việc. Khách hàng có thể nghỉ ngơi tại phòng chờ VIP tiêu chuẩn có Wi-Fi tốc độ cao, nước uống và màn hình theo dõi tiến độ thời gian thực.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom Appointment Summary Box */}
-                <div className="p-4 bg-blue-50/60 rounded-2xl border border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-lg">task_alt</span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <strong className="text-slate-900 font-bold">Tóm tắt phiếu đặt hẹn:</strong>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                          Ưu tiên phục vụ
-                        </span>
-                      </div>
-                      <p className="text-slate-700 mt-0.5">
-                        {customPlateInput || `${selectedVehicleObj?.make || 'Toyota'} ${selectedVehicleObj?.model || 'Vios'} (${selectedVehicleObj?.licensePlate || '51G-123.45'})`} • {selectedServiceIds.length} dịch vụ chọn • <strong className="text-blue-700">{bookingTime} - Ngày {bookingDate.getDate()}/{bookingDate.getMonth() + 1}/{bookingDate.getFullYear()}</strong> • Cố vấn dự kiến: <strong>KTV Trần Văn Nam</strong>
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right text-[11px] text-slate-500 shrink-0">
-                    <span className="block font-semibold text-emerald-700">Miễn phí rửa xe & hút bụi</span>
-                    <span>Tặng kèm gói kiểm tra an toàn</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Modal Navigation Buttons */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              {bookingStep > 1 ? (
-                <button
-                  type="button"
-                  onClick={() => setBookingStep((bookingStep - 1) as any)}
-                  className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-50 transition-all flex items-center gap-1.5"
-                >
-                  <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-                  Quay lại
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setBookingModalOpen(false)}
-                  className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-50 transition-all"
-                >
-                  Đóng
-                </button>
-              )}
-
-              {bookingStep < 3 ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (bookingStep === 1 && !bookingVehicleId && !customPlateInput.trim()) {
-                      setVehicleToast({ message: 'Vui lòng chọn xe hoặc nhập biển số xe để tiếp tục.', type: 'error' });
-                      return;
-                    }
-                    if (bookingStep === 2 && selectedServiceIds.length === 0 && !bookingNotes.trim()) {
-                      setVehicleToast({
-                        message: 'Vui lòng chọn ít nhất 1 dịch vụ hoặc nhập mô tả tình trạng xe để tiếp tục.',
-                        type: 'error',
-                      });
-                      return;
-                    }
-                    setBookingStep((bookingStep + 1) as any);
-                  }}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-1.5"
-                >
-                  Tiếp tục
-                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={bookingSubmitting}
-                  onClick={handleConfirm3StepBooking}
-                  className="px-7 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2"
-                >
-                  {bookingSubmitting ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <span className="material-symbols-outlined text-[18px]">calendar_month</span>
-                  )}
-                  Lưu lịch hẹn
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        <CustomerBookingModal
+          initialDate={bookingDate}
+          initialTime={bookingTime}
+          initialVehicleId={bookingPreselectedVehicleId}
+          customerId={data?.id}
+          vehicles={vehicles}
+          activeVehicles={activeVehicles}
+          appointments={appointments}
+          onClose={() => setBookingModalOpen(false)}
+          onOpenAddVehicle={() => {
+            setVehicleModalMode('add');
+            setSelectedVehicle(null);
+            setVehicleForm(EMPTY_VEHICLE_FORM);
+            setVehicleModalOpen(true);
+          }}
+          onToast={setVehicleToast}
+        />
       )}
 
       {/* ============================================================== */}
@@ -1901,8 +1245,8 @@ export default function ProfilePage() {
         const aptServices = selectedAptDetail.services || [];
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
-            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-100 space-y-5">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cw-modal-overlay">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-100 space-y-5 cw-modal-panel">
               {/* Header */}
               <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
                 <div className="flex items-center gap-3">
@@ -1960,13 +1304,12 @@ export default function ProfilePage() {
                       return (
                         <div
                           key={item.step}
-                          className={`flex items-center gap-2 p-2 rounded-lg border text-xs ${
-                            active
+                          className={`flex items-center gap-2 p-2 rounded-lg border text-xs ${active
                               ? 'bg-blue-50 border-blue-200 text-blue-800 font-bold'
                               : done
                                 ? 'bg-emerald-50/70 border-emerald-200 text-emerald-800 font-semibold'
                                 : 'bg-white border-slate-200 text-slate-400'
-                          }`}
+                            }`}
                         >
                           <span className="material-symbols-outlined text-base shrink-0">
                             {done && !active ? 'check_circle' : item.icon}
@@ -2127,8 +1470,8 @@ export default function ProfilePage() {
                       {selectedAptDetail.status === 'CONFIRMED'
                         ? 'Đơn đã xác nhận không thể hủy hoặc dời (Vui lòng liên hệ hotline)'
                         : selectedAptDetail.status === 'ARRIVED'
-                        ? 'Xe đã tiếp nhận tại xưởng, không thể thay đổi'
-                        : 'Lịch hẹn đã hủy'}
+                          ? 'Xe đã tiếp nhận tại xưởng, không thể thay đổi'
+                          : 'Lịch hẹn đã hủy'}
                     </span>
                   </div>
                 )}
@@ -2147,8 +1490,8 @@ export default function ProfilePage() {
 
       {/* Reschedule Modal */}
       {rescheduleApt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cw-modal-overlay">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4 cw-modal-panel">
             <h3 className="font-bold text-slate-900 text-sm">Dời lịch hẹn #{rescheduleApt.id}</h3>
             <div className="space-y-3 text-xs">
               <div>
@@ -2192,8 +1535,8 @@ export default function ProfilePage() {
 
       {/* Cancel Confirm Dialog */}
       {cancelApt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cw-modal-overlay">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4 cw-modal-panel">
             <h3 className="font-bold text-slate-900 text-sm">Hủy lịch hẹn #{cancelApt.id}</h3>
             <p className="text-xs text-slate-500">Vui lòng cho biết lý do hủy lịch:</p>
             <textarea
@@ -2225,8 +1568,8 @@ export default function ProfilePage() {
 
       {/* Vehicle Add/Edit Modal (In Child Panel) */}
       {vehicleModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cw-modal-overlay">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 cw-modal-panel">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -2247,7 +1590,7 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveVehicle} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSaveVehicle} noValidate className="space-y-3.5 text-xs">
               <div>
                 <label className="block font-bold text-slate-600 uppercase mb-1">
                   Biển số xe <span className="text-red-500">*</span>
@@ -2255,13 +1598,23 @@ export default function ProfilePage() {
                 <input
                   type="text"
                   value={vehicleForm.licensePlate}
-                  onChange={(e) => setVehicleForm({ ...vehicleForm, licensePlate: e.target.value.toUpperCase() })}
+                  onChange={(e) => handleVehicleInputChange('licensePlate', e.target.value.toUpperCase())}
                   disabled={vehicleModalMode === 'edit'}
+                  aria-invalid={Boolean(vehicleErrors.licensePlate)}
                   placeholder="Ví dụ: 51G-123.45"
-                  className={`w-full px-3 py-2 rounded-xl border border-slate-200 font-mono tracking-wider text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${
-                    vehicleModalMode === 'edit' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white'
-                  }`}
+                  className={`w-full px-3 py-2 rounded-xl border font-mono tracking-wider text-sm focus:outline-none focus:ring-2 ${vehicleModalMode === 'edit'
+                      ? 'border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed'
+                      : vehicleErrors.licensePlate
+                        ? 'border-red-500 bg-red-50/20 focus:ring-red-500/20 focus:border-red-500'
+                        : 'border-slate-200 bg-white focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
                 />
+                {vehicleErrors.licensePlate && (
+                  <p className="mt-1 text-[11px] font-medium text-red-600 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[13px]">error</span>
+                    <span>{vehicleErrors.licensePlate}</span>
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -2272,10 +1625,20 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     value={vehicleForm.make}
-                    onChange={(e) => setVehicleForm({ ...vehicleForm, make: e.target.value })}
+                    onChange={(e) => handleVehicleInputChange('make', e.target.value)}
+                    aria-invalid={Boolean(vehicleErrors.make)}
                     placeholder="Toyota, Honda, Ford..."
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs focus:outline-none focus:ring-2 ${vehicleErrors.make
+                        ? 'border-red-500 bg-red-50/20 focus:ring-red-500/20 focus:border-red-500'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
                   />
+                  {vehicleErrors.make && (
+                    <p className="mt-1 text-[11px] font-medium text-red-600 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px]">error</span>
+                      <span>{vehicleErrors.make}</span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block font-bold text-slate-600 uppercase mb-1">
@@ -2284,10 +1647,20 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     value={vehicleForm.model}
-                    onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })}
+                    onChange={(e) => handleVehicleInputChange('model', e.target.value)}
+                    aria-invalid={Boolean(vehicleErrors.model)}
                     placeholder="Santa Fe, Everest, Vios..."
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs focus:outline-none focus:ring-2 ${vehicleErrors.model
+                        ? 'border-red-500 bg-red-50/20 focus:ring-red-500/20 focus:border-red-500'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
                   />
+                  {vehicleErrors.model && (
+                    <p className="mt-1 text-[11px] font-medium text-red-600 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px]">error</span>
+                      <span>{vehicleErrors.model}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -2296,23 +1669,43 @@ export default function ProfilePage() {
                   <label className="block font-bold text-slate-600 uppercase mb-1">Năm sản xuất</label>
                   <input
                     type="number"
-                    min="1990"
+                    min="1980"
                     max="2030"
                     value={vehicleForm.year}
-                    onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })}
+                    onChange={(e) => handleVehicleInputChange('year', e.target.value)}
+                    aria-invalid={Boolean(vehicleErrors.year)}
                     placeholder="2022"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs focus:outline-none focus:ring-2 ${vehicleErrors.year
+                        ? 'border-red-500 bg-red-50/20 focus:ring-red-500/20 focus:border-red-500'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
                   />
+                  {vehicleErrors.year && (
+                    <p className="mt-1 text-[11px] font-medium text-red-600 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px]">error</span>
+                      <span>{vehicleErrors.year}</span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block font-bold text-slate-600 uppercase mb-1">Màu sơn</label>
                   <input
                     type="text"
                     value={vehicleForm.color}
-                    onChange={(e) => setVehicleForm({ ...vehicleForm, color: e.target.value })}
+                    onChange={(e) => handleVehicleInputChange('color', e.target.value)}
+                    aria-invalid={Boolean(vehicleErrors.color)}
                     placeholder="Trắng, Đen, Xanh..."
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs focus:outline-none focus:ring-2 ${vehicleErrors.color
+                        ? 'border-red-500 bg-red-50/20 focus:ring-red-500/20 focus:border-red-500'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
                   />
+                  {vehicleErrors.color && (
+                    <p className="mt-1 text-[11px] font-medium text-red-600 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px]">error</span>
+                      <span>{vehicleErrors.color}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -2357,220 +1750,20 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Delete Vehicle Confirm Modal */}
+      {/* Delete / Deactivate Vehicle Confirm Modal */}
       {vehicleDeleteConfirm && (
         <ConfirmModal
           isOpen={!!vehicleDeleteConfirm}
-          title="Xác nhận xóa xe"
-          message={`Bạn có chắc chắn muốn xóa phương tiện biển số ${vehicleDeleteConfirm.licensePlate} (${vehicleDeleteConfirm.make} ${vehicleDeleteConfirm.model}) khỏi danh sách xe của bạn không?`}
-          confirmText="Xác nhận xóa"
+          title={vehicleDeleteConfirm.hasTransactions ? 'Xác nhận vô hiệu hóa xe' : 'Xác nhận xóa xe'}
+          message={
+            vehicleDeleteConfirm.hasTransactions
+              ? `Phương tiện biển số ${vehicleDeleteConfirm.licensePlate} (${vehicleDeleteConfirm.make} ${vehicleDeleteConfirm.model}) đã phát sinh giao dịch nên không thể xóa vĩnh viễn. Bạn có muốn vô hiệu hóa xe này không? (Bạn có thể kích hoạt lại bất cứ lúc nào)`
+              : `Bạn có chắc chắn muốn xóa phương tiện biển số ${vehicleDeleteConfirm.licensePlate} (${vehicleDeleteConfirm.make} ${vehicleDeleteConfirm.model}) khỏi danh sách xe của bạn không?`
+          }
+          confirmText={vehicleDeleteConfirm.hasTransactions ? 'Xác nhận' : 'Xác nhận'}
           onConfirm={handleDeleteVehicle}
           onCancel={() => setVehicleDeleteConfirm(null)}
         />
-      )}
-
-      {/* Service Progress Modal (Interactive Stepper Timeline) */}
-      {viewProgressItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-xl">timeline</span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-slate-900 text-base">Tiến độ dịch vụ xe</h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                      Đã hoàn thành
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Mã phiếu: <strong className="text-slate-800">{viewProgressItem.orderCode}</strong> • Xe: <strong className="text-slate-800">{viewProgressItem.licensePlate}</strong>
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewProgressItem(null)}
-                className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors"
-              >
-                <span className="material-symbols-outlined text-lg">close</span>
-              </button>
-            </div>
-
-            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 flex items-center justify-between text-xs">
-              <div>
-                <span className="text-slate-400">Gói thực hiện:</span>
-                <p className="font-bold text-slate-800 mt-0.5">{viewProgressItem.servicePackage}</p>
-              </div>
-              <div className="text-right">
-                <span className="text-slate-400">Cố vấn phụ trách:</span>
-                <p className="font-bold text-blue-700 mt-0.5">{viewProgressItem.serviceAdvisor}</p>
-              </div>
-            </div>
-
-            <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-blue-600">
-              <div className="relative flex items-start gap-4">
-                <div className="absolute -left-6 mt-1 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center ring-4 ring-white shadow-sm">
-                  <span className="material-symbols-outlined text-[13px]">check</span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-sm text-slate-900">1. Tiếp nhận & Kiểm tra xe ban đầu</h4>
-                    <span className="text-[11px] font-medium text-slate-400">08:15</span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Kiểm tra 24 hạng mục an toàn, chụp ảnh hiện trạng xe và ghi nhận yêu cầu bảo dưỡng.
-                  </p>
-                </div>
-              </div>
-
-              <div className="relative flex items-start gap-4">
-                <div className="absolute -left-6 mt-1 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center ring-4 ring-white shadow-sm">
-                  <span className="material-symbols-outlined text-[13px]">check</span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-sm text-slate-900">2. Lập báo giá & Khách hàng duyệt</h4>
-                    <span className="text-[11px] font-medium text-slate-400">08:40</span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Cố vấn dịch vụ báo giá chi tiết linh kiện & công thợ. Khách hàng đã phê duyệt thực hiện.
-                  </p>
-                </div>
-              </div>
-
-              <div className="relative flex items-start gap-4">
-                <div className="absolute -left-6 mt-1 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center ring-4 ring-white shadow-sm">
-                  <span className="material-symbols-outlined text-[13px]">check</span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-sm text-slate-900">3. Xuất kho phụ tùng & Điều phối khoang</h4>
-                    <span className="text-[11px] font-medium text-slate-400">09:00</span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Xuất linh kiện chính hãng từ kho và phân bổ xe vào cầu nâng số 03.
-                  </p>
-                </div>
-              </div>
-
-              <div className="relative flex items-start gap-4">
-                <div className="absolute -left-6 mt-1 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center ring-4 ring-white shadow-sm">
-                  <span className="material-symbols-outlined text-[13px]">check</span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-sm text-slate-900">4. Kỹ thuật viên tiến hành bảo dưỡng</h4>
-                    <span className="text-[11px] font-medium text-slate-400">09:15 - 11:00</span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    KTV Lê Văn Hùng hoàn tất thay dầu nhớt, thay lọc, bảo dưỡng hệ thống phanh và kiểm tra gầm.
-                  </p>
-                </div>
-              </div>
-
-              <div className="relative flex items-start gap-4">
-                <div className="absolute -left-6 mt-1 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center ring-4 ring-white shadow-sm">
-                  <span className="material-symbols-outlined text-[13px]">check</span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-sm text-slate-900">5. Kiểm tra chất lượng xuất xưởng (QC)</h4>
-                    <span className="text-[11px] font-medium text-slate-400">11:15</span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Quản đốc xưởng chạy thử và nghiệm thu xe đạt tiêu chuẩn an toàn 100%.
-                  </p>
-                </div>
-              </div>
-
-              <div className="relative flex items-start gap-4">
-                <div className="absolute -left-6 mt-1 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center ring-4 ring-white shadow-sm">
-                  <span className="material-symbols-outlined text-[13px]">done_all</span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-sm text-emerald-800">6. Rửa xe hút bụi & Bàn giao xe</h4>
-                    <span className="text-[11px] font-medium text-slate-400">11:45</span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Vệ sinh sạch sẽ nội ngoại thất và hoàn tất bàn giao xe cho khách hàng.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs text-slate-400">Thời gian hoàn tất: {viewProgressItem.completedDate} lúc 11:45</span>
-              <button
-                type="button"
-                onClick={() => setViewProgressItem(null)}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Invoice Preview Modal */}
-      {viewInvoiceItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-blue-600 text-2xl">receipt</span>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-sm">Hóa đơn dịch vụ điện tử</h3>
-                  <p className="text-xs text-slate-400">{viewInvoiceItem.orderCode}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewInvoiceItem(null)}
-                className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700"
-              >
-                <span className="material-symbols-outlined text-lg">close</span>
-              </button>
-            </div>
-
-            <div className="text-xs space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Khách hàng:</span>
-                <span className="font-semibold text-slate-800">{data?.fullName || 'Khách hàng'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Biển số xe:</span>
-                <span className="font-semibold text-slate-800">{viewInvoiceItem.licensePlate}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Gói thực hiện:</span>
-                <span className="font-semibold text-slate-800 text-right">{viewInvoiceItem.servicePackage}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Ngày hoàn thành:</span>
-                <span className="font-semibold text-slate-800">{viewInvoiceItem.completedDate}</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-slate-200">
-                <span className="text-slate-700 font-bold">Tổng thanh toán:</span>
-                <span className="font-extrabold text-blue-700 text-sm">{viewInvoiceItem.totalCost}</span>
-              </div>
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setViewInvoiceItem(null)}
-                className="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-semibold hover:bg-slate-900 transition-all"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Confirm Save Modal */}

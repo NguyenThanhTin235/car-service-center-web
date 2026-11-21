@@ -29,25 +29,36 @@ export const runAppointmentReminderCheck = async () => {
     });
 
     for (const apt of upcomingAppointments) {
-      if (apt.customer?.email) {
-        const dateStr = new Date(apt.scheduled_date).toLocaleDateString('vi-VN');
-        const timeStr = apt.scheduled_time.toISOString().substring(11, 16);
-        const vehicleModel = apt.vehicle ? `${apt.vehicle.make} ${apt.vehicle.model}`.trim() : undefined;
-        
-        const html = renderAppointmentReminderTemplate({
-          customerName: apt.customer.full_name,
-          licensePlate: apt.vehicle?.license_plate,
-          vehicleModel,
-          scheduledDate: dateStr,
-          scheduledTime: timeStr,
-        });
+      if (!apt.customer?.id) continue;
 
-        await notificationService.sendEmail(
-          apt.customer.email,
-          `[Car Service Center] Nhắc nhở: Lịch hẹn bảo dưỡng ngày mai (${dateStr})`,
-          html
-        ).catch(err => console.error(`Failed to send reminder to ${apt.customer.email}:`, err));
-      }
+      const dateStr = new Date(apt.scheduled_date).toLocaleDateString('vi-VN');
+      const timeStr = apt.scheduled_time.toISOString().substring(11, 16);
+      const vehicleModel = apt.vehicle ? `${apt.vehicle.make} ${apt.vehicle.model}`.trim() : undefined;
+      const licensePlate = apt.vehicle?.license_plate;
+
+      const html = apt.customer.email
+        ? renderAppointmentReminderTemplate({
+            customerName: apt.customer.full_name,
+            licensePlate,
+            vehicleModel,
+            scheduledDate: dateStr,
+            scheduledTime: timeStr,
+          })
+        : undefined;
+
+      await notificationService
+        .notifyAndEmail({
+          userId: apt.customer.id,
+          type: 'APPOINTMENT_REMINDER',
+          title: `Nhắc nhở: Lịch hẹn bảo dưỡng ngày mai (${dateStr})`,
+          message: `Quý khách có lịch hẹn bảo dưỡng${licensePlate ? ` cho xe ${licensePlate}` : ''} lúc ${timeStr} ngày ${dateStr}.`,
+          entityType: 'APPOINTMENT',
+          entityId: apt.id,
+          email: apt.customer.email || undefined,
+          subject: `[Car Service Center] Nhắc nhở: Lịch hẹn bảo dưỡng ngày mai (${dateStr})`,
+          html,
+        })
+        .catch(err => console.error(`Failed to send reminder to user ${apt.customer.id}:`, err));
     }
     
     if (upcomingAppointments.length > 0) {

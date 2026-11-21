@@ -1,36 +1,88 @@
-"use client";
+'use client';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import api from '@/lib/axios';
 import { setCredentials, logout } from '@/store/slices/authSlice';
-import { getDashboardPathByRole } from '@/utils/roleRedirect';
-
-import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
+import { getDashboardPathByRole } from '@/utils/roleRedirect';
+import AuthSplitShell from '@/components/auth/AuthSplitShell';
+import {
+  AuthAlert,
+  AuthField,
+  AuthPasswordToggle,
+  AuthSubmitButton,
+} from '@/components/auth/AuthPrimitives';
+
+const DEMO_ACCOUNTS = [
+  {
+    role: 'Quản lý (Manager)',
+    email: 'manager3@carservice.com',
+    icon: 'monitoring',
+    badgeClass: 'text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100/80',
+  },
+  {
+    role: 'Quản trị (Admin)',
+    email: 'admin1@carservice.com',
+    icon: 'admin_panel_settings',
+    badgeClass: 'text-[#0050cd] bg-blue-50 border-blue-200 hover:bg-blue-100/80',
+  },
+  {
+    role: 'Cố vấn (SA)',
+    email: 'advisor5@carservice.com',
+    icon: 'engineering',
+    badgeClass: 'text-amber-800 bg-amber-50 border-amber-200 hover:bg-amber-100/80',
+  },
+  {
+    role: 'Lễ tân (Desk)',
+    email: 'desk9@carservice.com',
+    icon: 'support_agent',
+    badgeClass: 'text-indigo-700 bg-indigo-50 border-indigo-200 hover:bg-indigo-100/80',
+  },
+];
 
 export default function LoginPage() {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const router = useRouter();
+  const dispatch = useDispatch();
 
+  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
+  const [lockSeconds, setLockSeconds] = useState(0);
+  const isLocked = lockSeconds > 0;
 
-  const router = useRouter();
-  const dispatch = useDispatch();
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
-    React.useEffect(() => {
+  React.useEffect(() => {
+    if (lockSeconds <= 0) return;
+    const timer = setTimeout(() => {
+      setLockSeconds((s) => {
+        if (s <= 1) setError('');
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [lockSeconds]);
+
+  React.useEffect(() => {
     if (isAuthenticated && user) {
-      const isInternalRole = user.roles?.some((r: string) => ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA'].includes(r));
+      const isInternalRole = user.roles?.some((r: string) =>
+        ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA'].includes(r)
+      );
       if (!isInternalRole) {
-        // Clear invalid customer session on internal portal
         dispatch(logout());
-        setError('Phiên đăng nhập trước là tài khoản Khách hàng. Cổng nội bộ yêu cầu tài khoản Quản lý / Nhân viên (Admin, Manager, SA, Desk Staff).');
+        setError(
+          'Phiên đăng nhập trước là tài khoản Khách hàng. Cổng nội bộ yêu cầu tài khoản Quản lý / Nhân viên (Admin, Manager, SA, Desk Staff).'
+        );
         return;
       }
       const redirectPath = getDashboardPathByRole(user.roles);
@@ -47,288 +99,187 @@ export default function LoginPage() {
         setSuccess('Đăng ký tài khoản thành công! Vui lòng đăng nhập.');
       } else if (params.get('reset') === 'true') {
         setSuccess('Đặt lại mật khẩu thành công! Vui lòng đăng nhập bằng mật khẩu mới.');
+      } else if (params.get('reason') === 'account_locked') {
+        setError('Phiên đăng nhập đã hết hiệu lực hoặc tài khoản đã bị khóa.');
       }
     }
   }, []);
 
-  const [mounted, setMounted] = useState(false);
-  React.useEffect(() => setMounted(true), []);
-
   const isInternalRole = Boolean(
-    isAuthenticated && user?.roles?.some((r: string) => ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA'].includes(r))
+    isAuthenticated &&
+      user?.roles?.some((r: string) => ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA'].includes(r))
   );
 
   if (mounted && isInternalRole) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-container-low">
-        <div className="w-8 h-8 rounded-full border-2 border-outline-variant border-t-primary-container animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[#f6f8fc]">
+        <div className="w-8 h-8 rounded-full border-2 border-slate-300 border-t-[#0050cd] animate-spin" />
       </div>
     );
   }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocked) return;
     setError('');
     setLoading(true);
 
     try {
       const res = await api.post('/api/auth/login', { email, password });
-      
-      const { user, token } = res.data.data;
-      const isInternal = user.roles?.some((r: string) => ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA'].includes(r));
+      const { user, token, refreshToken } = res.data.data;
+      const isInternal = user.roles?.some((r: string) =>
+        ['ADMIN', 'MANAGER', 'DESK STAFF', 'SA'].includes(r)
+      );
       if (!isInternal) {
-        setError('Tài khoản này là tài khoản Khách hàng, không có quyền truy cập Cổng Quản trị nội bộ. Vui lòng đăng nhập bằng tài khoản Quản lý / Nhân viên hoặc truy cập Cổng Khách hàng (port 3000).');
+        setError(
+          'Tài khoản này là tài khoản Khách hàng, không có quyền truy cập Cổng Quản trị nội bộ. Vui lòng đăng nhập bằng tài khoản Quản lý / Nhân viên hoặc truy cập Cổng Khách hàng (port 3000).'
+        );
         setLoading(false);
         return;
       }
 
-      dispatch(setCredentials({ user, token }));
-      
-      // Redirect based on role
-      const redirectPath = getDashboardPathByRole(user.roles);
-      router.push(redirectPath);
+      dispatch(setCredentials({ user, token, refreshToken }));
+      router.push(getDashboardPathByRole(user.roles));
     } catch (err: any) {
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message);
-      } else {
-        setError('Đăng nhập thất bại. Vui lòng thử lại sau.');
+      if (err.response?.status === 429) {
+        setLockSeconds(Number(err.response.data?.retryAfter) || 900);
+        setPassword('');
       }
+      setError(
+        err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại sau.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col justify-between bg-surface-container-low text-on-surface antialiased selection:bg-primary-container selection:text-white">
-      {/* Ambient Backdrop Glow */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-primary-fixed/35 blur-3xl"></div>
-        <div className="absolute -bottom-40 -right-40 w-[650px] h-[650px] rounded-full bg-secondary-fixed/20 blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[850px] h-[850px] rounded-full bg-surface-bright/80 blur-2xl"></div>
+    <AuthSplitShell>
+      <div className="mb-6 text-center">
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-[-0.02em]">
+          Đăng nhập hệ thống
+        </h1>
+        <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
+          Sử dụng tài khoản nhân sự được cấp để truy cập bàn làm việc chuyên môn.
+        </p>
       </div>
 
-      {/* Minimal Brand Header */}
-      <header className="bg-surface-container-lowest shadow-sm docked full-width top-0 z-30 sticky">
-        <div className="flex justify-between items-center w-full px-6 py-3 max-w-7xl mx-auto">
-          <Link className="flex items-center gap-3 group focus:outline-none" href="/login">
-            <div className="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center text-on-primary shadow-sm group-hover:scale-105 transition-transform duration-200">
-              <span className="material-symbols-outlined text-[24px]">directions_car</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-headline-sm font-bold text-primary tracking-tight">AutoCare Pro</span>
-              <span className="text-body-sm text-on-surface-variant -mt-0.5">Hệ thống Dịch vụ Ô tô Thông minh</span>
-            </div>
-          </Link>
-          <nav className="hidden md:flex items-center space-x-6">
-            <a className="text-on-surface-variant hover:text-on-surface transition-colors text-label-md" href="#">Tra cứu dịch vụ</a>
-            <a className="text-on-surface-variant hover:text-on-surface transition-colors text-label-md" href="#">Bảng giá bảo dưỡng</a>
-          </nav>
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-2 text-on-surface-variant bg-surface-container-low px-3 py-1.5 rounded-full border border-outline-variant/40 text-label-md">
-              <span className="material-symbols-outlined text-primary-container text-[18px]">help_outline</span>
-              <span className="font-medium">Hotline: 1900 6868</span>
-            </div>
-          </div>
-        </div>
-      </header>
+      {success && <AuthAlert variant="success">{success}</AuthAlert>}
 
-      {/* Main Auth Presentation Canvas */}
-      <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-8 sm:py-12 h-screen">
-        <div className="w-full max-w-[480px]">
-          {/* Auth Elevation Level 3 Card */}
-          <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-2xl p-6 sm:p-10 shadow-[0_12px_28px_0_rgba(0,0,0,0.08),0_2px_4px_0_rgba(0,0,0,0.04)] transition-all">
-            
-            {/* Card Brand Identity & Header */}
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-fixed/40 text-primary border border-primary-fixed text-label-sm mb-4">
-                <span className="material-symbols-outlined text-sm">build</span>
-                <span>Hệ thống Dịch vụ Ô tô Uy tín</span>
-              </div>
-              <h1 className="text-headline-lg font-bold text-on-surface">Đăng nhập</h1>
-              <p className="text-body-md text-on-surface-variant mt-1.5">Chào mừng bạn quay lại Car Service Center</p>
-            </div>
-
-            {success && (
-              <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-700 text-body-sm font-medium border border-green-200 flex items-center gap-2">
-                <span className="material-symbols-outlined text-green-600 text-lg">check_circle</span>
-                <span>{success}</span>
-              </div>
-            )}
-
-            {error && (
-              <div className="mb-4 p-3 rounded-lg bg-error-container text-error text-body-sm font-medium flex items-center gap-2">
-                <span className="material-symbols-outlined text-[1.125rem]">error</span>
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* Form Fields */}
-            <form suppressHydrationWarning className="space-y-4" onSubmit={handleLogin}>
-              {/* Input 1: Email */}
-              <div className="space-y-1.5">
-                <label className="text-label-md font-medium text-on-surface block" htmlFor="email">
-                  Địa chỉ Email
-                </label>
-                <div className="relative rounded-xl shadow-sm">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-on-surface-variant">
-                    <span className="material-symbols-outlined text-xl">mail</span>
-                  </div>
-                  <input
-                    suppressHydrationWarning
-                    className="block w-full rounded-xl border border-outline-variant bg-surface-container-lowest pl-11 pr-4 py-3 text-body-md text-on-surface placeholder:text-outline focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:outline-none transition-all"
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="Nhập email của bạn"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Input 2: Password */}
-              <div className="space-y-1.5">
-                <label className="text-label-md font-medium text-on-surface block" htmlFor="password">
-                  Mật khẩu
-                </label>
-                <div className="relative rounded-xl shadow-sm">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-on-surface-variant">
-                    <span className="material-symbols-outlined text-xl">lock</span>
-                  </div>
-                  <input
-                    suppressHydrationWarning
-                    className="block w-full rounded-xl border border-outline-variant bg-surface-container-lowest pl-11 pr-11 py-3 text-body-md text-on-surface placeholder:text-outline focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:outline-none transition-all"
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <button
-                    suppressHydrationWarning
-                    type="button"
-                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
-                    onClick={() => setShowPassword(!showPassword)}
-                    title="Hiện/Ẩn mật khẩu"
-                  >
-                    <span className="material-symbols-outlined text-xl">
-                      {showPassword ? 'visibility_off' : 'visibility'}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Extras Row */}
-              <div className="flex items-center justify-between pt-1 pb-1">
-                <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                  <input suppressHydrationWarning className="h-4 w-4 rounded border-outline-variant text-primary-container focus:ring-primary-container/30 cursor-pointer" type="checkbox" />
-                  <span className="text-body-md text-on-surface-variant">Ghi nhớ đăng nhập</span>
-                </label>
-                <Link className="text-label-md text-primary-container hover:underline transition-colors" href="/forgot-password">
+      {error && (
+        <AuthAlert variant={isLocked ? 'lock' : 'error'}>
+          <div className="space-y-1">
+            <span>{error}</span>
+            {isLocked && (
+              <p className="text-xs">
+                Thử lại sau{' '}
+                <strong className="font-mono tabular-nums">
+                  {String(Math.floor(lockSeconds / 60)).padStart(2, '0')}:
+                  {String(lockSeconds % 60).padStart(2, '0')}
+                </strong>
+                {' · '}
+                <Link href="/forgot-password" className="underline font-bold">
                   Quên mật khẩu?
                 </Link>
-              </div>
+              </p>
+            )}
+          </div>
+        </AuthAlert>
+      )}
 
-              {/* Primary Submit Action */}
-              <div className="pt-2">
-                <button
-                  suppressHydrationWarning
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-12 bg-primary-container hover:bg-primary active:scale-[0.99] text-on-primary font-bold rounded-xl shadow-md shadow-primary-container/25 transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
-                >
-                  <span>{loading ? 'Đang xử lý...' : 'Đăng nhập'}</span>
-                  {!loading && <span className="material-symbols-outlined text-xl">arrow_forward</span>}
-                </button>
-              </div>
+      <form suppressHydrationWarning className="space-y-4" onSubmit={handleLogin}>
+        <AuthField
+          id="email"
+          name="email"
+          type="email"
+          label="Email nhân sự"
+          icon="mail"
+          placeholder="staff@carservice.com"
+          required
+          disabled={isLocked}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          suppressHydrationWarning
+        />
 
-              {/* Quick Login Role Shortcuts */}
-              <div className="pt-3 border-t border-outline-variant/40">
-                <p className="text-[12px] font-semibold text-on-surface-variant mb-2 text-center">Tài khoản demo nội bộ (Mật khẩu: password123):</p>
-                <div className="grid grid-cols-2 gap-2 text-xs" suppressHydrationWarning>
-                  <button
-                    suppressHydrationWarning
-                    type="button"
-                    onClick={() => { setEmail('manager3@carservice.com'); setPassword('password123'); }}
-                    className="p-2 text-left rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors"
-                  >
-                    <div className="font-bold flex items-center gap-1">
-                      <span className="material-symbols-outlined text-xs">monitoring</span> Quản lý (Manager)
-                    </div>
-                    <div className="text-[10px] text-emerald-700 truncate">manager3@carservice.com</div>
-                  </button>
-                  <button
-                    suppressHydrationWarning
-                    type="button"
-                    onClick={() => { setEmail('admin1@carservice.com'); setPassword('password123'); }}
-                    className="p-2 text-left rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 transition-colors"
-                  >
-                    <div className="font-bold flex items-center gap-1">
-                      <span className="material-symbols-outlined text-xs">admin_panel_settings</span> Quản trị (Admin)
-                    </div>
-                    <div className="text-[10px] text-blue-700 truncate">admin1@carservice.com</div>
-                  </button>
-                  <button
-                    suppressHydrationWarning
-                    type="button"
-                    onClick={() => { setEmail('advisor5@carservice.com'); setPassword('password123'); }}
-                    className="p-2 text-left rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors"
-                  >
-                    <div className="font-bold flex items-center gap-1">
-                      <span className="material-symbols-outlined text-xs">engineering</span> Cố vấn (SA)
-                    </div>
-                    <div className="text-[10px] text-amber-700 truncate">advisor5@carservice.com</div>
-                  </button>
-                  <button
-                    suppressHydrationWarning
-                    type="button"
-                    onClick={() => { setEmail('desk9@carservice.com'); setPassword('password123'); }}
-                    className="p-2 text-left rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition-colors"
-                  >
-                    <div className="font-bold flex items-center gap-1">
-                      <span className="material-symbols-outlined text-xs">support_agent</span> Lễ tân (Desk)
-                    </div>
-                    <div className="text-[10px] text-purple-700 truncate">desk9@carservice.com</div>
-                  </button>
+        <AuthField
+          id="password"
+          name="password"
+          type={showPassword ? 'text' : 'password'}
+          label="Mật khẩu"
+          icon="lock"
+          placeholder="Nhập mật khẩu"
+          required
+          disabled={isLocked}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          suppressHydrationWarning
+          rightAdornment={
+            <AuthPasswordToggle
+              visible={showPassword}
+              disabled={isLocked}
+              onToggle={() => setShowPassword((v) => !v)}
+            />
+          }
+        />
+
+        <div className="flex items-center justify-between pt-0.5">
+          <label className="inline-flex items-center gap-2 cursor-pointer select-none min-h-[36px]">
+            <input
+              suppressHydrationWarning
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-300 text-[#0050cd] focus:ring-[#0050cd]/30 cursor-pointer"
+            />
+            <span className="text-xs font-medium text-slate-600">Ghi nhớ đăng nhập</span>
+          </label>
+          <Link
+            href="/forgot-password"
+            className="text-xs font-semibold text-[#0050cd] hover:text-[#0866ff] hover:underline"
+          >
+            Quên mật khẩu?
+          </Link>
+        </div>
+
+        <div className="pt-1">
+          <AuthSubmitButton
+            loading={loading}
+            loadingText="Đang xác thực..."
+            disabled={isLocked}
+          >
+            {isLocked ? 'Tạm khóa đăng nhập' : 'Đăng nhập'}
+          </AuthSubmitButton>
+        </div>
+
+        {/* Demo Role Quick Fill */}
+        <div className="pt-4 mt-2 border-t border-slate-100">
+          <p className="text-xs font-semibold text-slate-600 mb-2.5 text-center">
+            Tài khoản demo nội bộ (<span className="font-mono">password123</span>)
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" suppressHydrationWarning>
+            {DEMO_ACCOUNTS.map((acc) => (
+              <button
+                key={acc.email}
+                suppressHydrationWarning
+                type="button"
+                disabled={isLocked}
+                onClick={() => {
+                  setEmail(acc.email);
+                  setPassword('password123');
+                }}
+                className={`min-h-[44px] px-3 py-2 text-left rounded-xl border transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${acc.badgeClass}`}
+              >
+                <div className="text-xs font-bold flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[15px]">{acc.icon}</span>
+                  <span>{acc.role}</span>
                 </div>
-              </div>
-            </form>
-          </div>
-
-          </div>
-        </main>
-
-      {/* Legal & Service Center Standard Footer */}
-      <div className="w-full bg-surface-container-lowest/60 border-t border-outline-variant/30 py-3 px-4 text-center z-10 relative">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-y-2 gap-x-6 text-body-sm text-on-surface-variant">
-          <div className="flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-secondary text-[18px]">verified</span>
-            <span>Bảo mật chuẩn SSL 256-bit</span>
-          </div>
-          <span className="hidden sm:inline text-outline-variant">•</span>
-          <div className="flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-primary-container text-[18px]">headset_mic</span>
-            <span>Hỗ trợ kỹ thuật 24/7: 1900 6868</span>
+                <div className="text-[11px] font-mono truncate opacity-85 mt-0.5">
+                  {acc.email}
+                </div>
+              </button>
+            ))}
           </div>
         </div>
-      </div>
-      <footer className="bg-surface-container-lowest docked full-width bottom-0 z-10 relative">
-        <div className="flex flex-col md:flex-row justify-between items-center w-full px-6 py-4 max-w-7xl mx-auto gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-title-md font-bold text-on-surface">AutoCare Pro</span>
-            <span className="text-body-sm text-on-surface-variant">| © 2025 AutoCare Pro Service Center. Bản quyền thuộc về Hệ thống Dịch vụ Ô tô Thông minh.</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-label-sm">
-            <a className="text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer duration-150" href="#">Quy định bảo hành</a>
-            <a className="text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer duration-150" href="#">Chính sách bảo mật</a>
-            <a className="text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer duration-150" href="#">Điều khoản sử dụng</a>
-            <a className="text-primary font-medium hover:text-primary transition-colors cursor-pointer duration-150" href="#">Hotline khẩn cấp 24/7</a>
-          </div>
-        </div>
-      </footer>
-    </div>
+      </form>
+    </AuthSplitShell>
   );
 }

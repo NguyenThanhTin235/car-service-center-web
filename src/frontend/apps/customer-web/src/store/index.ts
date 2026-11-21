@@ -7,6 +7,7 @@ import vehicleReducer from './slices/vehicleSlice';
 import trackingReducer from './slices/trackingSlice';
 import invoiceReducer from './slices/invoiceSlice';
 import historyReducer from './slices/historySlice';
+import notificationReducer from './slices/notificationSlice';
 
 export const store = configureStore({
   reducer: {
@@ -17,6 +18,7 @@ export const store = configureStore({
     tracking: trackingReducer,
     invoices: invoiceReducer,
     history: historyReducer,
+    notifications: notificationReducer,
   },
 });
 

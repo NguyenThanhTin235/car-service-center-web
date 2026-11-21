@@ -1,6 +1,7 @@
 import { getCache } from '../utils/redis.util';
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, JwtPayload } from '../utils/jwt.util';
+import { verifyAccessToken, JwtPayload } from '../utils/jwt.util';
+import { BLACKLIST_JTI_KEY, TOKEN_INVALID_BEFORE_KEY } from '../services/auth.service';
 import prisma from '../utils/prisma';
 
 // Extend Express Request to include user
@@ -26,17 +27,14 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     (req.headers.referer?.includes(':3001') || req.headers.referer?.includes('/staff') || req.headers.origin?.includes(':3001') ? 'internal' : 
      req.headers.referer?.includes(':3000') || req.headers.origin?.includes(':3000') ? 'customer' : undefined);
 
-  // 3. If no Bearer token, resolve from isolated portal cookies
+  // 3. If no Bearer token, resolve from strictly isolated portal cookies (no cross-portal fallback)
   if (!token) {
     if (portal === 'internal') {
       token = req.cookies?.staff_jwt;
     } else if (portal === 'customer') {
       token = req.cookies?.customer_jwt;
-    }
-
-    // Fallback to legacy jwt cookie if specific portal cookie is not present
-    if (!token) {
-      token = req.cookies?.jwt || (portal === 'internal' ? req.cookies?.customer_jwt : req.cookies?.staff_jwt);
+    } else {
+      token = req.cookies?.staff_jwt || req.cookies?.customer_jwt || req.cookies?.jwt;
     }
   }
 
@@ -46,7 +44,23 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
   }
 
   try {
-    const payload = verifyToken(token);
+    const payload = verifyAccessToken(token);
+
+    // Kiểm tra token đã bị thu hồi khi logout (blacklist jti)
+    if (payload.jti) {
+      const isBlacklisted = await getCache(BLACKLIST_JTI_KEY(payload.jti));
+      if (isBlacklisted) {
+        res.status(401).json({ status: 'error', message: 'Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.' });
+        return;
+      }
+    }
+
+    // Kiểm tra token có phát hành trước thời điểm đổi/đặt lại mật khẩu không
+    const invalidBeforeRaw = await getCache(TOKEN_INVALID_BEFORE_KEY(payload.id));
+    if (invalidBeforeRaw && payload.iat && payload.iat < Number(invalidBeforeRaw)) {
+      res.status(401).json({ status: 'error', message: 'Phiên đăng nhập đã hết hiệu lực do thay đổi bảo mật.' });
+      return;
+    }
 
     // Kiểm tra nhanh token đã bị thu hồi do khóa tài khoản chưa
     const isRevoked = await getCache(`revoked_user:${payload.id}`);
@@ -105,7 +119,8 @@ export const authorize = (...roles: string[]) => {
       return;
     }
 
-    const hasRole = req.user.roles.some((r) => roles.includes(r));
+    const normalizedRequired = roles.map((r) => r.toUpperCase().trim());
+    const hasRole = req.user.roles.some((r) => normalizedRequired.includes(r.toUpperCase().trim()));
     if (!hasRole) {
       res.status(403).json({ status: 'error', message: 'Bạn không có quyền thực hiện hành động này.' });
       return;

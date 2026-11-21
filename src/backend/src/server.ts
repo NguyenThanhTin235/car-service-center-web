@@ -1,7 +1,9 @@
+import http from 'http';
 import app from './app';
 import dotenv from 'dotenv';
 import { connectRedis } from './utils/redis.util';
 import { startAppointmentReminderJob } from './jobs/appointment-reminder.job';
+import { initSocketServer } from './socket';
 
 dotenv.config();
 
@@ -18,8 +20,11 @@ const start = async () => {
   // Khởi động các Job chạy nền
   startAppointmentReminderJob();
 
-  app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:`);
+  const httpServer = http.createServer(app);
+  initSocketServer(httpServer);
+
+  httpServer.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
   });
 };
 

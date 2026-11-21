@@ -39,6 +39,13 @@ export class VehicleService {
           orderBy: { created_at: 'desc' },
           take: 1,
         },
+        _count: {
+          select: {
+            appointments: true,
+            intake_records: true,
+            work_orders: true,
+          },
+        },
       },
       orderBy: { created_at: 'desc' },
     });
@@ -52,6 +59,8 @@ export class VehicleService {
       color: v.color,
       vehicleSize: v.vehicle_size,
       isActive: v.status === 'ACTIVE',
+      hasTransactions:
+        v._count.appointments + v._count.intake_records + v._count.work_orders > 0,
       activeWorkOrder: v.work_orders[0]
         ? {
             id: v.work_orders[0].id,

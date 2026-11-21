@@ -24,6 +24,7 @@ import paymentRoutes from './routes/payment.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import reportRoutes from './routes/report.routes';
 import quotationRoutes from './routes/quotation.routes';
+import notificationRoutes from './routes/notification.routes';
 
 const app = express();
 app.set('trust proxy', true);
@@ -86,6 +87,7 @@ app.use('/api/quotations', quotationRoutes);
 
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 export default app;
 

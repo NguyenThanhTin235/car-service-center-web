@@ -20,6 +20,9 @@ const { prismaMock, notificationMock } = vi.hoisted(() => {
 
   const notif = {
     sendEmail: vi.fn().mockResolvedValue(undefined),
+    notifyAndEmail: vi.fn().mockResolvedValue(undefined),
+    sendInAppToRoles: vi.fn().mockResolvedValue({ count: 0, userIds: [] }),
+    sendInApp: vi.fn().mockResolvedValue(undefined),
   };
 
   return { prismaMock: mock, notificationMock: notif };
@@ -42,6 +45,14 @@ describe('SA Unit Tests - Handover, Cancel-Release & Close (SA-REL-UT)', () => {
     vi.resetAllMocks();
     prismaMock.$transaction.mockImplementation(async (cb: (tx: any) => Promise<any>) => cb(prismaMock));
     notificationMock.sendEmail.mockResolvedValue(undefined);
+    notificationMock.notifyAndEmail.mockImplementation(async (payload: any) => {
+      if (payload?.email && payload?.subject && payload?.html) {
+        await notificationMock.sendEmail(payload.email, payload.subject, payload.html);
+      }
+      return undefined;
+    });
+    notificationMock.sendInAppToRoles.mockResolvedValue({ count: 0, userIds: [] });
+    notificationMock.sendInApp.mockResolvedValue(undefined);
   });
 
   describe('SA-REL-UT-01: completeHandover (Financial Gate + ODO Gate + Signature)', () => {
@@ -209,7 +220,7 @@ describe('SA Unit Tests - Handover, Cancel-Release & Close (SA-REL-UT)', () => {
       expect(prismaMock.jobPart.update).toHaveBeenCalledTimes(1);
       expect(prismaMock.jobPart.update).toHaveBeenCalledWith({
         where: { id: 501 },
-        data: { status: 'RETURNED' },
+        data: { status: 'RETURNED', issued_quantity: 0 },
       });
       const upsertArg = prismaMock.vehicleRelease.upsert.mock.calls[0][0];
       expect(upsertArg.create.release_notes).toContain('Khách từ chối báo giá sửa chữa');
