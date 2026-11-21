@@ -8,6 +8,7 @@ interface CustomerQuotationModalProps {
   isOpen: boolean;
   onClose: () => void;
   quotation: CustomerQuotationDto;
+  initialQuotationId?: number | null;
   allQuotations?: CustomerQuotationDto[];
   cumulativeSummary?: {
     totalApprovedGrandTotal: number;
@@ -25,6 +26,7 @@ export default function CustomerQuotationModal({
   isOpen,
   onClose,
   quotation,
+  initialQuotationId,
   allQuotations = [],
   cumulativeSummary,
   advisorName,
@@ -50,8 +52,18 @@ export default function CustomerQuotationModal({
     return [quotation];
   }, [allQuotations, quotation]);
 
-  const [selectedQuoteId, setSelectedQuoteId] = useState<number>(quotation.id);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<number>(
+    initialQuotationId || quotation.id
+  );
   const [viewMode, setViewMode] = useState<'SINGLE' | 'COMBINED'>('SINGLE');
+
+  React.useEffect(() => {
+    if (initialQuotationId) {
+      setSelectedQuoteId(Number(initialQuotationId));
+    } else if (quotation?.id) {
+      setSelectedQuoteId(quotation.id);
+    }
+  }, [initialQuotationId, quotation?.id]);
 
   if (!isOpen) return null;
 

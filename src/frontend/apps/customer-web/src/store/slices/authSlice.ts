@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { clearUserChatSessions } from '@/components/chat/aiChatUtils';
 
 interface User {
   id: number;
@@ -88,6 +89,9 @@ const authSlice = createSlice({
         localStorage.removeItem('user');
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
+        try {
+          clearUserChatSessions(window.sessionStorage);
+        } catch {}
       }
     },
   },

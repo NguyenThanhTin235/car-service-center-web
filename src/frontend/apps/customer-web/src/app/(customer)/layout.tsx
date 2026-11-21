@@ -1,6 +1,7 @@
 import PublicHeader from '@/components/layout/PublicHeader';
 import PublicFooter from '@/components/layout/PublicFooter';
 import CustomerAuthGuard from '@/components/auth/CustomerAuthGuard';
+import CustomerAiChatWidget from '@/components/chat/CustomerAiChatWidget';
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
           {children}
         </main>
         <PublicFooter />
+        <CustomerAiChatWidget />
       </div>
     </CustomerAuthGuard>
   );

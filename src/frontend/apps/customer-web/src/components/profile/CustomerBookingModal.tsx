@@ -63,6 +63,8 @@ interface CustomerBookingModalProps {
   initialDate: Date;
   initialTime: string;
   initialVehicleId?: number | null;
+  initialServiceIds?: number[];
+  initialNotes?: string;
   customerId?: number;
   vehicles: Vehicle[];
   activeVehicles: Vehicle[];
@@ -76,6 +78,8 @@ export default function CustomerBookingModal({
   initialDate,
   initialTime,
   initialVehicleId,
+  initialServiceIds,
+  initialNotes,
   customerId,
   vehicles,
   activeVehicles,
@@ -87,11 +91,13 @@ export default function CustomerBookingModal({
   const dispatch = useAppDispatch();
   const [bookingStep, setBookingStep] = useState<1 | 2 | 3>(1);
   const [bookingVehicleId, setBookingVehicleId] = useState<number | null>(
-    activeVehicles[0]?.id ?? vehicles[0]?.id ?? null
+    initialVehicleId ?? activeVehicles[0]?.id ?? vehicles[0]?.id ?? null
   );
   const [customPlateInput, setCustomPlateInput] = useState('');
-  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([1, 2]);
-  const [bookingNotes, setBookingNotes] = useState('');
+  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>(
+    initialServiceIds && initialServiceIds.length > 0 ? initialServiceIds : [1, 2]
+  );
+  const [bookingNotes, setBookingNotes] = useState(initialNotes || '');
   const [bookingDate, setBookingDate] = useState<Date>(initialDate);
   const [bookingTime, setBookingTime] = useState<string>(initialTime);
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
@@ -102,6 +108,30 @@ export default function CustomerBookingModal({
       setCustomPlateInput('');
     }
   }, [initialVehicleId]);
+
+  useEffect(() => {
+    if (initialServiceIds && initialServiceIds.length > 0) {
+      setSelectedServiceIds(initialServiceIds);
+    }
+  }, [initialServiceIds]);
+
+  useEffect(() => {
+    if (typeof initialNotes === 'string' && initialNotes.trim().length > 0) {
+      setBookingNotes(initialNotes);
+    }
+  }, [initialNotes]);
+
+  useEffect(() => {
+    if (initialDate) {
+      setBookingDate(initialDate);
+    }
+  }, [initialDate]);
+
+  useEffect(() => {
+    if (initialTime) {
+      setBookingTime(initialTime);
+    }
+  }, [initialTime]);
 
   useEffect(() => {
     if (vehicles.length > 0 && bookingVehicleId === null) {

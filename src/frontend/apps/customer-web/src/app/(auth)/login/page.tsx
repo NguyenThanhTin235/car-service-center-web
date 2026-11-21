@@ -7,6 +7,10 @@ import api from '@/lib/axios';
 import { setCredentials } from '@/store/slices/authSlice';
 import { RootState } from '@/store';
 import { getDashboardPathByRole } from '@/utils/roleRedirect';
+import {
+  isSafeRedirectPath,
+  PENDING_BOOKING_INTENT_KEY,
+} from '@/components/chat/aiChatUtils';
 import AuthSplitShell from '@/components/auth/AuthSplitShell';
 import {
   AuthAlert,
@@ -44,9 +48,24 @@ export default function LoginPage() {
     return () => clearTimeout(timer);
   }, [lockSeconds]);
 
+  const resolvePostLoginDestination = (roles: string[]) => {
+    const isCustomer = roles.some((r) => r.toUpperCase() === 'CUSTOMER');
+    if (isCustomer && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const redirectParam = params.get('redirect');
+      if (isSafeRedirectPath(redirectParam)) {
+        return redirectParam!;
+      }
+      if (window.sessionStorage.getItem(PENDING_BOOKING_INTENT_KEY)) {
+        return '/customer/profile?tab=appointments&openBooking=1';
+      }
+    }
+    return getDashboardPathByRole(roles);
+  };
+
   useEffect(() => {
     if (mounted && isAuthenticated && user) {
-      window.location.href = getDashboardPathByRole(user.roles);
+      window.location.href = resolvePostLoginDestination(user.roles);
     }
   }, [mounted, isAuthenticated, user]);
 
@@ -71,7 +90,7 @@ export default function LoginPage() {
       const res = await api.post('/api/auth/login', { email, password });
       const { user: loggedInUser, token, refreshToken } = res.data.data;
       dispatch(setCredentials({ user: loggedInUser, token, refreshToken }));
-      window.location.href = getDashboardPathByRole(loggedInUser.roles);
+      window.location.href = resolvePostLoginDestination(loggedInUser.roles);
     } catch (err: any) {
       if (err.response?.status === 429) {
         setLockSeconds(Number(err.response.data?.retryAfter) || 900);
