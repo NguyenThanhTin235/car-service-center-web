@@ -289,7 +289,7 @@ export default function SADashboardAnalyticsPage() {
           let splitLeftLabel: string | undefined;
           let splitRightLabel: string | undefined;
           let subtitle: string | undefined;
-          let waveLabels = ['Tiếp nhận', 'Báo giá', 'Duyệt giá', 'Thi công', 'Giao xe'];
+          const waveLabels = ['Tiếp nhận', 'Báo giá', 'Duyệt giá', 'Thi công', 'Giao xe'];
 
           if (index === 0) {
             sparklineCallout = `${kpi.value} báo giá`;

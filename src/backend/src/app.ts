@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import { httpLogStream } from './loggers/logger';
+import { isOriginAllowed } from './utils/cors.util';
 import { checkHealth } from './services/health.service';
 import uploadRoutes from './routes/upload.routes';
 import authRoutes from './routes/auth.routes';
@@ -31,34 +32,10 @@ import notificationRoutes from './routes/notification.routes';
 const app = express();
 app.set('trust proxy', true);
 
-const buildAllowedOrigins = (): string[] => {
-  const configured = (process.env.CORS_ORIGINS || '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
-  return Array.from(
-    new Set([
-      ...configured,
-      process.env.FRONTEND_URL || 'http://localhost:3000',
-      ...(process.env.INTERNAL_FRONTEND_URL ? [process.env.INTERNAL_FRONTEND_URL] : []),
-      'http://localhost:3001',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001',
-    ])
-  );
-};
-
 // Middlewares
 app.use(cors({ 
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    const allowedOrigins = buildAllowedOrigins();
-    if (
-      allowedOrigins.includes(origin) ||
-      origin.startsWith('http://localhost:') ||
-      origin.startsWith('http://127.0.0.1:')
-    ) {
+    if (isOriginAllowed(origin)) {
       return callback(null, true);
     }
     return callback(null, false);

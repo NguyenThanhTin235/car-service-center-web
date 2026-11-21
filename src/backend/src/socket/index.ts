@@ -4,6 +4,7 @@ import { verifyAccessToken, JwtPayload } from '../utils/jwt.util';
 import { BLACKLIST_JTI_KEY, TOKEN_INVALID_BEFORE_KEY } from '../services/auth.service';
 import { getCache } from '../utils/redis.util';
 import prisma from '../utils/prisma';
+import { isOriginAllowed, resolvePortalFromHeaders } from '../utils/cors.util';
 
 const STAFF_ROLES = new Set([
   'ADMIN',
@@ -40,18 +41,11 @@ function resolvePortal(socket: Socket): 'internal' | 'customer' | undefined {
   const authPortal = socket.handshake.auth?.portal;
   if (authPortal === 'internal' || authPortal === 'customer') return authPortal;
 
-  const headerPortal = socket.handshake.headers['x-portal'];
-  if (headerPortal === 'internal' || headerPortal === 'customer') return headerPortal;
-
-  const origin = socket.handshake.headers.origin || '';
-  const referer = socket.handshake.headers.referer || '';
-  if (origin.includes(':3001') || referer.includes(':3001') || referer.includes('/staff')) {
-    return 'internal';
-  }
-  if (origin.includes(':3000') || referer.includes(':3000')) {
-    return 'customer';
-  }
-  return undefined;
+  return resolvePortalFromHeaders({
+    headerPortal: socket.handshake.headers['x-portal'],
+    origin: socket.handshake.headers.origin,
+    referer: socket.handshake.headers.referer,
+  });
 }
 
 function extractToken(socket: Socket, portal?: 'internal' | 'customer'): string | null {
@@ -76,22 +70,10 @@ function extractToken(socket: Socket, portal?: 'internal' | 'customer'): string 
 }
 
 export function initSocketServer(httpServer: HttpServer): Server {
-  const allowedOrigins = [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:3001',
-  ];
-
   io = new Server(httpServer, {
     cors: {
       origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
-        if (
-          allowedOrigins.includes(origin) ||
-          origin.startsWith('http://localhost:') ||
-          origin.startsWith('http://127.0.0.1:')
-        ) {
+        if (isOriginAllowed(origin)) {
           return callback(null, true);
         }
         return callback(new Error('Not allowed by CORS'));
@@ -163,7 +145,7 @@ export function initSocketServer(httpServer: HttpServer): Server {
       socket.data.portal = portal;
 
       return next();
-    } catch (err) {
+    } catch {
       return next(new Error('Unauthorized: Authentication failed'));
     }
   });

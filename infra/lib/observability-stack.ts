@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as cloudwatch_actions from 'aws-cdk-lib/aws-cloudwatch-actions';
@@ -6,6 +8,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 export interface ObservabilityStackProps extends cdk.StackProps {
@@ -100,6 +103,47 @@ export class ObservabilityStack extends cdk.Stack {
       comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
     });
     rdsStorageAlarm.addAlarmAction(snsAction);
+
+    const cwAgentConfig = fs.readFileSync(
+      path.join(__dirname, '../scripts/cwagent-config.json'),
+      'utf8',
+    );
+
+    new ssm.StringParameter(this, 'CwAgentConfigParam', {
+      parameterName: '/car-service/cwagent-config',
+      stringValue: cwAgentConfig,
+      description: 'Amazon CloudWatch Agent configuration for Car Service EC2 host',
+    });
+
+    const ec2MemAlarm = new cloudwatch.Alarm(this, 'Ec2HighMemoryAlarm', {
+      alarmDescription: 'EC2 memory utilization exceeded 85%',
+      metric: new cloudwatch.Metric({
+        namespace: 'CarService/EC2',
+        metricName: 'mem_used_percent',
+        dimensionsMap: { InstanceId: props.instance.instanceId },
+        statistic: 'Average',
+        period: cdk.Duration.minutes(5),
+      }),
+      threshold: 85,
+      evaluationPeriods: 2,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+    });
+    ec2MemAlarm.addAlarmAction(snsAction);
+
+    const ec2DiskAlarm = new cloudwatch.Alarm(this, 'Ec2HighDiskAlarm', {
+      alarmDescription: 'EC2 root disk utilization exceeded 85%',
+      metric: new cloudwatch.Metric({
+        namespace: 'CarService/EC2',
+        metricName: 'disk_used_percent',
+        dimensionsMap: { InstanceId: props.instance.instanceId },
+        statistic: 'Average',
+        period: cdk.Duration.minutes(5),
+      }),
+      threshold: 85,
+      evaluationPeriods: 2,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+    });
+    ec2DiskAlarm.addAlarmAction(snsAction);
 
     new cdk.CfnOutput(this, 'AlertTopicArn', {
       value: this.alertTopic.topicArn,

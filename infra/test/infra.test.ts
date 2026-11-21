@@ -170,10 +170,22 @@ describe('Car Service Center CDK Infrastructure', () => {
                 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
               },
               StringLike: {
-                'token.actions.githubusercontent.com:sub':
+                'token.actions.githubusercontent.com:sub': Match.arrayWith([
                   'repo:NguyenThanhTin235/car-service-center-web:*',
+                ]),
               },
             },
+          }),
+        ]),
+      },
+    });
+
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'sns:Publish',
+            Effect: 'Allow',
           }),
         ]),
       },
@@ -197,15 +209,16 @@ describe('Car Service Center CDK Infrastructure', () => {
     template.resourceCountIs('AWS::EC2::EIP', 1);
   });
 
-  it('DnsStack creates 6 Route53 RecordSet resources when domainName and hostedZoneId are provided', () => {
+  it('DnsStack creates 6 A records, SES Domain Identity, DKIM CNAMEs, and SPF/DMARC TXT records', () => {
     const { dnsStack } = createAllStacks({ withDns: true });
     expect(dnsStack).toBeDefined();
 
     const template = Template.fromStack(dnsStack!);
-    template.resourceCountIs('AWS::Route53::RecordSet', 6);
+    template.resourceCountIs('AWS::SES::EmailIdentity', 1);
+    template.resourceCountIs('AWS::Route53::RecordSet', 11);
   });
 
-  it('ObservabilityStack provisions 3 LogGroups (14-day retention), 1 SNS Topic, and 4 CloudWatch Alarms', () => {
+  it('ObservabilityStack provisions 3 LogGroups (14-day retention), SSM CWAgent param, 1 SNS Topic, and 6 CloudWatch Alarms', () => {
     const { observabilityStack } = createAllStacks();
     const template = Template.fromStack(observabilityStack);
 
@@ -215,7 +228,12 @@ describe('Car Service Center CDK Infrastructure', () => {
       expect(lg.Properties?.RetentionInDays).toBe(14);
     }
 
+    template.hasResourceProperties('AWS::SSM::Parameter', {
+      Name: '/car-service/cwagent-config',
+      Type: 'String',
+    });
+
     template.resourceCountIs('AWS::SNS::Topic', 1);
-    template.resourceCountIs('AWS::CloudWatch::Alarm', 4);
+    template.resourceCountIs('AWS::CloudWatch::Alarm', 6);
   });
 });

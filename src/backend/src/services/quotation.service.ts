@@ -2,6 +2,7 @@ import prisma from '../utils/prisma';
 import { QuotationStatus, QuotationType, LineType } from '@prisma/client';
 import { calculatePricingTotals, PricingLineItemInput } from '../utils/pricing-calculator.util';
 import { notificationService } from './notification.service';
+import { getFrontendBaseUrl } from '../utils/cors.util';
 
 export interface CreateQuotationDto {
   discountAmount?: number;
@@ -598,7 +599,7 @@ export class QuotationService {
       // Gửi thông báo & email cho khách hàng kèm Deep Link
       const customerEmail = quotation.work_order.customer?.email;
       const grandTotalFormatted = Number(updated.grand_total).toLocaleString('vi-VN');
-      const trackingLink = `http://localhost:3000/tracking`;
+      const trackingLink = `${getFrontendBaseUrl()}/customer/tracking`;
       const emailHtml = customerEmail
         ? `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">

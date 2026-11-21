@@ -71,7 +71,9 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
   );
   const [loading, setLoading] = useState(false);
   const hasPartsRef = useRef(parts.length > 0);
-  hasPartsRef.current = parts.length > 0;
+  useEffect(() => {
+    hasPartsRef.current = parts.length > 0;
+  }, [parts.length]);
 
   // Pagination state (5 items per page)
   const [currentPage, setCurrentPage] = useState(1);

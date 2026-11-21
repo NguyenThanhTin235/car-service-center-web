@@ -9,6 +9,7 @@ import { WorkOrderRepository } from '../repositories/work-order.repository';
 import { IntakeRepository } from '../repositories/intake.repository';
 import { notificationService } from './notification.service';
 import { generateHandoverPdfBuffer } from '../utils/pdf-handover.util';
+import { getFrontendBaseUrl } from '../utils/cors.util';
 
 const workOrderRepo = new WorkOrderRepository();
 const intakeRepo = new IntakeRepository();
@@ -2165,7 +2166,7 @@ export class WorkOrderService {
 
       // 4. Gửi email thông báo cho khách hàng
       if (wo.customer?.email) {
-        const trackingLink = `http://localhost:3000/tracking`;
+        const trackingLink = `${getFrontendBaseUrl()}/customer/tracking`;
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
             <div style="background-color: #1e40af; padding: 24px; text-align: center; color: #ffffff;">
@@ -2314,7 +2315,7 @@ export class WorkOrderService {
 
       // 4. Nếu WorkOrder lần đầu chuyển sang IN_PROGRESS, gửi email thông báo khách hàng
       if (transitionedWoToInProgress && wo.customer?.email) {
-        const trackingLink = `http://localhost:3000/tracking`;
+        const trackingLink = `${getFrontendBaseUrl()}/customer/tracking`;
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
             <div style="background-color: #1e40af; padding: 24px; text-align: center; color: #ffffff;">
@@ -2829,7 +2830,7 @@ export class WorkOrderService {
 
       // Nếu lần đầu WorkOrder chuyển sang IN_PROGRESS, gửi email thông báo khách hàng
       if (transitionedWo && wo.customer?.email) {
-        const trackingLink = `http://localhost:3000/tracking`;
+        const trackingLink = `${getFrontendBaseUrl()}/customer/tracking`;
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
             <div style="background-color: #1e40af; padding: 24px; text-align: center; color: #ffffff;">

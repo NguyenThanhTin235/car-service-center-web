@@ -275,7 +275,7 @@ export default function ManagerDashboardPage() {
           let splitLeftLabel: string | undefined;
           let splitRightLabel: string | undefined;
           let subtitle: string | undefined;
-          let waveLabels = ['Tiếp nhận', 'Báo giá', 'Thi công', 'KCS', 'Quyết toán'];
+          const waveLabels = ['Tiếp nhận', 'Báo giá', 'Thi công', 'KCS', 'Quyết toán'];
 
           if (index === 0) {
             sparklineCallout = formatVND(Number(kpi.value), true);

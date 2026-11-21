@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { authService, LoginLockedError } from '../services/auth.service';
 import prisma from '../utils/prisma';
+import { resolvePortalFromHeaders } from '../utils/cors.util';
 import {
   loginSchema,
   sendOtpRegisterSchema,
@@ -18,7 +19,7 @@ import {
 const BASE_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
+  sameSite: 'lax' as const,
 };
 
 const ACCESS_COOKIE_OPTIONS = {
@@ -32,16 +33,13 @@ const REFRESH_COOKIE_OPTIONS = {
 };
 
 function resolvePortal(req: Request): 'internal' | 'customer' {
-  const headerPortal = req.headers['x-portal'];
-  if (headerPortal === 'internal' || headerPortal === 'customer') {
-    return headerPortal;
-  }
-  const referer = req.headers.referer || '';
-  const origin = req.headers.origin || '';
-  if (referer.includes(':3001') || referer.includes('/staff') || origin.includes(':3001')) {
-    return 'internal';
-  }
-  return 'customer';
+  return (
+    resolvePortalFromHeaders({
+      headerPortal: req.headers['x-portal'],
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+    }) || 'customer'
+  );
 }
 
 function setPortalAuthCookies(
@@ -145,14 +143,11 @@ export class AuthController {
   // UC-04: Logout
   // ========================
   async logout(req: Request, res: Response): Promise<void> {
-    const hasPortalHeader = req.headers['x-portal'] === 'internal' || req.headers['x-portal'] === 'customer';
-    const portal = hasPortalHeader
-      ? (req.headers['x-portal'] as 'internal' | 'customer')
-      : req.headers.referer?.includes(':3001') || req.headers.referer?.includes('/staff') || req.headers.origin?.includes(':3001')
-      ? 'internal'
-      : req.headers.referer?.includes(':3000') || req.headers.origin?.includes(':3000')
-      ? 'customer'
-      : undefined;
+    const portal = resolvePortalFromHeaders({
+      headerPortal: req.headers['x-portal'],
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+    });
 
     const authHeader = req.headers.authorization;
     const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;

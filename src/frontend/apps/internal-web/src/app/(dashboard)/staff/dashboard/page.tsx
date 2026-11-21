@@ -185,7 +185,7 @@ export default function StaffCommandDashboardPage() {
           let splitLeftLabel: string | undefined;
           let splitRightLabel: string | undefined;
           let subtitle: string | undefined;
-          let waveLabels = ['Phân công', 'Nhận vật tư', 'Thi công', 'Kiểm tra', 'Hoàn tất'];
+          const waveLabels = ['Phân công', 'Nhận vật tư', 'Thi công', 'Kiểm tra', 'Hoàn tất'];
 
           if (index === 0) {
             sparklineCallout = `${kpi.value} hạng mục`;

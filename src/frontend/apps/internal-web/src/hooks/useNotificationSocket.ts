@@ -54,7 +54,10 @@ export function useNotificationSocket(): void {
         extraHeaders: {
           'x-portal': 'internal',
         },
-        ...(token ? { auth: { token } } : {}),
+        auth: {
+          portal: 'internal',
+          ...(token ? { token } : {}),
+        },
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionAttempts: Infinity,

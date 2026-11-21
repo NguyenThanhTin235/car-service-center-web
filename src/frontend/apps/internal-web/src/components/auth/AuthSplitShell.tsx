@@ -12,6 +12,10 @@ export interface AuthSplitShellProps {
 }
 
 export default function AuthSplitShell({ topAction, children }: AuthSplitShellProps) {
+  const customerHomeUrl = `${(
+    process.env.NEXT_PUBLIC_CUSTOMER_URL || 'http://localhost:3000'
+  ).replace(/\/+$/, '')}/home`;
+
   return (
     <div className="min-h-screen w-full bg-[#f6f8fc] text-slate-900 antialiased flex flex-col justify-between">
       {/* Compact Enterprise Header */}
@@ -33,7 +37,7 @@ export default function AuthSplitShell({ topAction, children }: AuthSplitShellPr
 
           <div className="flex items-center gap-3">
             <a
-              href="http://localhost:3000/home"
+              href={customerHomeUrl}
               className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors px-2 py-1.5"
             >
               <span className="material-symbols-outlined text-[16px]">open_in_new</span>

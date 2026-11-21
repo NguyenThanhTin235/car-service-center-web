@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken, JwtPayload } from '../utils/jwt.util';
 import { BLACKLIST_JTI_KEY, TOKEN_INVALID_BEFORE_KEY } from '../services/auth.service';
 import prisma from '../utils/prisma';
+import { resolvePortalFromHeaders } from '../utils/cors.util';
 
 // Extend Express Request to include user
 declare global {
@@ -23,9 +24,11 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
   let token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
   // 2. Determine portal context
-  const portal = (req.headers['x-portal'] as string) || 
-    (req.headers.referer?.includes(':3001') || req.headers.referer?.includes('/staff') || req.headers.origin?.includes(':3001') ? 'internal' : 
-     req.headers.referer?.includes(':3000') || req.headers.origin?.includes(':3000') ? 'customer' : undefined);
+  const portal = resolvePortalFromHeaders({
+    headerPortal: req.headers['x-portal'],
+    origin: req.headers.origin,
+    referer: req.headers.referer,
+  });
 
   // 3. If no Bearer token, resolve from strictly isolated portal cookies (no cross-portal fallback)
   if (!token) {

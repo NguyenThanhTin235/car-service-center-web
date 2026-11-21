@@ -47,7 +47,10 @@ export function useNotificationSocket() {
       extraHeaders: {
         'x-portal': 'customer',
       },
-      ...(token ? { auth: { token } } : {}),
+      auth: {
+        portal: 'customer',
+        ...(token ? { token } : {}),
+      },
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,

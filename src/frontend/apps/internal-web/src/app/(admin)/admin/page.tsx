@@ -241,8 +241,8 @@ export default function AdminDashboardPage() {
           let splitLeftLabel: string | undefined;
           let splitRightLabel: string | undefined;
           let subtitle: string | undefined;
-          let waveLabels = periodConf.waveLabels;
-          let sparklinePoints = periodConf.sparklinePoints;
+          const waveLabels = periodConf.waveLabels;
+          const sparklinePoints = periodConf.sparklinePoints;
           let heatmapHighlightCol: number | undefined;
           let slaPercentage: number | undefined;
 

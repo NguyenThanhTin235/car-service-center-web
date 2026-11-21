@@ -5,6 +5,11 @@
   },
   "metrics": {
     "namespace": "CarService/EC2",
+    "aggregation_dimensions": [
+      [
+        "InstanceId"
+      ]
+    ],
     "append_dimensions": {
       "InstanceId": "${aws:InstanceId}"
     },
