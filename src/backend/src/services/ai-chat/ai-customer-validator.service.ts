@@ -103,7 +103,11 @@ export function isSafeActionTarget(type: AiChatActionType, target: string): bool
   const clean = String(target || '').trim();
   if (!clean) return false;
 
-  if (/[\u0000-\u001f\\]/.test(clean) || clean.includes('..')) {
+  const hasControlOrBackslash = Array.from(clean).some((ch) => {
+    const code = ch.charCodeAt(0);
+    return code <= 0x1f || ch === '\\';
+  });
+  if (hasControlOrBackslash || clean.includes('..')) {
     return false;
   }
 
