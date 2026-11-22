@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useDeferredValue } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -8,6 +8,8 @@ import { fetchIntakeQueue } from '@/store/slices/intakeSlice';
 import { fetchAppointments } from '@/store/slices/appointmentSlice';
 import { fetchBillingQueue } from '@/store/slices/billingSlice';
 import SaaSWaveChart from '@/components/shared/SaaSWaveChart';
+import IntakeDetailModal from '@/components/intake/IntakeDetailModal';
+import { formatVND } from '@/lib/utils/formatters';
 
 type QueueTab = 'INTAKE' | 'APPOINTMENTS' | 'BILLING';
 
@@ -48,6 +50,7 @@ export default function StaffDashboardPage() {
 
   const [activeTab, setActiveTab] = useState<QueueTab>('INTAKE');
   const [searchFilter, setSearchFilter] = useState('');
+  const [selectedIntakeRecord, setSelectedIntakeRecord] = useState<any | null>(null);
 
   const loadAllOverviewData = useCallback(() => {
     const now = new Date();
@@ -116,15 +119,14 @@ export default function StaffDashboardPage() {
     };
   }, []);
 
-  const formatMoney = (amount: number) =>
-    `${new Intl.NumberFormat('vi-VN').format(Math.round(amount))} ₫`;
+  const deferredSearch = useDeferredValue(searchFilter);
 
   const isLoading = intakeLoading || aptLoading || billingLoading;
   const hasError = intakeError || aptError;
 
   // Filtered table items
   const filteredIntake = useMemo(() => {
-    const q = searchFilter.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     return intakeRecords
       .filter((r) => {
         if (!q) return true;
@@ -135,10 +137,10 @@ export default function StaffDashboardPage() {
         );
       })
       .slice(0, 8);
-  }, [intakeRecords, searchFilter]);
+  }, [intakeRecords, deferredSearch]);
 
   const filteredAppointments = useMemo(() => {
-    const q = searchFilter.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     return appointments
       .filter((a) => {
         if (!q) return true;
@@ -149,7 +151,20 @@ export default function StaffDashboardPage() {
         );
       })
       .slice(0, 8);
-  }, [appointments, searchFilter]);
+  }, [appointments, deferredSearch]);
+
+  const filteredBilling = useMemo(() => {
+    const q = deferredSearch.trim().toLowerCase();
+    return billingRecords
+      .filter((b: any) => {
+        if (!q) return true;
+        const plate = (b.vehicle?.licensePlate || b.licensePlate || '').toLowerCase();
+        const name = (b.customer?.fullName || b.customerName || '').toLowerCase();
+        const wo = (b.woNumber || b.invoiceNumber || '').toLowerCase();
+        return plate.includes(q) || name.includes(q) || wo.includes(q);
+      })
+      .slice(0, 6);
+  }, [billingRecords, deferredSearch]);
 
   return (
     <div className="space-y-6">
@@ -205,7 +220,7 @@ export default function StaffDashboardPage() {
                 Thực thu trong ngày (Hóa đơn)
               </span>
               <div className="mt-2 font-mono tabular-nums text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                {formatMoney(stats.paidRevenue)}
+                {formatVND(stats.paidRevenue)}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-mono">
                 <span className="px-2 py-0.5 rounded-md bg-emerald-500/25 text-emerald-200 font-bold">
@@ -259,7 +274,7 @@ export default function StaffDashboardPage() {
                 </div>
               </div>
               <span className="px-2.5 py-1 rounded-full bg-blue-50 text-[#0050cd] font-mono text-xs font-bold">
-                {stats.conversionPct}% đã tạo RO
+                {stats.conversionPct}% đã tạo lệnh sửa chữa
               </span>
             </div>
 
@@ -283,7 +298,7 @@ export default function StaffDashboardPage() {
                   </div>
                 </div>
                 <div className="px-3">
-                  <div className="text-xs font-medium text-slate-600">Đã chuyển SA</div>
+                  <div className="text-xs font-medium text-slate-600">Đã chuyển Cố vấn</div>
                   <div className="font-mono tabular-nums text-lg font-extrabold text-[#0050cd] mt-0.5">
                     {stats.convertedIntake}
                   </div>
@@ -324,7 +339,7 @@ export default function StaffDashboardPage() {
                 peakRatio: 0.74,
               },
               {
-                label: 'Đã lên lệnh (RO)',
+                label: 'Đã tạo lệnh sửa chữa',
                 value: stats.convertedIntake,
                 color: '#10b981',
                 peakRatio: 0.58,
@@ -531,19 +546,20 @@ export default function StaffDashboardPage() {
                                   : 'bg-emerald-500'
                               }`}
                             />
-                            {rec.status === 'QUEUED' ? 'Đang chờ SA' : 'Đã lên lệnh RO'}
+                            {rec.status === 'QUEUED' ? 'Chờ cố vấn kiểm tra' : 'Đã tạo lệnh sửa chữa'}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <Link
-                            href="/staff/intake"
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-[#0866ff] text-slate-700 hover:text-white font-semibold transition-colors"
+                          <button
+                            type="button"
+                            onClick={() => setSelectedIntakeRecord(rec)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-[#0866ff] text-slate-700 hover:text-white font-semibold transition-colors cursor-pointer"
                           >
                             <span>Chi tiết</span>
                             <span className="material-symbols-outlined text-[14px]">
-                              arrow_forward
+                              visibility
                             </span>
-                          </Link>
+                          </button>
                         </td>
                       </tr>
                     );
@@ -632,7 +648,7 @@ export default function StaffDashboardPage() {
               </table>
             </div>
           )
-        ) : billingRecords.length === 0 ? (
+        ) : filteredBilling.length === 0 ? (
           <div className="py-14 px-6 text-center">
             <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#0050cd] flex items-center justify-center mx-auto mb-3">
               <span className="material-symbols-outlined text-[26px]">receipt_long</span>
@@ -662,7 +678,7 @@ export default function StaffDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {billingRecords.slice(0, 6).map((b: any) => (
+                {filteredBilling.map((b: any) => (
                   <tr key={b.workOrderId || b.id} className="hover:bg-blue-50/30 transition-colors">
                     <td className="py-3 px-4 font-mono tabular-nums font-bold text-[#0050cd]">
                       {b.woNumber || b.invoiceNumber || `#${b.id}`}
@@ -676,7 +692,7 @@ export default function StaffDashboardPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4 text-right font-mono tabular-nums font-bold text-slate-900">
-                      {formatMoney(b.grandTotal || b.estimatedTotal || 0)}
+                      {formatVND(b.grandTotal || b.estimatedTotal || 0)}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <Link
@@ -693,6 +709,11 @@ export default function StaffDashboardPage() {
           </div>
         )}
       </div>
+
+      <IntakeDetailModal
+        record={selectedIntakeRecord}
+        onClose={() => setSelectedIntakeRecord(null)}
+      />
     </div>
   );
 }

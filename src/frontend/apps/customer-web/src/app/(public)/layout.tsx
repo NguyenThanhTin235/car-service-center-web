@@ -3,17 +3,16 @@ import PublicHeader from '@/components/layout/PublicHeader';
 import PublicFooter from '@/components/layout/PublicFooter';
 
 export const metadata: Metadata = {
-  title: 'AutoCare Pro – Hệ thống Dịch vụ Ô tô Thông minh',
-  description: 'Đặt lịch bảo dưỡng, sửa chữa, rửa xe và chăm sóc ô tô chuyên nghiệp. Theo dõi tiến độ sửa chữa trực tuyến.',
+  title: 'AutoCare Pro – Cổng Dịch vụ Kỹ thuật Ô tô',
+  description:
+    'Đặt lịch bảo dưỡng, theo dõi tiến độ sửa chữa trực tuyến, phê duyệt báo giá minh bạch và thanh toán SePay.',
 };
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="min-h-screen flex flex-col bg-canvas text-ink-primary antialiased">
       <PublicHeader />
-      <main className="flex-1 w-full">
-        {children}
-      </main>
+      <main className="flex-1 w-full">{children}</main>
       <PublicFooter />
     </div>
   );

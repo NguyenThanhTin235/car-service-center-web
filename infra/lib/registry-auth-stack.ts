@@ -95,6 +95,13 @@ export class RegistryAuthStack extends cdk.Stack {
       }),
     );
 
+    this.githubDeployRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['sns:Publish'],
+        resources: [`arn:aws:sns:${this.region}:${this.account}:car-service-alerts`],
+      }),
+    );
+
     this.ec2Role = new iam.Role(this, 'Ec2InstanceRole', {
       roleName: 'car-service-ec2-role',
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),

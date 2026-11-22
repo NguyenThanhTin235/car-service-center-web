@@ -204,7 +204,7 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">credit_card</span>
-              <span>Thẻ (POS)</span>
+              <span>Quẹt thẻ máy POS</span>
             </button>
             <button
               type="button"
@@ -216,7 +216,7 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">qr_code_2</span>
-              <span>SePay (VietQR)</span>
+              <span>Chuyển khoản VietQR</span>
             </button>
           </div>
         </div>
@@ -289,7 +289,7 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
                             <button
                               type="button"
                               onClick={() => copyToClipboard(sepayData.bankInfo!.accountNumber, 'acc')}
-                              className="p-1 hover:bg-surface-container rounded text-on-surface-variant cursor-pointer transition-colors"
+                              className="w-8 h-8 flex items-center justify-center hover:bg-slate-200/80 rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer transition-colors shrink-0"
                               title="Sao chép số tài khoản"
                             >
                               <span className="material-symbols-outlined text-[14px]">
@@ -314,7 +314,7 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
                             <button
                               type="button"
                               onClick={() => copyToClipboard(sepayData.bankInfo!.transferContent, 'memo')}
-                              className="p-1 hover:bg-amber-100 rounded text-amber-900 cursor-pointer transition-colors"
+                              className="w-8 h-8 flex items-center justify-center hover:bg-amber-100 rounded-lg text-amber-900 cursor-pointer transition-colors shrink-0"
                               title="Sao chép nội dung chuyển khoản"
                             >
                               <span className="material-symbols-outlined text-[14px]">
@@ -441,7 +441,7 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
                     value={cardRef}
                     onChange={(e) => setCardRef(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm font-mono"
-                    placeholder="Vd: POS-998877 hoặc số Auth Code trên biên lai POS"
+                    placeholder="Ví dụ: POS-998877 hoặc mã chuẩn chi trên biên lai"
                   />
                   <p className="text-xs text-on-surface-variant mt-1">
                     Nhập mã chuẩn chi in trên biên lai máy POS để phục vụ đối soát kế toán.

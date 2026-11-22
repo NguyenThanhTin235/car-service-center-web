@@ -85,7 +85,7 @@ if [[ -f "${STATE_DIR}/.current_tag" ]]; then
   cp "${STATE_DIR}/.current_tag" "${STATE_DIR}/.previous_tag"
 fi
 
-export IMAGE_TAG ECR_REGISTRY AWS_REGION DOMAIN_NAME
+export ENV_NAME IMAGE_TAG ECR_REGISTRY AWS_REGION DOMAIN_NAME
 export CERT_DOMAIN="${DOMAIN_NAME}"
 export BACKEND_PORT CUSTOMER_PORT INTERNAL_PORT ENV_FILE
 
@@ -110,6 +110,14 @@ fi
 
 echo "==> [${ENV_NAME}] Starting containers..."
 docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" "${PROFILE_ARGS[@]}" up -d --remove-orphans
+
+if [[ "${ENV_NAME}" == "staging" ]]; then
+  NGINX_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^car-service-prod-nginx' | head -n1 || true)"
+  if [[ -n "${NGINX_CONTAINER}" ]]; then
+    echo "==> [staging] Refreshing nginx config from updated template..."
+    docker exec "${NGINX_CONTAINER}" sh -c 'cp /etc/nginx/conf.d/app.conf /tmp/app.conf.bak 2>/dev/null || true; envsubst "\$DOMAIN_NAME \$CERT_DOMAIN" < /etc/nginx/templates/app.conf.template > /etc/nginx/conf.d/app.conf && nginx -t && nginx -s reload || { cp /tmp/app.conf.bak /etc/nginx/conf.d/app.conf 2>/dev/null || true; exit 1; }'
+  fi
+fi
 
 echo "==> [${ENV_NAME}] Running health checks (timeout 60s)..."
 healthy=false

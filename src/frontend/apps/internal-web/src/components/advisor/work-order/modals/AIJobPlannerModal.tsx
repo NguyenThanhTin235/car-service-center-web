@@ -263,6 +263,14 @@ export default function AIJobPlannerModal({
       return;
     }
 
+    const hasInvalidHours = servicesToApply.some((svc) =>
+      svc.jobs.some((j: any) => !Number.isFinite(Number(j.estimated_hours)) || Number(j.estimated_hours) <= 0)
+    );
+    if (hasInvalidHours) {
+      toast.error('Số giờ công và đơn giá nhân công phải lớn hơn 0');
+      return;
+    }
+
     try {
       setApplying(true);
       const res = await applyAIJobs(workOrderId, { services: servicesToApply });
@@ -305,7 +313,7 @@ export default function AIJobPlannerModal({
         {/* MODAL HEADER */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/30 bg-surface-container-low">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#0050cd] flex items-center justify-center text-white shadow-xs shrink-0">
               <span className="material-symbols-outlined text-[22px]">auto_awesome</span>
             </div>
             <div className="min-w-0">
@@ -665,7 +673,7 @@ export default function AIJobPlannerModal({
                                             {job.job_type_name || 'Kỹ thuật'}
                                           </span>
                                           {job.severity && (
-                                            <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold border ${jobSeverity.bg} ${jobSeverity.text} ${jobSeverity.border}`}>
+                                            <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold border ${jobSeverity.bg} ${jobSeverity.text} ${jobSeverity.border}`}>
                                               {jobSeverity.label}
                                             </span>
                                           )}
@@ -695,7 +703,7 @@ export default function AIJobPlannerModal({
                                           <span className="material-symbols-outlined text-[15px]">how_to_reg</span>
                                           <span className="font-semibold">{job.assigned_technician_name}</span>
                                           {job.match_score && (
-                                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
                                               ({job.match_score}%)
                                             </span>
                                           )}
@@ -773,7 +781,7 @@ export default function AIJobPlannerModal({
               type="button"
               onClick={handleApply}
               disabled={applying || totalSelectedJobsCount === 0}
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white font-bold text-body-sm transition-all shadow-sm disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+              className="px-5 py-2 rounded-xl bg-[#0050cd] hover:bg-[#0866ff] active:scale-95 text-white font-bold text-body-sm transition-all shadow-sm disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
             >
               {applying ? (
                 <>

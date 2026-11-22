@@ -28,7 +28,7 @@ upstream staging_admin_upstream {
 server {
     listen 80;
     listen [::]:80;
-    server_name ${DOMAIN_NAME} api.${DOMAIN_NAME} admin.${DOMAIN_NAME} staging.${DOMAIN_NAME} staging-api.${DOMAIN_NAME} staging-admin.${DOMAIN_NAME};
+    server_name ${DOMAIN_NAME} api.${DOMAIN_NAME} ops.${DOMAIN_NAME} staging.${DOMAIN_NAME} staging-api.${DOMAIN_NAME} staging-ops.${DOMAIN_NAME};
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -52,6 +52,25 @@ server {
     ssl_prefer_server_ciphers off;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 1d;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location /socket.io/ {
+        proxy_pass http://prod_api_upstream;
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
 
     location / {
         proxy_pass http://prod_api_upstream;
@@ -80,6 +99,10 @@ server {
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 1d;
 
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
     location / {
         proxy_pass http://prod_customer_upstream;
         proxy_http_version 1.1;
@@ -96,7 +119,7 @@ server {
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
-    server_name admin.${DOMAIN_NAME};
+    server_name ops.${DOMAIN_NAME};
 
     ssl_certificate /etc/letsencrypt/live/${CERT_DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${CERT_DOMAIN}/privkey.pem;
@@ -104,6 +127,10 @@ server {
     ssl_prefer_server_ciphers off;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 1d;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
     location / {
         proxy_pass http://prod_admin_upstream;
@@ -130,6 +157,25 @@ server {
     ssl_prefer_server_ciphers off;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 1d;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location /socket.io/ {
+        proxy_pass http://staging_api_upstream;
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
 
     location / {
         proxy_pass http://staging_api_upstream;
@@ -158,6 +204,10 @@ server {
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 1d;
 
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
     location / {
         proxy_pass http://staging_customer_upstream;
         proxy_http_version 1.1;
@@ -174,7 +224,7 @@ server {
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
-    server_name staging-admin.${DOMAIN_NAME};
+    server_name staging-ops.${DOMAIN_NAME};
 
     ssl_certificate /etc/letsencrypt/live/${CERT_DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${CERT_DOMAIN}/privkey.pem;
@@ -182,6 +232,10 @@ server {
     ssl_prefer_server_ciphers off;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 1d;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
     location / {
         proxy_pass http://staging_admin_upstream;

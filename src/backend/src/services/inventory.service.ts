@@ -1,5 +1,6 @@
-import { PrismaClient, Prisma, ItemType, MovementType, ReferenceType, CatalogType, GoodsReceiptStatus, ReceiptType } from '@prisma/client';
-const prisma = new PrismaClient();
+import { Prisma, ItemType, MovementType, ReferenceType, CatalogType, GoodsReceiptStatus, ReceiptType } from '@prisma/client';
+import prisma from '../utils/prisma';
+import { notificationService } from './notification.service';
 
 const ITEM_INCLUDE = {
   part_category: { include: { uom: true } },
@@ -642,6 +643,18 @@ export class InventoryService {
               created_by_id: userId,
             },
           });
+
+          if (newOnHand <= currentItem.reorder_level) {
+            notificationService
+              .sendInAppToRoles(['MANAGER'], {
+                type: 'LOW_STOCK_ALERT',
+                title: `Cảnh báo tồn kho thấp (${currentItem.sku})`,
+                message: `Phụ tùng ${currentItem.sku} chỉ còn ${newOnHand} trong kho sau khi hủy phiếu nhập ${receipt.receipt_number} (mức tối thiểu: ${currentItem.reorder_level}).`,
+                entityType: 'INVENTORY',
+                entityId: currentItem.id,
+              })
+              .catch((err) => console.error('Failed to send low stock alert on cancelReceipt:', err));
+          }
         }
       }
 

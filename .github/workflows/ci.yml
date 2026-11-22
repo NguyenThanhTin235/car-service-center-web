@@ -54,10 +54,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: src/frontend/package-lock.json
 
@@ -86,6 +86,8 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
           NODE_ENV: production
           NEXT_PUBLIC_API_URL: "http://localhost:5000"
+          NEXT_PUBLIC_INTERNAL_URL: "http://localhost:3001"
+          NEXT_PUBLIC_CUSTOMER_URL: "http://localhost:3000"
 
   # ===========================================================================
   # Stage 2: Lint & Static Analysis (Backend & Frontend in parallel)
@@ -133,10 +135,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: src/frontend/package-lock.json
 
@@ -188,6 +190,29 @@ jobs:
 
       - name: Run Unit Tests (Vitest)
         run: npm test
+
+  test-frontend-infra:
+    name: Stage 3 - Automated Tests (Frontend Unit & AWS CDK)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: Run Customer Web Unit Tests
+        working-directory: src/frontend
+        run: npm ci && npm run test:unit:customer
+
+      - name: Run AWS CDK Infrastructure Tests
+        working-directory: infra
+        run: npm ci && npm run typecheck && npm test
 
   # ===========================================================================
   # Stage 4: Security & Dependency Scan

@@ -1,14 +1,29 @@
-x-logging: &default-logging
-  driver: json-file
+x-app-logging: &app-logging
+  driver: awslogs
   options:
-    max-size: "10m"
-    max-file: "3"
+    awslogs-region: ${AWS_REGION:-ap-southeast-1}
+    awslogs-group: /car-service/${ENV_NAME:-prod}/app
+    awslogs-create-group: "false"
+    tag: "{{.Name}}"
+    mode: non-blocking
+    max-buffer-size: 4m
+
+x-nginx-logging: &nginx-logging
+  driver: awslogs
+  options:
+    awslogs-region: ${AWS_REGION:-ap-southeast-1}
+    awslogs-group: /car-service/nginx
+    awslogs-create-group: "false"
+    tag: "{{.Name}}"
+    mode: non-blocking
+    max-buffer-size: 4m
 
 services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    mem_limit: 128m
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "96mb", "--maxmemory-policy", "allkeys-lru"]
     volumes:
       - redis_data:/data
     healthcheck:
@@ -17,11 +32,12 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    logging: *default-logging
+    logging: *app-logging
 
   backend:
     image: ${ECR_REGISTRY:-localhost}/car-service/backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    mem_limit: 512m
     ports:
       - "${BACKEND_PORT:-5000}:5000"
     env_file:
@@ -31,6 +47,7 @@ services:
       NODE_ENV: production
       PORT: 5000
       REDIS_URL: redis://redis:6379
+      NODE_OPTIONS: "--max-old-space-size=384"
     command: ["sh", "-c", "node ./node_modules/prisma/build/index.js migrate deploy && node dist/src/server.js"]
     depends_on:
       redis:
@@ -41,11 +58,12 @@ services:
       timeout: 5s
       retries: 3
       start_period: 25s
-    logging: *default-logging
+    logging: *app-logging
 
   customer-web:
     image: ${ECR_REGISTRY:-localhost}/car-service/customer-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    mem_limit: 384m
     ports:
       - "${CUSTOMER_PORT:-3000}:3000"
     env_file:
@@ -55,14 +73,16 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
+      NODE_OPTIONS: "--max-old-space-size=256"
     depends_on:
       backend:
         condition: service_healthy
-    logging: *default-logging
+    logging: *app-logging
 
   internal-web:
     image: ${ECR_REGISTRY:-localhost}/car-service/internal-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    mem_limit: 384m
     ports:
       - "${INTERNAL_PORT:-3001}:3001"
     env_file:
@@ -72,15 +92,17 @@ services:
       NODE_ENV: production
       PORT: 3001
       HOSTNAME: 0.0.0.0
+      NODE_OPTIONS: "--max-old-space-size=256"
     depends_on:
       backend:
         condition: service_healthy
-    logging: *default-logging
+    logging: *app-logging
 
   nginx:
     image: nginx:1.27-alpine
     profiles: ["proxy"]
     restart: unless-stopped
+    mem_limit: 128m
     ports:
       - "80:80"
       - "443:443"
@@ -101,7 +123,7 @@ services:
         condition: service_started
       internal-web:
         condition: service_started
-    logging: *default-logging
+    logging: *nginx-logging
 
 volumes:
   redis_data:

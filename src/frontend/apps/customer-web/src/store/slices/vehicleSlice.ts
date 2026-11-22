@@ -10,6 +10,12 @@ export interface Vehicle {
   color: string | null;
   vehicleSize: 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL' | null;
   isActive: boolean;
+  hasTransactions?: boolean;
+  activeWorkOrder?: {
+    id: number;
+    woNumber: string;
+    status: string;
+  } | null;
   createdAt: string;
 }
 
@@ -71,9 +77,21 @@ export const deleteVehicle = createAsyncThunk(
   async (id: number, { rejectWithValue }) => {
     try {
       const { data } = await api.delete(`/api/vehicles/${id}`);
-      return { id, deactivated: data.deactivated };
+      return { id, deactivated: data.deactivated, message: data.message as string | undefined };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Lỗi khi xóa xe.');
+    }
+  }
+);
+
+export const restoreVehicle = createAsyncThunk(
+  'vehicles/restoreVehicle',
+  async (id: number, { rejectWithValue }) => {
+    try {
+      const { data } = await api.patch(`/api/vehicles/${id}/restore`);
+      return { id, message: data.message as string | undefined };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Lỗi khi kích hoạt lại xe.');
     }
   }
 );
@@ -148,6 +166,20 @@ const vehicleSlice = createSlice({
         }
       })
       .addCase(deleteVehicle.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.actionError = action.payload as string;
+      })
+      // Restore
+      .addCase(restoreVehicle.pending, (state) => {
+        state.actionLoading = true;
+        state.actionError = null;
+      })
+      .addCase(restoreVehicle.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const idx = state.vehicles.findIndex((v) => v.id === action.payload.id);
+        if (idx !== -1) state.vehicles[idx].isActive = true;
+      })
+      .addCase(restoreVehicle.rejected, (state, action) => {
         state.actionLoading = false;
         state.actionError = action.payload as string;
       });

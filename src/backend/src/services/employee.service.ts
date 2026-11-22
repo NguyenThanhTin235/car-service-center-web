@@ -1,6 +1,5 @@
-import { PrismaClient, EmployeePosition } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { EmployeePosition, JobStatus, WorkOrderStatus } from '@prisma/client';
+import prisma from '../utils/prisma';
 
 export type CanonicalPosition = 'MANAGER' | 'TECHNICIAN' | 'ADVISOR' | 'FRONT_DESK';
 
@@ -54,51 +53,80 @@ function mapPositionToEnum(position?: string): EmployeePosition {
   return EmployeePosition.OTHER;
 }
 
+export function isTechnicianRole(position?: string, rawEnumPosition?: EmployeePosition): boolean {
+  if (position) {
+    const p = position.toUpperCase().trim();
+    if (['TECHNICIAN', 'TECH', 'DETAILER', 'QC_STAFF'].includes(p)) return true;
+    if (['MANAGER', 'ADVISOR', 'FRONT_DESK', 'RECEPTIONIST', 'OTHER', 'ADMIN'].includes(p)) return false;
+  }
+  if (rawEnumPosition) {
+    const techPositions: EmployeePosition[] = [EmployeePosition.TECHNICIAN, EmployeePosition.DETAILER, EmployeePosition.QC_STAFF];
+    if (techPositions.includes(rawEnumPosition)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export class EmployeeService {
   /**
    * UC-55: Lấy danh sách nhân viên
    */
-  async getEmployees(searchQuery?: string, position?: string, page: number = 1, limit: number = 10) {
-    let whereClause: any = {};
+  async getEmployees(
+    searchQuery?: string,
+    position?: string,
+    page: number = 1,
+    limit: number = 10,
+    status?: string
+  ) {
+    const conditions: any[] = [];
 
     if (position) {
       const p = position.toUpperCase();
       if (p === 'MANAGER') {
-        whereClause.OR = [
-          { position: EmployeePosition.OTHER, user: { roles: { some: { role: { name: { in: ['MANAGER', 'ADMIN'] } } } } } },
-          { user: { email: { contains: 'manager' } } },
-        ];
+        conditions.push({
+          OR: [
+            { position: EmployeePosition.OTHER, user: { roles: { some: { role: { name: { in: ['MANAGER', 'ADMIN'] } } } } } },
+            { user: { email: { contains: 'manager' } } },
+          ],
+        });
       } else if (p === 'FRONT_DESK' || p === 'RECEPTIONIST') {
-        whereClause.OR = [
-          { position: EmployeePosition.OTHER, user: { roles: { some: { role: { name: { in: ['DESK STAFF', 'DESK_STAFF'] } } } } } },
-          { user: { email: { contains: 'desk' } } },
-        ];
+        conditions.push({
+          OR: [
+            { position: EmployeePosition.OTHER, user: { roles: { some: { role: { name: { in: ['DESK STAFF', 'DESK_STAFF'] } } } } } },
+            { user: { email: { contains: 'desk' } } },
+          ],
+        });
       } else if (p === 'ADVISOR') {
-        whereClause.OR = [
-          { position: EmployeePosition.ADVISOR },
-          { user: { roles: { some: { role: { name: { in: ['SA', 'ADVISOR'] } } } } } },
-          { user: { email: { contains: 'advisor' } } },
-        ];
+        conditions.push({
+          OR: [
+            { position: EmployeePosition.ADVISOR },
+            { user: { roles: { some: { role: { name: { in: ['SA', 'ADVISOR'] } } } } } },
+            { user: { email: { contains: 'advisor' } } },
+          ],
+        });
       } else if (p === 'TECHNICIAN') {
-        whereClause.OR = [
-          { position: { in: [EmployeePosition.TECHNICIAN, EmployeePosition.DETAILER, EmployeePosition.QC_STAFF] } },
-          { user: { roles: { some: { role: { name: { in: ['TECHNICIAN', 'TECH'] } } } } } },
-        ];
+        conditions.push({
+          OR: [
+            { position: { in: [EmployeePosition.TECHNICIAN, EmployeePosition.DETAILER, EmployeePosition.QC_STAFF] } },
+            { user: { roles: { some: { role: { name: { in: ['TECHNICIAN', 'TECH'] } } } } } },
+          ],
+        });
       } else if (Object.values(EmployeePosition).includes(p as EmployeePosition)) {
-        whereClause.position = p as EmployeePosition;
+        conditions.push({ position: p as EmployeePosition });
       }
     }
 
     if (searchQuery) {
-      const searchCond = { contains: searchQuery };
-      if (whereClause.OR) {
-        whereClause = {
-          AND: [{ OR: whereClause.OR }, { full_name: searchCond }],
-        };
-      } else {
-        whereClause.full_name = searchCond;
-      }
+      conditions.push({ full_name: { contains: searchQuery } });
     }
+
+    if (status !== undefined && status !== '') {
+      const isActiveBool = status === 'active' || status === 'true';
+      conditions.push({ is_active: isActiveBool });
+    }
+
+    const whereClause = conditions.length > 0 ? { AND: conditions } : {};
 
     const skip = (page - 1) * limit;
 
@@ -197,7 +225,9 @@ export class EmployeeService {
             id: employee.user.id,
             email: employee.user.email,
             phone: employee.user.phone,
+            isActive: employee.user.is_active,
             address: employee.user.address,
+            roles: employee.user.roles?.map((r) => r.role.name) || [],
           }
         : null,
       skills: employee.skills.map((s) => ({ id: s.skill.id, name: s.skill.name })),
@@ -219,16 +249,19 @@ export class EmployeeService {
     }
 
     return prisma.$transaction(async (tx) => {
+      const positionEnum = mapPositionToEnum(data.position as string);
+      const isTech = isTechnicianRole(data.position, positionEnum);
+
       const employee = await tx.employee.create({
         data: {
           full_name: data.fullName,
-          position: mapPositionToEnum(data.position as string),
+          position: positionEnum,
           user_id: data.userId,
         },
       });
 
-      // Gán kỹ năng nếu có
-      if (data.skillIds && data.skillIds.length > 0) {
+      // Chỉ gán kỹ năng nếu nhân viên có vai trò Kỹ thuật viên
+      if (isTech && data.skillIds && data.skillIds.length > 0) {
         const skillCreateData = data.skillIds.map((skillId) => ({
           employee_id: employee.id,
           skill_id: skillId,
@@ -264,23 +297,34 @@ export class EmployeeService {
       }
     }
 
+    // Nếu chuyển sang ngừng hoạt động, kiểm tra ràng buộc công việc đang phân công
+    if (data.isActive === false && employee.is_active) {
+      await this.checkEmployeeActiveWorkConstraints(id, employee.user_id);
+    }
+
     return prisma.$transaction(async (tx) => {
+      const targetPosition = data.position !== undefined ? mapPositionToEnum(data.position as string) : employee.position;
+      const isTech = isTechnicianRole(data.position, targetPosition);
+
       const updatedEmployee = await tx.employee.update({
         where: { id },
         data: {
           full_name: data.fullName,
-          position: data.position !== undefined ? mapPositionToEnum(data.position as string) : undefined,
+          position: data.position !== undefined ? targetPosition : undefined,
           is_active: data.isActive,
           user_id: data.userId,
         },
       });
 
-      // Cập nhật kỹ năng nếu có
-      if (data.skillIds !== undefined) {
+      // Cập nhật kỹ năng:
+      // Nếu vị trí KHÔNG PHẢI kỹ thuật viên, tự động dọn sạch mọi kỹ năng
+      if (!isTech) {
+        await tx.employeeSkill.deleteMany({ where: { employee_id: id } });
+      } else if (data.skillIds !== undefined) {
         // Xóa tất cả kỹ năng cũ
         await tx.employeeSkill.deleteMany({ where: { employee_id: id } });
 
-        // Thêm kỹ năng mới
+        // Thêm kỹ năng mới nếu có
         if (data.skillIds.length > 0) {
           await tx.employeeSkill.createMany({
             data: data.skillIds.map((skillId) => ({ employee_id: id, skill_id: skillId })),
@@ -300,17 +344,90 @@ export class EmployeeService {
   }
 
   /**
-   * UC-57: Vô hiệu hóa nhân viên (soft delete)
+   * UC-57: Vô hiệu hóa nhân viên (chuyển sang Ngừng hoạt động)
    */
   async deactivateEmployee(id: number) {
     const employee = await prisma.employee.findUnique({ where: { id } });
     if (!employee) throw new Error('Không tìm thấy nhân viên.');
-    if (!employee.is_active) throw new Error('Nhân viên đã bị vô hiệu hóa trước đó.');
+    if (!employee.is_active) throw new Error('Nhân viên đã ở trạng thái ngừng hoạt động trước đó.');
+
+    // Kiểm tra ràng buộc công việc đang được phân công chưa hoàn thành
+    await this.checkEmployeeActiveWorkConstraints(id, employee.user_id);
 
     await prisma.employee.update({
       where: { id },
       data: { is_active: false },
     });
+  }
+
+  /**
+   * Kiểm tra các công việc và lệnh sửa chữa đang phân công trước khi cho phép ngừng hoạt động
+   */
+  async checkEmployeeActiveWorkConstraints(employeeId: number, userId?: number | null) {
+    // 1. Kiểm tra công việc phân công cho Kỹ thuật viên qua JobLabour
+    const activeJobs = await prisma.jobLabour.findMany({
+      where: {
+        employee_id: employeeId,
+        job: {
+          status: { in: [JobStatus.PLANNED, JobStatus.IN_PROGRESS, JobStatus.REWORK] },
+          wo_service: {
+            work_order: {
+              status: { notIn: [WorkOrderStatus.CLOSED, WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED] },
+            },
+          },
+        },
+      },
+      include: {
+        job: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            wo_service: {
+              select: {
+                work_order: {
+                  select: {
+                    id: true,
+                    wo_number: true,
+                    status: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (activeJobs.length > 0) {
+      const jobSample = activeJobs
+        .slice(0, 3)
+        .map((j) => `"${j.job.name}" (${j.job.wo_service.work_order.wo_number})`)
+        .join(', ');
+      const extra = activeJobs.length > 3 ? ` và ${activeJobs.length - 3} công việc khác` : '';
+      throw new Error(
+        `Không thể ngừng hoạt động nhân sự vì nhân viên đang được phân công ${activeJobs.length} công việc chưa hoàn thành: ${jobSample}${extra}. Vui lòng hoàn tất hoặc điều phối lại công việc cho nhân sự khác trước khi vô hiệu hóa.`
+      );
+    }
+
+    // 2. Kiểm tra nếu nhân sự có tài khoản User là Cố vấn dịch vụ đang phụ trách Lệnh sửa chữa chưa hoàn tất
+    if (userId) {
+      const activeAdvisorWOs = await prisma.workOrder.findMany({
+        where: {
+          advisor_id: userId,
+          status: { notIn: [WorkOrderStatus.CLOSED, WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED] },
+        },
+        select: { id: true, wo_number: true, status: true },
+      });
+
+      if (activeAdvisorWOs.length > 0) {
+        const woSample = activeAdvisorWOs.slice(0, 3).map((w) => w.wo_number).join(', ');
+        const extra = activeAdvisorWOs.length > 3 ? ` và ${activeAdvisorWOs.length - 3} lệnh khác` : '';
+        throw new Error(
+          `Không thể ngừng hoạt động nhân sự vì Cố vấn đang trực tiếp phụ trách ${activeAdvisorWOs.length} lệnh sửa chữa chưa đóng (${woSample}${extra}). Vui lòng bàn giao lệnh sửa chữa trước khi vô hiệu hóa.`
+        );
+      }
+    }
   }
 
   /**

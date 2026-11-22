@@ -65,10 +65,11 @@ function TypeBtn({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${active
-        ? 'bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white border-[#0866ff] shadow-md shadow-[#0866ff]/20'
-        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-        }`}
+      className={`h-10 flex items-center gap-2 px-4 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+        active
+          ? 'bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white border-[#0866ff] shadow-sm shadow-[#0866ff]/20'
+          : 'bg-white text-slate-700 border-slate-200/90 hover:bg-slate-50'
+      }`}
     >
       <span className="material-symbols-outlined text-[18px]">{icon}</span>
       <span>{label}</span>
@@ -423,63 +424,56 @@ export default function OperationalReportsPage() {
         </h1>
       </div>
 
-      {/* Control Panel */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
-        <div>
-          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5">
-            Chọn loại báo cáo
-          </div>
-          <div className="flex flex-wrap gap-2.5">
-            <TypeBtn
-              active={reportType === 'revenue'}
-              label="Báo cáo Doanh thu"
-              icon="payments"
-              onClick={() => handleTypeChange('revenue')}
-            />
-            <TypeBtn
-              active={reportType === 'services'}
-              label="Báo cáo Dịch vụ phổ biến"
-              icon="build"
-              onClick={() => handleTypeChange('services')}
-            />
-            <TypeBtn
-              active={reportType === 'inventory'}
-              label="Báo cáo Tồn kho phụ tùng"
-              icon="inventory_2"
-              onClick={() => handleTypeChange('inventory')}
-            />
-          </div>
+      {/* Control Toolbar: Tabs & Date Filters in one unified row */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs flex flex-col xl:flex-row xl:items-center justify-between gap-3.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <TypeBtn
+            active={reportType === 'revenue'}
+            label="Báo cáo Doanh thu"
+            icon="payments"
+            onClick={() => handleTypeChange('revenue')}
+          />
+          <TypeBtn
+            active={reportType === 'services'}
+            label="Dịch vụ phổ biến"
+            icon="build"
+            onClick={() => handleTypeChange('services')}
+          />
+          <TypeBtn
+            active={reportType === 'inventory'}
+            label="Tồn kho phụ tùng"
+            icon="inventory_2"
+            onClick={() => handleTypeChange('inventory')}
+          />
         </div>
 
         {reportType !== 'inventory' && (
-          <div className="flex flex-wrap items-end gap-3 pt-4 border-t border-slate-100">
-            <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">
-                Từ ngày
-              </label>
+          <div className="flex flex-wrap items-center gap-2.5 pt-3 xl:pt-0 border-t xl:border-t-0 border-slate-100">
+            <div className="h-10 flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-3 focus-within:bg-white focus-within:border-[#0866ff] transition-all">
+              <span className="text-xs font-semibold text-slate-500 shrink-0">Từ ngày</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#0866ff]"
+                className="bg-transparent text-xs font-mono font-medium text-slate-900 focus:outline-none cursor-pointer"
               />
             </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">
-                Đến ngày
-              </label>
+
+            <div className="h-10 flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-3 focus-within:bg-white focus-within:border-[#0866ff] transition-all">
+              <span className="text-xs font-semibold text-slate-500 shrink-0">Đến ngày</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#0866ff]"
+                className="bg-transparent text-xs font-mono font-medium text-slate-900 focus:outline-none cursor-pointer"
               />
             </div>
+
             <button
               type="button"
               onClick={fetchReport}
               disabled={loading}
-              className="h-10 px-5 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#0866ff]/20 disabled:opacity-60 cursor-pointer"
+              className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm shadow-[#0866ff]/20 transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer shrink-0"
             >
               <span className="material-symbols-outlined text-[16px]">
                 {loading ? 'progress_activity' : 'search'}

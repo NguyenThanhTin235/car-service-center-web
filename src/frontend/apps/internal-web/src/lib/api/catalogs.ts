@@ -21,4 +21,7 @@ export const catalogApi = {
 
   toggle: (id: number) =>
     api.patch(`/api/catalogs/${id}/toggle`),
+
+  delete: (id: number) =>
+    api.delete(`/api/catalogs/${id}`),
 };

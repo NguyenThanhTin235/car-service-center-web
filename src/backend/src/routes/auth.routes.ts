@@ -4,11 +4,12 @@ import { authenticate } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-// UC-03: Login
+// UC-03: Login & Refresh
 router.post('/login', authController.login.bind(authController));
+router.post('/refresh', authController.refresh.bind(authController));
 
-// UC-04: Logout (cần authenticate để biết đang logout ai — optional, nhưng good practice)
-router.post('/logout', authenticate, authController.logout.bind(authController));
+// UC-04: Logout (luôn dọn cookie + thu hồi phiên kể cả khi access token vừa hết hạn)
+router.post('/logout', authController.logout.bind(authController));
 
 // UC-02: Register (2-step: gửi OTP → verify OTP → tạo account)
 router.post('/send-otp-register', authController.sendOtpRegister.bind(authController));
@@ -17,11 +18,13 @@ router.post('/resend-otp-register', authController.resendOtpRegister.bind(authCo
 
 // UC-05: Reset Password (2-step: gửi OTP → đổi mật khẩu)
 router.post('/forgot-password', authController.forgotPassword.bind(authController));
+router.post('/verify-otp-reset', authController.verifyOtpReset.bind(authController));
 router.post('/reset-password', authController.resetPassword.bind(authController));
 router.post('/resend-otp-reset', authController.resendOtpReset.bind(authController));
 
-// UC-06: Get & Update own profile (customer self-service)
+// UC-06: Get & Update own profile (customer & internal self-service)
 router.get('/me', authenticate, authController.getMe.bind(authController));
 router.put('/me', authenticate, authController.updateMe.bind(authController));
+router.put('/change-password', authenticate, authController.changePassword.bind(authController));
 
 export default router;

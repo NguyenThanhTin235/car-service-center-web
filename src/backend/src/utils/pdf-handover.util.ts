@@ -97,7 +97,7 @@ export function generateHandoverPdfBuffer(data: HandoverPdfData): Promise<Buffer
     doc.fillColor('#047857').fontSize(14).font(fontBold);
     doc.text(safeText('TRUNG TÂM BẢO DƯỠNG & SỬA CHỮA Ô TÔ CAR SERVICE CENTER'), { align: 'center' });
     doc.fillColor('#4b5563').fontSize(8.5).font(fontRegular);
-    doc.text(safeText('Địa chỉ: Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh | Hotline hỗ trợ: 1900 8888'), { align: 'center' });
+    doc.text(safeText('Địa chỉ: Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh   •   Hotline: 1900 6868   •   Email: cskh@carservice.vn'), { align: 'center' });
     doc.moveDown(0.6);
 
     // Tiêu đề văn bản
@@ -172,64 +172,91 @@ export function generateHandoverPdfBuffer(data: HandoverPdfData): Promise<Buffer
       ? 'Khách hàng đồng ý gửi xưởng tiêu hủy theo tiêu chuẩn an toàn môi trường'
       : 'Đã hoàn trả lại toàn bộ phụ tùng cũ thay ra cho khách hàng mang về';
     doc.font(fontRegular).text(safeText('• Phụ tùng cũ thay ra:'), col1X, y + 65);
-    doc.font(fontBold).text(safeText(partsActionText), col1X + 90, y + 65);
+    doc.font(fontBold).text(safeText(partsActionText), col1X + 95, y + 65, { width: contentWidth - 110, ellipsis: true });
 
     y += 88;
 
     // 3. Danh mục công việc & Dịch vụ hoàn thành
     doc.fillColor('#0f172a').fontSize(10).font(fontBold);
     doc.text(safeText('3. CÁC HẠNG MỤC DỊCH VỤ ĐÃ THỰC HIỆN & ĐẠT CHUẨN KCS:'), startX, y);
-    y += 14;
+    y += 16;
 
-    // Header bảng dịch vụ
-    doc.rect(startX, y, contentWidth, 18).fillAndStroke('#e2e8f0', '#cbd5e1');
-    doc.fillColor('#1e293b').fontSize(8.5).font(fontBold);
-    doc.text(safeText('STT'), startX + 8, y + 5);
-    doc.text(safeText('Hạng mục công việc / Dịch vụ'), startX + 35, y + 5);
-    doc.text(safeText('Kết quả nghiệm thu'), startX + 380, y + 5);
-    y += 18;
+    const renderServiceHeader = (headerY: number) => {
+      doc.rect(startX, headerY, contentWidth, 20).fillAndStroke('#e2e8f0', '#cbd5e1');
+      doc.fillColor('#1e293b').fontSize(8.5).font(fontBold);
+      doc.text(safeText('STT'), startX + 4, headerY + 6, { width: 28, align: 'center' });
+      doc.text(safeText('Hạng mục công việc / Dịch vụ'), startX + 38, headerY + 6, { width: 335 });
+      doc.text(safeText('Kết quả nghiệm thu'), startX + 380, headerY + 6, { width: 130, align: 'center' });
+    };
+
+    renderServiceHeader(y);
+    y += 20;
 
     const services = data.completedServices && data.completedServices.length > 0
       ? data.completedServices
       : [{ name: 'Bảo dưỡng & Kiểm tra tổng quát phương tiện', status: 'COMPLETED' }];
 
-    services.slice(0, 6).forEach((svc, index) => {
+    services.forEach((svc, index) => {
+      doc.font(fontRegular).fontSize(8.5);
+      const svcName = safeText(svc.name);
+      const textHeight = doc.heightOfString(svcName, { width: 335 });
+      const rowHeight = Math.max(textHeight + 10, 20);
+
+      if (y + rowHeight > 750) {
+        doc.addPage();
+        y = 36;
+        renderServiceHeader(y);
+        y += 20;
+      }
+
       const rowBg = index % 2 === 0 ? '#ffffff' : '#f8fafc';
-      doc.rect(startX, y, contentWidth, 18).fillAndStroke(rowBg, '#e2e8f0');
+      doc.rect(startX, y, contentWidth, rowHeight).fillAndStroke(rowBg, '#e2e8f0');
       doc.fillColor('#334155').fontSize(8.5).font(fontRegular);
-      doc.text(safeText(String(index + 1)), startX + 8, y + 5);
-      doc.text(safeText(svc.name), startX + 35, y + 5, { width: 340, ellipsis: true });
+      doc.text(String(index + 1), startX + 4, y + 5, { width: 28, align: 'center' });
+      doc.text(svcName, startX + 38, y + 5, { width: 335 });
       doc.font(fontBold).fillColor('#059669');
-      doc.text(safeText('ĐẠT CHUẨN (100%)'), startX + 380, y + 5);
+      doc.text(safeText('ĐẠT CHUẨN (100%)'), startX + 380, y + 5, { width: 130, align: 'center' });
       doc.font(fontRegular);
-      y += 18;
+      y += rowHeight;
     });
 
-    y += 10;
+    y += 12;
+
+    // Kiểm tra không gian cho khối Bảo hành + Chữ ký (~195pt)
+    if (y > 580) {
+      doc.addPage();
+      y = 36;
+    }
 
     // 4. Cam kết bảo hành & Ghi chú
-    doc.rect(startX, y, contentWidth, 42).fillAndStroke('#eff6ff', '#bfdbfe');
+    const warrantyText = safeText(
+      data.warrantyNotes ||
+        'Trung tâm bảo hành 06 tháng hoặc 10.000 km (tùy điều kiện nào đến trước) đối với các phụ tùng chính hãng thay mới và hạng mục công việc sửa chữa. Mọi thắc mắc kỹ thuật vui lòng liên hệ Hotline: 1900 6868.'
+    );
+    doc.font(fontRegular).fontSize(8);
+    const warrantyHeight = Math.max(doc.heightOfString(warrantyText, { width: contentWidth - 20 }) + 26, 44);
+
+    doc.rect(startX, y, contentWidth, warrantyHeight).fillAndStroke('#eff6ff', '#bfdbfe');
     doc.fillColor('#1e40af').fontSize(9).font(fontBold);
     doc.text(safeText('4. CAM KẾT CHẤT LƯỢNG & CHÍNH SÁCH BẢO HÀNH:'), startX + 10, y + 6);
     doc.fillColor('#1e3a8a').fontSize(8).font(fontRegular);
-    const warrantyText = data.warrantyNotes || 'Trung tâm bảo hành 06 tháng hoặc 10.000 km (tùy điều kiện nào đến trước) đối với các phụ tùng chính hãng thay mới và hạng mục công việc sửa chữa. Mọi thắc mắc kỹ thuật vui lòng liên hệ Hotline: 1900 8888.';
-    doc.text(safeText(warrantyText), startX + 10, y + 19, { width: contentWidth - 20 });
+    doc.text(warrantyText, startX + 10, y + 20, { width: contentWidth - 20 });
 
-    y += 50;
+    y += warrantyHeight + 12;
 
     // 5. Phần Chữ ký xác nhận
     doc.fillColor('#0f172a').fontSize(9.5).font(fontBold);
-    doc.text(safeText('ĐẠI DIỆN TRUNG TÂM DỊCH VỤ'), col1X + 20, y, { align: 'left' });
-    doc.text(safeText('ĐẠI DIỆN KHÁCH HÀNG NHẬN XE'), col2X + 10, y, { align: 'left' });
+    doc.text(safeText('ĐẠI DIỆN TRUNG TÂM DỊCH VỤ'), col1X + 10, y, { width: 175, align: 'center' });
+    doc.text(safeText('ĐẠI DIỆN KHÁCH HÀNG NHẬN XE'), col2X, y, { width: 185, align: 'center' });
 
     doc.fillColor('#64748b').fontSize(8).font(fontRegular);
-    doc.text(safeText('(Ký, ghi rõ họ tên & đóng dấu)'), col1X + 26, y + 12);
-    doc.text(safeText('(Đã kiểm tra, xác nhận xe & tài sản đầy đủ)'), col2X + 2, y + 12);
+    doc.text(safeText('(Ký, ghi rõ họ tên & đóng dấu)'), col1X + 10, y + 13, { width: 175, align: 'center' });
+    doc.text(safeText('(Đã kiểm tra, xác nhận xe & tài sản đầy đủ)'), col2X, y + 13, { width: 185, align: 'center' });
 
     // Ký tên hoặc khoảng trống
-    y += 24;
-    doc.rect(col1X + 10, y, 160, 50).stroke('#cbd5e1');
-    doc.rect(col2X, y, 175, 50).stroke('#cbd5e1');
+    y += 26;
+    doc.rect(col1X + 17, y, 160, 50).stroke('#cbd5e1');
+    doc.rect(col2X + 5, y, 175, 50).stroke('#cbd5e1');
 
     // Chữ ký khách hàng nếu có base64
     if (data.customerSignature && data.customerSignature.startsWith('data:image/')) {
@@ -237,27 +264,32 @@ export function generateHandoverPdfBuffer(data: HandoverPdfData): Promise<Buffer
         const base64Data = data.customerSignature.split(';base64,').pop();
         if (base64Data) {
           const imgBuffer = Buffer.from(base64Data, 'base64');
-          doc.image(imgBuffer, col2X + 10, y + 2, { fit: [155, 46], align: 'center', valign: 'center' });
+          doc.image(imgBuffer, col2X + 15, y + 2, { fit: [155, 46], align: 'center', valign: 'center' });
         }
       } catch (e) {
-        // Fallback text if image parse fails
-        doc.fillColor('#94a3b8').fontSize(8).text(safeText('[Đã ký xác nhận điện tử]'), col2X + 25, y + 20);
+        doc.fillColor('#94a3b8').fontSize(8).text(safeText('[Đã ký xác nhận điện tử]'), col2X + 5, y + 20, { width: 175, align: 'center' });
       }
     } else {
-      doc.fillColor('#94a3b8').fontSize(8).text(safeText('[Đã ký xác nhận]'), col2X + 45, y + 20);
+      doc.fillColor('#94a3b8').fontSize(8).text(safeText('[Đã ký xác nhận]'), col2X + 5, y + 20, { width: 175, align: 'center' });
     }
 
     doc.fillColor('#047857').fontSize(8.5).font(fontBold);
-    doc.text(safeText(data.advisorName || 'Cố vấn dịch vụ'), col1X + 35, y + 54);
-    doc.text(safeText(data.customerName || 'Khách hàng'), col2X + 40, y + 54);
+    doc.text(safeText(data.advisorName || 'Cố vấn dịch vụ'), col1X + 17, y + 55, { width: 160, align: 'center' });
+    doc.text(safeText(data.customerName || 'Khách hàng'), col2X + 5, y + 55, { width: 175, align: 'center' });
 
-    // Footer chân trang
-    const pageBottom = doc.page.height - 20;
-    doc.fillColor('#94a3b8').fontSize(7.5).font(fontRegular);
-    doc.text(safeText(`Biên bản bàn giao xe điện tử - Mã tra cứu: WO-${data.woNumber} - In ngày: ${formatDate(new Date())}`), startX, pageBottom, {
-      align: 'center',
-      width: contentWidth,
-    });
+    // Footer chân trang (dùng bufferedPageRange + lineBreak: false để không sinh trang trắng thừa)
+    const pages = doc.bufferedPageRange();
+    for (let i = 0; i < pages.count; i++) {
+      doc.switchToPage(i);
+      const pageSuffix = pages.count > 1 ? `   •   Trang ${i + 1} / ${pages.count}` : '';
+      doc.fillColor('#94a3b8').fontSize(7.5).font(fontRegular);
+      doc.text(
+        safeText(`Biên bản bàn giao xe điện tử - Mã tra cứu: WO-${data.woNumber} - In ngày: ${formatDate(new Date())}${pageSuffix}`),
+        startX,
+        795,
+        { align: 'center', width: contentWidth, lineBreak: false }
+      );
+    }
 
     doc.end();
   });
