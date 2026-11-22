@@ -19,8 +19,8 @@ export const createIntakeSchema = Joi.object({
     'any.required': 'Vui lòng chọn xe hoặc tạo mới',
   }),
 
-  intakeType: Joi.string().valid('WALK_IN', 'TOW_IN').required().messages({
-    'any.only': 'Loại tiếp nhận phải là WALK_IN hoặc TOW_IN',
+  intakeType: Joi.string().valid('WALK_IN', 'TOW_IN', 'APPOINTMENT', 'WARRANTY').required().messages({
+    'any.only': 'Loại tiếp nhận phải là WALK_IN, TOW_IN, APPOINTMENT hoặc WARRANTY',
     'any.required': 'Vui lòng chọn loại tiếp nhận',
   }),
 
@@ -39,6 +39,33 @@ export const createIntakeSchema = Joi.object({
   }),
 
   notes: Joi.string().allow('', null).optional(),
+
+  odometerReading: Joi.number().integer().min(0).when('intakeType', {
+    is: 'WARRANTY',
+    then: Joi.required().messages({
+      'any.required': 'Vui lòng nhập số km ODO hiện tại của xe khi tiếp nhận bảo hành',
+      'number.base': 'Số ODO tiếp nhận phải là số nguyên',
+      'number.min': 'Số ODO tiếp nhận không được âm',
+    }),
+    otherwise: Joi.optional().allow(null),
+  }),
+
+  parentWorkOrderId: Joi.number().integer().when('intakeType', {
+    is: 'WARRANTY',
+    then: Joi.required().messages({
+      'any.required': 'Vui lòng chọn phiếu dịch vụ gốc liên quan đến khiếu nại bảo hành',
+      'number.base': 'Mã phiếu dịch vụ gốc phải là số',
+    }),
+    otherwise: Joi.optional().allow(null),
+  }),
+
+  goodwillClaimId: Joi.number().integer().optional().allow(null).messages({
+    'number.base': 'Mã hồ sơ bảo hành thiện chí phải là số',
+  }),
+
+  symptoms: Joi.string().allow('', null).optional(),
+
+  evidenceUrls: Joi.array().items(Joi.string().allow('')).optional(),
 
   serviceIds: Joi.array().items(Joi.number().integer()).optional().messages({
     'array.base': 'Danh sách dịch vụ không hợp lệ',

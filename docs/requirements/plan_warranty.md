@@ -128,24 +128,28 @@ flowchart TD
 
 ---
 
-## 📦 PHẦN 4: Đặt lịch hẹn & Tiếp nhận Bảo hành (UC-82 & UC-83)
+## 📦 PHẦN 4: Đặt lịch hẹn & Tiếp nhận Bảo hành (UC-82 & UC-83) [x] *(Đã hoàn thành 100% - 18/18 Unit Tests Passed)*
 > **Mục tiêu:** Tích hợp luồng khách hàng đặt lịch bảo hành và nhân viên quầy tiếp nhận xe đối chiếu ODO.
 
 ### 4.1. Cập nhật `appointment.service.ts` (UC-82)
-* **File:** `src/backend/src/services/appointment.service.ts`
+* **File:** `src/backend/src/services/appointment.service.ts`, `appointment.dto.ts`, `appointment.controller.ts`
 * **Nội dung:**
   - Hỗ trợ cờ `is_warranty: true` khi khách đặt lịch.
-  - Lưu danh sách mã hạng mục bảo hành được chọn, ghi chú hiện tượng lỗi và URL hình ảnh/video minh chứng vào ghi chú lịch hẹn.
-  - Cho phép chọn thêm dịch vụ thông thường kèm theo (Luồng kết hợp).
+  - Bắt buộc kiểm tra: Phương tiện phải có ít nhất 1 hạng mục dịch vụ/phụ tùng còn hạn hoặc quá hạn nhẹ; phải chọn ít nhất 1 hạng mục bảo hành (`warranty_item_ids`); mô tả hiện tượng sự cố (`symptoms_description`) không được để trống.
+  - Lưu trữ danh sách mã hạng mục bảo hành được chọn, ghi chú hiện tượng lỗi và URL hình ảnh/video minh chứng vào `notes` có cấu trúc.
+  - Cho phép chọn thêm dịch vụ thông thường kèm theo (Luồng kết hợp có phí).
+  - Hỗ trợ `arriveAppointment` tiếp nhận xe từ lịch hẹn bảo hành: Bắt buộc ghi nhận ODO, gọi `validateOdoIntake` chống tua lùi và chuyển sang `IntakeRecord` loại `WARRANTY`.
 
 ### 4.2. Cập nhật `intake.service.ts` (UC-83)
-* **File:** `src/backend/src/services/intake.service.ts`
+* **File:** `src/backend/src/services/intake.service.ts`, `intake.dto.ts`, `intake.repository.ts`
 * **Nội dung:**
   - Khi tiếp nhận với `intake_type = 'WARRANTY'`:
-    - Bắt buộc có `odometer_reading` và lưu vào `IntakeRecord`.
-    - Gọi hàm kiểm tra chống tua ODO `validateOdoIntake`.
-    - Kiểm tra nếu xe có `GoodwillClaim` đã được duyệt (`APPROVED`) $\rightarrow$ Tự động liên kết `goodwill_claim` với hồ sơ tiếp nhận.
-    - Nếu quá hạn mà chưa có thiện chí $\rightarrow$ Cung cấp cờ cảnh báo để màn hình hiển thị nút tạo Goodwill Claim.
+    - Bắt buộc có `odometer_reading` và `parent_work_order_id`, lưu vào `IntakeRecord`.
+    - Kiểm tra phiếu dịch vụ gốc phải thuộc xe đang tiếp nhận.
+    - Gọi hàm kiểm tra chống tua ODO `validateOdoIntake` (ném lỗi nếu ODO tiếp nhận < ODO xuất xưởng của phiếu trước).
+    - Tự động nhận diện và liên kết `goodwill_claim` đã được Quản lý phê duyệt (`APPROVED`) với hồ sơ tiếp nhận (`intake_id`).
+    - Nếu hết hạn bảo hành mà chưa có phê duyệt thiện chí $\rightarrow$ Chặn tiếp nhận bảo hành thường và yêu cầu tạo hồ sơ bảo hành thiện chí.
+    - `IntakeRepository.findById` tải kèm hồ sơ thiện chí liên quan `goodwill_claim`.
 
 ---
 
