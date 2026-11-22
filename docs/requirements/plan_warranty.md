@@ -153,7 +153,7 @@ flowchart TD
 
 ---
 
-## 📦 PHẦN 5: Lệnh Sửa chữa, Báo giá 0đ & Quyết toán Tài chính (UC-84 & UC-85)
+## 📦 PHẦN 5: Lệnh Sửa chữa, Báo giá 0đ & Quyết toán Tài chính (UC-84 & UC-85) [x] *(Đã hoàn thành 100% - 7/7 Unit Tests Passed)*
 > **Mục tiêu:** Khởi tạo Work Order bảo hành, xuất báo giá 0đ và tự động thông quan tài chính cho xe xuất xưởng.
 
 ### 5.1. Xử lý Lệnh sửa chữa & Báo giá (UC-84)
@@ -161,20 +161,20 @@ flowchart TD
   - `src/backend/src/services/work-order.service.ts`
   - `src/backend/src/services/quotation.service.ts`
 * **Nội dung:**
-  - Khi tạo Work Order từ phiếu tiếp nhận bảo hành: Gán `order_type = 'WARRANTY'`, liên kết `parent_work_order_id`.
-  - Cho phép bật cờ `is_warranty = true` trên từng `Job` và `JobPart`.
-  - Trong `quotation.service.ts`: Khi sinh dòng báo giá (`QuotationLine`), nếu `job.is_warranty = true` hoặc `jobPart.is_warranty = true` $\rightarrow$ gán `unit_price = 0`, `snapshot_unit_price = 0`.
-  - Nếu toàn bộ báo giá bằng 0đ $\rightarrow$ Cố vấn được quyền duyệt báo giá thay khách hàng để chuyển sang giai đoạn thi công & giữ chỗ kho phụ tùng.
-  - Hỗ trợ phân loại đơn hỗn hợp (`MIXED`) nếu có cả dịch vụ phát sinh tính phí.
+  - Khi tạo Work Order từ phiếu tiếp nhận bảo hành: Gán `order_type = 'WARRANTY'`, kế thừa `parent_work_order_id`, `warranty_reason` và `claim_approved_by_id`.
+  - Cho phép bật cờ `is_warranty = true` trên từng `Job` và tự động thừa hưởng cờ trên `JobPart`.
+  - Trong `quotation.service.ts`: Khi sinh dòng báo giá (`QuotationLine`), áp dụng đơn giá 0đ (`unit_price = 0`, `snapshot_unit_price = 0`) cho toàn bộ công việc và phụ tùng có đánh dấu bảo hành; tổng báo giá bằng 0 đồng.
+  - Cố vấn dịch vụ được quyền duyệt báo giá 0 đồng thay khách hàng (UC-84 Bước 8-9) để chuyển trạng thái Báo giá `APPROVED`, phụ tùng `RESERVED` và Work Order `APPROVED`.
+  - Tự động nhận diện và phân loại đơn hỗn hợp (`MIXED`) nếu có cả dịch vụ phát sinh tính phí ngoài bảo hành.
 
 ### 5.2. Hóa đơn 0đ & Giải phóng Cổng Xuất Xưởng (UC-85)
 * **File:** `src/backend/src/services/invoice.service.ts`
 * **Nội dung:**
-  - Khi phát hành hóa đơn cho đơn hàng `order_type = 'WARRANTY'` có tổng tiền `grand_total === 0`:
-    - Tự động gán trạng thái hóa đơn là `PAID` (bỏ qua bước thu tiền).
-    - Tự động cập nhật `WorkOrder` sang trạng thái `FINANCIAL_CLEARED`.
-    - Mở khóa điều kiện tại Cổng bàn giao xe (`Release Gate` - UC-43).
-  - Đối với đơn `MIXED`: Vẫn thu tiền các dịch vụ phát sinh theo quy trình chuẩn trước khi cho xuất xưởng.
+  - Khi phát hành hóa đơn cho đơn hàng bảo hành có tổng tiền bằng 0 đồng (`total_amount === 0`):
+    - Tự động chuyển trạng thái hóa đơn là `PAID` (bỏ qua bước thu tiền mặt/thẻ/QR).
+    - Tự động cập nhật `WorkOrder` sang trạng thái `FINANCIAL_CLEARED` (thông quan tài chính).
+    - Mở khóa điều kiện tại Cổng bàn giao xe (`Release Gate` - UC-43), bắn notification `VEHICLE_READY` cho Cố vấn dịch vụ và gửi email biên lai 0 đồng cho khách.
+  - Đối với đơn `MIXED`: Hóa đơn ở trạng thái `ISSUED` với `amount_due > 0`, yêu cầu thu tiền các dịch vụ phát sinh theo quy trình chuẩn trước khi kích hoạt `FINANCIAL_CLEARED`.
 
 ---
 

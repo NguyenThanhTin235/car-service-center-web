@@ -96,6 +96,61 @@ export class WorkOrderService {
         appointmentId = appointment?.id ?? null;
       }
 
+      // UC-84: Kế thừa thông tin bảo hành từ IntakeRecord & GoodwillClaim
+      let parentWorkOrderId: number | null = null;
+      let warrantyReason: string | null = null;
+      let claimApprovedById: number | null = null;
+
+      if (intake.intake_type === 'WARRANTY') {
+        const goodwillClaim = await tx.goodwillClaim.findUnique({
+          where: { intake_id: intakeRecordId },
+        });
+
+        if (goodwillClaim) {
+          parentWorkOrderId = goodwillClaim.parent_wo_id;
+          claimApprovedById = goodwillClaim.approved_by_id;
+          warrantyReason = goodwillClaim.complaint;
+        }
+
+        if (!parentWorkOrderId && intake.notes) {
+          const matchWoNum = intake.notes.match(/Phiếu dịch vụ gốc:\s*#?([A-Za-z0-9\-_]+)/);
+          if (matchWoNum) {
+            const rawRef = matchWoNum[1].trim();
+            const foundWo = await tx.workOrder.findFirst({
+              where: {
+                OR: [
+                  { wo_number: rawRef },
+                  !isNaN(Number(rawRef)) ? { id: Number(rawRef) } : {},
+                ],
+              },
+              select: { id: true },
+            });
+            if (foundWo) {
+              parentWorkOrderId = foundWo.id;
+            }
+          }
+
+          const matchComplaint = intake.notes.match(/Hiện tượng sự cố:\s*([^\n\r]+)/);
+          if (matchComplaint && !warrantyReason) {
+            warrantyReason = matchComplaint[1].trim();
+          }
+        }
+
+        if (!parentWorkOrderId) {
+          const lastCompletedWo = await tx.workOrder.findFirst({
+            where: {
+              vehicle_id: intake.vehicle_id,
+              status: { in: ['RELEASED', 'CLOSED'] },
+            },
+            orderBy: { closed_at: 'desc' },
+            select: { id: true },
+          });
+          if (lastCompletedWo) {
+            parentWorkOrderId = lastCompletedWo.id;
+          }
+        }
+      }
+
       // 7. Tạo Work Order
       const workOrder = await workOrderRepo.createInTransaction(tx, {
         wo_number: woNumber,
@@ -104,6 +159,9 @@ export class WorkOrderService {
         advisor_id: advisorId,
         source_type: sourceType,
         order_type: intake.intake_type === 'WARRANTY' ? 'WARRANTY' : 'NORMAL',
+        parent_work_order_id: parentWorkOrderId,
+        warranty_reason: warrantyReason || (intake.intake_type === 'WARRANTY' ? intake.notes : null),
+        claim_approved_by_id: claimApprovedById,
         intake_record_id: intakeRecordId,
         appointment_id: appointmentId,
         status: 'DRAFT',
@@ -1795,7 +1853,7 @@ export class WorkOrderService {
           work_order_id: workOrderId,
         },
       },
-      select: { id: true, name: true, status: true },
+      select: { id: true, name: true, status: true, is_warranty: true },
     });
     if (!job) throw new Error('Công việc không tồn tại hoặc không thuộc phiếu công việc này.');
 
@@ -1826,7 +1884,8 @@ export class WorkOrderService {
       initialPartStatus = 'RESERVED';
     }
 
-    // Tạo JobPart record (Snapshot warranty từ InventoryItem)
+    // Tạo JobPart record (Snapshot warranty từ InventoryItem, thừa hưởng is_warranty từ Job nếu không chỉ định)
+    const isPartWarranty = data.is_warranty !== undefined ? data.is_warranty : Boolean(job.is_warranty);
     const jobPart = await prisma.jobPart.create({
       data: {
         job_id: jobId,
@@ -1835,7 +1894,7 @@ export class WorkOrderService {
         issued_quantity: initialIssuedQty,
         unit_price: unitPrice,
         status: initialPartStatus,
-        is_warranty: data.is_warranty ?? false,
+        is_warranty: isPartWarranty,
         warranty_months: item.warranty_months ?? 0,
         warranty_mileage: item.warranty_mileage ?? 0,
       },
