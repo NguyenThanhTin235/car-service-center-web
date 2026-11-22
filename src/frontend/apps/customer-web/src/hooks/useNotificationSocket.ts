@@ -21,16 +21,17 @@ function getSocketBaseUrl(): string {
 export function useNotificationSocket() {
   const dispatch = useAppDispatch();
   const { isAuthenticated, user, token: storeToken } = useAppSelector((state) => state.auth);
-  const items = useAppSelector((state) => state.notifications.items);
+  const latestCreatedAt = useAppSelector((state) => state.notifications.items[0]?.createdAt);
   const latestCreatedAtRef = useRef<string | undefined>(undefined);
   const socketRef = useRef<Socket | null>(null);
+  const userId = user?.id;
 
   useEffect(() => {
-    latestCreatedAtRef.current = items[0]?.createdAt;
-  }, [items]);
+    latestCreatedAtRef.current = latestCreatedAt;
+  }, [latestCreatedAt]);
 
   useEffect(() => {
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated || !userId) {
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -116,5 +117,5 @@ export function useNotificationSocket() {
       socketRef.current = null;
       dispatch(setSocketConnected(false));
     };
-  }, [dispatch, isAuthenticated, user, storeToken]);
+  }, [dispatch, isAuthenticated, userId, storeToken]);
 }

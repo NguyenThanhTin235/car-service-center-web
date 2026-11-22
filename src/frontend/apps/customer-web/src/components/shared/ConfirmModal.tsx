@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export interface ConfirmModalProps {
   isOpen: boolean;
@@ -23,33 +23,51 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !loading) {
+        onCancel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, loading, onCancel]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-inverse-surface/40 backdrop-blur-sm" onClick={loading ? undefined : onCancel} />
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+    >
+      <div className="absolute inset-0 bg-inverse-surface/40 backdrop-blur-sm" onClick={loading ? undefined : onCancel} aria-hidden="true" />
       <div className="relative bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-sm border border-surface-container-highest overflow-hidden">
         <div className="p-6 text-center">
-          <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${isDanger ? 'bg-error-container' : 'bg-primary-container'}`}>
-            <span className={`material-symbols-outlined ${isDanger ? 'text-error' : 'text-primary'}`} style={{ fontSize: '28px' }}>
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${isDanger ? 'bg-status-danger-soft text-status-danger' : 'bg-accent-soft text-accent'}`}>
+            <span className="material-symbols-outlined" style={{ fontSize: '28px' }} aria-hidden="true">
               {isDanger ? 'warning' : 'help'}
             </span>
           </div>
-          <h3 className="font-bold text-on-surface text-lg mb-2">{title}</h3>
+          <h3 id="confirm-modal-title" className="font-bold text-on-surface text-lg mb-2">{title}</h3>
           <p className="text-sm text-on-surface-variant mb-3">{message}</p>
         </div>
         <div className="flex gap-3 px-6 pb-6">
           <button
+            type="button"
             onClick={onCancel}
             disabled={loading}
-            className="flex-1 py-2.5 border border-surface-container-highest text-on-surface-variant rounded-lg text-sm font-medium hover:bg-surface-container-low disabled:opacity-60 transition-all"
+            className="flex-1 min-h-[44px] py-2.5 border border-surface-container-highest text-on-surface-variant rounded-lg text-sm font-medium hover:bg-surface-container-low disabled:opacity-60 transition-colors cursor-pointer"
           >
             {cancelText}
           </button>
           <button
+            type="button"
             onClick={onConfirm}
             disabled={loading}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 active:scale-[0.98] transition-all ${
+            className={`flex-1 min-h-[44px] flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 active:scale-[0.98] transition-all cursor-pointer ${
               isDanger ? 'bg-error text-on-error hover:bg-error/90' : 'bg-primary text-on-primary hover:bg-primary/90'
             }`}
           >

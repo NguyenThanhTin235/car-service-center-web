@@ -11,15 +11,17 @@ import {
   InvoiceListItemDto,
 } from '@/store/slices/invoiceSlice';
 import Toast from '@/components/shared/Toast';
+import { ErrorState, LoadingSkeleton } from '@/components/ui';
 import { downloadInvoicePdfBlob } from '@/lib/api/invoice.api';
 import { StoredChatActionPayload } from '@/components/chat/aiChatUtils';
+import { downloadPdfBlob } from '@/utils/customerHelpers';
 
 const CustomerPaymentModal = dynamic(() => import('./CustomerPaymentModal'));
 const InvoiceDetailModal = dynamic(() => import('./InvoiceDetailModal'));
 
-export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: boolean }) {
+export default function InvoicesView() {
   const dispatch = useAppDispatch();
-  const { invoices, summary, selectedInvoice, loading, detailLoading } = useAppSelector(
+  const { invoices, summary, selectedInvoice, loading, detailLoading, error } = useAppSelector(
     (state) => state.invoices
   );
 
@@ -128,14 +130,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
     try {
       setDownloadingPdfId(invId);
       const blob = await downloadInvoicePdfBlob(invId);
-      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Hoa_Don_${invNumber || invId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      downloadPdfBlob(blob, `Hoa_Don_${invNumber || invId}.pdf`);
       setToastMsg(`Đã tải hóa đơn PDF ${invNumber ? '#' + invNumber : ''} thành công!`);
       setToastType('success');
     } catch (err: any) {
@@ -183,18 +178,9 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
         <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg('')} />
       )}
 
-      {/* Breadcrumb & Header */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          {!isEmbedded && (
-          <nav className="flex items-center space-x-2 text-on-surface-variant text-xs mb-1.5 font-medium">
-            <Link href="/customer" className="hover:text-primary transition-colors">
-              Trang chủ
-            </Link>
-            <span>/</span>
-            <span className="text-on-surface font-semibold">Hóa đơn & Chi phí</span>
-          </nav>
-          )}
           <h1 className="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight">
             Hóa đơn & Lịch sử thanh toán
           </h1>
@@ -336,7 +322,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Tìm theo Mã HĐ, Biển số xe..."
-              className="w-full h-9 pl-9 pr-3 bg-surface-container-lowest border border-surface-container-highest rounded-lg text-xs text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+              className="w-full min-h-[44px] pl-9 pr-3 bg-surface-container-lowest border border-surface-container-highest rounded-lg text-xs text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
             />
           </form>
 
@@ -346,7 +332,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
               <button
                 type="button"
                 onClick={() => setActiveTab('ALL')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
                   activeTab === 'ALL'
                     ? 'bg-white text-on-surface shadow-2xs font-bold'
                     : 'text-on-surface-variant hover:text-on-surface'
@@ -357,7 +343,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
               <button
                 type="button"
                 onClick={() => setActiveTab('PAID')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
                   activeTab === 'PAID'
                     ? 'bg-white text-on-surface shadow-2xs font-bold'
                     : 'text-on-surface-variant hover:text-on-surface'
@@ -368,7 +354,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
               <button
                 type="button"
                 onClick={() => setActiveTab('ISSUED')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center ${
+                className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center cursor-pointer ${
                   activeTab === 'ISSUED'
                     ? 'bg-white text-on-surface shadow-2xs font-bold'
                     : 'text-on-surface-variant hover:text-on-surface'
@@ -384,7 +370,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex items-center px-3 py-1.5 bg-surface-container-lowest border border-surface-container-highest hover:bg-surface-container-low text-on-surface text-xs font-semibold rounded-lg shadow-2xs transition-colors"
+              className="inline-flex items-center min-h-[44px] px-3.5 py-2 bg-surface-container-lowest border border-surface-container-highest hover:bg-surface-container-low text-on-surface text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px] mr-1.5 text-emerald-700">print</span>
               In danh sách
@@ -393,9 +379,141 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
 
         </div>
 
-        {/* Data Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[860px]">
+        {/* Error / Loading / Mobile Cards / Desktop Table */}
+        {error && invoices.length === 0 ? (
+          <div className="p-4 sm:p-6">
+            <ErrorState
+              title="Không thể tải danh sách hóa đơn"
+              message={error}
+              onRetry={() => dispatch(fetchMyInvoices({ status: activeTab, search: searchTerm }))}
+            />
+          </div>
+        ) : (
+          <>
+            {/* Mobile Card List (<768px) */}
+            <div className="md:hidden divide-y divide-surface-container-highest">
+              {loading && invoices.length === 0 ? (
+                <div className="p-4">
+                  <LoadingSkeleton variant="cards" count={3} />
+                </div>
+              ) : filteredInvoices.length === 0 ? (
+                <div className="py-12 px-4 text-center text-on-surface-variant">
+                  <span className="material-symbols-outlined text-[36px] text-outline opacity-50 mb-1">
+                    receipt
+                  </span>
+                  <p className="font-semibold text-sm">Không tìm thấy hóa đơn nào</p>
+                  <p className="text-xs text-on-surface-variant mt-0.5">
+                    Thử thay đổi bộ lọc hoặc tìm kiếm bằng từ khóa khác.
+                  </p>
+                </div>
+              ) : (
+                paginatedInvoices.map((inv: InvoiceListItemDto) => {
+                  const isPaid = inv.status === 'PAID';
+                  const dateStr = inv.issuedAt
+                    ? new Date(inv.issuedAt).toLocaleDateString('vi-VN')
+                    : new Date(inv.createdAt).toLocaleDateString('vi-VN');
+                  return (
+                    <div
+                      key={inv.id}
+                      className={`p-4 space-y-3 ${!isPaid ? 'bg-red-50/15' : ''}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-primary font-mono text-sm">
+                              #{inv.invoiceNumber}
+                            </span>
+                            {!isPaid && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-error border border-red-200">
+                                Chờ
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-outline mt-0.5">{dateStr}</p>
+                        </div>
+                        {isPaid ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1.5" />
+                            Đã thanh toán
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-100 text-error border border-red-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-error mr-1.5 animate-pulse" />
+                            Chưa thanh toán
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 bg-white border border-gray-300 font-mono text-[11px] font-bold rounded text-gray-800">
+                              {inv.vehicle.licensePlate}
+                            </span>
+                            <span className="text-xs font-semibold text-on-surface truncate">
+                              {inv.vehicle.make} {inv.vehicle.model}
+                            </span>
+                          </div>
+                          <p className="text-xs text-on-surface-variant mt-1 line-clamp-1">
+                            {inv.primaryServiceDescription}
+                          </p>
+                        </div>
+                        <span
+                          className={`font-bold font-mono text-base shrink-0 ${
+                            !isPaid ? 'text-error' : 'text-on-surface'
+                          }`}
+                        >
+                          {inv.totalAmount.toLocaleString()} đ
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        {!isPaid && (
+                          <button
+                            onClick={() => handleOpenPayModal(inv)}
+                            className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-1 px-3 py-2 bg-primary text-white hover:bg-primary/90 text-xs font-semibold rounded-xl shadow-2xs transition-colors cursor-pointer"
+                            type="button"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">credit_card</span>
+                            Thanh toán
+                          </button>
+                        )}
+                        <button
+                          onClick={() => openInvoiceDetail(inv.id)}
+                          className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-1 px-3 py-2 bg-surface-container-lowest hover:bg-surface-container-low border border-surface-container-highest text-on-surface text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                          type="button"
+                        >
+                          <span className="material-symbols-outlined text-[16px] text-primary">
+                            visibility
+                          </span>
+                          Chi tiết
+                        </button>
+                        <button
+                          onClick={() => handleDownloadPdf(inv.id, inv.invoiceNumber)}
+                          disabled={downloadingPdfId === inv.id}
+                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1 px-3 py-2 bg-surface-container-lowest hover:bg-surface-container-low border border-surface-container-highest text-on-surface text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                          type="button"
+                          title={isPaid ? 'Tải biên lai PDF' : 'Tải hóa đơn PDF'}
+                        >
+                          {downloadingPdfId === inv.id ? (
+                            <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <span className="material-symbols-outlined text-[16px] text-primary">
+                              download
+                            </span>
+                          )}
+                          PDF
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Desktop Data Table (>=768px) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[860px]">
             <thead>
               <tr className="bg-surface-container-low/60 border-b border-surface-container-highest text-on-surface-variant text-[11px] font-semibold uppercase tracking-wider">
                 <th className="py-3 px-4 w-[18%] min-w-[160px] whitespace-nowrap" scope="col">Mã Hóa Đơn</th>
@@ -512,7 +630,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
                           {!isPaid && (
                             <button
                               onClick={() => handleOpenPayModal(inv)}
-                              className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 bg-primary text-white hover:bg-primary/90 text-xs font-semibold rounded-lg shadow-2xs transition-all whitespace-nowrap cursor-pointer active:scale-95"
+                              className="inline-flex items-center justify-center gap-1 min-h-[44px] px-3 py-1.5 bg-primary text-white hover:bg-primary/90 text-xs font-semibold rounded-lg shadow-2xs transition-colors whitespace-nowrap cursor-pointer active:scale-95"
                               type="button"
                               title="Thanh toán trực tuyến từ xa"
                             >
@@ -522,7 +640,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
                           )}
                           <button
                             onClick={() => openInvoiceDetail(inv.id)}
-                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 bg-surface-container-lowest hover:bg-surface-container-low border border-surface-container-highest text-on-surface text-xs font-semibold rounded-lg shadow-2xs transition-colors whitespace-nowrap cursor-pointer"
+                            className="inline-flex items-center justify-center gap-1 min-h-[44px] px-3 py-1.5 bg-surface-container-lowest hover:bg-surface-container-low border border-surface-container-highest text-on-surface text-xs font-semibold rounded-lg shadow-2xs transition-colors whitespace-nowrap cursor-pointer"
                             type="button"
                           >
                             <span className="material-symbols-outlined text-[16px] text-primary">
@@ -533,7 +651,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
                           <button
                             onClick={() => handleDownloadPdf(inv.id, inv.invoiceNumber)}
                             disabled={downloadingPdfId === inv.id}
-                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 bg-surface-container-lowest hover:bg-surface-container-low border border-surface-container-highest text-on-surface text-xs font-semibold rounded-lg shadow-2xs transition-colors whitespace-nowrap cursor-pointer"
+                            className="inline-flex items-center justify-center gap-1 min-h-[44px] px-3 py-1.5 bg-surface-container-lowest hover:bg-surface-container-low border border-surface-container-highest text-on-surface text-xs font-semibold rounded-lg shadow-2xs transition-colors whitespace-nowrap cursor-pointer"
                             type="button"
                             title={isPaid ? "Tải biên lai PDF" : "Tải hóa đơn PDF"}
                           >
@@ -555,6 +673,8 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
             </tbody>
           </table>
         </div>
+          </>
+        )}
 
         {/* Footer & Pagination */}
         <div className="p-3.5 border-t border-surface-container-highest bg-surface-container-lowest flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-on-surface-variant no-print">
@@ -572,7 +692,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                className="px-2.5 py-1 text-xs font-medium rounded-lg border border-surface-container-highest bg-surface-container-lowest text-on-surface hover:bg-surface-container-low disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="min-h-[44px] px-3.5 py-1.5 text-xs font-medium rounded-lg border border-surface-container-highest bg-surface-container-lowest text-on-surface hover:bg-surface-container-low disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 Trước
               </button>
@@ -583,7 +703,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
-                className="px-2.5 py-1 text-xs font-medium rounded-lg border border-surface-container-highest bg-surface-container-lowest text-on-surface hover:bg-surface-container-low disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="min-h-[44px] px-3.5 py-1.5 text-xs font-medium rounded-lg border border-surface-container-highest bg-surface-container-lowest text-on-surface hover:bg-surface-container-low disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 Sau
               </button>

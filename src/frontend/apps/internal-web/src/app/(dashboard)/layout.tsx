@@ -11,22 +11,18 @@ import SaaSDashboardShell, {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { records: intakeRecords } = useAppSelector((state) => state.intake);
-  const { appointments } = useAppSelector((state) => state.appointments);
-  const { summary: billingSummary } = useAppSelector((state) => state.billing);
-
-  const queuedIntakeCount = useMemo(
-    () => intakeRecords.filter((r) => r.status === 'QUEUED').length,
-    [intakeRecords]
+  const queuedIntakeCount = useAppSelector(
+    (state) => state.intake.records.filter((r) => r.status === 'QUEUED').length
   );
-
-  const activeAptCount = useMemo(
-    () =>
-      appointments.filter((a) =>
+  const activeAptCount = useAppSelector(
+    (state) =>
+      state.appointments.appointments.filter((a) =>
         ['REQUESTED', 'CONFIRMED', 'RESCHEDULED'].includes(a.status)
-      ).length,
-    [appointments]
+      ).length
   );
+  const pendingBillingCount = useAppSelector((state) => state.billing.summary?.pendingCount || 0);
+  const issuedBillingCount = useAppSelector((state) => state.billing.summary?.issuedCount || 0);
+  const paidTodayCount = useAppSelector((state) => state.billing.summary?.paidTodayCount || 0);
 
   const navItems: SaaSNavItem[] = useMemo(
     () => [
@@ -50,13 +46,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         href: '/staff/billing',
         icon: 'receipt_long',
         badge:
-          (billingSummary?.pendingCount || 0) + (billingSummary?.issuedCount || 0) > 0
-            ? (billingSummary?.pendingCount || 0) + (billingSummary?.issuedCount || 0)
+          pendingBillingCount + issuedBillingCount > 0
+            ? pendingBillingCount + issuedBillingCount
             : undefined,
       },
       { label: 'Quản lý Khách hàng', href: '/staff/customers', icon: 'group' },
     ],
-    [activeAptCount, queuedIntakeCount, billingSummary]
+    [activeAptCount, queuedIntakeCount, pendingBillingCount, issuedBillingCount]
   );
 
   const telemetryItems: SaaSTelemetryDotItem[] = useMemo(
@@ -75,24 +71,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       },
       {
         label: 'Chờ lập hóa đơn',
-        value: billingSummary?.pendingCount || 0,
+        value: pendingBillingCount,
         dotColor: '#818cf8',
         href: '/staff/billing',
       },
       {
         label: 'Chờ thu tiền',
-        value: billingSummary?.issuedCount || 0,
+        value: issuedBillingCount,
         dotColor: '#f43f5e',
         href: '/staff/billing',
       },
       {
         label: 'Đã thu trong ngày',
-        value: billingSummary?.paidTodayCount || 0,
+        value: paidTodayCount,
         dotColor: '#10b981',
         href: '/staff/billing',
       },
     ],
-    [queuedIntakeCount, activeAptCount, billingSummary]
+    [queuedIntakeCount, activeAptCount, pendingBillingCount, issuedBillingCount, paidTodayCount]
   );
 
   return (

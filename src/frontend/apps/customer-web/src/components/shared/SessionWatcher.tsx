@@ -36,6 +36,7 @@ export default function SessionWatcher() {
     }
 
     const checkSession = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       if (checkingRef.current) return;
       if (typeof window !== 'undefined' && window.location.pathname.startsWith('/login')) return;
       checkingRef.current = true;

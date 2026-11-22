@@ -22,6 +22,7 @@ interface TabQCProps {
 export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly = false, setActiveTab }: TabQCProps) {
   const [qcData, setQcData] = useState<QcDetailsResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
 
@@ -52,6 +53,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
     if (!workOrder?.id) return;
     try {
       setLoading(true);
+      setError(null);
       const res = await getWOQcDetails(workOrder.id);
       if (res.success && res.data) {
         setQcData(res.data);
@@ -80,7 +82,9 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
       }
     } catch (err: any) {
       console.error('Lỗi khi tải thông tin QC:', err);
-      toast.error('Không thể tải dữ liệu kiểm định chất lượng');
+      const msg = err?.response?.data?.message || err?.message || 'Không thể tải dữ liệu kiểm định chất lượng';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -391,6 +395,26 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
     return (
       <div className="flex h-64 items-center justify-center">
         <span className="material-symbols-outlined animate-spin text-[36px] text-primary">progress_activity</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-10 text-center border border-rose-200 rounded-2xl bg-rose-50/70 space-y-3">
+        <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center">
+          <span className="material-symbols-outlined text-[26px]">error</span>
+        </div>
+        <h3 className="text-sm font-bold text-rose-900">Không thể tải dữ liệu kiểm định chất lượng</h3>
+        <p className="text-xs text-rose-700 max-w-md">{error}</p>
+        <button
+          type="button"
+          onClick={fetchQcData}
+          className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+        >
+          <span className="material-symbols-outlined text-[16px]">refresh</span>
+          <span>Thử lại</span>
+        </button>
       </div>
     );
   }

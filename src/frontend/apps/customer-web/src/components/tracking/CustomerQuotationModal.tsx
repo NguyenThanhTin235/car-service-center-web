@@ -43,6 +43,18 @@ export default function CustomerQuotationModal({
   const [isConfirmApproveOpen, setIsConfirmApproveOpen] = useState<boolean>(false);
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState<boolean>(false);
   const [approveError, setApproveError] = useState<string>('');
+  const [actionError, setActionError] = useState<string>('');
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !loading) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, loading, onClose]);
 
   // Danh sách toàn bộ báo giá
   const quoteList = useMemo(() => {
@@ -175,7 +187,7 @@ export default function CustomerQuotationModal({
       }
       onClose();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra khi gửi phản hồi');
+      setActionError(err.response?.data?.message || 'Có lỗi xảy ra khi gửi phản hồi');
     } finally {
       setLoading(false);
     }
@@ -185,9 +197,10 @@ export default function CustomerQuotationModal({
   const handleDownloadPdf = async () => {
     try {
       setDownloadingPdf(true);
+      setActionError('');
       await downloadQuotationPdf(activeQuote.id, activeQuote.quotationNumber);
-    } catch (err: any) {
-      alert('Không thể tải file PDF lúc này, vui lòng thử lại sau.');
+    } catch {
+      setActionError('Không thể tải file PDF lúc này, vui lòng thử lại sau.');
     } finally {
       setDownloadingPdf(false);
     }
@@ -226,8 +239,19 @@ export default function CustomerQuotationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm overflow-y-auto cw-modal-overlay">
-      <div className="bg-surface-container-lowest w-full max-w-4xl rounded-2xl sm:rounded-3xl shadow-2xl border border-surface-container-highest flex flex-col max-h-[92vh] overflow-hidden cw-modal-panel">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Bảng báo giá chi tiết dịch vụ"
+      onClick={() => {
+        if (!loading) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm overflow-y-auto cw-modal-overlay"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-surface-container-lowest w-full max-w-4xl rounded-2xl sm:rounded-3xl shadow-2xl border border-surface-container-highest flex flex-col max-h-[92vh] overflow-hidden cw-modal-panel"
+      >
         
         {/* ================= Header ================= */}
         <div className="p-5 sm:p-6 border-b border-surface-container-highest bg-gradient-to-r from-blue-50/70 via-white to-indigo-50/50 flex items-start justify-between">
@@ -272,13 +296,32 @@ export default function CustomerQuotationModal({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+            aria-label="Đóng bảng báo giá"
+            className="min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
             title="Đóng"
           >
             <span className="material-symbols-outlined text-[22px]">close</span>
           </button>
         </div>
+
+        {actionError && (
+          <div role="alert" className="mx-5 sm:mx-6 mt-3 px-4 py-2.5 rounded-xl bg-status-danger-soft text-status-danger text-xs font-medium flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px] shrink-0">error</span>
+              <span>{actionError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActionError('')}
+              aria-label="Đóng thông báo lỗi"
+              className="min-w-[32px] min-h-[32px] flex items-center justify-center rounded-lg hover:bg-black/5 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px]">close</span>
+            </button>
+          </div>
+        )}
 
         {/* ================= Quotation Switcher Tabs (Nếu có từ 2 báo giá trở lên) ================= */}
         {quoteList.length > 1 && (

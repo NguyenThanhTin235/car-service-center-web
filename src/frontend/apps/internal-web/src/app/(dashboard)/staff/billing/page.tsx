@@ -19,6 +19,7 @@ export default function BillingQueuePage() {
   );
 
   const [searchInput, setSearchInput] = useState<string>(search);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [selectedWoId, setSelectedWoId] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetail | null>(null);
@@ -36,8 +37,8 @@ export default function BillingQueuePage() {
   }, [searchInput, dispatch, search]);
 
   useEffect(() => {
-    dispatch(fetchBillingQueue({ tab, search, page, limit: 5 }));
-  }, [dispatch, tab, search, page]);
+    dispatch(fetchBillingQueue({ tab, search, page, limit: pageSize }));
+  }, [dispatch, tab, search, page, pageSize]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -343,9 +344,9 @@ export default function BillingQueuePage() {
         </div>
 
         {/* 4. Desktop & Tablet Table view (Flush inside .saas-card - No Nested Card Border) */}
-        <div className="hidden md:block overflow-x-auto bg-white">
+        <div className="hidden md:block overflow-x-auto max-h-[60vh] overflow-y-auto bg-white">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50/80 text-slate-600 font-semibold text-[11px] uppercase tracking-wider border-b border-slate-200/80">
+            <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur text-slate-600 font-semibold text-[11px] uppercase tracking-wider border-b border-slate-200/80">
               {tab === 'PENDING' ? (
                 <tr>
                   <th className="py-3.5 px-3.5 lg:px-4 whitespace-nowrap">Mã phiếu WO</th>
@@ -379,14 +380,19 @@ export default function BillingQueuePage() {
             </thead>
             <tbody className="divide-y divide-slate-200/60">
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
-                    <span className="material-symbols-outlined text-[32px] animate-spin text-[#0866ff] block mb-2 mx-auto">
-                      progress_activity
-                    </span>
-                    <span className="text-xs">Đang tải danh sách hóa đơn...</span>
-                  </td>
-                </tr>
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <tr key={`skeleton-${idx}`} className="animate-pulse">
+                    <td className="py-3.5 px-4"><div className="h-4 w-24 bg-slate-200 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-5 w-24 bg-slate-200 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-32 bg-slate-200 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-5 w-24 bg-slate-100 rounded-full" /></td>
+                    <td className="py-3.5 px-4 text-right"><div className="h-4 w-20 bg-slate-200 rounded ml-auto" /></td>
+                    {tab !== 'PENDING' && (
+                      <td className="py-3.5 px-4 text-right"><div className="h-4 w-20 bg-slate-100 rounded ml-auto" /></td>
+                    )}
+                    <td className="py-3.5 px-4 text-center"><div className="h-8 w-24 bg-slate-200 rounded-xl mx-auto" /></td>
+                  </tr>
+                ))
               ) : error ? (
                 <tr>
                   <td colSpan={7} className="py-10 px-4 text-center">
@@ -395,7 +401,7 @@ export default function BillingQueuePage() {
                       <span className="text-xs font-semibold">Không thể tải hàng chờ thu ngân: {error}</span>
                       <button
                         type="button"
-                        onClick={() => dispatch(fetchBillingQueue({ tab, search, page, limit: 5 }))}
+                        onClick={() => dispatch(fetchBillingQueue({ tab, search, page, limit: pageSize }))}
                         className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
                         <span className="material-symbols-outlined text-[16px]">refresh</span>
@@ -570,7 +576,7 @@ export default function BillingQueuePage() {
                 <span className="text-xs font-semibold">Không thể tải hàng chờ thu ngân: {error}</span>
                 <button
                   type="button"
-                  onClick={() => dispatch(fetchBillingQueue({ tab, search, page, limit: 5 }))}
+                  onClick={() => dispatch(fetchBillingQueue({ tab, search, page, limit: pageSize }))}
                   className="h-9 px-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[15px]">refresh</span>
@@ -669,6 +675,12 @@ export default function BillingQueuePage() {
             onPageChange={(p) => dispatch(setPage(p))}
             currentCount={records.length}
             recordLabel={tab === 'PENDING' ? 'lệnh sửa chữa' : 'hóa đơn'}
+            pageSize={pageSize}
+            pageSizeOptions={[10, 20, 50]}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              dispatch(setPage(1));
+            }}
           />
         )}
       </div>

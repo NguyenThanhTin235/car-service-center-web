@@ -6,45 +6,58 @@ import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchMyTrackingOrders, setSelectedOrder, WorkOrderTrackingDto } from '@/store/slices/trackingSlice';
 import Toast from '@/components/shared/Toast';
+import { ErrorState, LoadingSkeleton } from '@/components/ui';
 import { downloadInvoicePdfBlob } from '@/lib/api/invoice.api';
 import { downloadHandoverPdfBlob } from '@/lib/api/work-order.api';
 import { StoredChatActionPayload } from '@/components/chat/aiChatUtils';
+import { downloadPdfBlob, parseComplaintText } from '@/utils/customerHelpers';
 
 const CustomerQuotationModal = dynamic(() => import('./CustomerQuotationModal'));
 const CustomerCheckInModal = dynamic(() => import('./CustomerCheckInModal'));
 const CustomerQCModal = dynamic(() => import('./CustomerQCModal'));
 const CustomerPaymentModal = dynamic(() => import('@/components/invoices/CustomerPaymentModal'));
 
-const parseComplaintText = (raw?: string | null): string => {
-  if (!raw || !raw.trim()) return '';
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed === 'object' && parsed !== null) {
-      const parts: string[] = [];
-      if (Array.isArray(parsed.tags) && parsed.tags.length > 0) {
-        const validTags = parsed.tags.filter((t: any) => typeof t === 'string' && t.trim().length > 0);
-        if (validTags.length > 0) parts.push(validTags.join(', '));
-      }
-      if (typeof parsed.notes === 'string' && parsed.notes.trim()) {
-        parts.push(parsed.notes.trim());
-      }
-      if (parts.length > 0) return parts.join(' - ');
-      return '';
-    }
-  } catch {
-    // Không phải JSON, xử lý chuỗi thường
-  }
-  const clean = String(raw).trim();
-  if (clean === '{"tags":[],"notes":""}' || clean === '{}') return '';
-  return clean;
-};
+const LiveCountdownBadge = React.memo(function LiveCountdownBadge() {
+  const [seconds, setSeconds] = useState<number>(30);
 
-export default function TrackingView({ isEmbedded = false }: { isEmbedded?: boolean }) {
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSeconds((prev) => (prev <= 1 ? 30 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="text-xs text-on-surface-variant bg-surface-container-lowest px-3 py-2 rounded-lg border border-surface-container-highest shadow-2xs flex items-center gap-1.5">
+      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span>Tự động đồng bộ:</span>
+      <span className="font-semibold text-primary font-mono">{seconds}s</span>
+    </div>
+  );
+});
+
+const LiveClockOverlay = React.memo(function LiveClockOverlay() {
+  const [time, setTime] = useState<string>('');
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTime(new Date().toLocaleTimeString('vi-VN'));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="absolute bottom-2 left-2.5 bg-black/60 backdrop-blur px-2 py-0.5 rounded text-white font-mono text-[10px] z-10">
+      {time || 'Đang kết nối...'}
+    </div>
+  );
+});
+
+export default function TrackingView() {
   const dispatch = useAppDispatch();
-  const { orders, selectedOrder, loading } = useAppSelector((state) => state.tracking);
-  const [refreshCountdown, setRefreshCountdown] = useState<number>(30);
+  const { orders, selectedOrder, loading, error } = useAppSelector((state) => state.tracking);
+  const [syncTick, setSyncTick] = useState<number>(0);
   const [toastMsg, setToastMsg] = useState<string>('');
-  const [currentTime, setCurrentTime] = useState<string>('');
   const [isQuotationModalOpen, setIsQuotationModalOpen] = useState<boolean>(false);
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState<boolean>(false);
   const [isQCModalOpen, setIsQCModalOpen] = useState<boolean>(false);
@@ -59,14 +72,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
     try {
       setDownloadingPdfId(invId);
       const blob = await downloadInvoicePdfBlob(invId);
-      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Hoa_Don_${invNumber || invId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      downloadPdfBlob(blob, `Hoa_Don_${invNumber || invId}.pdf`);
       setToastMsg(`Đã tải hóa đơn PDF ${invNumber ? '#' + invNumber : ''} thành công!`);
     } catch (err: any) {
       setToastMsg('Không thể xuất file PDF: ' + (err.response?.data?.message || err.message || 'Lỗi hệ thống'));
@@ -80,14 +86,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
     try {
       setDownloadingHandoverPdf(true);
       const blob = await downloadHandoverPdfBlob(activeOrder.id);
-      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Bien_Ban_Ban_Giao_${activeOrder.woNumber}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      downloadPdfBlob(blob, `Bien_Ban_Ban_Giao_${activeOrder.woNumber}.pdf`);
       setToastMsg(`Đã tải xuống Biên bản bàn giao xe #${activeOrder.woNumber} thành công!`);
     } catch (err: any) {
       setToastMsg('Không thể xuất file PDF biên bản bàn giao: ' + (err.response?.data?.message || err.message || 'Lỗi hệ thống'));
@@ -110,20 +109,10 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
     loadData();
   }, [loadData]);
 
-  // Cập nhật đồng hồ thời gian thực và đếm ngược hiển thị mỗi giây
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date();
-      setCurrentTime(now.toLocaleTimeString('vi-VN'));
-      setRefreshCountdown((prev) => (prev <= 1 ? 30 : prev - 1));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  // Tự động tải lại dữ liệu định kỳ mỗi 30 giây
+  // Tự động tải lại dữ liệu định kỳ mỗi 30 giây (chỉ khi tab đang hiển thị)
   useEffect(() => {
     const refreshTimer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       loadData(false);
     }, 30000);
 
@@ -193,18 +182,9 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
         />
       )}
 
-      {/* Breadcrumb & Header Bar */}
+      {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          {!isEmbedded && (
-          <nav className="flex items-center space-x-2 text-on-surface-variant text-xs mb-1.5 font-medium">
-            <Link href="/customer" className="hover:text-primary transition-colors">
-              Trang chủ
-            </Link>
-            <span>/</span>
-            <span className="text-on-surface font-semibold">Theo dõi tiến độ</span>
-          </nav>
-          )}
           <h1 className="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight">
             Theo dõi tiến độ dịch vụ
           </h1>
@@ -212,14 +192,10 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
 
         {/* Sync Status & Refresh Button */}
         <div className="flex items-center gap-3">
-          <div className="text-xs text-on-surface-variant bg-surface-container-lowest px-3 py-2 rounded-lg border border-surface-container-highest shadow-2xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Tự động đồng bộ:</span>
-            <span className="font-semibold text-primary font-mono">{refreshCountdown}s</span>
-          </div>
+          <LiveCountdownBadge key={syncTick} />
           <button
             onClick={() => {
-              setRefreshCountdown(30);
+              setSyncTick((n) => n + 1);
               loadData(true);
             }}
             disabled={loading}
@@ -262,7 +238,15 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
       )}
 
       {/* Main Content Area */}
-      {!activeOrder ? (
+      {loading && orders.length === 0 ? (
+        <LoadingSkeleton variant="cards" count={3} />
+      ) : error && orders.length === 0 ? (
+        <ErrorState
+          title="Không thể tải tiến độ sửa chữa"
+          message={error}
+          onRetry={() => loadData(true)}
+        />
+      ) : !activeOrder ? (
         /* Empty State */
         <div className="bg-surface-container-lowest rounded-2xl border border-surface-container-highest p-8 sm:p-12 text-center max-w-2xl mx-auto shadow-sm my-8">
           <div className="w-16 h-16 rounded-2xl bg-primary-fixed text-primary flex items-center justify-center mx-auto mb-4">
@@ -987,9 +971,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                   </div>
 
                   {/* Bottom Time Overlay */}
-                  <div className="absolute bottom-2 left-2.5 bg-black/60 backdrop-blur px-2 py-0.5 rounded text-white font-mono text-[10px] z-10">
-                    {currentTime || 'Đang kết nối...'}
-                  </div>
+                  <LiveClockOverlay />
                 </div>
 
                 {/* Description */}

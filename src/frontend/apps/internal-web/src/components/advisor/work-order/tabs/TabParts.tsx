@@ -63,7 +63,7 @@ const getEffectivePartStatus = (part: WoJobPart) => {
   };
 };
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 10;
 
 export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: TabPartsProps) {
   const [parts, setParts] = useState<WoJobPart[]>(

@@ -180,15 +180,7 @@ export default function LoginPage() {
           }
         />
 
-        <div className="flex items-center justify-between gap-2 pt-0.5">
-          <label className="inline-flex items-center gap-2 cursor-pointer select-none min-h-[44px]">
-            <input
-              suppressHydrationWarning
-              type="checkbox"
-              className="h-4 w-4 rounded border-hairline-strong accent-accent focus:ring-accent/30 cursor-pointer"
-            />
-            <span className="text-xs font-medium text-ink-secondary">Ghi nhớ đăng nhập</span>
-          </label>
+        <div className="flex items-center justify-end pt-0.5">
           <Link
             href="/forgot-password"
             className="inline-flex items-center min-h-[44px] text-xs font-semibold text-accent hover:text-accent-hover hover:underline"

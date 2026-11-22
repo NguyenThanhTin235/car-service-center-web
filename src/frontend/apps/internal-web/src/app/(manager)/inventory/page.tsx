@@ -60,6 +60,7 @@ export default function InventoryPage() {
     allItems,
     pagination,
     loading,
+    error,
     categories,
     brands,
     receipts,
@@ -543,10 +544,10 @@ export default function InventoryPage() {
           </div>
 
           <div className="saas-card overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
               <table className="w-full text-left border-collapse min-w-[940px]">
-                <thead>
-                  <tr className="h-11 bg-slate-50/90 border-b border-slate-200/80 text-xs text-slate-600 font-bold uppercase tracking-wider">
+                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
+                  <tr className="h-11 border-b border-slate-200/80 text-xs text-slate-600 font-bold uppercase tracking-wider">
                     <th className="py-3 px-5 font-mono">Mã SKU</th>
                     <th className="py-3 px-5 min-w-[240px]">Danh mục / Vật tư</th>
                     <th className="py-3 px-5">Thương hiệu</th>
@@ -559,9 +560,33 @@ export default function InventoryPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-200/60 text-sm">
                   {loading ? (
+                    Array.from({ length: 6 }).map((_, idx) => (
+                      <tr key={`skeleton-${idx}`} className="animate-pulse">
+                        <td className="py-3.5 px-5"><div className="h-4 w-20 bg-slate-200 rounded" /></td>
+                        <td className="py-3.5 px-5"><div className="h-4 w-44 bg-slate-200 rounded" /></td>
+                        <td className="py-3.5 px-5"><div className="h-5 w-20 bg-slate-100 rounded-lg" /></td>
+                        <td className="py-3.5 px-5"><div className="h-5 w-24 bg-slate-100 rounded-lg" /></td>
+                        <td className="py-3.5 px-5 text-right"><div className="h-4 w-16 bg-slate-200 rounded ml-auto" /></td>
+                        <td className="py-3.5 px-5 text-right"><div className="h-4 w-16 bg-slate-200 rounded ml-auto" /></td>
+                        <td className="py-3.5 px-5 text-center"><div className="h-5 w-10 bg-slate-200 rounded-full mx-auto" /></td>
+                        <td className="py-3.5 px-5 text-center"><div className="h-8 w-32 bg-slate-100 rounded-xl mx-auto" /></td>
+                      </tr>
+                    ))
+                  ) : error ? (
                     <tr>
-                      <td colSpan={8} className="text-center py-12 text-slate-500 text-xs">
-                        Đang tải dữ liệu tồn kho...
+                      <td colSpan={8} className="py-10 px-4 text-center">
+                        <div className="inline-flex flex-col items-center gap-2.5 text-rose-700 bg-rose-50/70 border border-rose-200 rounded-2xl px-6 py-5">
+                          <span className="material-symbols-outlined text-[28px] text-rose-600">error</span>
+                          <span className="text-xs font-semibold">Không thể tải dữ liệu tồn kho: {error}</span>
+                          <button
+                            type="button"
+                            onClick={() => loadData(currentPage)}
+                            className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">refresh</span>
+                            <span>Thử lại</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ) : displayedItems.length === 0 ? (
@@ -788,10 +813,10 @@ export default function InventoryPage() {
           </div>
 
           <div className="saas-card overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
               <table className="w-full text-left border-collapse min-w-[940px]">
-                <thead>
-                  <tr className="h-11 bg-slate-50/90 border-b border-slate-200/80 text-xs text-slate-600 font-bold uppercase tracking-wider">
+                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
+                  <tr className="h-11 border-b border-slate-200/80 text-xs text-slate-600 font-bold uppercase tracking-wider">
                     <th className="py-3 px-5 font-mono">Số Phiếu Nhập</th>
                     <th className="py-3 px-5">Ngày nhập</th>
                     <th className="py-3 px-5">Nhà cung cấp / Loại</th>

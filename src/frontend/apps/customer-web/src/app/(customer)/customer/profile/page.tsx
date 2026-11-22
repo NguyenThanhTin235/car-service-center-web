@@ -27,7 +27,8 @@ import {
 import Toast from '@/components/shared/Toast';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import CustomerOverviewTab from '@/components/profile/CustomerOverviewTab';
-import { LoadingSkeleton } from '@/components/ui';
+import { ErrorState, LoadingSkeleton } from '@/components/ui';
+import { ALL_BOOKING_SLOTS, isBookingSlotInPast } from '@/utils/customerHelpers';
 
 const TabLoadingFallback = () => (
   <div className="py-2">
@@ -82,8 +83,17 @@ export default function ProfilePage() {
   const { data, loading, error, updateLoading, updateError, updateSuccess } = useAppSelector(
     (state) => state.profile
   );
-  const { vehicles, actionLoading: vehicleActionLoading } = useAppSelector((state) => state.vehicles);
-  const { appointments } = useAppSelector((state) => state.appointments);
+  const {
+    vehicles,
+    loading: vehiclesLoading,
+    error: vehiclesError,
+    actionLoading: vehicleActionLoading,
+  } = useAppSelector((state) => state.vehicles);
+  const {
+    appointments,
+    loading: appointmentsLoading,
+    error: appointmentsError,
+  } = useAppSelector((state) => state.appointments);
 
   // Active Tab State
   const initialTab = (searchParams.get('tab') as TabKey) || 'overview';
@@ -177,6 +187,26 @@ export default function ProfilePage() {
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [cancelApt, setCancelApt] = useState<Appointment | null>(null);
   const [cancelReason, setCancelReason] = useState('');
+  const [aptActionLoading, setAptActionLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedAptDetail && !rescheduleApt && !cancelApt && !vehicleModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (aptActionLoading || vehicleActionLoading) return;
+      if (cancelApt) {
+        setCancelApt(null);
+      } else if (rescheduleApt) {
+        setRescheduleApt(null);
+      } else if (vehicleModalOpen) {
+        setVehicleModalOpen(false);
+      } else if (selectedAptDetail) {
+        setSelectedAptDetail(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedAptDetail, rescheduleApt, cancelApt, vehicleModalOpen, aptActionLoading, vehicleActionLoading]);
 
   // ----------------------------------------------------
   // 3-STEP APPOINTMENT BOOKING MODAL TRIGGER STATE
@@ -539,13 +569,6 @@ export default function ProfilePage() {
     });
   }, [calendarDate, appointments, data?.id]);
 
-  const ALL_BOOKING_SLOTS = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '13:30', '14:00', '14:30', '15:00', '16:00'];
-
-  const isBookingSlotInPast = (dateObj: Date, slot: string) => {
-    const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-    return new Date(`${dateStr}T${slot}:00`) < new Date();
-  };
-
   const handleOpen3StepBooking = (initialDate?: Date) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -642,7 +665,8 @@ export default function ProfilePage() {
 
   // Appointment Action handlers
   const handleConfirmCancelApt = async () => {
-    if (!cancelApt) return;
+    if (!cancelApt || aptActionLoading) return;
+    setAptActionLoading(true);
     try {
       await dispatch(cancelAppointment({ id: cancelApt.id, reason: cancelReason || 'Khách hàng bận' })).unwrap();
       setVehicleToast({ message: 'Đã hủy lịch hẹn thành công.', type: 'success' });
@@ -651,6 +675,8 @@ export default function ProfilePage() {
       dispatch(fetchAppointments(data?.id ? { customer_id: data.id } : {}));
     } catch (err: any) {
       setVehicleToast({ message: typeof err === 'string' ? err : 'Lỗi khi hủy lịch', type: 'error' });
+    } finally {
+      setAptActionLoading(false);
     }
   };
 
@@ -659,6 +685,8 @@ export default function ProfilePage() {
       setVehicleToast({ message: 'Vui lòng chọn đầy đủ ngày và giờ mới.', type: 'error' });
       return;
     }
+    if (aptActionLoading) return;
+    setAptActionLoading(true);
     try {
       await dispatch(
         rescheduleAppointment({
@@ -672,6 +700,8 @@ export default function ProfilePage() {
       dispatch(fetchAppointments(data?.id ? { customer_id: data.id } : {}));
     } catch (err: any) {
       setVehicleToast({ message: typeof err === 'string' ? err : 'Lỗi khi dời lịch', type: 'error' });
+    } finally {
+      setAptActionLoading(false);
     }
   };
 
@@ -709,22 +739,20 @@ export default function ProfilePage() {
 
   if (loading && !data) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-500">Đang tải thông tin...</p>
-        </div>
+      <div className="py-6">
+        <LoadingSkeleton variant="cards" count={3} />
       </div>
     );
   }
 
   if (error && !data) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-2xl text-sm flex items-center gap-2">
-          <span className="material-symbols-outlined text-lg">error</span>
-          <span>{error}</span>
-        </div>
+      <div className="py-8 max-w-xl mx-auto">
+        <ErrorState
+          title="Không thể tải hồ sơ khách hàng"
+          message={error}
+          onRetry={() => dispatch(fetchProfile())}
+        />
       </div>
     );
   }
@@ -1011,7 +1039,15 @@ export default function ProfilePage() {
                 </button>
               </div>
 
-              {vehicles.length === 0 ? (
+              {vehiclesLoading && vehicles.length === 0 ? (
+                <LoadingSkeleton variant="cards" count={2} />
+              ) : vehiclesError && vehicles.length === 0 ? (
+                <ErrorState
+                  title="Không thể tải danh sách xe"
+                  message={vehiclesError}
+                  onRetry={() => dispatch(fetchVehicles())}
+                />
+              ) : vehicles.length === 0 ? (
                 <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl">
                   <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
                     <span className="material-symbols-outlined text-3xl">directions_car</span>
@@ -1186,98 +1222,110 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Large Monthly Calendar Grid */}
-              <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                {/* Weekday Header */}
-                <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200 text-center py-2.5 text-xs font-bold text-slate-600">
-                  <span>Thứ 2</span>
-                  <span>Thứ 3</span>
-                  <span>Thứ 4</span>
-                  <span>Thứ 5</span>
-                  <span>Thứ 6</span>
-                  <span>Thứ 7</span>
-                  <span className="text-red-500">Chủ nhật</span>
-                </div>
+              {/* Large Monthly Calendar Grid (horizontally scrollable on 390px mobile) */}
+              {appointmentsLoading && appointments.length === 0 ? (
+                <LoadingSkeleton variant="cards" count={3} />
+              ) : appointmentsError && appointments.length === 0 ? (
+                <ErrorState
+                  title="Không thể tải lịch hẹn dịch vụ"
+                  message={appointmentsError}
+                  onRetry={() => dispatch(fetchAppointments(data?.id ? { customer_id: data.id } : {}))}
+                />
+              ) : (
+                <div className="border border-slate-200 rounded-2xl overflow-x-auto styled-scrollbar-x shadow-sm">
+                  <div className="min-w-[640px]">
+                    {/* Weekday Header */}
+                    <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200 text-center py-2.5 text-xs font-bold text-slate-600">
+                      <span>Thứ 2</span>
+                      <span>Thứ 3</span>
+                      <span>Thứ 4</span>
+                      <span>Thứ 5</span>
+                      <span>Thứ 6</span>
+                      <span>Thứ 7</span>
+                      <span className="text-red-500">Chủ nhật</span>
+                    </div>
 
-                {/* 35 Calendar Cells */}
-                <div className="grid grid-cols-7 divide-x divide-y divide-slate-100 bg-white">
-                  {calendarDays.map((cell, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => {
-                        if (cell.appointments.length === 0) {
-                          handleOpen3StepBooking(cell.date);
-                        }
-                      }}
-                      className={`min-h-[110px] p-2 flex flex-col justify-between transition-colors cursor-pointer group ${!cell.isCurrentMonth
-                          ? 'bg-slate-50/50 text-slate-300'
-                          : cell.isToday
-                            ? 'bg-blue-50/40'
-                            : 'hover:bg-blue-50/20'
-                        }`}
-                    >
-                      {/* Date Header */}
-                      <div className="flex items-center justify-between">
-                        <span
-                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${cell.isToday
-                              ? 'bg-blue-600 text-white shadow-sm font-bold'
-                              : cell.isCurrentMonth
-                                ? 'text-slate-800'
-                                : 'text-slate-400'
+                    {/* 35 Calendar Cells */}
+                    <div className="grid grid-cols-7 divide-x divide-y divide-slate-100 bg-white">
+                      {calendarDays.map((cell, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => {
+                            if (cell.appointments.length === 0) {
+                              handleOpen3StepBooking(cell.date);
+                            }
+                          }}
+                          className={`min-h-[110px] p-2 flex flex-col justify-between transition-colors cursor-pointer group ${!cell.isCurrentMonth
+                              ? 'bg-slate-50/50 text-slate-300'
+                              : cell.isToday
+                                ? 'bg-blue-50/40'
+                                : 'hover:bg-blue-50/20'
                             }`}
                         >
-                          {cell.dateNum}
-                        </span>
-                        {cell.isCurrentMonth && (
-                          <span className="opacity-0 group-hover:opacity-100 text-[10px] text-blue-600 font-semibold transition-opacity">
-                            + Đặt lịch
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Appointments List on Date */}
-                      <div className="mt-1 space-y-1 overflow-hidden">
-                        {cell.appointments.map((apt) => (
-                          <div
-                            key={apt.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedAptDetail(apt);
-                            }}
-                            className={`p-1.5 rounded-lg text-[11px] font-medium transition-all shadow-xs flex items-center justify-between ${apt.status === 'ARRIVED'
-                                ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
-                                : apt.status === 'CONFIRMED'
-                                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                                  : apt.status === 'CANCELLED'
-                                    ? 'bg-red-100 text-red-800 hover:bg-red-200 line-through'
-                                    : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                              }`}
-                          >
-                            <span className="truncate">
-                              {apt.scheduled_time_str || apt.scheduled_time} • {apt.vehicle?.license_plate || 'Xe'}
+                          {/* Date Header */}
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${cell.isToday
+                                  ? 'bg-blue-600 text-white shadow-sm font-bold'
+                                  : cell.isCurrentMonth
+                                    ? 'text-slate-800'
+                                    : 'text-slate-400'
+                                }`}
+                            >
+                              {cell.dateNum}
                             </span>
-                            <span className="material-symbols-outlined text-[13px] shrink-0">info</span>
+                            {cell.isCurrentMonth && (
+                              <span className="opacity-0 group-hover:opacity-100 text-[10px] text-blue-600 font-semibold transition-opacity">
+                                + Đặt lịch
+                              </span>
+                            )}
                           </div>
-                        ))}
-                      </div>
+
+                          {/* Appointments List on Date */}
+                          <div className="mt-1 space-y-1 overflow-hidden">
+                            {cell.appointments.map((apt) => (
+                              <div
+                                key={apt.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedAptDetail(apt);
+                                }}
+                                className={`p-1.5 rounded-lg text-[11px] font-medium transition-all shadow-xs flex items-center justify-between ${apt.status === 'ARRIVED'
+                                    ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                                    : apt.status === 'CONFIRMED'
+                                      ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                      : apt.status === 'CANCELLED'
+                                        ? 'bg-red-100 text-red-800 hover:bg-red-200 line-through'
+                                        : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                  }`}
+                              >
+                                <span className="truncate">
+                                  {apt.scheduled_time_str || apt.scheduled_time} • {apt.vehicle?.license_plate || 'Xe'}
+                                </span>
+                                <span className="material-symbols-outlined text-[13px] shrink-0">info</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
           {/* TAB: TIẾN ĐỘ SỬA CHỮA (UC-15) */}
           {activeTab === 'tracking' && (
             <div className="space-y-6">
-              <TrackingView isEmbedded={true} />
+              <TrackingView />
             </div>
           )}
 
           {/* TAB: HÓA ĐƠN DỊCH VỤ (UC-16) */}
           {activeTab === 'invoices' && (
             <div className="space-y-6">
-              <InvoicesView isEmbedded={true} />
+              <InvoicesView />
             </div>
           )}
 
@@ -1285,7 +1333,6 @@ export default function ProfilePage() {
           {activeTab === 'history' && (
             <div className="space-y-6">
               <HistoryView
-                isEmbedded={true}
                 onViewTracking={() => handleTabChange('tracking')}
                 onBookNew={() => {
                   handleTabChange('appointments');
@@ -1360,8 +1407,17 @@ export default function ProfilePage() {
         const aptServices = selectedAptDetail.services || [];
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cw-modal-overlay">
-            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-100 space-y-5 cw-modal-panel">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Chi tiết lịch hẹn #${selectedAptDetail.id}`}
+            onClick={() => setSelectedAptDetail(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cw-modal-overlay"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-100 space-y-5 cw-modal-panel"
+            >
               {/* Header */}
               <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
                 <div className="flex items-center gap-3">
@@ -1378,14 +1434,15 @@ export default function ProfilePage() {
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Phiếu đặt lịch dịch vụ • Trung tâm Car Service Center
+                      Phiếu đặt lịch dịch vụ • Trung tâm AutoCare Pro
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedAptDetail(null)}
-                  className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700"
+                  aria-label="Đóng chi tiết lịch hẹn"
+                  className="min-w-[44px] min-h-[44px] rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-lg">close</span>
                 </button>
@@ -1460,7 +1517,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="flex justify-between gap-2">
                       <span className="text-slate-500">Địa điểm:</span>
-                      <span className="font-semibold text-slate-800 text-right">Car Service Center</span>
+                      <span className="font-semibold text-slate-800 text-right">AutoCare Pro</span>
                     </div>
                     <div className="pt-1.5 border-t border-slate-200/70 text-[11px] text-emerald-700 flex items-center gap-1">
                       <span className="material-symbols-outlined text-sm">local_car_wash</span>
@@ -1562,7 +1619,7 @@ export default function ProfilePage() {
                         setRescheduleTime(selectedAptDetail.scheduled_time_str || '08:30');
                         setSelectedAptDetail(null);
                       }}
-                      className="px-3.5 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-semibold transition-colors"
+                      className="min-h-[44px] px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                     >
                       Dời ngày/giờ
                     </button>
@@ -1573,7 +1630,7 @@ export default function ProfilePage() {
                         setCancelReason('');
                         setSelectedAptDetail(null);
                       }}
-                      className="px-3.5 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl text-xs font-semibold transition-colors"
+                      className="min-h-[44px] px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                     >
                       Hủy lịch
                     </button>
@@ -1593,7 +1650,7 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => setSelectedAptDetail(null)}
-                  className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold transition-all self-end sm:self-auto"
+                  className="min-h-[44px] px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold transition-colors self-end sm:self-auto cursor-pointer"
                 >
                   Đóng
                 </button>
@@ -1605,8 +1662,19 @@ export default function ProfilePage() {
 
       {/* Reschedule Modal */}
       {rescheduleApt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cw-modal-overlay">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4 cw-modal-panel">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Dời lịch hẹn #${rescheduleApt.id}`}
+          onClick={() => {
+            if (!aptActionLoading) setRescheduleApt(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cw-modal-overlay"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4 cw-modal-panel"
+          >
             <h3 className="font-bold text-slate-900 text-sm">Dời lịch hẹn #{rescheduleApt.id}</h3>
             <div className="space-y-3 text-xs">
               <div>
@@ -1615,7 +1683,8 @@ export default function ProfilePage() {
                   type="date"
                   value={rescheduleDate}
                   onChange={(e) => setRescheduleDate(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-xl"
+                  disabled={aptActionLoading}
+                  className="w-full min-h-[44px] px-3 py-2 border border-slate-200 rounded-xl"
                 />
               </div>
               <div>
@@ -1624,24 +1693,30 @@ export default function ProfilePage() {
                   type="time"
                   value={rescheduleTime}
                   onChange={(e) => setRescheduleTime(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-xl"
+                  disabled={aptActionLoading}
+                  className="w-full min-h-[44px] px-3 py-2 border border-slate-200 rounded-xl"
                 />
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
+                disabled={aptActionLoading}
                 onClick={() => setRescheduleApt(null)}
-                className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-medium"
+                className="min-h-[44px] px-4 py-2 border border-slate-200 rounded-xl text-xs font-medium disabled:opacity-50 cursor-pointer"
               >
                 Hủy
               </button>
               <button
                 type="button"
+                disabled={aptActionLoading}
                 onClick={handleConfirmRescheduleApt}
-                className="px-4 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700"
+                className="min-h-[44px] px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 disabled:opacity-60 inline-flex items-center gap-1.5 cursor-pointer"
               >
-                Xác nhận dời lịch
+                {aptActionLoading && (
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
+                {aptActionLoading ? 'Đang xử lý...' : 'Xác nhận dời lịch'}
               </button>
             </div>
           </div>
@@ -1650,31 +1725,48 @@ export default function ProfilePage() {
 
       {/* Cancel Confirm Dialog */}
       {cancelApt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cw-modal-overlay">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4 cw-modal-panel">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Hủy lịch hẹn #${cancelApt.id}`}
+          onClick={() => {
+            if (!aptActionLoading) setCancelApt(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cw-modal-overlay"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4 cw-modal-panel"
+          >
             <h3 className="font-bold text-slate-900 text-sm">Hủy lịch hẹn #{cancelApt.id}</h3>
             <p className="text-xs text-slate-500">Vui lòng cho biết lý do hủy lịch:</p>
             <textarea
               rows={2}
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
+              disabled={aptActionLoading}
               placeholder="Tôi bận việc đột xuất..."
               className="w-full p-2.5 border border-slate-200 rounded-xl text-xs resize-none"
             />
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
+                disabled={aptActionLoading}
                 onClick={() => setCancelApt(null)}
-                className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-medium"
+                className="min-h-[44px] px-4 py-2 border border-slate-200 rounded-xl text-xs font-medium disabled:opacity-50 cursor-pointer"
               >
                 Quay lại
               </button>
               <button
                 type="button"
+                disabled={aptActionLoading}
                 onClick={handleConfirmCancelApt}
-                className="px-4 py-1.5 bg-red-600 text-white rounded-xl text-xs font-semibold hover:bg-red-700"
+                className="min-h-[44px] px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-semibold hover:bg-red-700 disabled:opacity-60 inline-flex items-center gap-1.5 cursor-pointer"
               >
-                Xác nhận hủy
+                {aptActionLoading && (
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
+                {aptActionLoading ? 'Đang hủy...' : 'Xác nhận hủy'}
               </button>
             </div>
           </div>
@@ -1683,8 +1775,19 @@ export default function ProfilePage() {
 
       {/* Vehicle Add/Edit Modal (In Child Panel) */}
       {vehicleModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cw-modal-overlay">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 cw-modal-panel">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={vehicleModalMode === 'add' ? 'Thêm phương tiện mới' : 'Chỉnh sửa thông tin xe'}
+          onClick={() => {
+            if (!vehicleActionLoading) setVehicleModalOpen(false);
+          }}
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cw-modal-overlay"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 cw-modal-panel"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -1699,7 +1802,8 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={() => setVehicleModalOpen(false)}
-                className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700"
+                aria-label="Đóng biểu mẫu xe"
+                className="min-w-[44px] min-h-[44px] rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
@@ -1843,14 +1947,15 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => setVehicleModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-50 transition-all"
+                  disabled={vehicleActionLoading}
+                  className="min-h-[44px] px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={vehicleActionLoading}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-1.5"
+                  className="min-h-[44px] px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
                 >
                   {vehicleActionLoading ? (
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1875,7 +1980,7 @@ export default function ProfilePage() {
               ? `Phương tiện biển số ${vehicleDeleteConfirm.licensePlate} (${vehicleDeleteConfirm.make} ${vehicleDeleteConfirm.model}) đã phát sinh giao dịch nên không thể xóa vĩnh viễn. Bạn có muốn vô hiệu hóa xe này không? (Bạn có thể kích hoạt lại bất cứ lúc nào)`
               : `Bạn có chắc chắn muốn xóa phương tiện biển số ${vehicleDeleteConfirm.licensePlate} (${vehicleDeleteConfirm.make} ${vehicleDeleteConfirm.model}) khỏi danh sách xe của bạn không?`
           }
-          confirmText={vehicleDeleteConfirm.hasTransactions ? 'Xác nhận' : 'Xác nhận'}
+          confirmText="Xác nhận"
           onConfirm={handleDeleteVehicle}
           onCancel={() => setVehicleDeleteConfirm(null)}
         />

@@ -1,13 +1,23 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import TabCheckinInspection from './tabs/TabCheckinInspection';
-import TabJob from './tabs/TabJob';
-import TabParts from './tabs/TabParts';
-import TabQuotation from './tabs/TabQuotation';
-import TabQC from './tabs/TabQC';
-import TabRelease from './tabs/TabRelease';
 import { WorkOrder } from '@/lib/api/work-order.api';
+
+const TabSkeleton = () => (
+  <div className="space-y-4 p-4 animate-pulse">
+    <div className="h-6 w-48 bg-slate-200 rounded-lg" />
+    <div className="h-32 w-full bg-slate-100 rounded-xl" />
+    <div className="h-48 w-full bg-slate-100 rounded-xl" />
+  </div>
+);
+
+const TabJob = dynamic(() => import('./tabs/TabJob'), { loading: TabSkeleton });
+const TabParts = dynamic(() => import('./tabs/TabParts'), { loading: TabSkeleton });
+const TabQuotation = dynamic(() => import('./tabs/TabQuotation'), { loading: TabSkeleton });
+const TabQC = dynamic(() => import('./tabs/TabQC'), { loading: TabSkeleton });
+const TabRelease = dynamic(() => import('./tabs/TabRelease'), { loading: TabSkeleton });
 
 const TABS = [
   { id: 'checkin', number: 1, label: 'Tiếp nhận & Kiểm tra', component: TabCheckinInspection },

@@ -45,7 +45,11 @@ export default function CancelConfirmDialog({ appointment, onClose }: CancelConf
     <>
       <div className="fixed inset-0 bg-on-surface/50 z-50 backdrop-blur-sm" onClick={onClose}></div>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-surface-container-lowest w-full max-w-sm rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="bg-surface-container-lowest w-full max-w-sm rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200"
+        >
           <div className="p-6 pb-2">
             <div className="w-12 h-12 rounded-full bg-error-container text-error flex items-center justify-center mb-4">
               <span className="material-symbols-outlined text-2xl" data-icon="warning">warning</span>
@@ -53,7 +57,7 @@ export default function CancelConfirmDialog({ appointment, onClose }: CancelConf
             <h2 className="text-title-lg font-title-lg font-bold text-on-surface mb-2">
               Hủy lịch hẹn #{appointment.id}
             </h2>
-            <p className="text-body-md text-secondary">
+            <p className="text-body-md text-on-surface-variant">
               Bạn có chắc chắn muốn hủy lịch hẹn của khách hàng <span className="font-semibold text-on-surface">{appointment.customer?.full_name || 'này'}</span> không? Thao tác này không thể hoàn tác.
             </p>
           </div>
@@ -92,7 +96,7 @@ export default function CancelConfirmDialog({ appointment, onClose }: CancelConf
             <button 
               type="button" 
               onClick={onClose}
-              className="px-4 py-2 text-label-md font-label-md font-semibold text-secondary hover:bg-surface-container rounded-lg transition-colors"
+              className="px-4 py-2 text-label-md font-label-md font-semibold text-slate-600 hover:bg-surface-container rounded-lg transition-colors cursor-pointer"
             >
               Quay lại
             </button>

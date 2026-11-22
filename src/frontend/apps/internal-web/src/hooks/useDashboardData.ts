@@ -80,10 +80,11 @@ export function useDashboardData({
     fetchData();
   }, [fetchData]);
 
-  // Polling interval
+  // Polling interval (chỉ poll khi tab đang hiển thị)
   useEffect(() => {
     if (autoRefreshInterval <= 0) return;
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       fetchData(true);
     }, autoRefreshInterval);
     return () => clearInterval(interval);

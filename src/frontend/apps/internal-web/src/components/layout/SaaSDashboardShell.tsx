@@ -85,7 +85,8 @@ export default function SaaSDashboardShell({
       }
     });
     setOpenGroups(initialGroups);
-  }, [navItems]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleSidebarTone = () => {
     const nextTone: SidebarTone = sidebarTone === 'sapphire' ? 'light' : 'sapphire';

@@ -4,6 +4,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch } from '@/store';
 import { createVehicle, fetchVehicles, Vehicle } from '@/store/slices/vehicleSlice';
 import { Appointment, createAppointment, fetchAppointments } from '@/store/slices/appointmentSlice';
+import {
+  MORNING_BOOKING_SLOTS,
+  AFTERNOON_BOOKING_SLOTS,
+  ALL_BOOKING_SLOTS,
+  isBookingSlotInPast,
+} from '@/utils/customerHelpers';
 
 const AVAILABLE_SERVICES = [
   {
@@ -49,15 +55,6 @@ const AVAILABLE_SERVICES = [
     icon: 'tire_repair',
   },
 ];
-
-const MORNING_BOOKING_SLOTS = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30'];
-const AFTERNOON_BOOKING_SLOTS = ['13:30', '14:00', '14:30', '15:00', '16:00'];
-const ALL_BOOKING_SLOTS = [...MORNING_BOOKING_SLOTS, ...AFTERNOON_BOOKING_SLOTS];
-
-const isBookingSlotInPast = (dateObj: Date, slot: string) => {
-  const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-  return new Date(`${dateStr}T${slot}:00`) < new Date();
-};
 
 interface CustomerBookingModalProps {
   initialDate: Date;
