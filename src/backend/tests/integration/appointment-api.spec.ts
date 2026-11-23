@@ -8,6 +8,9 @@ import { notificationService } from '../../src/services/notification.service';
 vi.mock('../../src/services/notification.service', () => ({
   notificationService: {
     sendEmail: vi.fn().mockResolvedValue(true),
+    notifyAndEmail: vi.fn().mockResolvedValue(undefined),
+    sendInAppToRoles: vi.fn().mockResolvedValue({ count: 0, userIds: [] }),
+    sendInApp: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -364,7 +367,13 @@ describe('Integration API - Appointment Lifecycle (SPEC-APPT / UC-11, UC-12, UC-
 
       (prisma.appointment.update as any).mockResolvedValue({
         id: 1,
+        customer_id: 101,
         status: 'CONFIRMED',
+        scheduled_date: new Date('2026-11-10T00:00:00.000Z'),
+        scheduled_time: new Date('1970-01-01T09:00:00.000Z'),
+        customer: { email: 'customer@example.com', full_name: 'Trần Văn Khách' },
+        vehicle: { license_plate: '51F-123.45', make: 'Toyota', model: 'Cross' },
+        services: [],
       });
 
       const res = await request(app)
@@ -391,8 +400,13 @@ describe('Integration API - Appointment Lifecycle (SPEC-APPT / UC-11, UC-12, UC-
 
       (prisma.appointment.update as any).mockResolvedValue({
         id: 1,
+        customer_id: 101,
         status: 'CANCELLED',
         cancel_reason: 'Bận công tác đột xuất',
+        scheduled_date: new Date('2026-11-10T00:00:00.000Z'),
+        scheduled_time: new Date('1970-01-01T09:00:00.000Z'),
+        customer: { email: 'customer@example.com', full_name: 'Trần Văn Khách' },
+        vehicle: { license_plate: '51F-123.45', make: 'Toyota', model: 'Cross' },
       });
 
       const res = await request(app)

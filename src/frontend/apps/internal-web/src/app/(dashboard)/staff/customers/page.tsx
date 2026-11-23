@@ -1,18 +1,30 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import CustomerFormModal from '@/components/customers/CustomerFormModal';
-import CustomerDetailModal from '@/components/customers/CustomerDetailModal';
-import ConfirmModal from '@/components/shared/ConfirmModal';
+import dynamic from 'next/dynamic';
 import TablePagination from '@/components/shared/TablePagination';
 import { formatVND } from '@/lib/utils/formatters';
 import { toast } from 'react-hot-toast';
 import api from '@/lib/axios';
 import { useSelector } from 'react-redux';
 
+const CustomerFormModal = dynamic(
+  () => import('@/components/customers/CustomerFormModal'),
+  { ssr: false }
+);
+const CustomerDetailModal = dynamic(
+  () => import('@/components/customers/CustomerDetailModal'),
+  { ssr: false }
+);
+const ConfirmModal = dynamic(
+  () => import('@/components/shared/ConfirmModal'),
+  { ssr: false }
+);
+
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   
@@ -50,7 +62,7 @@ export default function CustomersPage() {
       console.error('Lỗi khi tải dữ liệu khách hàng', err);
       setError(err?.response?.data?.message || 'Không thể tải danh sách khách hàng. Vui lòng kiểm tra kết nối.');
     } finally {
-      setLoading(false);
+      setExporting(false);
     }
   };
 
@@ -109,7 +121,7 @@ export default function CustomersPage() {
 
   const handleExportExcel = async () => {
     try {
-      setLoading(true);
+      setExporting(true);
       // Fetch all for the report
       const res = await api.get('/api/customers', {
         params: { search, limit: 10000, status: activeTab },
@@ -225,7 +237,7 @@ export default function CustomersPage() {
       console.error('Lỗi khi xuất báo cáo', error);
       toast.error('Có lỗi xảy ra khi xuất báo cáo!');
     } finally {
-      setLoading(false);
+      setExporting(false);
     }
   };
 
@@ -251,47 +263,53 @@ export default function CustomersPage() {
 
   return (
     <>
-      <ConfirmModal
-        isOpen={isConfirmOpen}
-        title={
-          confirmAction === 'delete'
-            ? 'Xác nhận vô hiệu hóa'
-            : confirmAction === 'restore'
-            ? 'Xác nhận khôi phục'
-            : 'Xác nhận xóa vĩnh viễn'
-        }
-        message={
-          confirmAction === 'delete'
-            ? 'Bạn có chắc chắn muốn vô hiệu hóa khách hàng này không? Dữ liệu lịch sử giao dịch (phiếu công việc, hóa đơn...) vẫn sẽ được giữ lại.'
-            : confirmAction === 'restore'
-            ? 'Bạn có muốn khôi phục lại hồ sơ của khách hàng này không?'
-            : 'Bạn có chắc chắn muốn xóa vĩnh viễn khách hàng này không? Mọi thông tin phương tiện sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.'
-        }
-        confirmText={
-          confirmAction === 'delete'
-            ? 'Vô hiệu hóa'
-            : confirmAction === 'restore'
-            ? 'Khôi phục'
-            : 'Xóa vĩnh viễn'
-        }
-        cancelText="Hủy"
-        isDestructive={confirmAction !== 'restore'}
-        onConfirm={executeConfirmAction}
-        onCancel={() => setIsConfirmOpen(false)}
-      />
+      {isConfirmOpen && (
+        <ConfirmModal
+          isOpen={isConfirmOpen}
+          title={
+            confirmAction === 'delete'
+              ? 'Xác nhận vô hiệu hóa'
+              : confirmAction === 'restore'
+              ? 'Xác nhận khôi phục'
+              : 'Xác nhận xóa vĩnh viễn'
+          }
+          message={
+            confirmAction === 'delete'
+              ? 'Bạn có chắc chắn muốn vô hiệu hóa khách hàng này không? Dữ liệu lịch sử giao dịch (phiếu công việc, hóa đơn...) vẫn sẽ được giữ lại.'
+              : confirmAction === 'restore'
+              ? 'Bạn có muốn khôi phục lại hồ sơ của khách hàng này không?'
+              : 'Bạn có chắc chắn muốn xóa vĩnh viễn khách hàng này không? Mọi thông tin phương tiện sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.'
+          }
+          confirmText={
+            confirmAction === 'delete'
+              ? 'Vô hiệu hóa'
+              : confirmAction === 'restore'
+              ? 'Khôi phục'
+              : 'Xóa vĩnh viễn'
+          }
+          cancelText="Hủy"
+          isDestructive={confirmAction !== 'restore'}
+          onConfirm={executeConfirmAction}
+          onCancel={() => setIsConfirmOpen(false)}
+        />
+      )}
 
-      <CustomerFormModal
-        isOpen={isFormModalOpen}
-        onClose={() => setIsFormModalOpen(false)}
-        onSave={handleSaveCustomer}
-        initialData={selectedCustomer}
-      />
+      {isFormModalOpen && (
+        <CustomerFormModal
+          isOpen={isFormModalOpen}
+          onClose={() => setIsFormModalOpen(false)}
+          onSave={handleSaveCustomer}
+          initialData={selectedCustomer}
+        />
+      )}
 
-      <CustomerDetailModal
-        isOpen={isDetailModalOpen}
-        onClose={() => setIsDetailModalOpen(false)}
-        customerData={selectedCustomer}
-      />
+      {isDetailModalOpen && (
+        <CustomerDetailModal
+          isOpen={isDetailModalOpen}
+          onClose={() => setIsDetailModalOpen(false)}
+          customerData={selectedCustomer}
+        />
+      )}
 
       <div className="space-y-6 w-full">
         {/* 1. Asymmetrical 12-Col CRM Bento Header (5 + 4 + 3) */}
@@ -342,7 +360,7 @@ export default function CustomersPage() {
           <div className="md:col-span-3 saas-card p-5 flex flex-col justify-between">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-xs font-semibold text-slate-500">Chi tiêu tích lũy</span>
+                <span className="text-xs font-semibold text-slate-500">Chi tiêu tích lũy (Trang này)</span>
                 <div className="text-xl sm:text-2xl font-mono font-extrabold tabular-nums text-emerald-600 mt-1 truncate">
                   {formatVND(pageTotalSpent)}
                 </div>
@@ -352,8 +370,8 @@ export default function CustomersPage() {
               </div>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span>Giá trị lũy kế</span>
-              <span className="text-emerald-700 font-semibold">Khách hàng thân thiết</span>
+              <span>Trên trang hiện tại</span>
+              <span className="text-emerald-700 font-semibold">Khách hàng hiển thị</span>
             </div>
           </div>
         </div>
@@ -409,12 +427,13 @@ export default function CustomersPage() {
               </div>
               <button
                 onClick={handleExportExcel}
-                className="h-10 px-3.5 rounded-xl border border-emerald-200/90 bg-emerald-50/80 text-emerald-700 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-100/80 transition-colors cursor-pointer shrink-0"
+                disabled={exporting}
+                className="h-10 px-3.5 rounded-xl border border-emerald-200/90 bg-emerald-50/80 text-emerald-700 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-100/80 transition-colors cursor-pointer shrink-0 disabled:opacity-60"
               >
                 <span className="material-symbols-outlined text-[16px] text-emerald-600">
                   description
                 </span>
-                <span>Xuất Excel</span>
+                <span>{exporting ? 'Đang xuất...' : 'Xuất Excel'}</span>
               </button>
               <button
                 onClick={() => fetchCustomers(search, currentPage, activeTab)}

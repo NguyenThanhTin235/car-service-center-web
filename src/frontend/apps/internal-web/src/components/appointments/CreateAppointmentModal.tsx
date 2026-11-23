@@ -78,7 +78,7 @@ export default function CreateAppointmentModal({
       setFetchingData(true);
       try {
         const [customersRes, servicesRes] = await Promise.all([
-          api.get('/api/customers', { params: { limit: 100 } }),
+          api.get('/api/customers', { params: { limit: 50 } }),
           api.get('/api/services', { params: { limit: 100, isActive: 'true' } }),
         ]);
         setCustomers(customersRes.data.data || []);
@@ -117,6 +117,34 @@ export default function CreateAppointmentModal({
       setWarrantyItems([]);
     }
   }, [vehicleId, loadVehicleWarranty]);
+
+  // Debounced server-side customer search so customers beyond the initial batch are reachable
+  useEffect(() => {
+    const q = customerSearch.trim();
+    if (q.length < 2) return;
+    // Skip if input already matches a selected customer's exact display label
+    if (customers.some((c) => `${c.fullName} - ${c.phone}` === q)) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get('/api/customers', {
+          params: { search: q, limit: 50 },
+        });
+        const fetched: any[] = res.data?.data || [];
+        if (fetched.length > 0) {
+          setCustomers((prev) => {
+            const byId = new Map(prev.map((c) => [c.id, c]));
+            for (const c of fetched) byId.set(c.id, c);
+            return Array.from(byId.values());
+          });
+        }
+      } catch (err) {
+        console.error('Customer search error:', err);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [customerSearch]);
 
   const selectedCustomer = customers.find((c) => c.id.toString() === customerId);
   const availableVehicles = selectedCustomer?.vehicles || [];
@@ -849,8 +877,8 @@ export default function CreateAppointmentModal({
                           <span className="material-symbols-outlined text-amber-500 text-base">wb_sunny</span>
                           Buổi sáng (07:30 - 11:30)
                         </span>
-                        <span className="text-[11px] text-slate-400">
-                          {MORNING_SLOTS.length}/{MORNING_SLOTS.length} khung giờ sẵn sàng
+                        <span className="text-[11px] text-slate-500">
+                          {MORNING_SLOTS.length} khung giờ ca sáng
                         </span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
@@ -881,8 +909,8 @@ export default function CreateAppointmentModal({
                           <span className="material-symbols-outlined text-blue-500 text-base">wb_twilight</span>
                           Buổi chiều (13:30 - 17:30)
                         </span>
-                        <span className="text-[11px] text-slate-400">
-                          {AFTERNOON_SLOTS.length} khung giờ sẵn sàng
+                        <span className="text-[11px] text-slate-500">
+                          {AFTERNOON_SLOTS.length} khung giờ ca chiều
                         </span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
@@ -906,13 +934,13 @@ export default function CreateAppointmentModal({
                       </div>
                     </div>
 
-                    {/* VIP Lounge Note */}
+                    {/* Operational Note */}
                     <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-2.5 text-xs text-slate-600">
                       <span className="material-symbols-outlined text-blue-600 text-base shrink-0 mt-0.5">
                         schedule
                       </span>
                       <p className="text-[11px] leading-relaxed">
-                        <strong>Thời gian hoàn tất dự kiến:</strong> 1.5 – 2.5 giờ làm việc. Khách hàng có thể nghỉ ngơi tại phòng chờ VIP tiêu chuẩn có Wi-Fi tốc độ cao, nước uống và màn hình theo dõi tiến độ thời gian thực.
+                        <strong>Lưu ý điều phối:</strong> Thời gian xử lý thực tế phụ thuộc vào gói dịch vụ đã chọn ({selectedServiceIds.length} hạng mục) và kết quả kiểm tra kỹ thuật khi tiếp nhận xe tại xưởng.
                       </p>
                     </div>
                   </div>

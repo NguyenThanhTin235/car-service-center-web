@@ -6,7 +6,7 @@ interface AppointmentCardProps {
   onClick?: (appointment: Appointment) => void;
 }
 
-export default function AppointmentCard({ appointment, onClick }: AppointmentCardProps) {
+const AppointmentCard = React.memo(function AppointmentCard({ appointment, onClick }: AppointmentCardProps) {
   // Determine styles based on status (Tone-on-tone surface without border-l-4 or nested card borders)
   let bgClass = '';
   let dotClass = '';
@@ -103,4 +103,6 @@ export default function AppointmentCard({ appointment, onClick }: AppointmentCar
       </div>
     </div>
   );
-}
+});
+
+export default AppointmentCard;

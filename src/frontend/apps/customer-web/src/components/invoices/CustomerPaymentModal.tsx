@@ -7,6 +7,7 @@ import {
   simulateQrSuccess,
   SepayPaymentResponse,
 } from '@/lib/api/payment.api';
+import { formatVnd } from '@/utils/customerHelpers';
 
 interface CustomerPaymentModalProps {
   isOpen: boolean;
@@ -34,8 +35,6 @@ export default function CustomerPaymentModal({
   const [simulating, setSimulating] = useState(false);
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
-
-  const formatMoney = (val: number) => (Number(val) || 0).toLocaleString('vi-VN') + ' đ';
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -71,6 +70,17 @@ export default function CustomerPaymentModal({
     }
   }, [isOpen, invoice.id]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   // Polling kiểm tra trạng thái thanh toán khi phiên SePay được tạo
   useEffect(() => {
     if (!isOpen) {
@@ -93,7 +103,7 @@ export default function CustomerPaymentModal({
             onClose();
           }, 2000);
         }
-      } catch (e) {
+      } catch {
         // Silent error on polling
       }
     };
@@ -127,7 +137,13 @@ export default function CustomerPaymentModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Thanh toán trực tuyến SePay"
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+    >
       <div
         className="bg-surface-container-lowest border border-surface-container-highest rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
@@ -150,7 +166,8 @@ export default function CustomerPaymentModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container transition-colors cursor-pointer"
+            aria-label="Đóng cửa sổ thanh toán"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container transition-colors cursor-pointer"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
@@ -180,7 +197,7 @@ export default function CustomerPaymentModal({
           ) : loading ? (
             <div className="py-16 flex flex-col items-center justify-center gap-2">
               <div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
-              <p className="text-xs text-on-surface-variant font-medium">Đang tạo mã VietQR SePay...</p>
+              <p className="text-xs text-on-surface-variant font-medium">Đang khởi tạo mã QR SePay...</p>
             </div>
           ) : sepayData ? (
             /* Layout 2 cột: Mã QR bên trái, Thông tin bên phải */
@@ -213,7 +230,7 @@ export default function CustomerPaymentModal({
                     Số tiền cần thanh toán:
                   </span>
                   <span className="text-2xl font-black text-primary font-mono">
-                    {formatMoney(invoice.amountDue)}
+                    {formatVnd(invoice.amountDue)}
                   </span>
                 </div>
 
@@ -232,7 +249,8 @@ export default function CustomerPaymentModal({
                         <button
                           type="button"
                           onClick={() => copyToClipboard(sepayData.bankInfo!.accountNumber, 'acc')}
-                          className="p-1 hover:bg-surface-container rounded text-on-surface-variant cursor-pointer"
+                          aria-label="Sao chép số tài khoản"
+                          className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-surface-container rounded-lg text-on-surface-variant cursor-pointer"
                           title="Sao chép số tài khoản"
                         >
                           <span className="material-symbols-outlined text-[14px]">
@@ -257,7 +275,8 @@ export default function CustomerPaymentModal({
                         <button
                           type="button"
                           onClick={() => copyToClipboard(sepayData.bankInfo!.transferContent, 'content')}
-                          className="p-1 hover:bg-amber-100 rounded text-amber-800 cursor-pointer"
+                          aria-label="Sao chép nội dung chuyển khoản"
+                          className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-amber-100 rounded-lg text-amber-800 cursor-pointer"
                           title="Sao chép nội dung"
                         >
                           <span className="material-symbols-outlined text-[16px]">
@@ -294,7 +313,7 @@ export default function CustomerPaymentModal({
                 <span>Thanh toán an toàn qua SePay</span>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Hỗ trợ quét mã VietQR trên mọi ứng dụng ngân hàng. Tiền vào tài khoản tự động xác nhận tức thì.
+                Hỗ trợ quét mã QR SePay trên mọi ứng dụng ngân hàng. Tiền vào tài khoản tự động xác nhận tức thì.
               </p>
             </div>
           )}

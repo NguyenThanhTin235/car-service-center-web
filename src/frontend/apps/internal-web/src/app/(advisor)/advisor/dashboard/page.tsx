@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { KPICard, KPICardVariant } from '@/components/dashboard/KPICard';
@@ -11,65 +11,31 @@ import { DashboardTelemetryMiniBars } from '@/components/dashboard/DashboardTele
 import { DashboardActionTable, TableColumn } from '@/components/dashboard/DashboardActionTable';
 import { WO_STATUS_META } from '@/components/advisor/work-order/work-order.constants';
 
-const SA_PERIOD_MAP: Record<
-  string,
-  {
-    sparklinePoints: number[];
-    waveLabels: string[];
-    splitPercentage: number;
-    heatmapCol: number;
-    slaPercentage: number;
-    stageMultiplier: number;
-    telemetryMultiplier: number;
-  }
-> = {
-  today: {
-    sparklinePoints: [3, 7, 6, 12, 16],
-    waveLabels: ['08:00', '11:00', '14:00', '17:00', '20:00'],
-    splitPercentage: 75,
-    heatmapCol: 2,
-    slaPercentage: 100,
-    stageMultiplier: 0.6,
-    telemetryMultiplier: 0.65,
-  },
-  '7days': {
-    sparklinePoints: [8, 14, 11, 18, 24],
-    waveLabels: ['T2', 'T3', 'T4', 'T5', 'T6'],
-    splitPercentage: 65,
-    heatmapCol: 4,
-    slaPercentage: 96,
-    stageMultiplier: 1.0,
-    telemetryMultiplier: 1.0,
-  },
-  '30days': {
-    sparklinePoints: [10, 20, 18, 30, 42],
-    waveLabels: ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4', 'Tuần 5'],
-    splitPercentage: 80,
-    heatmapCol: 1,
-    slaPercentage: 92,
-    stageMultiplier: 1.6,
-    telemetryMultiplier: 1.7,
-  },
-  this_month: {
-    sparklinePoints: [8, 16, 25, 34, 45],
-    waveLabels: ['Đầu T', 'Tuần 2', 'Giữa T', 'Tuần 4', 'Cuối T'],
-    splitPercentage: 70,
-    heatmapCol: 3,
-    slaPercentage: 95,
-    stageMultiplier: 1.3,
-    telemetryMultiplier: 1.35,
-  },
+const SOURCE_TYPE_LABELS: Record<string, string> = {
+  APPOINTMENT: 'Đặt hẹn',
+  WALK_IN: 'Vãng lai',
+  TOW_IN: 'Cứu hộ',
+};
+
+const STAGE_LABELS: Record<string, string> = {
+  DRAFT: 'Tiếp nhận',
+  IN_PLANNING: 'Kế hoạch',
+  PENDING_APPROVAL: 'Chờ duyệt',
+  APPROVED: 'Đã duyệt',
+  IN_PROGRESS: 'Đang sửa',
+  BILLING_REQUESTED: 'Chờ TT',
+  FINANCIAL_CLEARED: 'Chờ giao',
+  CLOSED: 'Hoàn tất',
 };
 
 export default function SADashboardAnalyticsPage() {
   const {
     period,
     setPeriod,
-    scope,
-    setScope,
     data,
     isLoading,
     isRefreshing,
+    error,
     lastUpdated,
     refetch,
   } = useDashboardData({
@@ -80,13 +46,17 @@ export default function SADashboardAnalyticsPage() {
 
   const [selectedStatus, setSelectedStatus] = useState<string>('');
 
+  const handleToggleStatus = useCallback((status: string) => {
+    setSelectedStatus((prev) => (prev === status ? '' : status));
+  }, []);
+
   const filteredList = useMemo(() => {
     const list = data?.actionableList || [];
     if (!selectedStatus) return list;
     return list.filter((item: any) => item.status === selectedStatus);
   }, [data?.actionableList, selectedStatus]);
 
-  const columns: TableColumn<any>[] = [
+  const columns: TableColumn<any>[] = useMemo(() => [
     {
       key: 'woNumber',
       label: 'Mã hồ sơ',
@@ -106,7 +76,7 @@ export default function SADashboardAnalyticsPage() {
       render: (row) => (
         <div>
           <div className="font-semibold text-slate-900 dark:text-white">{row.customerName}</div>
-          <div className="text-[11px] text-slate-400 font-mono tabular-nums">{row.customerPhone}</div>
+          <div className="text-xs text-slate-600 font-mono tabular-nums">{row.customerPhone}</div>
         </div>
       ),
     },
@@ -185,58 +155,74 @@ export default function SADashboardAnalyticsPage() {
       cellClassName: 'whitespace-nowrap',
       render: (row) => (
         <Link
-          href={`/advisor?woId=${row.id}`}
+          href={`/advisor/work-orders/${row.id}`}
           className="text-xs font-semibold text-[#0050cd] hover:underline whitespace-nowrap"
         >
-          Xử lý hồ sơ →
+          {row.status === 'CLOSED' ? 'Xem hồ sơ →' : 'Xử lý hồ sơ →'}
         </Link>
       ),
     },
-  ];
+  ], []);
 
-  const donutData = (data?.charts?.distribution || []).map((item: any) => {
-    const conf = WO_STATUS_META[item.category] || { label: item.category, dotColor: undefined };
-    return {
-      category: item.category,
-      label: conf.label,
-      count: item.count,
-      color: conf.dotColor,
-    };
-  });
+  const summary = data?.charts?.summary || {
+    pendingApprovalCount: 0,
+    inInspectionCount: 0,
+    inProgressCount: 0,
+    handoverReadyCount: 0,
+    approvedQuotations: 0,
+    totalQuotations: 0,
+    totalPeriodIntake: 0,
+  };
 
-  // 8 giai đoạn phân bổ quy trình hồ sơ Cố vấn (Stage Bars)
-  const saStageBars = useMemo(() => {
-    const list = data?.actionableList || [];
-    const countMap: Record<string, number> = {};
-    list.forEach((wo: any) => {
-      countMap[wo.status] = (countMap[wo.status] || 0) + 1;
+  const revenueSparkline = useMemo(() => {
+    const trend = data?.charts?.revenueTrend || [];
+    if (trend.length < 2) return undefined;
+    return trend.slice(-5).map((item: any) => Number(item.value || 0));
+  }, [data?.charts?.revenueTrend]);
+
+  const revenueWaveLabels = useMemo(() => {
+    const trend = data?.charts?.revenueTrend || [];
+    if (trend.length < 2) return ['Kỳ 1', 'Kỳ 2', 'Kỳ 3', 'Kỳ 4', 'Kỳ 5'];
+    return trend.slice(-5).map((item: any) => item.label);
+  }, [data?.charts?.revenueTrend]);
+
+  const donutData = useMemo(() => {
+    return (data?.charts?.distribution || []).map((item: any) => {
+      const conf = WO_STATUS_META[item.category] || { label: item.category, dotColor: undefined };
+      return {
+        category: item.category,
+        label: conf.label,
+        count: Number(item.count || 0),
+        color: conf.dotColor,
+      };
     });
+  }, [data?.charts?.distribution]);
 
-    const kpiVal = (key: string) => Number(data?.kpis?.find((k) => k.key === key)?.value || 0);
+  const saStageBars = useMemo(() => {
+    const pipeline = data?.charts?.stagePipeline || [];
+    if (pipeline.length === 0) {
+      return Object.entries(STAGE_LABELS).map(([key, label]) => ({
+        key,
+        label,
+        count: 0,
+      }));
+    }
 
-    return [
-      { key: 'DRAFT', label: 'Tiếp nhận', count: countMap['DRAFT'] || 2 },
-      { key: 'IN_PLANNING', label: 'Kế hoạch', count: kpiVal('inInspectionWos') || 4, highlight: true },
-      { key: 'PENDING_APPROVAL', label: 'Chờ duyệt', count: kpiVal('pendingQuotations') || 3 },
-      { key: 'APPROVED', label: 'Đã duyệt', count: countMap['APPROVED'] || 5 },
-      { key: 'IN_PROGRESS', label: 'Đang sửa', count: kpiVal('qcReadyWos') || 7 },
-      { key: 'BILLING_REQUESTED', label: 'Chờ TT', count: countMap['BILLING_REQUESTED'] || 2 },
-      { key: 'FINANCIAL_CLEARED', label: 'Chờ giao', count: kpiVal('handoverReadyWos') || 3 },
-      { key: 'CLOSED', label: 'Hoàn tất', count: countMap['CLOSED'] || 10 },
-    ];
-  }, [data?.actionableList, data?.kpis]);
+    return pipeline.map((stage: any) => ({
+      key: stage.status,
+      label: STAGE_LABELS[stage.status] || WO_STATUS_META[stage.status]?.shortLabel || stage.status,
+      count: Number(stage.count || 0),
+    }));
+  }, [data?.charts?.stagePipeline]);
 
-  // Phân loại nguồn xe tiếp nhận (Telemetry Mini-Bars)
   const saTelemetry = useMemo(() => {
-    const totalAppt = Number(data?.charts?.appointmentsVolume || 10);
-    return [
-      { label: 'Vãng lai', count: Math.round(totalAppt * 0.45), pct: 45 },
-      { label: 'Đặt hẹn', count: totalAppt, pct: 30 },
-      { label: 'Cứu hộ', count: Math.max(1, Math.round(totalAppt * 0.15)), pct: 15 },
-      { label: 'Đúng hạn', count: Math.round(totalAppt * 0.8), pct: 80 },
-      { label: 'Ưu tiên', count: Math.max(1, Math.round(totalAppt * 0.2)), pct: 20 },
-    ];
-  }, [data?.charts?.appointmentsVolume]);
+    const sources = data?.charts?.sourceBreakdown || [];
+    return sources.map((item: any) => ({
+      label: SOURCE_TYPE_LABELS[item.sourceType] || item.sourceType,
+      count: Number(item.count || 0),
+      pct: Number(item.pct || 0),
+    }));
+  }, [data?.charts?.sourceBreakdown]);
 
   return (
     <div className="flex flex-col min-w-0 w-full space-y-6 py-4 sm:py-6 max-w-[1440px] mx-auto">
@@ -244,10 +230,10 @@ export default function SADashboardAnalyticsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Bảng Điều Hành Cố Vấn Dịch Vụ (Service Advisor)
+            Phân tích &amp; KPI Cá nhân
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Theo dõi đường ống báo giá khách hàng, tiến độ khám xe, nghiệm thu QC và giải phóng xe bàn giao.
+            Theo dõi doanh thu quyết toán, tỷ lệ chốt báo giá và tiến độ các hồ sơ do bạn trực tiếp phụ trách.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -259,147 +245,202 @@ export default function SADashboardAnalyticsPage() {
           </Link>
           <Link
             href="/advisor/work-orders"
-            className="px-3 py-1.5 text-xs font-medium bg-[#0050cd] hover:bg-blue-700 text-white rounded-lg transition-colors shadow-xs"
+            className="sa-press px-3 py-1.5 text-xs font-medium bg-[#0050cd] hover:bg-[#0866ff] text-white rounded-lg transition-colors shadow-xs"
           >
-            + Tất cả phiếu công việc
+            + Hồ sơ của tôi
           </Link>
         </div>
       </div>
 
-      {/* Filter Bar with Scope Switcher */}
+      {/* Filter Bar (Personal SA scope locked on server, no scope switcher) */}
       <DashboardFilterBar
         period={period}
         onPeriodChange={setPeriod}
-        scope={scope}
-        onScopeChange={setScope}
-        showScopeSelector={true}
+        showScopeSelector={false}
         onRefresh={refetch}
         isRefreshing={isRefreshing}
         lastUpdated={lastUpdated}
       />
 
-      {/* 4 KPI Cards */}
+      {/* Error State Banner */}
+      {error && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[20px] text-rose-600">error</span>
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={refetch}
+            className="self-start sm:self-auto px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-colors cursor-pointer"
+          >
+            Thử lại
+          </button>
+        </div>
+      )}
+
+      {/* 4 Personal KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {(data?.kpis || []).map((kpi, index) => {
           const variants: KPICardVariant[] = ['navy', 'royal', 'slate', 'midnight'];
           const cardVariant = variants[index % variants.length];
 
+          let icon = 'analytics';
           let sparklineCallout: string | undefined;
-          let splitPercentage = 70;
+          let splitPercentage = 0;
           let splitLeftLabel: string | undefined;
           let splitRightLabel: string | undefined;
           let subtitle: string | undefined;
-          let waveLabels = ['Tiếp nhận', 'Báo giá', 'Duyệt giá', 'Thi công', 'Giao xe'];
+          let sparklinePoints: number[] | undefined;
+          let waveLabels: string[] | undefined;
 
-          if (index === 0) {
-            sparklineCallout = `${kpi.value} báo giá`;
-            subtitle = 'Hồ sơ đang chờ khách hàng xác nhận';
-          } else if (index === 1) {
-            splitPercentage = 65;
-            splitLeftLabel = 'Đang khám';
-            splitRightLabel = 'Chờ duyệt';
-            subtitle = 'Xe đang kiểm tra chẩn đoán kỹ thuật';
-          } else if (index === 2) {
-            sparklineCallout = `${kpi.value} phiếu QC`;
-            subtitle = 'Phiếu công việc đã sửa chữa xong chờ nghiệm thu';
-          } else if (index === 3) {
-            subtitle = 'Đã đối soát thanh toán & sẵn sàng bàn giao chìa khóa';
+          if (kpi.key === 'personalRevenue') {
+            icon = 'payments';
+            sparklinePoints = revenueSparkline;
+            waveLabels = revenueWaveLabels;
+            subtitle = 'Tổng hóa đơn đã thanh toán từ hồ sơ bạn phụ trách';
+          } else if (kpi.key === 'quotationApprovalRate') {
+            icon = 'fact_check';
+            splitPercentage = Math.min(100, Math.max(0, Number(kpi.value || 0)));
+            splitLeftLabel = `Đã duyệt (${summary.approvedQuotations})`;
+            splitRightLabel = `Tổng (${summary.totalQuotations})`;
+            subtitle =
+              summary.totalQuotations > 0
+                ? `${summary.approvedQuotations}/${summary.totalQuotations} báo giá được khách hàng duyệt`
+                : 'Chưa phát sinh báo giá trong kỳ lọc';
+          } else if (kpi.key === 'completedWos') {
+            icon = 'task_alt';
+            sparklineCallout = `${kpi.value} hồ sơ`;
+            subtitle = 'Phiếu công việc bạn phụ trách đã đóng & bàn giao';
+          } else if (kpi.key === 'activeWosCount') {
+            icon = 'assignment_ind';
+            subtitle = `${summary.pendingApprovalCount} chờ duyệt • ${summary.handoverReadyCount} chờ giao xe`;
           }
 
           return (
-            <KPICard
-              key={kpi.key}
-              label={kpi.label}
-              value={kpi.value}
-              prevValue={kpi.prevValue}
-              format={kpi.format}
-              unit={kpi.unit}
-              isLoading={isLoading}
-              variant={cardVariant}
-              sparklineCallout={sparklineCallout}
-              splitPercentage={splitPercentage}
-              splitLeftLabel={splitLeftLabel}
-              splitRightLabel={splitRightLabel}
-              subtitle={subtitle}
-              waveLabels={waveLabels}
-              icon={
-                kpi.key === 'pendingQuotations'
-                  ? 'request_quote'
-                  : kpi.key === 'inInspectionWos'
-                  ? 'search_check'
-                  : kpi.key === 'qcReadyWos'
-                  ? 'verified'
-                  : 'key'
-              }
-            />
+            <div key={kpi.key} className="sa-enter" style={{ animationDelay: `${index * 35}ms` }}>
+              <KPICard
+                label={kpi.label}
+                value={kpi.value}
+                prevValue={kpi.prevValue}
+                format={kpi.format}
+                unit={kpi.unit}
+                isLoading={isLoading}
+                variant={cardVariant}
+                sparklineCallout={sparklineCallout}
+                sparklinePoints={sparklinePoints}
+                waveLabels={waveLabels}
+                splitPercentage={splitPercentage}
+                splitLeftLabel={splitLeftLabel}
+                splitRightLabel={splitRightLabel}
+                subtitle={subtitle}
+                icon={icon}
+              />
+            </div>
           );
         })}
       </div>
 
-      {/* Breakdown chart and info card */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Breakdown chart and Personal Summary Card */}
+      <div className="sa-enter grid grid-cols-1 lg:grid-cols-3 gap-6" style={{ animationDelay: '120ms' }}>
         <div className="lg:col-span-2">
           <DashboardStatusBreakdown
-            title="Phân bổ Tiến độ Công việc Cố vấn"
-            subtitle="Click vào từng nhóm trạng thái để lọc nhanh danh sách xe cần hành động"
+            title="Phân bổ Tiến độ Hồ sơ Cá nhân"
+            subtitle="Click vào từng trạng thái để lọc nhanh danh sách xe bạn đang phụ trách"
             data={donutData}
             selectedCategory={selectedStatus}
-            onSelectCategory={setSelectedStatus}
+            onSelectCategory={handleToggleStatus}
             height={300}
             isLoading={isLoading}
           />
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-              <span className="material-symbols-outlined text-[18px] text-[#0050cd]">calendar_month</span>
-              Lưu lượng lịch hẹn trong kỳ
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 shadow-xs flex flex-col justify-between gap-4">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#0050cd]/10 text-[#0050cd] flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[18px]">person_check</span>
+              </div>
+              <h3 className="text-sm font-extrabold text-zinc-900 dark:text-white tracking-tight">
+                Tóm tắt hiệu suất cá nhân
+              </h3>
             </div>
-            <div className="text-3xl font-bold font-mono text-slate-900 dark:text-white mb-2 tabular-nums">
-              {data?.charts?.appointmentsVolume ?? 0}
+
+            <div className="rounded-2xl bg-gradient-to-br from-[#f4f7fc] to-[#eaf1fb] dark:from-slate-800/80 dark:to-slate-800/40 border border-[#dce6f7] dark:border-slate-700 p-4">
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold font-mono text-[#0c2340] dark:text-white tabular-nums">
+                  {summary.totalPeriodIntake}
+                </span>
+                <span className="text-xs font-semibold text-[#0050cd] dark:text-blue-400">
+                  hồ sơ
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                Tiếp nhận &amp; khởi tạo trong kỳ lọc hiện tại
+              </p>
             </div>
-            <p className="text-xs text-slate-500">
-              Số lượt khách hàng đặt lịch hẹn bảo dưỡng / sửa chữa đã được tiếp nhận qua hệ thống trong chu kỳ lọc.
-            </p>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center justify-between rounded-2xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 px-3.5 py-2.5">
+                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                  <span className="material-symbols-outlined text-[16px] text-[#0050cd]">fact_check</span>
+                  <span>Báo giá đã duyệt / tổng</span>
+                </div>
+                <span className="font-mono font-bold text-slate-900 dark:text-white tabular-nums">
+                  {summary.approvedQuotations} / {summary.totalQuotations}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between rounded-2xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 px-3.5 py-2.5">
+                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                  <span className="material-symbols-outlined text-[16px] text-[#0284c7]">search_check</span>
+                  <span>Đang khám / lập kế hoạch</span>
+                </div>
+                <span className="font-mono font-bold text-slate-900 dark:text-white tabular-nums">
+                  {summary.inInspectionCount} xe
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between rounded-2xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 px-3.5 py-2.5">
+                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                  <span className="material-symbols-outlined text-[16px] text-[#059669]">key</span>
+                  <span>Sẵn sàng bàn giao</span>
+                </div>
+                <span className="font-mono font-bold text-[#059669] dark:text-emerald-400 tabular-nums">
+                  {summary.handoverReadyCount} xe
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-            <Link
-              href="/advisor"
-              className="text-xs font-semibold text-[#0050cd] hover:underline flex items-center justify-between"
-            >
-              <span>Vào bàn làm việc Cố Vấn (Bento Workspace)</span>
-              <span>→</span>
-            </Link>
-          </div>
+
+          <Link
+            href="/advisor"
+            className="sa-press w-full rounded-xl bg-[#0c2340] hover:bg-[#0050cd] text-white px-4 py-2.5 text-xs font-semibold flex items-center justify-between transition-colors shadow-xs"
+          >
+            <span>Vào bàn làm việc Cố vấn</span>
+            <span aria-hidden="true">→</span>
+          </Link>
         </div>
       </div>
 
-      {/* Bento Row: Phân bổ 8 khâu quy trình hồ sơ & Kênh tiếp nhận (Phong cách SA) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Bento Row: 8-Stage Pipeline & Personal Intake Sources */}
+      <div className="sa-enter grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch" style={{ animationDelay: '180ms' }}>
         <div className="lg:col-span-8">
           <DashboardStageBars
-            title="Đường ống hồ sơ Cố vấn qua 8 giai đoạn dịch vụ"
-            subtitle="Theo dõi phân bổ và điểm nghẽn quy trình từ chẩn đoán tiếp nhận đến giao xe"
+            title="Đường ống hồ sơ cá nhân qua 8 giai đoạn"
+            subtitle="Số liệu thực tế từ các phiếu công việc do bạn trực tiếp phụ trách"
             stages={saStageBars}
-            highlightTooltipTitle="Kế hoạch thi công"
-            highlightTooltipPrimaryText={`Thực tế: ${saStageBars.find((s) => s.highlight)?.count || 0} hồ sơ`}
-            highlightTooltipSecondaryText="Cần theo dõi tiến độ"
-            onSelectStage={(key) => setSelectedStatus(key)}
+            selectedStageKey={selectedStatus}
+            onSelectStage={handleToggleStatus}
             isLoading={isLoading}
           />
         </div>
         <div className="lg:col-span-4">
           <DashboardTelemetryMiniBars
-            title="Lưu lượng xe tiếp nhận"
-            subtitle="Tỷ lệ phân luồng các nguồn khách hàng"
+            title="Nguồn tiếp nhận cá nhân"
+            subtitle="Phân bổ theo kênh tiếp nhận trong kỳ"
             actionHref="/advisor/intake-queue"
             actionTitle="Mở hàng đợi tiếp nhận"
             items={saTelemetry}
-            tabs={[
-              { id: 'QUEUED', label: 'Đang chờ' },
-              { id: 'CONVERTED', label: 'Đã nhận' },
-              { id: 'ALL', label: 'Tất cả' },
-            ]}
             isLoading={isLoading}
           />
         </div>
@@ -409,25 +450,44 @@ export default function SADashboardAnalyticsPage() {
       <div>
         {selectedStatus && (
           <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
-            <span>Đang lọc theo: <strong>{WO_STATUS_META[selectedStatus]?.label || selectedStatus}</strong></span>
+            <span>
+              Đang lọc theo: <strong>{WO_STATUS_META[selectedStatus]?.label || selectedStatus}</strong>
+            </span>
             <button
+              type="button"
               onClick={() => setSelectedStatus('')}
-              className="text-red-500 hover:text-red-700 ml-1 font-bold"
+              className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-700 ml-1 font-bold cursor-pointer"
             >
-              ✕ Hủy lọc
+              <span className="material-symbols-outlined text-[14px]">close</span>
+              <span>Hủy lọc</span>
             </button>
           </div>
         )}
         <DashboardActionTable
-          title={`Danh Sách Hồ Sơ Xe ${scope === 'my' ? '(Tôi Phụ Trách)' : '(Toàn Bộ Xưởng)'}`}
-          subtitle="Các xe đang cần cố vấn xử lý báo giá, kiểm tra kỹ thuật hoặc bàn giao chìa khóa"
+          title="Danh Sách Hồ Sơ Xe Tôi Phụ Trách"
+          subtitle="Toàn bộ hồ sơ đang xử lý và đã đóng do bạn trực tiếp phụ trách"
           columns={columns}
           data={filteredList}
+          headerExtra={
+            <select
+              aria-label="Lọc theo trạng thái hồ sơ"
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="w-full sm:w-48 px-3 py-1.5 text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#0050cd]/40 cursor-pointer"
+            >
+              <option value="">Tất cả trạng thái</option>
+              {Object.keys(STAGE_LABELS).map((statusKey) => (
+                <option key={statusKey} value={statusKey}>
+                  {WO_STATUS_META[statusKey]?.label || STAGE_LABELS[statusKey]}
+                </option>
+              ))}
+            </select>
+          }
           searchPlaceholder="Tìm theo mã hồ sơ, tên khách hoặc biển số..."
           searchFilterKey="woNumber"
           pageSize={10}
           isLoading={isLoading}
-          emptyMessage="Không có hồ sơ xe nào trong danh mục này"
+          emptyMessage="Không có hồ sơ xe nào phù hợp với bộ lọc hiện tại"
         />
       </div>
     </div>

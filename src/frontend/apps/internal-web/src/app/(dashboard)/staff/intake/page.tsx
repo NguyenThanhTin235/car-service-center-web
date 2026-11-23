@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useDeferredValue } from 'react';
+import React, { useEffect, useState, useMemo, useDeferredValue, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
   fetchIntakeQueue,
@@ -10,15 +11,42 @@ import {
 } from '@/store/slices/intakeSlice';
 import { fetchAppointments } from '@/store/slices/appointmentSlice';
 import api from '@/lib/axios';
-import WalkInIntakeModal from '@/components/intake/WalkInIntakeModal';
-import TowInIntakeModal from '@/components/intake/TowInIntakeModal';
-import WarrantyIntakeModal from '@/components/intake/WarrantyIntakeModal';
-import IntakeDetailModal from '@/components/intake/IntakeDetailModal';
-import ConfirmModal from '@/components/shared/ConfirmModal';
 import TablePagination from '@/components/shared/TablePagination';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
-import ReadOnlyROModal from '@/components/intake/ReadOnlyROModal';
+
+const WalkInIntakeModal = dynamic(() => import('@/components/intake/WalkInIntakeModal'), { ssr: false });
+const TowInIntakeModal = dynamic(() => import('@/components/intake/TowInIntakeModal'), { ssr: false });
+const WarrantyIntakeModal = dynamic(() => import('@/components/intake/WarrantyIntakeModal'), { ssr: false });
+const IntakeDetailModal = dynamic(() => import('@/components/intake/IntakeDetailModal'), { ssr: false });
+const ConfirmModal = dynamic(() => import('@/components/shared/ConfirmModal'), { ssr: false });
+const ReadOnlyROModal = dynamic(() => import('@/components/intake/ReadOnlyROModal'), { ssr: false });
+
+const getTypeStyles = (type: string) => {
+  switch (type) {
+    case 'WALK_IN':
+      return 'bg-blue-50 text-[#0866ff] border border-blue-200/70';
+    case 'TOW_IN':
+      return 'bg-amber-50 text-amber-700 border border-amber-200/70';
+    case 'APPOINTMENT':
+      return 'bg-emerald-50 text-emerald-700 border border-emerald-200/70';
+    default:
+      return 'bg-slate-100 text-slate-600 border border-slate-200';
+  }
+};
+
+const getTypeName = (type: string) => {
+  switch (type) {
+    case 'WALK_IN':
+      return 'Khách vãng lai';
+    case 'TOW_IN':
+      return 'Xe cứu hộ';
+    case 'APPOINTMENT':
+      return 'Hẹn trước';
+    default:
+      return type;
+  }
+};
 
 export default function IntakePage() {
   const dispatch = useAppDispatch();
@@ -37,10 +65,32 @@ export default function IntakePage() {
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
   const [viewingROId, setViewingROId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
   const [serviceTemplates, setServiceTemplates] = useState<Array<{id: number, name: string}>>([]);
   const [customers, setCustomers] = useState<any[]>([]);
+  const customerSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleCustomerSearch = (query: string) => {
+    if (customerSearchTimer.current) clearTimeout(customerSearchTimer.current);
+    const q = query.trim();
+    if (q.length < 2) return;
+    customerSearchTimer.current = setTimeout(async () => {
+      try {
+        const res = await api.get('/api/customers', { params: { search: q, limit: 50 } });
+        const fetched: any[] = res.data?.data || [];
+        if (fetched.length > 0) {
+          setCustomers((prev) => {
+            const byId = new Map(prev.map((c) => [c.id, c]));
+            for (const c of fetched) byId.set(c.id, c);
+            return Array.from(byId.values());
+          });
+        }
+      } catch (err) {
+        console.error('Failed to search customers:', err);
+      }
+    }, 300);
+  };
   
   const [confirmAction, setConfirmAction] = useState<{
     isOpen: boolean;
@@ -369,10 +419,10 @@ export default function IntakePage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[45vh] overflow-y-auto">
           <table className="w-full text-left border-collapse min-w-[640px]">
-            <thead>
-              <tr className="border-b border-slate-200/80 bg-slate-50/60 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+            <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
+              <tr className="border-b border-slate-200/80 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
                 <th className="py-3 px-5">Giờ hẹn</th>
                 <th className="py-3 px-5">Biển số xe</th>
                 <th className="py-3 px-5">Khách hàng</th>
@@ -539,8 +589,29 @@ export default function IntakePage() {
         </div>
 
         {queueLoading ? (
-          <div className="text-center text-slate-500 py-12 text-xs">
-            Đang tải danh sách tiếp nhận...
+          <div className="overflow-x-auto" aria-busy="true" aria-label="Đang tải danh sách tiếp nhận">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-slate-50/95">
+                <tr className="border-b border-slate-200/80 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                  <th className="py-3.5 px-3.5 lg:px-5">Phân loại &amp; Giờ vào</th>
+                  <th className="py-3.5 px-3.5 lg:px-5">Biển số &amp; Dòng xe</th>
+                  <th className="py-3.5 px-3.5 lg:px-5">Khách hàng</th>
+                  <th className="py-3.5 px-3.5 lg:px-5">Dịch vụ yêu cầu</th>
+                  <th className="py-3.5 px-3.5 lg:px-5 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200/60">
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-3.5 px-3.5 lg:px-5"><div className="h-5 w-24 bg-slate-200 rounded-full" /></td>
+                    <td className="py-3.5 px-3.5 lg:px-5"><div className="h-6 w-28 bg-slate-200 rounded" /></td>
+                    <td className="py-3.5 px-3.5 lg:px-5"><div className="h-4 w-32 bg-slate-200 rounded" /></td>
+                    <td className="py-3.5 px-3.5 lg:px-5"><div className="h-5 w-40 bg-slate-100 rounded-lg" /></td>
+                    <td className="py-3.5 px-3.5 lg:px-5 text-right"><div className="h-8 w-20 bg-slate-200 rounded-xl ml-auto" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : filteredRecords.length === 0 ? (
           <div className="text-center py-12 px-4">
@@ -578,10 +649,10 @@ export default function IntakePage() {
         ) : (
           <>
             {/* Desktop & Tablet Table (>= md) */}
-            <div className="hidden md:block overflow-x-auto flex-1">
+            <div className="hidden md:block overflow-x-auto max-h-[60vh] overflow-y-auto flex-1">
               <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200/80 bg-slate-50/60 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
+                  <tr className="border-b border-slate-200/80 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
                     <th className="py-3.5 px-3.5 lg:px-5 whitespace-nowrap">Phân loại &amp; Giờ vào</th>
                     <th className="py-3.5 px-3.5 lg:px-5 whitespace-nowrap">Biển số &amp; Dòng xe</th>
                     <th className="py-3.5 px-3.5 lg:px-5 whitespace-nowrap">Khách hàng</th>
@@ -591,32 +662,6 @@ export default function IntakePage() {
                 </thead>
                 <tbody className="divide-y divide-slate-200/60 text-sm">
                   {paginatedRecords.map((record) => {
-                    const getTypeStyles = (type: string) => {
-                      switch (type) {
-                        case 'WALK_IN':
-                          return 'bg-blue-50 text-[#0866ff] border border-blue-200/70';
-                        case 'TOW_IN':
-                          return 'bg-amber-50 text-amber-700 border border-amber-200/70';
-                        case 'APPOINTMENT':
-                          return 'bg-emerald-50 text-emerald-700 border border-emerald-200/70';
-                        default:
-                          return 'bg-slate-100 text-slate-600 border border-slate-200';
-                      }
-                    };
-
-                    const getTypeName = (type: string) => {
-                      switch (type) {
-                        case 'WALK_IN':
-                          return 'Khách vãng lai';
-                        case 'TOW_IN':
-                          return 'Xe cứu hộ';
-                        case 'APPOINTMENT':
-                          return 'Hẹn trước';
-                        default:
-                          return type;
-                      }
-                    };
-
                     return (
                       <tr key={record.id} className="hover:bg-blue-50/25 transition-colors">
                         <td className="py-3.5 px-3.5 lg:px-5 whitespace-nowrap">
@@ -812,53 +857,69 @@ export default function IntakePage() {
             onPageChange={setCurrentPage}
             currentCount={paginatedRecords.length}
             recordLabel="phiếu tiếp nhận"
+            pageSize={itemsPerPage}
+            pageSizeOptions={[10, 20, 50]}
+            onPageSizeChange={(size) => {
+              setItemsPerPage(size);
+              setCurrentPage(1);
+            }}
           />
         )}
       </div>
 
       {/* Modals */}
-      <WalkInIntakeModal
-        isOpen={isWalkInModalOpen}
-        onClose={() => setWalkInModalOpen(false)}
-        onSubmit={handleWalkInSubmit}
-        services={serviceTemplates}
-        customers={customers}
-        onVehicleAdded={(customerId, vehicle) => {
-          setCustomers((prev) =>
-            prev.map((c) =>
-              Number(c.id) === customerId ? { ...c, vehicles: [...(c.vehicles || []), vehicle] } : c
-            )
-          );
-        }}
-      />
-      <TowInIntakeModal
-        isOpen={isTowInModalOpen}
-        onClose={() => setTowInModalOpen(false)}
-        onSubmit={handleTowInSubmit}
-        services={serviceTemplates}
-        customers={customers}
-        onVehicleAdded={(customerId, vehicle) => {
-          setCustomers((prev) =>
-            prev.map((c) =>
-              Number(c.id) === customerId ? { ...c, vehicles: [...(c.vehicles || []), vehicle] } : c
-            )
-          );
-        }}
-      />
-      <WarrantyIntakeModal
-        isOpen={isWarrantyModalOpen}
-        onClose={() => setWarrantyModalOpen(false)}
-        onSubmit={handleWarrantySubmit}
-        customers={customers}
-      />
-      <ConfirmModal
-        isOpen={confirmAction?.isOpen || false}
-        title={confirmAction?.title || ''}
-        message={confirmAction?.message || ''}
-        isDestructive={confirmAction?.isDestructive}
-        onConfirm={confirmAction?.onConfirm || (() => {})}
-        onCancel={() => setConfirmAction(null)}
-      />
+      {isWalkInModalOpen && (
+        <WalkInIntakeModal
+          isOpen={isWalkInModalOpen}
+          onClose={() => setWalkInModalOpen(false)}
+          onSubmit={handleWalkInSubmit}
+          services={serviceTemplates}
+          customers={customers}
+          onCustomerSearch={handleCustomerSearch}
+          onVehicleAdded={(customerId, vehicle) => {
+            setCustomers((prev) =>
+              prev.map((c) =>
+                Number(c.id) === customerId ? { ...c, vehicles: [...(c.vehicles || []), vehicle] } : c
+              )
+            );
+          }}
+        />
+      )}
+      {isTowInModalOpen && (
+        <TowInIntakeModal
+          isOpen={isTowInModalOpen}
+          onClose={() => setTowInModalOpen(false)}
+          onSubmit={handleTowInSubmit}
+          services={serviceTemplates}
+          customers={customers}
+          onCustomerSearch={handleCustomerSearch}
+          onVehicleAdded={(customerId, vehicle) => {
+            setCustomers((prev) =>
+              prev.map((c) =>
+                Number(c.id) === customerId ? { ...c, vehicles: [...(c.vehicles || []), vehicle] } : c
+              )
+            );
+          }}
+        />
+      )}
+      {isWarrantyModalOpen && (
+        <WarrantyIntakeModal
+          isOpen={isWarrantyModalOpen}
+          onClose={() => setWarrantyModalOpen(false)}
+          onSubmit={handleWarrantySubmit}
+          customers={customers}
+        />
+      )}
+      {confirmAction?.isOpen && (
+        <ConfirmModal
+          isOpen={confirmAction.isOpen}
+          title={confirmAction.title || ''}
+          message={confirmAction.message || ''}
+          isDestructive={confirmAction.isDestructive}
+          onConfirm={confirmAction.onConfirm || (() => {})}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
       {selectedRecord && (
         <IntakeDetailModal record={selectedRecord} onClose={() => setSelectedRecord(null)} />
       )}

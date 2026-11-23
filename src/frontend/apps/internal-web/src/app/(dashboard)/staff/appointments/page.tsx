@@ -1,17 +1,40 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchAppointments, confirmAppointment, setSelectedAppointment, arriveAppointment } from '@/store/slices/appointmentSlice';
 import WeeklyCalendarGrid from '@/components/appointments/WeeklyCalendarGrid';
-import DailyCalendarGrid from '@/components/appointments/DailyCalendarGrid';
-import MonthlyCalendarGrid from '@/components/appointments/MonthlyCalendarGrid';
-import AppointmentDetailPopover from '@/components/appointments/AppointmentDetailPopover';
-import CreateAppointmentModal from '@/components/appointments/CreateAppointmentModal';
-import RescheduleModal from '@/components/appointments/RescheduleModal';
-import CancelConfirmDialog from '@/components/appointments/CancelConfirmDialog';
-import ActionConfirmDialog from '@/components/appointments/ActionConfirmDialog';
 import toast from 'react-hot-toast';
+
+const DailyCalendarGrid = dynamic(
+  () => import('@/components/appointments/DailyCalendarGrid'),
+  { ssr: false }
+);
+const MonthlyCalendarGrid = dynamic(
+  () => import('@/components/appointments/MonthlyCalendarGrid'),
+  { ssr: false }
+);
+const AppointmentDetailPopover = dynamic(
+  () => import('@/components/appointments/AppointmentDetailPopover'),
+  { ssr: false }
+);
+const CreateAppointmentModal = dynamic(
+  () => import('@/components/appointments/CreateAppointmentModal'),
+  { ssr: false }
+);
+const RescheduleModal = dynamic(
+  () => import('@/components/appointments/RescheduleModal'),
+  { ssr: false }
+);
+const CancelConfirmDialog = dynamic(
+  () => import('@/components/appointments/CancelConfirmDialog'),
+  { ssr: false }
+);
+const ActionConfirmDialog = dynamic(
+  () => import('@/components/appointments/ActionConfirmDialog'),
+  { ssr: false }
+);
 
 export default function AppointmentsPage() {
   const dispatch = useAppDispatch();

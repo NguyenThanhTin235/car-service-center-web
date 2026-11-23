@@ -1,27 +1,19 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import WOTabContainer from '@/components/advisor/work-order/WOTabContainer';
 import ChevronPipeline from '@/components/advisor/work-order/ChevronPipeline';
-import EditVehicleModal from '@/components/advisor/work-order/modals/EditVehicleModal';
-import EditCustomerModal from '@/components/advisor/work-order/modals/EditCustomerModal';
 import { getWorkOrderById, getWorkOrders, WorkOrder } from '@/lib/api/work-order.api';
-import { getWOQuotations } from '@/lib/api/quotation.api';
+import { getWOQuotations, Quotation } from '@/lib/api/quotation.api';
 import toast from 'react-hot-toast';
-import { WO_STATUS_META, formatVehicleSize } from '@/components/advisor/work-order/work-order.constants';
+import { WO_STATUS_META, STATUS_PIPELINE, formatVehicleSize } from '@/components/advisor/work-order/work-order.constants';
+import { formatVND } from '@/lib/utils/formatters';
 
-const STATUS_PIPELINE = [
-  'Tiếp nhận',
-  'Lập kế hoạch',
-  'Chờ duyệt',
-  'Đã duyệt',
-  'Đang sửa',
-  'Chờ thanh toán',
-  'Chờ giao xe',
-  'Đóng',
-];
+const EditVehicleModal = dynamic(() => import('@/components/advisor/work-order/modals/EditVehicleModal'), { ssr: false });
+const EditCustomerModal = dynamic(() => import('@/components/advisor/work-order/modals/EditCustomerModal'), { ssr: false });
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
@@ -30,9 +22,12 @@ export default function WorkOrderDetailPage() {
 
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [quoStats, setQuoStats] = useState({ quotes: 0, total: 0, approved: 0, pending: 0 });
   const [editVehicleOpen, setEditVehicleOpen] = useState(false);
   const [editCustomerOpen, setEditCustomerOpen] = useState(false);
+  const [heroExpanded, setHeroExpanded] = useState(false);
 
   // Navigation state
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -52,6 +47,7 @@ export default function WorkOrderDetailPage() {
       if (!initialLoadDone.current) {
         setLoading(true);
       }
+      setError(null);
       const [res, quoRes] = await Promise.all([
         getWorkOrderById(id),
         getWOQuotations(id).catch(() => null),
@@ -61,12 +57,14 @@ export default function WorkOrderDetailPage() {
         setWorkOrder(res.data);
         initialLoadDone.current = true;
       } else {
-        toast.error(res.message || 'Không tìm thấy phiếu công việc');
-        router.push('/advisor/intake-queue');
+        const msg = res.message || 'Không tìm thấy phiếu công việc';
+        setError(msg);
+        toast.error(msg);
         return;
       }
 
       if (quoRes && quoRes.success && quoRes.data) {
+        setQuotations(quoRes.data);
         let qTotal = 0;
         let qApproved = 0;
         let qPending = 0;
@@ -82,13 +80,14 @@ export default function WorkOrderDetailPage() {
           pending: qPending,
         });
       }
-    } catch {
-      toast.error('Lỗi khi tải phiếu công việc');
-      router.push('/advisor/intake-queue');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi khi tải phiếu công việc';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, [id, router]);
+  }, [id]);
 
   useEffect(() => {
     fetchWO();
@@ -146,6 +145,39 @@ export default function WorkOrderDetailPage() {
     };
   }, [id]);
 
+  const heroMetrics = useMemo(() => {
+    const services = workOrder?.services || [];
+    let jobsTotal = 0;
+    let jobsCompleted = 0;
+    let jobsActive = 0;
+    let partsTotal = 0;
+
+    for (const s of services) {
+      const jobs = s.jobs || [];
+      jobsTotal += jobs.length;
+      for (const j of jobs) {
+        if (j.status === 'COMPLETED' || j.status === 'PASSED') {
+          jobsCompleted += 1;
+          jobsActive += 1;
+        } else if (j.status === 'IN_PROGRESS') {
+          jobsActive += 1;
+        }
+        partsTotal += j.parts?.length || 0;
+      }
+    }
+
+    const progressPct = jobsTotal > 0 ? Math.round((jobsActive / jobsTotal) * 100) : 0;
+    return {
+      servicesCount: services.length,
+      jobsTotal,
+      jobsCompleted,
+      jobsActive,
+      partsTotal,
+      progressPct,
+      remainingPct: 100 - progressPct,
+    };
+  }, [workOrder?.services]);
+
   if (loading) {
     return (
       <div className="flex flex-col gap-5 px-4 sm:px-6 py-3 max-w-[1440px] mx-auto w-full animate-pulse">
@@ -192,7 +224,7 @@ export default function WorkOrderDetailPage() {
               <div className="h-8 w-28 rounded-lg bg-white/30" />
               <div className="h-3.5 w-40 rounded bg-white/20" />
             </div>
-            <div className="h-11 w-full rounded-2xl bg-[#0c2340]/50" />
+            <div className="h-7 w-full rounded-xl bg-[#0c2340]/50" />
           </div>
 
           <div className="bg-[#f4f6fa] border border-slate-200/80 rounded-[28px] p-5 min-h-[190px] flex flex-col justify-between">
@@ -242,37 +274,46 @@ export default function WorkOrderDetailPage() {
     );
   }
 
-  if (!workOrder) return null;
+  if (error || !workOrder) {
+    return (
+      <div className="max-w-xl mx-auto py-16 px-4 text-center space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center mx-auto">
+          <span className="material-symbols-outlined text-[32px]">error</span>
+        </div>
+        <h2 className="text-lg font-extrabold text-zinc-900">Không thể tải phiếu công việc</h2>
+        <p className="text-xs text-slate-600">
+          {error || 'Phiếu công việc không tồn tại hoặc đã bị xóa.'}
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+          <button
+            type="button"
+            onClick={fetchWO}
+            className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px]">refresh</span>
+            <span>Thử lại</span>
+          </button>
+          <Link
+            href="/advisor/work-orders"
+            className="h-10 px-4 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-zinc-800 text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+            <span>Quay lại danh sách</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-  // Derived real metrics from workOrder & quoStats (100% real API fields)
-  const servicesCount = workOrder.services?.length || 0;
-  const jobsTotal =
-    workOrder.services?.reduce((acc, s) => acc + (s.jobs?.length || 0), 0) || 0;
-  const jobsCompleted =
-    workOrder.services?.reduce(
-      (acc, s) =>
-        acc +
-        (s.jobs?.filter((j) => j.status === 'COMPLETED' || j.status === 'PASSED').length || 0),
-      0
-    ) || 0;
-  const jobsActive =
-    workOrder.services?.reduce(
-      (acc, s) =>
-        acc +
-        (s.jobs?.filter(
-          (j) => j.status === 'IN_PROGRESS' || j.status === 'COMPLETED' || j.status === 'PASSED'
-        ).length || 0),
-      0
-    ) || 0;
-  const partsTotal =
-    workOrder.services?.reduce(
-      (acc, s) =>
-        acc + (s.jobs?.reduce((jAcc, j) => jAcc + (j.parts?.length || 0), 0) || 0),
-      0
-    ) || 0;
-
-  const progressPct = jobsTotal > 0 ? Math.round((jobsActive / jobsTotal) * 100) : 25;
-  const remainingPct = 100 - progressPct;
+  const {
+    servicesCount,
+    jobsTotal,
+    jobsCompleted,
+    jobsActive,
+    partsTotal,
+    progressPct,
+    remainingPct,
+  } = heroMetrics;
 
   const displayQuotationValue =
     quoStats.approved > 0
@@ -292,15 +333,16 @@ export default function WorkOrderDetailPage() {
           <div className="order-1 flex items-center gap-3 shrink-0">
             <Link
               href="/advisor/work-orders"
-              className="w-9 h-9 rounded-xl bg-[#f2f4f8] hover:bg-slate-200 text-zinc-800 flex items-center justify-center transition-colors shrink-0"
+              aria-label="Quay lại danh sách phiếu công việc"
+              className="sa-press w-11 h-11 md:w-9 md:h-9 rounded-xl bg-[#f2f4f8] hover:bg-slate-200 text-slate-800 flex items-center justify-center transition-colors shrink-0"
               title="Quay lại danh sách phiếu công việc"
             >
               <span className="material-symbols-outlined text-[18px]">arrow_back</span>
             </Link>
 
-            <span className="font-mono font-extrabold text-zinc-900 tracking-tight text-sm sm:text-base">
+            <h1 className="font-mono font-extrabold text-slate-900 tracking-tight text-sm sm:text-base tabular-nums">
               {workOrder.wo_number}
-            </span>
+            </h1>
 
             {(workOrder as any).order_type === 'WARRANTY' && (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300">
@@ -319,7 +361,7 @@ export default function WorkOrderDetailPage() {
           {/* Center: Chevron Status Pipeline Stepper */}
           <div className="order-3 xl:order-2 w-full xl:w-auto xl:flex-1 min-w-0 overflow-x-auto no-scrollbar py-0.5 flex items-center justify-start xl:justify-center pt-1.5 xl:pt-0 border-t xl:border-t-0 border-slate-100">
             <ChevronPipeline
-              statuses={STATUS_PIPELINE}
+              statuses={[...STATUS_PIPELINE]}
               currentStatus={mappedStatus}
               compact={true}
             />
@@ -328,7 +370,7 @@ export default function WorkOrderDetailPage() {
           {/* Right: Prev / Next Work Order Switcher */}
           <div className="order-2 xl:order-3 flex items-center justify-end gap-2 shrink-0">
             {totalCount > 0 && (
-              <span className="text-xs font-mono font-bold text-slate-500 px-2 tabular-nums">
+              <span className="text-xs font-mono font-bold text-slate-600 px-2 tabular-nums">
                 {currentIndex} / {totalCount}
               </span>
             )}
@@ -338,7 +380,8 @@ export default function WorkOrderDetailPage() {
                 onClick={() => prevId && router.push(`/advisor/work-orders/${prevId}`)}
                 disabled={!prevId}
                 title="Phiếu trước"
-                className="w-9 h-9 rounded-xl bg-[#f2f4f8] hover:bg-slate-200 disabled:opacity-35 flex items-center justify-center text-zinc-800 transition-colors cursor-pointer"
+                aria-label="Phiếu trước"
+                className="sa-press w-11 h-11 md:w-9 md:h-9 rounded-xl bg-[#f2f4f8] hover:bg-slate-200 disabled:opacity-35 flex items-center justify-center text-slate-800 transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">chevron_left</span>
               </button>
@@ -347,7 +390,8 @@ export default function WorkOrderDetailPage() {
                 onClick={() => nextId && router.push(`/advisor/work-orders/${nextId}`)}
                 disabled={!nextId}
                 title="Phiếu tiếp theo"
-                className="w-9 h-9 rounded-xl bg-[#f2f4f8] hover:bg-slate-200 disabled:opacity-35 flex items-center justify-center text-zinc-800 transition-colors cursor-pointer"
+                aria-label="Phiếu tiếp theo"
+                className="sa-press w-11 h-11 md:w-9 md:h-9 rounded-xl bg-[#f2f4f8] hover:bg-slate-200 disabled:opacity-35 flex items-center justify-center text-slate-800 transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">chevron_right</span>
               </button>
@@ -356,10 +400,35 @@ export default function WorkOrderDetailPage() {
         </div>
       </div>
 
+      {/* Compact Mobile/Tablet Summary Bar (<xl) */}
+      <button
+        type="button"
+        onClick={() => setHeroExpanded((prev) => !prev)}
+        className="xl:hidden w-full bg-white border border-slate-200/80 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 text-left shadow-xs cursor-pointer"
+      >
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+          <span className="font-mono font-bold text-sm text-slate-900 tabular-nums">
+            {workOrder.vehicle?.license_plate || 'N/A'}
+          </span>
+          <span className="text-xs text-slate-600 truncate">
+            {workOrder.customer?.full_name || 'Khách vãng lai'}
+          </span>
+          <span className="text-xs font-mono font-bold text-[#0050cd] tabular-nums">
+            {formatVND(displayQuotationValue)}
+          </span>
+        </div>
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#0050cd] shrink-0">
+          <span>{heroExpanded ? 'Thu gọn' : 'Chi tiết'}</span>
+          <span className="material-symbols-outlined text-[18px]">
+            {heroExpanded ? 'expand_less' : 'expand_more'}
+          </span>
+        </span>
+      </button>
+
       {/* 2. 4-CARD HIGH-CONTRAST HERO BENTO GRID (Separated Customer & Quotation Cards) */}
       <div
         data-testid="wo-detail-hero-grid"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+        className={`${heroExpanded ? 'grid' : 'hidden xl:grid'} grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4`}
       >
         {/* CARD 1: SOFT ICE BLUE (#edf4fe) & BLUE ACCENT — Vehicle & Work Order Identity */}
         <div className="bg-[#edf4fe] border border-blue-200/80 rounded-[28px] p-5 flex flex-col justify-between min-h-[190px] shadow-xs">
@@ -374,16 +443,16 @@ export default function WorkOrderDetailPage() {
               <button
                 type="button"
                 onClick={() => setEditVehicleOpen(true)}
-                className="w-7 h-7 rounded-lg bg-white border border-blue-200/80 hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] flex items-center justify-center transition-colors shadow-2xs cursor-pointer shrink-0"
+                className="sa-press w-11 h-11 md:w-9 md:h-9 rounded-xl bg-white border border-blue-200/80 hover:bg-blue-50 text-slate-600 hover:text-[#0050cd] flex items-center justify-center transition-colors shadow-2xs cursor-pointer shrink-0"
                 title="Sửa đổi thông tin phương tiện"
                 aria-label="Sửa đổi thông tin phương tiện"
               >
-                <span className="material-symbols-outlined text-[15px]">edit</span>
+                <span className="material-symbols-outlined text-[16px]">edit</span>
               </button>
             </div>
 
             <div className="mt-2.5 flex items-baseline gap-2 flex-wrap">
-              <span className="font-mono text-xl sm:text-2xl font-extrabold tracking-wider text-zinc-900">
+              <span className="font-mono text-xl sm:text-2xl font-extrabold tracking-wider text-slate-900 tabular-nums">
                 {workOrder.vehicle?.license_plate || 'N/A'}
               </span>
               <span className="text-xs font-bold text-[#0050cd] truncate">
@@ -437,17 +506,25 @@ export default function WorkOrderDetailPage() {
 
           {/* 2-Tone Split Progress Bar Inside Dark Navy Inset Container */}
           <div className="mt-3">
-            <div className="bg-[#0c2340] rounded-2xl p-1.5 flex items-stretch h-11 gap-1.5">
-              <div
-                style={{ width: `${Math.max(25, Math.min(75, progressPct))}%` }}
-                className="bg-white text-zinc-900 rounded-xl px-2 flex items-center font-mono font-extrabold text-xs tabular-nums"
-              >
-                {progressPct}% chạy
+            {jobsTotal === 0 ? (
+              <div className="bg-[#0c2340] rounded-xl p-1 flex items-center justify-center h-7">
+                <span className="text-[11px] font-mono font-semibold text-blue-100/85">
+                  Chưa có công việc nào
+                </span>
               </div>
-              <div className="flex-1 text-white px-2 flex items-center font-mono font-extrabold text-xs tabular-nums">
-                {remainingPct}% chờ
+            ) : (
+              <div className="bg-[#0c2340] rounded-xl p-1 flex items-stretch h-7 gap-1">
+                <div
+                  style={{ width: `${Math.max(25, Math.min(75, progressPct))}%` }}
+                  className="bg-white text-slate-900 rounded-lg px-2.5 flex items-center font-mono font-extrabold text-[11px] leading-none tabular-nums whitespace-nowrap transition-all"
+                >
+                  {progressPct}% chạy
+                </div>
+                <div className="flex-1 text-white px-2.5 flex items-center font-mono font-extrabold text-[11px] leading-none tabular-nums whitespace-nowrap">
+                  {remainingPct}% chờ
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -468,21 +545,21 @@ export default function WorkOrderDetailPage() {
                 <button
                   type="button"
                   onClick={() => setEditCustomerOpen(true)}
-                  className="w-7 h-7 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 hover:text-[#0050cd] flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
+                  className="sa-press w-11 h-11 md:w-9 md:h-9 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 hover:text-[#0050cd] flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
                   title="Sửa đổi thông tin khách hàng"
                   aria-label="Sửa đổi thông tin khách hàng"
                 >
-                  <span className="material-symbols-outlined text-[15px]">edit</span>
+                  <span className="material-symbols-outlined text-[16px]">edit</span>
                 </button>
               </div>
             </div>
 
             <div className="mt-2.5">
-              <div className="text-base sm:text-lg font-extrabold text-zinc-900 tracking-tight truncate">
+              <div className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight truncate">
                 {workOrder.customer?.full_name || 'Khách vãng lai'}
               </div>
               <div className="mt-1 flex flex-col gap-0.5 text-xs text-slate-600">
-                <span className="font-mono font-semibold text-zinc-800">
+                <span className="font-mono font-semibold text-slate-800 tabular-nums">
                   {workOrder.customer?.phone || 'Chưa cập nhật SĐT'}
                 </span>
                 {workOrder.customer?.email && (
@@ -530,7 +607,7 @@ export default function WorkOrderDetailPage() {
             <div className="mt-2.5">
               <div className="font-mono text-xl sm:text-2xl font-extrabold tracking-tight tabular-nums text-zinc-900 truncate">
                 {displayQuotationValue > 0
-                  ? `${Number(displayQuotationValue).toLocaleString('vi-VN')} đ`
+                  ? formatVND(Number(displayQuotationValue))
                   : 'Chưa báo giá'}
               </div>
               <p className="mt-1 text-xs text-slate-500 truncate">
@@ -558,44 +635,48 @@ export default function WorkOrderDetailPage() {
 
       {/* 3. FULL-WIDTH 6-TAB BENTO WORKSPACE CARD */}
       <div className="bg-white rounded-[28px] p-4 sm:p-6 shadow-xs border border-slate-200/70">
-        <WOTabContainer workOrder={workOrder} refetchWO={fetchWO} />
+        <WOTabContainer workOrder={workOrder} refetchWO={fetchWO} quotations={quotations} />
       </div>
 
       {/* 4. MODALS FOR EDITING VEHICLE & CUSTOMER (Anytime Access) */}
-      <EditVehicleModal
-        isOpen={editVehicleOpen}
-        onClose={() => setEditVehicleOpen(false)}
-        vehicle={
-          workOrder.vehicle
-            ? {
-                id: workOrder.vehicle.id,
-                license_plate: workOrder.vehicle.license_plate,
-                make: workOrder.vehicle.make,
-                model: workOrder.vehicle.model,
-                year: workOrder.vehicle.year,
-                color: workOrder.vehicle.color,
-                vehicle_size: workOrder.vehicle.vehicle_size,
-              }
-            : null
-        }
-        onSuccess={fetchWO}
-      />
+      {editVehicleOpen && (
+        <EditVehicleModal
+          isOpen={editVehicleOpen}
+          onClose={() => setEditVehicleOpen(false)}
+          vehicle={
+            workOrder.vehicle
+              ? {
+                  id: workOrder.vehicle.id,
+                  license_plate: workOrder.vehicle.license_plate,
+                  make: workOrder.vehicle.make,
+                  model: workOrder.vehicle.model,
+                  year: workOrder.vehicle.year,
+                  color: workOrder.vehicle.color,
+                  vehicle_size: workOrder.vehicle.vehicle_size,
+                }
+              : null
+          }
+          onSuccess={fetchWO}
+        />
+      )}
 
-      <EditCustomerModal
-        isOpen={editCustomerOpen}
-        onClose={() => setEditCustomerOpen(false)}
-        customer={
-          workOrder.customer
-            ? {
-                id: workOrder.customer.id,
-                full_name: workOrder.customer.full_name,
-                phone: workOrder.customer.phone,
-                email: workOrder.customer.email,
-              }
-            : null
-        }
-        onSuccess={fetchWO}
-      />
+      {editCustomerOpen && (
+        <EditCustomerModal
+          isOpen={editCustomerOpen}
+          onClose={() => setEditCustomerOpen(false)}
+          customer={
+            workOrder.customer
+              ? {
+                  id: workOrder.customer.id,
+                  full_name: workOrder.customer.full_name,
+                  phone: workOrder.customer.phone,
+                  email: workOrder.customer.email,
+                }
+              : null
+          }
+          onSuccess={fetchWO}
+        />
+      )}
     </div>
   );
 }

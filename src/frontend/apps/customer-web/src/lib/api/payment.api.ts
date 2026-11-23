@@ -1,33 +1,5 @@
 import api from '../axios';
 
-export interface PaymentStatusResponse {
-  paymentId: number;
-  invoiceId: number;
-  invoiceNumber: string;
-  status: 'PENDING' | 'SUCCESS' | 'FAILED';
-  amount: number;
-  paidAt?: string | null;
-  transactionRef?: string | null;
-  isCleared: boolean;
-  failureReason?: string | null;
-}
-
-/**
- * Kiểm tra trạng thái giao dịch thanh toán
- */
-export async function getPaymentStatus(paymentId: number): Promise<PaymentStatusResponse> {
-  const res = await api.get(`/api/payments/${paymentId}/status`);
-  return res.data.data;
-}
-
-/**
- * Hủy giao dịch thanh toán đang ở trạng thái PENDING
- */
-export async function cancelPendingPayment(paymentId: number, reason?: string) {
-  const res = await api.post(`/api/payments/${paymentId}/cancel`, { reason });
-  return res.data.data;
-}
-
 /**
  * Giả lập thanh toán thành công (dành cho Test / Demo sandbox)
  */

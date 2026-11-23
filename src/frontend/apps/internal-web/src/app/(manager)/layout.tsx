@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppSelector } from '@/store';
 import AuthGuard from '@/components/auth/AuthGuard';
@@ -11,13 +11,17 @@ import SaaSDashboardShell, {
 
 export default function ManagerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { items: inventoryItems, categories: partCategories } = useAppSelector(
-    (state) => state.inventory
-  );
-
-  const lowStockCount = useMemo(
-    () => inventoryItems.filter((i) => i.onHand < i.reorderLevel).length,
-    [inventoryItems]
+  const inventoryItemsCount = useAppSelector((state) => state.inventory.items.length);
+  const allItems = useAppSelector((state) => state.inventory.allItems);
+  const items = useAppSelector((state) => state.inventory.items);
+  const partCategoriesCount = useAppSelector((state) => state.inventory.categories.length);
+  const lowStockCount = useMemo(() => {
+    const src = allItems && allItems.length > 0 ? allItems : items;
+    return src.filter((i) => i.isActive !== false && i.onHand <= i.reorderLevel).length;
+  }, [allItems, items]);
+  const handleGlobalSearch = useCallback(
+    (q: string) => router.push(`/dashboard?search=${encodeURIComponent(q)}`),
+    [router]
   );
 
   const navItems: SaaSNavItem[] = useMemo(
@@ -31,31 +35,31 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
           {
             label: 'Kho phụ tùng',
             href: '/inventory',
-            badge: lowStockCount > 0 ? `${lowStockCount}!` : inventoryItems.length || undefined,
+            badge: lowStockCount > 0 ? `${lowStockCount}!` : inventoryItemsCount || undefined,
           },
           {
             label: 'Danh mục phụ tùng',
             href: '/part-categories',
-            badge: partCategories.length > 0 ? partCategories.length : undefined,
+            badge: partCategoriesCount > 0 ? partCategoriesCount : undefined,
           },
         ],
       },
       { label: 'Báo cáo vận hành', href: '/reports', icon: 'monitoring' },
     ],
-    [lowStockCount, inventoryItems.length, partCategories.length]
+    [lowStockCount, inventoryItemsCount, partCategoriesCount]
   );
 
   const telemetryItems: SaaSTelemetryDotItem[] = useMemo(
     () => [
       {
         label: 'Điều hành xưởng',
-        value: 'LIVE',
+        value: 'Trực tuyến',
         dotColor: '#0866ff',
         href: '/dashboard',
       },
       {
         label: 'Mã phụ tùng (SKU)',
-        value: inventoryItems.length || '—',
+        value: inventoryItemsCount || '—',
         dotColor: '#38bdf8',
         href: '/inventory',
       },
@@ -67,18 +71,18 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
       },
       {
         label: 'Nhóm vật tư',
-        value: partCategories.length || '—',
+        value: partCategoriesCount || '—',
         dotColor: '#818cf8',
         href: '/part-categories',
       },
       {
         label: 'Báo cáo doanh thu',
-        value: '24/7',
+        value: 'Theo kỳ',
         dotColor: '#10b981',
         href: '/reports',
       },
     ],
-    [inventoryItems.length, lowStockCount, partCategories.length]
+    [inventoryItemsCount, lowStockCount, partCategoriesCount]
   );
 
   return (
@@ -93,7 +97,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
       defaultRoleLabel="Quản lý dịch vụ"
       defaultInitials="QL"
       searchPlaceholder="Tìm phiếu RO, mã phụ tùng..."
-      onGlobalSearch={(q) => router.push(`/dashboard?search=${encodeURIComponent(q)}`)}
+      onGlobalSearch={handleGlobalSearch}
     >
       <AuthGuard>{children}</AuthGuard>
     </SaaSDashboardShell>

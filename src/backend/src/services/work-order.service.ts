@@ -9,6 +9,7 @@ import { WorkOrderRepository } from '../repositories/work-order.repository';
 import { IntakeRepository } from '../repositories/intake.repository';
 import { notificationService } from './notification.service';
 import { generateHandoverPdfBuffer } from '../utils/pdf-handover.util';
+import { getFrontendBaseUrl } from '../utils/cors.util';
 
 const workOrderRepo = new WorkOrderRepository();
 const intakeRepo = new IntakeRepository();
@@ -170,22 +171,20 @@ export class WorkOrderService {
 
       // 7.5. Copy dịch vụ yêu cầu từ Intake -> WoService (Snapshot warranty)
       if (intake.services && intake.services.length > 0) {
-        let sortOrder = 0;
-        for (const is of intake.services) {
-          if (is.service) {
-            await tx.woService.create({
-              data: {
-                work_order_id: workOrder.id,
-                service_id: is.service.id,
-                name: is.service.name,
-                pricing_type: is.service.pricing_type,
-                status: 'PENDING',
-                sort_order: ++sortOrder,
-                warranty_months: is.service.warranty_months ?? 0,
-                warranty_mileage: is.service.warranty_mileage ?? 0,
-              }
-            });
-          }
+        const servicesData = intake.services
+          .filter((is) => Boolean(is.service))
+          .map((is, idx) => ({
+            work_order_id: workOrder.id,
+            service_id: is.service!.id,
+            name: is.service!.name,
+            pricing_type: is.service!.pricing_type,
+            status: 'PENDING' as const,
+            sort_order: idx + 1,
+            warranty_months: is.service!.warranty_months ?? 0,
+            warranty_mileage: is.service!.warranty_mileage ?? 0,
+          }));
+        if (servicesData.length > 0) {
+          await tx.woService.createMany({ data: servicesData });
         }
       }
 
@@ -703,7 +702,7 @@ export class WorkOrderService {
       }
     }
 
-    return await prisma.$transaction(async (tx) => {
+    const createdResult = await prisma.$transaction(async (tx) => {
       // 1. Xác định hoặc tạo WoService
       let targetServiceId = data.wo_service_id;
 
@@ -922,6 +921,27 @@ export class WorkOrderService {
         job: fullJob,
       };
     });
+
+    const techUserIds = new Set<number>();
+    for (const lab of createdResult.job?.labours || []) {
+      if (lab.employee?.user_id) {
+        techUserIds.add(lab.employee.user_id);
+      }
+    }
+    for (const techUserId of techUserIds) {
+      notificationService
+        .sendInApp({
+          userId: techUserId,
+          type: 'TASK_ASSIGNED',
+          title: `Phân công công việc mới: ${data.name.trim()}`,
+          message: `Bạn vừa được phân công công việc "${data.name.trim()}" trong phiếu ${wo.wo_number}.`,
+          entityType: 'WORK_ORDER',
+          entityId: workOrderId,
+        })
+        .catch((err) => console.error('Failed to notify technician on job created:', err));
+    }
+
+    return createdResult;
   }
 
   /**
@@ -983,7 +1003,9 @@ export class WorkOrderService {
       }
     }
 
-    return await prisma.$transaction(async (tx) => {
+    const prevEmployeeId = job.labours[0]?.employee_id ?? null;
+
+    const fullUpdatedJob = await prisma.$transaction(async (tx) => {
       // 1. Cập nhật Job
       const updatedJob = await tx.job.update({
         where: { id: jobId },
@@ -1046,6 +1068,25 @@ export class WorkOrderService {
 
       return fullUpdatedJob;
     });
+
+    if (data.technician_id && data.technician_id !== prevEmployeeId) {
+      const assignedLab = fullUpdatedJob?.labours?.find((l) => l.employee_id === data.technician_id);
+      const techUserId = assignedLab?.employee?.user_id;
+      if (techUserId) {
+        notificationService
+          .sendInApp({
+            userId: techUserId,
+            type: 'TASK_ASSIGNED',
+            title: `Phân công công việc: ${fullUpdatedJob?.name || job.name}`,
+            message: `Bạn vừa được phân công thực hiện công việc "${fullUpdatedJob?.name || job.name}".`,
+            entityType: 'WORK_ORDER',
+            entityId: workOrderId,
+          })
+          .catch((err) => console.error('Failed to notify technician on job updated:', err));
+      }
+    }
+
+    return fullUpdatedJob;
   }
 
   /**
@@ -1950,6 +1991,18 @@ export class WorkOrderService {
           created_by_id: userId || wo.advisor_id || 1,
         },
       });
+
+      if (newOnHand <= (item.reorder_level ?? 0)) {
+        notificationService
+          .sendInAppToRoles(['MANAGER'], {
+            type: 'LOW_STOCK_ALERT',
+            title: `Cảnh báo tồn kho thấp (${item.sku})`,
+            message: `Phụ tùng ${item.sku} chỉ còn ${newOnHand} trong kho (mức tối thiểu: ${item.reorder_level ?? 0}).`,
+            entityType: 'INVENTORY',
+            entityId: item.id,
+          })
+          .catch((err) => console.error('Failed to send low stock alert:', err));
+      }
     }
 
     return jobPart;
@@ -2194,7 +2247,7 @@ export class WorkOrderService {
 
       // 4. Gửi email thông báo cho khách hàng
       if (wo.customer?.email) {
-        const trackingLink = `http://localhost:3000/tracking`;
+        const trackingLink = `${getFrontendBaseUrl()}/customer/tracking`;
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
             <div style="background-color: #1e40af; padding: 24px; text-align: center; color: #ffffff;">
@@ -2224,12 +2277,29 @@ export class WorkOrderService {
         `;
 
         notificationService
-          .sendEmail(
-            wo.customer.email,
-            `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công dịch vụ`,
-            emailHtml
-          )
-          .catch((err: any) => console.warn('[StartWork Email Error]', err?.message));
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'WORK_ORDER_STARTED',
+            title: `Xe ${wo.vehicle.license_plate} đã bắt đầu thi công`,
+            message: `Phiếu công việc ${wo.wo_number} cho xe ${wo.vehicle.license_plate} đã chính thức bắt đầu thi công tại xưởng.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+            email: wo.customer.email,
+            subject: `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công dịch vụ`,
+            html: emailHtml,
+          })
+          .catch((err: any) => console.warn('[StartWork Notification Error]', err?.message));
+      } else {
+        notificationService
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'WORK_ORDER_STARTED',
+            title: `Xe ${wo.vehicle.license_plate} đã bắt đầu thi công`,
+            message: `Phiếu công việc ${wo.wo_number} cho xe ${wo.vehicle.license_plate} đã chính thức bắt đầu thi công tại xưởng.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+          })
+          .catch((err: any) => console.warn('[StartWork Notification Error]', err?.message));
       }
 
       return updatedWo;
@@ -2326,7 +2396,7 @@ export class WorkOrderService {
 
       // 4. Nếu WorkOrder lần đầu chuyển sang IN_PROGRESS, gửi email thông báo khách hàng
       if (transitionedWoToInProgress && wo.customer?.email) {
-        const trackingLink = `http://localhost:3000/tracking`;
+        const trackingLink = `${getFrontendBaseUrl()}/customer/tracking`;
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
             <div style="background-color: #1e40af; padding: 24px; text-align: center; color: #ffffff;">
@@ -2356,12 +2426,29 @@ export class WorkOrderService {
         `;
 
         notificationService
-          .sendEmail(
-            wo.customer.email,
-            `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công hạng mục ${woService.name}`,
-            emailHtml
-          )
-          .catch((err: any) => console.warn('[StartService Email Error]', err?.message));
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'SERVICE_ITEM_STARTED',
+            title: `Xe ${wo.vehicle.license_plate} bắt đầu hạng mục ${woService.name}`,
+            message: `Phiếu công việc ${wo.wo_number} đã bắt đầu thi công hạng mục: ${woService.name}.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+            email: wo.customer.email,
+            subject: `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công hạng mục ${woService.name}`,
+            html: emailHtml,
+          })
+          .catch((err: any) => console.warn('[StartService Notification Error]', err?.message));
+      } else if (transitionedWoToInProgress) {
+        notificationService
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'SERVICE_ITEM_STARTED',
+            title: `Xe ${wo.vehicle.license_plate} bắt đầu hạng mục ${woService.name}`,
+            message: `Phiếu công việc ${wo.wo_number} đã bắt đầu thi công hạng mục: ${woService.name}.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+          })
+          .catch((err: any) => console.warn('[StartService Notification Error]', err?.message));
       }
 
       return updatedService;
@@ -2518,6 +2605,19 @@ export class WorkOrderService {
               created_by_id: userId,
             },
           });
+        }
+
+        const reorderLevel = Number(invItem.reorder_level ?? 0);
+        if (newOnHand <= reorderLevel) {
+          notificationService
+            .sendInAppToRoles(['MANAGER'], {
+              type: 'LOW_STOCK_ALERT',
+              title: `Cảnh báo tồn kho thấp (${invItem.sku})`,
+              message: `Phụ tùng ${invItem.sku} chỉ còn ${newOnHand} trong kho (mức tối thiểu: ${reorderLevel}).`,
+              entityType: 'INVENTORY',
+              entityId: invItem.id,
+            })
+            .catch((err) => console.error('Failed to send low stock alert:', err));
         }
       }
     }
@@ -2811,7 +2911,7 @@ export class WorkOrderService {
 
       // Nếu lần đầu WorkOrder chuyển sang IN_PROGRESS, gửi email thông báo khách hàng
       if (transitionedWo && wo.customer?.email) {
-        const trackingLink = `http://localhost:3000/tracking`;
+        const trackingLink = `${getFrontendBaseUrl()}/customer/tracking`;
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
             <div style="background-color: #1e40af; padding: 24px; text-align: center; color: #ffffff;">
@@ -2841,12 +2941,29 @@ export class WorkOrderService {
         `;
 
         notificationService
-          .sendEmail(
-            wo.customer.email,
-            `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công dịch vụ`,
-            emailHtml
-          )
-          .catch((err: any) => console.warn('[StartWork Email Error]', err?.message));
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'WORK_ORDER_STARTED',
+            title: `Xe ${wo.vehicle.license_plate} đã bắt đầu thi công`,
+            message: `Phiếu công việc ${wo.wo_number} cho xe ${wo.vehicle.license_plate} đã chính thức bắt đầu thi công tại xưởng.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+            email: wo.customer.email,
+            subject: `[Car Service Center] Xe ${wo.vehicle.license_plate} đã bắt đầu thi công dịch vụ`,
+            html: emailHtml,
+          })
+          .catch((err: any) => console.warn('[StartWork Notification Error]', err?.message));
+      } else if (transitionedWo) {
+        notificationService
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'WORK_ORDER_STARTED',
+            title: `Xe ${wo.vehicle.license_plate} đã bắt đầu thi công`,
+            message: `Phiếu công việc ${wo.wo_number} cho xe ${wo.vehicle.license_plate} đã chính thức bắt đầu thi công tại xưởng.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+          })
+          .catch((err: any) => console.warn('[StartWork Notification Error]', err?.message));
       }
 
       return updatedJob;
@@ -3023,12 +3140,29 @@ export class WorkOrderService {
         `;
 
         notificationService
-          .sendEmail(
-            wo.customer.email,
-            `[Car Service Center] Biên bản xuất trả xe ${wo.vehicle.license_plate}`,
-            emailHtml
-          )
-          .catch((err: any) => console.warn('[ReleaseVehicle Email Error]', err?.message));
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'VEHICLE_HANDOVER',
+            title: `Biên bản xuất trả xe ${wo.vehicle.license_plate}`,
+            message: `Phương tiện ${wo.vehicle.license_plate} theo phiếu ${wo.wo_number} đã hoàn tất thủ tục bàn giao và xuất trả xe.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+            email: wo.customer.email,
+            subject: `[Car Service Center] Biên bản xuất trả xe ${wo.vehicle.license_plate}`,
+            html: emailHtml,
+          })
+          .catch((err: any) => console.warn('[ReleaseVehicle Notification Error]', err?.message));
+      } else {
+        notificationService
+          .notifyAndEmail({
+            userId: wo.customer_id,
+            type: 'VEHICLE_HANDOVER',
+            title: `Biên bản xuất trả xe ${wo.vehicle.license_plate}`,
+            message: `Phương tiện ${wo.vehicle.license_plate} theo phiếu ${wo.wo_number} đã hoàn tất thủ tục bàn giao và xuất trả xe.`,
+            entityType: 'WORK_ORDER',
+            entityId: wo.id,
+          })
+          .catch((err: any) => console.warn('[ReleaseVehicle Notification Error]', err?.message));
       }
 
       return {
@@ -3151,21 +3285,9 @@ export class WorkOrderService {
         },
       });
 
-      // Tạo thông báo cho khách hàng
-      await tx.notification.create({
-        data: {
-          user_id: wo.customer_id,
-          notification_type: 'VEHICLE_READY',
-          title: `Bàn giao xe ${wo.vehicle.license_plate} thành công`,
-          message: `Phương tiện ${wo.vehicle.license_plate} (${wo.vehicle.make} ${wo.vehicle.model}) đã hoàn tất bàn giao xuất xưởng. Chân thành cảm ơn Quý khách!`,
-          entity_type: 'WORK_ORDER',
-          entity_id: workOrderId,
-        }
-      });
-
-      // Gửi email xác nhận kèm nội dung nghiệm thu bàn giao xe
-      if (wo.customer?.email) {
-        const emailHtml = `
+      // Gửi thông báo In-App + Socket.IO và email xác nhận kèm nội dung nghiệm thu bàn giao xe
+      const emailHtml = wo.customer?.email
+        ? `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
             <div style="background-color: #047857; padding: 24px; text-align: center; color: #ffffff;">
               <h2 style="margin: 0; font-size: 20px; font-weight: bold;">CAR SERVICE CENTER</h2>
@@ -3189,16 +3311,22 @@ export class WorkOrderService {
               Hotline hỗ trợ: 1900 8888 | Cảm ơn Quý khách đã đồng hành cùng trung tâm!
             </div>
           </div>
-        `;
+        `
+        : undefined;
 
-        notificationService
-          .sendEmail(
-            wo.customer.email,
-            `[Car Service Center] Biên bản bàn giao xuất xưởng xe ${wo.vehicle.license_plate}`,
-            emailHtml
-          )
-          .catch((err: any) => console.warn('[ReleaseVehicle Email Error]', err?.message));
-      }
+      notificationService
+        .notifyAndEmail({
+          userId: wo.customer_id,
+          type: 'VEHICLE_HANDOVER',
+          title: `Bàn giao xe ${wo.vehicle.license_plate} thành công`,
+          message: `Phương tiện ${wo.vehicle.license_plate} (${wo.vehicle.make} ${wo.vehicle.model}) đã hoàn tất bàn giao xuất xưởng. Chân thành cảm ơn Quý khách!`,
+          entityType: 'WORK_ORDER',
+          entityId: wo.id,
+          email: wo.customer?.email || undefined,
+          subject: `[Car Service Center] Biên bản bàn giao xuất xưởng xe ${wo.vehicle.license_plate}`,
+          html: emailHtml,
+        })
+        .catch((err: any) => console.warn('[ReleaseVehicle Notification Error]', err?.message));
 
       // Tự động đóng hồ sơ sau khi bàn giao thành công (nếu bật cấu hình)
       const finalWo = await this.tryAutoClose(tx, workOrderId, userId, updatedWo);

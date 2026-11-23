@@ -1,16 +1,31 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
-import api from '@/lib/axios';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import {
+  ResponsiveContainer,
   BarChart,
-  Bar,
+  CartesianGrid,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
+  Bar,
 } from 'recharts';
+import api from '@/lib/axios';
+
+const ChartLoadingSkeleton = () => (
+  <div className="h-[300px] w-full bg-slate-100 rounded-xl animate-pulse" />
+);
+
+const RevenueBarChart = dynamic(
+  () => import('./components/ReportsCharts').then((mod) => mod.RevenueBarChart),
+  { ssr: false, loading: ChartLoadingSkeleton }
+);
+
+const ServicesBarChart = dynamic(
+  () => import('./components/ReportsCharts').then((mod) => mod.ServicesBarChart),
+  { ssr: false, loading: ChartLoadingSkeleton }
+);
 
 type ReportType = 'revenue' | 'services' | 'inventory' | 'warranty';
 
@@ -222,25 +237,34 @@ function RevenueSection({
           <h3 className="text-sm font-bold text-slate-900 mb-5">
             Biểu đồ biến động doanh thu theo ngày
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data} margin={{ top: 10, right: 20, left: 20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} />
-              <YAxis
-                tickFormatter={(v: number) => `${(v / 1_000_000).toFixed(1)}M`}
-                tick={{ fontSize: 11, fill: '#64748b' }}
-              />
-              <Tooltip
-                formatter={(val: any) => [`${fmtCurrency(Number(val || 0))} ₫`, 'Doanh thu']}
-                contentStyle={{
-                  fontSize: '12px',
-                  borderRadius: '10px',
-                  border: '1px solid #e2e8f0',
-                }}
-              />
-              <Bar dataKey="totalRevenue" fill="#0866ff" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <RevenueBarChart data={data} />
+
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[480px]">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th className="py-3 px-4">Ngày</th>
+                  <th className="py-3 px-4 text-center">Số hóa đơn</th>
+                  <th className="py-3 px-4 text-right">Tổng doanh thu</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {data.map((row) => (
+                  <tr key={row.date} className="hover:bg-blue-50/30 transition-colors">
+                    <td className="py-3 px-4 font-mono tabular-nums text-slate-700">
+                      {new Date(row.date).toLocaleDateString('vi-VN')}
+                    </td>
+                    <td className="py-3 px-4 text-center font-mono tabular-nums font-semibold">
+                      {row.count}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono tabular-nums font-bold text-[#0050cd]">
+                      {fmtCurrency(row.totalRevenue)} ₫
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -274,23 +298,42 @@ function ServicesSection({
         <EmptyState message="Không có dữ liệu dịch vụ trong khoảng thời gian này." />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs">
-          <h3 className="text-sm font-bold text-slate-900 mb-5">Top dịch vụ được yêu cầu nhiều nhất</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data} margin={{ top: 10, right: 20, left: 20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="serviceName" tick={{ fontSize: 11, fill: '#64748b' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
-              <Tooltip
-                formatter={(val: any) => [val, 'Số lượt']}
-                contentStyle={{
-                  fontSize: '12px',
-                  borderRadius: '10px',
-                  border: '1px solid #e2e8f0',
-                }}
-              />
-              <Bar dataKey="count" fill="#0050cd" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <h3 className="text-sm font-bold text-slate-900 mb-5">
+            Xếp hạng dịch vụ theo số lượt thực hiện
+          </h3>
+          <ServicesBarChart data={data} />
+
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[480px]">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th className="py-3 px-4">Tên dịch vụ</th>
+                  <th className="py-3 px-4 text-center">Số lượt thực hiện</th>
+                  <th className="py-3 px-4 text-right">Tỷ trọng</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {data.map((row) => {
+                  const pct = summary.totalWorkOrders
+                    ? ((row.count / summary.totalWorkOrders) * 100).toFixed(1)
+                    : '0';
+                  return (
+                    <tr key={row.serviceId} className="hover:bg-blue-50/30 transition-colors">
+                      <td className="py-3 px-4 font-semibold text-slate-800">
+                        {row.serviceName}
+                      </td>
+                      <td className="py-3 px-4 text-center font-mono tabular-nums font-bold text-[#0050cd]">
+                        {row.count}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono tabular-nums text-slate-500">
+                        {pct}%
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -596,26 +639,30 @@ function WarrantySection({ data }: { data: WarrantyData }) {
 // ============ Main Report Component ============
 export default function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType>('revenue');
-  const [reportData, setReportData] = useState<ReportData | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [hasLoaded, setHasLoaded] = useState<boolean>(false);
 
   const [startDate, setStartDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(1);
     return d.toISOString().slice(0, 10);
   });
-  const [endDate, setEndDate] = useState<string>(() => {
-    return new Date().toISOString().slice(0, 10);
-  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetchReport = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     try {
       if (reportType === 'warranty') {
         const res = await api.get('/api/reports/warranty', {
           params: { startDate, endDate },
+          signal: controller.signal,
         });
+        if (controller.signal.aborted) return;
         setReportData({
           type: 'warranty',
           period: res.data.data.period,
@@ -623,30 +670,42 @@ export default function ReportsPage() {
           summary: {},
         });
       } else {
+        const params: Record<string, string> = { type: reportType };
+        if (reportType !== 'inventory') {
+          params.start = startDate;
+          params.end = endDate;
+        }
         const res = await api.get('/api/reports/operational', {
-          params: { type: reportType, start: startDate, end: endDate },
+          params,
+          signal: controller.signal,
         });
-        setReportData(res.data.data);
+        if (controller.signal.aborted) return;
+        if (res.data?.success) {
+          setReportData(res.data.data);
+        }
       }
-      setHasLoaded(true);
     } catch (err: any) {
-      console.error('Lỗi tải báo cáo:', err);
+      if (controller.signal.aborted || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') {
+        return;
+      }
+      console.error('Lỗi tải báo cáo vận hành:', err);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [reportType, startDate, endDate]);
 
   const handleTypeChange = (t: ReportType) => {
     setReportType(t);
     setReportData(null);
-    setHasLoaded(false);
-    if (t === 'inventory') {
-      setTimeout(() => fetchReport(), 0);
-    }
   };
 
   useEffect(() => {
     fetchReport();
+    return () => {
+      abortRef.current?.abort();
+    };
   }, [fetchReport]);
 
   return (
@@ -733,7 +792,7 @@ export default function ReportsPage() {
           <div className="h-8 w-52 bg-slate-100 rounded-lg animate-pulse" />
           <div className="h-64 w-full bg-slate-100 rounded-xl animate-pulse" />
         </div>
-      ) : !hasLoaded ? (
+      ) : !reportData ? (
         <div className="text-center py-16 px-6 bg-white rounded-2xl border border-dashed border-slate-300">
           <span className="material-symbols-outlined text-[48px] block mb-3 text-slate-400">
             bar_chart
@@ -742,7 +801,7 @@ export default function ReportsPage() {
             Chọn khoảng thời gian và nhấn <strong>Xem báo cáo</strong>
           </p>
         </div>
-      ) : reportData ? (
+      ) : (
         <>
           {reportData.type === 'revenue' && (
             <RevenueSection
@@ -766,7 +825,7 @@ export default function ReportsPage() {
             <WarrantySection data={reportData.data as WarrantyData} />
           )}
         </>
-      ) : null}
+      )}
     </div>
   );
 }

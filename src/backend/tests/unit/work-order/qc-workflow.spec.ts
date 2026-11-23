@@ -84,6 +84,7 @@ describe('Unit Test - QC Workflow & Rework Loop (UC-41 / SPEC-QC-01)', () => {
           },
           jobType: { findFirst: vi.fn().mockResolvedValue({ id: 1 }) },
           jobLabour: { create: vi.fn().mockResolvedValue({ id: 10 }) },
+          employee: { findMany: vi.fn().mockResolvedValue([]) },
         };
         return callback(txMock);
       });

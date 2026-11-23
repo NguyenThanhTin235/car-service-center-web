@@ -272,32 +272,52 @@ export class AppointmentService {
         registeredServices = serviceEntities.map(s => s.name);
       }
 
-      // Gửi email xác nhận đặt lịch (UC-11 & UC-17 & UC-82)
+      // Gửi thông báo & email xác nhận đặt lịch (UC-11 & UC-17 & UC-82)
       const customerForEmail = await tx.user.findUnique({ where: { id: appointment.customer_id } });
-      if (customerForEmail?.email) {
-        const dateStr = new Date(appointment.scheduled_date).toLocaleDateString('vi-VN');
-        const timeStr = data.scheduled_time;
-        const vehicleInfo = `${vehicle.make} ${vehicle.model}`;
+      const dateStr = new Date(appointment.scheduled_date).toLocaleDateString('vi-VN');
+      const timeStr = data.scheduled_time;
+      const vehicleInfo = `${vehicle.make} ${vehicle.model}`;
 
-        const html = renderAppointmentCreatedTemplate({
-          customerName: customerForEmail.full_name,
-          licensePlate: vehicle.license_plate,
-          vehicleModel: vehicleInfo,
-          scheduledDate: dateStr,
-          scheduledTime: timeStr,
-          services: registeredServices,
-          notes: data.notes
-        });
+      const html = customerForEmail?.email
+        ? renderAppointmentCreatedTemplate({
+            customerName: customerForEmail.full_name,
+            licensePlate: vehicle.license_plate,
+            vehicleModel: vehicleInfo,
+            scheduledDate: dateStr,
+            scheduledTime: timeStr,
+            services: registeredServices,
+            notes: data.notes,
+          })
+        : undefined;
 
-        const emailSubject = data.is_warranty
-          ? `[Car Service Center] Xác nhận đặt lịch bảo hành ngày ${dateStr}`
-          : `[Car Service Center] Xác nhận đặt lịch hẹn ngày ${dateStr}`;
+      const emailSubject = data.is_warranty
+        ? `[Car Service Center] Xác nhận đặt lịch bảo hành ngày ${dateStr}`
+        : `[Car Service Center] Xác nhận đặt lịch hẹn ngày ${dateStr}`;
 
-        notificationService.sendEmail(
-          customerForEmail.email,
-          emailSubject,
-          html
-        ).catch(err => console.error('Failed to send email:', err));
+      notificationService
+        .notifyAndEmail({
+          userId: appointment.customer_id,
+          type: 'APPOINTMENT_CONFIRMED',
+          title: `Đặt lịch hẹn thành công ngày ${dateStr}`,
+          message: `Lịch hẹn cho xe ${vehicle.license_plate} lúc ${timeStr} ngày ${dateStr} đã được tiếp nhận.`,
+          entityType: 'APPOINTMENT',
+          entityId: appointment.id,
+          email: customerForEmail?.email || undefined,
+          subject: emailSubject,
+          html,
+        })
+        .catch(err => console.error('Failed to send appointment created notification:', err));
+
+      if (!createdById || createdById === data.customer_id) {
+        notificationService
+          .sendInAppToRoles(['DESK STAFF'], {
+            type: 'GENERAL',
+            title: `Lịch hẹn mới từ khách hàng (${vehicle.license_plate})`,
+            message: `Khách hàng ${customer.full_name} vừa đặt lịch hẹn cho xe ${vehicle.license_plate} lúc ${timeStr} ngày ${dateStr}.`,
+            entityType: 'APPOINTMENT',
+            entityId: appointment.id,
+          })
+          .catch(err => console.error('Failed to notify staff on appointment created:', err));
       }
 
       return appointment;
@@ -407,28 +427,50 @@ export class AppointmentService {
       }
     });
 
-    // Gửi email thông báo dời lịch (UC-13 & UC-19) nếu có thay đổi ngày hoặc giờ
-    if (hasTimeOrDateChanged && updated.customer?.email) {
+    // Gửi thông báo & email dời lịch (UC-13 & UC-19) nếu có thay đổi ngày hoặc giờ
+    if (hasTimeOrDateChanged) {
       const newDateStr = new Date(updated.scheduled_date).toLocaleDateString('vi-VN');
       const newTimeStr = updated.scheduled_time.toISOString().substring(11, 16);
       const vehicleInfo = updated.vehicle ? `${updated.vehicle.make} ${updated.vehicle.model}` : undefined;
 
-      const html = renderAppointmentRescheduledTemplate({
-        customerName: updated.customer.full_name,
-        licensePlate: updated.vehicle?.license_plate,
-        vehicleModel: vehicleInfo,
-        scheduledDate: newDateStr,
-        scheduledTime: newTimeStr,
-        oldScheduledDate: oldDateStr,
-        oldScheduledTime: oldTimeStr,
-        notes: data.notes || appointment.notes || undefined
-      });
+      const html = updated.customer?.email
+        ? renderAppointmentRescheduledTemplate({
+            customerName: updated.customer.full_name,
+            licensePlate: updated.vehicle?.license_plate,
+            vehicleModel: vehicleInfo,
+            scheduledDate: newDateStr,
+            scheduledTime: newTimeStr,
+            oldScheduledDate: oldDateStr,
+            oldScheduledTime: oldTimeStr,
+            notes: data.notes || appointment.notes || undefined,
+          })
+        : undefined;
 
-      notificationService.sendEmail(
-        updated.customer.email,
-        `[Car Service Center] Thông báo dời lịch hẹn sang ngày ${newDateStr}`,
-        html
-      ).catch(err => console.error('Failed to send email:', err));
+      notificationService
+        .notifyAndEmail({
+          userId: updated.customer_id,
+          type: 'APPOINTMENT_RESCHEDULED',
+          title: `Lịch hẹn đã được dời sang ngày ${newDateStr}`,
+          message: `Lịch hẹn${updated.vehicle?.license_plate ? ` xe ${updated.vehicle.license_plate}` : ''} đã được cập nhật sang ${newTimeStr} ngày ${newDateStr}.`,
+          entityType: 'APPOINTMENT',
+          entityId: updated.id,
+          email: updated.customer?.email || undefined,
+          subject: `[Car Service Center] Thông báo dời lịch hẹn sang ngày ${newDateStr}`,
+          html,
+        })
+        .catch(err => console.error('Failed to send appointment rescheduled notification:', err));
+
+      if (!isStaff) {
+        notificationService
+          .sendInAppToRoles(['DESK STAFF'], {
+            type: 'APPOINTMENT_RESCHEDULED',
+            title: `Khách hàng dời lịch hẹn (${updated.vehicle?.license_plate || `#${updated.id}`})`,
+            message: `Khách hàng ${updated.customer?.full_name || ''} đã dời lịch hẹn sang ${newTimeStr} ngày ${newDateStr}.`,
+            entityType: 'APPOINTMENT',
+            entityId: updated.id,
+          })
+          .catch(err => console.error('Failed to notify desk staff on appointment rescheduled:', err));
+      }
     }
 
     return updated;
@@ -459,28 +501,36 @@ export class AppointmentService {
       }
     });
 
-    if (updated.customer?.email) {
-      const dateStr = new Date(updated.scheduled_date).toLocaleDateString('vi-VN');
-      const timeStr = updated.scheduled_time.toISOString().substring(11, 16);
-      const vehicleModel = `${updated.vehicle.make} ${updated.vehicle.model}`.trim();
-      const services = updated.services.map((s: any) => s.service.name);
+    const dateStr = new Date(updated.scheduled_date).toLocaleDateString('vi-VN');
+    const timeStr = updated.scheduled_time.toISOString().substring(11, 16);
+    const vehicleModel = `${updated.vehicle.make} ${updated.vehicle.model}`.trim();
+    const services = updated.services.map((s: any) => s.service.name);
 
-      const html = renderAppointmentConfirmedTemplate({
-        customerName: updated.customer.full_name,
-        licensePlate: updated.vehicle.license_plate,
-        vehicleModel,
-        scheduledDate: dateStr,
-        scheduledTime: timeStr,
-        services,
-        notes: updated.notes || undefined,
-      });
+    const confirmHtml = updated.customer?.email
+      ? renderAppointmentConfirmedTemplate({
+          customerName: updated.customer.full_name,
+          licensePlate: updated.vehicle.license_plate,
+          vehicleModel,
+          scheduledDate: dateStr,
+          scheduledTime: timeStr,
+          services,
+          notes: updated.notes || undefined,
+        })
+      : undefined;
 
-      notificationService.sendEmail(
-        updated.customer.email,
-        `[Car Service Center] Xác nhận lịch hẹn thành công - Ngày ${dateStr}`,
-        html
-      ).catch(err => console.error('Failed to send email:', err));
-    }
+    notificationService
+      .notifyAndEmail({
+        userId: updated.customer_id,
+        type: 'APPOINTMENT_CONFIRMED',
+        title: `Lịch hẹn ngày ${dateStr} đã được xác nhận`,
+        message: `Lịch hẹn cho xe ${updated.vehicle.license_plate} lúc ${timeStr} ngày ${dateStr} đã được xác nhận thành công.`,
+        entityType: 'APPOINTMENT',
+        entityId: updated.id,
+        email: updated.customer?.email || undefined,
+        subject: `[Car Service Center] Xác nhận lịch hẹn thành công - Ngày ${dateStr}`,
+        html: confirmHtml,
+      })
+      .catch(err => console.error('Failed to send appointment confirmed notification:', err));
 
     return updated;
   }
@@ -525,26 +575,46 @@ export class AppointmentService {
       }
     });
 
-    // Gửi email hủy lịch hẹn (UC-14 & UC-20)
-    if (updated.customer?.email) {
-      const dateStr = new Date(updated.scheduled_date).toLocaleDateString('vi-VN');
-      const timeStr = updated.scheduled_time.toISOString().substring(11, 16);
-      const vehicleInfo = updated.vehicle ? `${updated.vehicle.make} ${updated.vehicle.model}` : undefined;
+    // Gửi thông báo & email hủy lịch hẹn (UC-14 & UC-20)
+    const cancelDateStr = new Date(updated.scheduled_date).toLocaleDateString('vi-VN');
+    const cancelTimeStr = updated.scheduled_time.toISOString().substring(11, 16);
+    const cancelVehicleInfo = updated.vehicle ? `${updated.vehicle.make} ${updated.vehicle.model}` : undefined;
 
-      const html = renderAppointmentCancelledTemplate({
-        customerName: updated.customer.full_name,
-        licensePlate: updated.vehicle?.license_plate,
-        vehicleModel: vehicleInfo,
-        scheduledDate: dateStr,
-        scheduledTime: timeStr,
-        cancelReason: cancelReason
-      });
+    const cancelHtml = updated.customer?.email
+      ? renderAppointmentCancelledTemplate({
+          customerName: updated.customer.full_name,
+          licensePlate: updated.vehicle?.license_plate,
+          vehicleModel: cancelVehicleInfo,
+          scheduledDate: cancelDateStr,
+          scheduledTime: cancelTimeStr,
+          cancelReason: cancelReason,
+        })
+      : undefined;
 
-      notificationService.sendEmail(
-        updated.customer.email,
-        `[Car Service Center] Thông báo hủy lịch hẹn ngày ${dateStr}`,
-        html
-      ).catch(err => console.error('Failed to send email:', err));
+    notificationService
+      .notifyAndEmail({
+        userId: updated.customer_id,
+        type: 'APPOINTMENT_CANCELLED',
+        title: `Lịch hẹn ngày ${cancelDateStr} đã bị hủy`,
+        message: `Lịch hẹn${updated.vehicle?.license_plate ? ` xe ${updated.vehicle.license_plate}` : ''} lúc ${cancelTimeStr} ngày ${cancelDateStr} đã bị hủy. Lý do: ${cancelReason}`,
+        entityType: 'APPOINTMENT',
+        entityId: updated.id,
+        email: updated.customer?.email || undefined,
+        subject: `[Car Service Center] Thông báo hủy lịch hẹn ngày ${cancelDateStr}`,
+        html: cancelHtml,
+      })
+      .catch(err => console.error('Failed to send appointment cancelled notification:', err));
+
+    if (!isStaff) {
+      notificationService
+        .sendInAppToRoles(['DESK STAFF'], {
+          type: 'APPOINTMENT_CANCELLED',
+          title: `Khách hàng hủy lịch hẹn (${updated.vehicle?.license_plate || `#${updated.id}`})`,
+          message: `Lịch hẹn lúc ${cancelTimeStr} ngày ${cancelDateStr} đã bị khách hàng hủy. Lý do: ${cancelReason}`,
+          entityType: 'APPOINTMENT',
+          entityId: updated.id,
+        })
+        .catch(err => console.error('Failed to notify staff on appointment cancelled:', err));
     }
 
     return updated;
@@ -599,7 +669,7 @@ export class AppointmentService {
       }
     }
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // Cập nhật trạng thái lịch hẹn → ARRIVED
       const updatedAppointment = await tx.appointment.update({
         where: { id },
@@ -674,5 +744,19 @@ export class AppointmentService {
 
       return { appointment: updatedAppointment, intakeRecord };
     });
+
+    const plate = result.intakeRecord?.vehicle?.license_plate || appointment.vehicle?.license_plate || '';
+    const customerName = result.intakeRecord?.customer?.full_name || appointment.customer?.full_name || '';
+    notificationService
+      .sendInAppToRoles(['SA'], {
+        type: 'CHECKIN_READY',
+        title: `Xe mới check-in chờ tiếp nhận (${plate})`,
+        message: `Xe ${plate} của khách hàng ${customerName} đã check-in từ lịch hẹn và đang chờ cố vấn dịch vụ xử lý.`,
+        entityType: 'INTAKE',
+        entityId: result.intakeRecord?.id ?? id,
+      })
+      .catch(err => console.error('Failed to notify SA on appointment arrival:', err));
+
+    return result;
   }
 }

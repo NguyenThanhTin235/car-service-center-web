@@ -2,14 +2,19 @@
 
 import React, { useEffect, useMemo, useState, useCallback, useDeferredValue } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchIntakeQueue } from '@/store/slices/intakeSlice';
 import { fetchAppointments } from '@/store/slices/appointmentSlice';
 import { fetchBillingQueue } from '@/store/slices/billingSlice';
 import SaaSWaveChart from '@/components/shared/SaaSWaveChart';
-import IntakeDetailModal from '@/components/intake/IntakeDetailModal';
 import { formatVND } from '@/lib/utils/formatters';
+
+const IntakeDetailModal = dynamic(
+  () => import('@/components/intake/IntakeDetailModal'),
+  { ssr: false }
+);
 
 type QueueTab = 'INTAKE' | 'APPOINTMENTS' | 'BILLING';
 
@@ -46,6 +51,7 @@ export default function StaffDashboardPage() {
     summary: billingSummary,
     records: billingRecords,
     loading: billingLoading,
+    error: billingError,
   } = useAppSelector((state) => state.billing);
 
   const [activeTab, setActiveTab] = useState<QueueTab>('INTAKE');
@@ -91,7 +97,7 @@ export default function StaffDashboardPage() {
       Number(billingSummary?.pendingCount || 0) + Number(billingSummary?.issuedCount || 0);
 
     const conversionPct =
-      totalIntake > 0 ? Math.round((convertedIntake / totalIntake) * 100) : 78;
+      totalIntake > 0 ? Math.round((convertedIntake / totalIntake) * 100) : 0;
 
     return {
       queuedIntake,
@@ -122,7 +128,7 @@ export default function StaffDashboardPage() {
   const deferredSearch = useDeferredValue(searchFilter);
 
   const isLoading = intakeLoading || aptLoading || billingLoading;
-  const hasError = intakeError || aptError;
+  const hasError = intakeError || aptError || billingError;
 
   // Filtered table items
   const filteredIntake = useMemo(() => {
@@ -211,9 +217,10 @@ export default function StaffDashboardPage() {
         {/* LEFT COLUMN (5/12): Hero Payment Card + Intake Queue Velocity Card */}
         <div className="lg:col-span-5 flex flex-col gap-5 justify-between">
           {/* HERO CARD 1: Deep Sapphire Card with Pure SVG Payment Card Graphic */}
-          <div
+          <button
+            type="button"
             onClick={() => router.push('/staff/billing')}
-            className="relative rounded-2xl bg-gradient-to-br from-[#091528] via-[#0c1f3d] to-[#083b8a] text-white p-6 border border-blue-900/60 shadow-sm cursor-pointer group flex items-center justify-between gap-4 min-h-[176px]"
+            className="text-left relative rounded-2xl bg-gradient-to-br from-[#091528] via-[#0c1f3d] to-[#083b8a] text-white p-6 border border-blue-900/60 shadow-sm cursor-pointer group flex items-center justify-between gap-4 min-h-[176px]"
           >
             <div className="relative z-10 flex flex-col justify-between h-full">
               <span className="text-xs font-medium text-slate-200">
@@ -255,7 +262,7 @@ export default function StaffDashboardPage() {
               <rect x="14" y="54" width="54" height="6" rx="3" fill="rgba(255,255,255,0.45)" />
               <rect x="14" y="66" width="84" height="8" rx="4" fill="rgba(255,255,255,0.85)" />
             </svg>
-          </div>
+          </button>
 
           {/* HERO CARD 2: Intake & Appointment Throughput Card */}
           <div className="rounded-2xl bg-white border border-slate-200/80 p-5 sm:p-6 shadow-xs flex flex-col justify-between flex-1">
@@ -320,35 +327,30 @@ export default function StaffDashboardPage() {
             testId="staff-wave-chart"
             title="Lưu lượng Tiếp nhận, Lịch hẹn & Quyết toán tại Quầy"
             primaryMetric={`${stats.totalIntake + stats.totalAppointments} lượt phục vụ`}
-            deltaText="+14.8%"
-            deltaPositive={true}
-            comparisonText="so với trung bình tuần"
-            xLabels={['08:00', '10:00', '13:00', '15:00', '17:00']}
-            yLabels={['40', '30', '20', '10', '0']}
+            deltaText={`${stats.conversionPct}%`}
+            deltaPositive={stats.conversionPct >= 50 || stats.totalIntake === 0}
+            comparisonText="tỷ lệ chuyển đổi tiếp nhận sang lệnh sửa chữa"
+            xLabels={['Tiếp nhận xe', 'Lịch hẹn trước', 'Đã tạo RO', 'Chờ thu ngân']}
             series={[
               {
                 label: 'Tiếp nhận xe',
                 value: stats.totalIntake,
                 color: '#0866ff',
-                peakRatio: 0.92,
               },
               {
                 label: 'Lịch hẹn trước',
                 value: stats.totalAppointments,
                 color: '#38bdf8',
-                peakRatio: 0.74,
               },
               {
                 label: 'Đã tạo lệnh sửa chữa',
                 value: stats.convertedIntake,
                 color: '#10b981',
-                peakRatio: 0.58,
               },
               {
                 label: 'Chờ thu ngân',
                 value: stats.pendingBilling,
                 color: '#818cf8',
-                peakRatio: 0.4,
               },
             ]}
           />
@@ -608,7 +610,7 @@ export default function StaffDashboardPage() {
                     return (
                       <tr key={apt.id} className="hover:bg-blue-50/30 transition-colors">
                         <td className="py-3 px-4 font-mono tabular-nums font-bold text-[#0050cd]">
-                          {apt.scheduled_time_str || apt.scheduled_time || '08:00'}
+                          {apt.scheduled_time_str || apt.scheduled_time || '—'}
                         </td>
                         <td className="py-3 px-4">
                           <div className="font-semibold text-slate-800">
@@ -710,10 +712,12 @@ export default function StaffDashboardPage() {
         )}
       </div>
 
-      <IntakeDetailModal
-        record={selectedIntakeRecord}
-        onClose={() => setSelectedIntakeRecord(null)}
-      />
+      {selectedIntakeRecord && (
+        <IntakeDetailModal
+          record={selectedIntakeRecord}
+          onClose={() => setSelectedIntakeRecord(null)}
+        />
+      )}
     </div>
   );
 }

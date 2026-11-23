@@ -3,6 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
+import { httpLogStream } from './loggers/logger';
+import { isOriginAllowed } from './utils/cors.util';
+import { checkHealth } from './services/health.service';
 import uploadRoutes from './routes/upload.routes';
 import authRoutes from './routes/auth.routes';
 import publicRoutes from './routes/public.routes';
@@ -25,26 +28,16 @@ import dashboardRoutes from './routes/dashboard.routes';
 import reportRoutes from './routes/report.routes';
 import quotationRoutes from './routes/quotation.routes';
 import warrantyRoutes from './routes/warranty.routes';
+import notificationRoutes from './routes/notification.routes';
+import aiChatRoutes from './routes/ai-chat.routes';
 
 const app = express();
 app.set('trust proxy', true);
 
 // Middlewares
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:3000',
-  'http://localhost:3001',
-  'http://127.0.0.1:3000',
-  'http://127.0.0.1:3001',
-];
-
 app.use(cors({ 
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (
-      allowedOrigins.includes(origin) ||
-      origin.startsWith('http://localhost:') ||
-      origin.startsWith('http://127.0.0.1:')
-    ) {
+    if (isOriginAllowed(origin)) {
       return callback(null, true);
     }
     return callback(null, false);
@@ -55,13 +48,45 @@ app.use(cors({
   exposedHeaders: ['Set-Cookie']
 }));
 app.use(helmet());
-app.use(morgan('dev'));
+app.use(
+  morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev', {
+    stream: httpLogStream,
+    skip: (req) => req.path === '/health',
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 
 // Routes
 app.get('/', (req: Request, res: Response) => {
   res.json({ message: 'Car Service Center API is running' });
+});
+
+app.get('/health', async (_req: Request, res: Response) => {
+  const { httpStatus, report } = await checkHealth();
+  const timestamp = new Date().toISOString();
+
+  if (httpStatus === 200) {
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: report.status === 'ok' ? 'Service is healthy' : 'Service is running in degraded mode',
+      data: report,
+      timestamp,
+    });
+    return;
+  }
+
+  res.status(503).json({
+    success: false,
+    code: 503,
+    message: 'Database connection unavailable',
+    error: {
+      code: 'SERVICE_UNAVAILABLE',
+      details: report,
+    },
+    timestamp,
+  });
 });
 
 app.use('/api/auth', authRoutes);
@@ -88,6 +113,9 @@ app.use('/api/warranty', warrantyRoutes);
 
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/v1/ai-chat', aiChatRoutes);
+app.use('/api/ai-chat', aiChatRoutes);
 
 export default app;
 

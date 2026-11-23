@@ -51,6 +51,9 @@ const { prismaMock, notificationMock } = vi.hoisted(() => {
 
   const notif = {
     sendEmail: vi.fn().mockResolvedValue(undefined),
+    notifyAndEmail: vi.fn().mockResolvedValue(undefined),
+    sendInAppToRoles: vi.fn().mockResolvedValue({ count: 0, userIds: [] }),
+    sendInApp: vi.fn().mockResolvedValue(undefined),
   };
 
   return { prismaMock: mock, notificationMock: notif };
@@ -102,6 +105,9 @@ describe('Integration API - Advisor Portal (SA-API-01..03)', () => {
     vi.clearAllMocks();
     prismaMock.$transaction.mockImplementation(async (cb: (tx: any) => Promise<any>) => cb(prismaMock));
     notificationMock.sendEmail.mockResolvedValue(undefined);
+    notificationMock.notifyAndEmail.mockResolvedValue(undefined);
+    notificationMock.sendInAppToRoles.mockResolvedValue({ count: 0, userIds: [] });
+    notificationMock.sendInApp.mockResolvedValue(undefined);
   });
 
   describe('SA-API-01: RBAC Guard (SA vs CUSTOMER -> 403 Forbidden)', () => {

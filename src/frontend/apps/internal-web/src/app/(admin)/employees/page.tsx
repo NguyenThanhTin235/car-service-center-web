@@ -10,6 +10,7 @@ import TablePagination from '@/components/shared/TablePagination';
 import ComboBox from '@/components/shared/ComboBox';
 import toast from 'react-hot-toast';
 import { validateName, validateRequired } from '@/lib/utils/validators';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const EmployeeDetailModal = dynamic(
   () => import('@/components/admin/EmployeeDetailModal'),
@@ -67,6 +68,7 @@ export default function EmployeesPage() {
   const [availableUsers, setAvailableUsers] = useState<UserData[]>([]);
   const [pagination, setPagination] = useState({ totalRecords: 0, totalPages: 1, currentPage: 1, limit: 10 });
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [filterPos, setFilterPos] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [loading, setLoading] = useState(true);
@@ -79,26 +81,38 @@ export default function EmployeesPage() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const loadEmployees = useCallback(async (page = 1) => {
+  const loadEmployees = useCallback(async (page = 1, signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const res = await employeeApi.getAll({
-        search,
-        position: filterPos || undefined,
-        status: filterStatus || undefined,
-        page,
-        limit: 10,
-      });
-      setEmployees(res.data.data);
-      setPagination(res.data.pagination);
+      const res = await employeeApi.getAll(
+        {
+          search: debouncedSearch,
+          position: filterPos || undefined,
+          status: filterStatus || undefined,
+          page,
+          limit: 10,
+        },
+        signal
+      );
+      if (!signal?.aborted) {
+        setEmployees(res.data.data);
+        setPagination(res.data.pagination);
+      }
     } catch (e: any) {
+      if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED' || signal?.aborted) return;
       setError(e.response?.data?.message || 'Lỗi tải dữ liệu');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
-  }, [search, filterPos, filterStatus]);
+  }, [debouncedSearch, filterPos, filterStatus]);
 
-  useEffect(() => { loadEmployees(); }, [loadEmployees]);
+  useEffect(() => {
+    const controller = new AbortController();
+    loadEmployees(1, controller.signal);
+    return () => controller.abort();
+  }, [loadEmployees]);
   useEffect(() => { employeeApi.getSkills().then(res => setSkills(res.data.data)).catch(() => {}); }, []);
 
   const openCreate = () => { 
@@ -125,7 +139,8 @@ export default function EmployeesPage() {
     setShowModal(true);
   };
   
-  const loadAvailableUsers = async () => {
+  const loadAvailableUsers = async (force = false) => {
+    if (!force && availableUsers.length > 0) return;
     try {
       const res = await userApi.getAll({ limit: 100 });
       const users: UserData[] = res.data.data;
@@ -183,6 +198,7 @@ export default function EmployeesPage() {
       }
       setShowModal(false);
       loadEmployees(pagination.currentPage);
+      loadAvailableUsers(true);
     } catch (e: any) {
       const msg = e.response?.data?.message || 'Có lỗi xảy ra';
       setError(msg);
@@ -251,9 +267,11 @@ export default function EmployeesPage() {
         {/* 3 Status & Position Tiles (7 cols) */}
         <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* Card 2: Royal Blue (#0050cd) - Đang hoạt động */}
-          <div
+          <button
+            type="button"
+            aria-pressed={filterStatus === 'active'}
             onClick={() => setFilterStatus(filterStatus === 'active' ? '' : 'active')}
-            className={`rounded-[24px] p-5 flex flex-col justify-between cursor-pointer transition-all select-none shadow-md group ${
+            className={`text-left rounded-[24px] p-5 flex flex-col justify-between cursor-pointer transition-all select-none shadow-md group ${
               filterStatus === 'active'
                 ? 'bg-[#0050cd] text-white ring-2 ring-white/60 shadow-lg'
                 : 'bg-[#0050cd] text-white hover:brightness-105'
@@ -273,12 +291,14 @@ export default function EmployeesPage() {
               <span>Sẵn sàng nhận việc</span>
               <span className="font-mono font-bold">Trực ca</span>
             </div>
-          </div>
+          </button>
 
           {/* Card 3: Soft Cool Slate (#e4e7ec) - Ngừng hoạt động */}
-          <div
+          <button
+            type="button"
+            aria-pressed={filterStatus === 'inactive'}
             onClick={() => setFilterStatus(filterStatus === 'inactive' ? '' : 'inactive')}
-            className={`rounded-[24px] p-5 flex flex-col justify-between cursor-pointer transition-all select-none shadow-xs group ${
+            className={`text-left rounded-[24px] p-5 flex flex-col justify-between cursor-pointer transition-all select-none shadow-xs group ${
               filterStatus === 'inactive'
                 ? 'bg-[#e4e7ec] text-zinc-900 ring-2 ring-slate-400 shadow-md'
                 : 'bg-[#e4e7ec] text-zinc-900 hover:brightness-95'
@@ -298,7 +318,7 @@ export default function EmployeesPage() {
               <span>Tạm ngưng nhận việc</span>
               <span className="font-mono font-semibold text-rose-700">Tạm dừng</span>
             </div>
-          </div>
+          </button>
 
           {/* Card 4: Midnight Indigo (#111827) - Kỹ năng hệ thống */}
           <div className="rounded-[24px] bg-[#111827] text-white p-5 flex flex-col justify-between shadow-md hover:shadow-lg transition-all group">
@@ -384,15 +404,15 @@ export default function EmployeesPage() {
         </div>
 
         <div className="w-full overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[900px]">
+          <table className="w-full text-left border-collapse min-w-[980px]">
             <thead>
               <tr className="bg-slate-50/80 text-slate-500 text-[11px] uppercase tracking-wider font-semibold border-b border-slate-200/80">
-                <th className="py-3.5 px-5 font-mono">ID</th>
-                <th className="py-3.5 px-5">Họ và tên</th>
-                <th className="py-3.5 px-5">Chức vụ</th>
-                <th className="py-3.5 px-5">Tài khoản liên kết</th>
-                <th className="py-3.5 px-5">Kỹ năng</th>
-                <th className="py-3.5 px-5 text-right pr-6">Thao tác</th>
+                <th className="py-3.5 px-4 pl-5 font-mono whitespace-nowrap">ID</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Họ và tên</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Chức vụ</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Tài khoản liên kết</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Kỹ năng</th>
+                <th className="py-3.5 px-4 pr-5 text-right whitespace-nowrap">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/60">
@@ -416,12 +436,12 @@ export default function EmployeesPage() {
                       !emp.isActive ? 'opacity-65' : ''
                     }`}
                   >
-                    <td className="py-3.5 px-5 font-mono text-xs font-bold text-[#0866ff]">
+                    <td className="py-3.5 px-4 pl-5 font-mono tabular-nums text-xs font-bold text-[#0866ff] whitespace-nowrap align-middle">
                       EMP-{String(emp.id).padStart(4, '0')}
                     </td>
-                    <td className="py-3.5 px-5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                    <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
                           {emp.fullName
                             .split(' ')
                             .map((n: string) => n[0])
@@ -429,34 +449,40 @@ export default function EmployeesPage() {
                             .join('')
                             .toUpperCase()}
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-slate-900">{emp.fullName}</span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="text-sm font-semibold text-slate-900 leading-tight">
+                            {emp.fullName}
+                          </span>
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 ${
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${
                               emp.isActive
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
                                 : 'bg-rose-50 text-rose-600 border-rose-200/80'
                             }`}
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full ${emp.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                emp.isActive ? 'bg-emerald-500' : 'bg-rose-500'
+                              }`}
+                            />
                             {emp.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
                           </span>
                         </div>
                       </div>
                     </td>
-                    <td className="py-3.5 px-5">
+                    <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                       {(() => {
                         const meta = getPositionMeta(emp.position, emp.user?.email);
                         return (
                           <span
-                            className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${meta.color}`}
+                            className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border whitespace-nowrap ${meta.color}`}
                           >
                             {meta.label}
                           </span>
                         );
                       })()}
                     </td>
-                    <td className="py-3.5 px-5">
+                    <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                       {emp.user ? (
                         <div>
                           <div className="font-mono text-xs font-semibold text-slate-800">{emp.user.email}</div>
@@ -475,35 +501,35 @@ export default function EmployeesPage() {
                         <span className="text-xs text-slate-500 italic">Chưa liên kết</span>
                       )}
                     </td>
-                    <td className="py-3.5 px-5">
+                    <td className="py-3.5 px-4 align-middle">
                       {(() => {
                         const meta = getPositionMeta(emp.position, emp.user?.email);
                         if (!isTechRole(meta.key)) {
                           return (
-                            <span className="text-xs text-slate-400 italic">
+                            <span className="text-xs text-slate-400 italic whitespace-nowrap">
                               Không áp dụng
                             </span>
                           );
                         }
                         if (!emp.skills || emp.skills.length === 0) {
                           return (
-                            <span className="text-xs text-slate-400 italic">
+                            <span className="text-xs text-slate-400 italic whitespace-nowrap">
                               Chưa gán kỹ năng
                             </span>
                           );
                         }
                         return (
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex items-center flex-wrap gap-1.5">
                             {emp.skills.slice(0, 2).map((s) => (
                               <span
                                 key={s.id}
-                                className="px-2 py-0.5 rounded-lg bg-blue-50/70 text-slate-700 text-xs border border-blue-200/60"
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-blue-50/70 text-slate-700 text-xs border border-blue-200/60 whitespace-nowrap"
                               >
                                 {s.name}
                               </span>
                             ))}
                             {emp.skills.length > 2 && (
-                              <span className="text-xs font-mono text-slate-400">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-100 text-xs font-mono font-semibold text-slate-500 whitespace-nowrap">
                                 +{emp.skills.length - 2}
                               </span>
                             )}
@@ -511,17 +537,21 @@ export default function EmployeesPage() {
                         );
                       })()}
                     </td>
-                    <td className="py-3.5 px-5 pr-6">
+                    <td className="py-3.5 px-4 pr-5 align-middle whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          type="button"
                           onClick={() => setSelectedEmpDetail(emp)}
+                          aria-label={`Xem chi tiết ${emp.fullName}`}
                           className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-slate-600 hover:text-[#0866ff] flex items-center justify-center transition-colors cursor-pointer"
                           title="Xem chi tiết nhân viên"
                         >
                           <span className="material-symbols-outlined text-[17px]">visibility</span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => openEdit(emp)}
+                          aria-label={`Chỉnh sửa ${emp.fullName}`}
                           className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-[#0866ff] flex items-center justify-center transition-colors cursor-pointer"
                           title="Chỉnh sửa"
                         >
@@ -529,7 +559,9 @@ export default function EmployeesPage() {
                         </button>
                         {emp.isActive ? (
                           <button
+                            type="button"
                             onClick={() => handleDeactivate(emp)}
+                            aria-label={`Vô hiệu hóa ${emp.fullName}`}
                             className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-200/80 text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
                             title="Vô hiệu hóa"
                           >
@@ -539,7 +571,9 @@ export default function EmployeesPage() {
                           </button>
                         ) : (
                           <button
+                            type="button"
                             onClick={() => handleReactivate(emp)}
+                            aria-label={`Kích hoạt lại ${emp.fullName}`}
                             className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-500 hover:text-white border border-emerald-200/80 text-emerald-600 flex items-center justify-center transition-colors cursor-pointer"
                             title="Kích hoạt lại"
                           >
@@ -580,7 +614,7 @@ export default function EmployeesPage() {
                   {error}
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label className="flex flex-col gap-1.5">
                   <span className="text-xs font-semibold text-slate-600">Họ và tên *</span>
                   <input
@@ -757,16 +791,18 @@ export default function EmployeesPage() {
         onCancel={() => setConfirmEmp(null)}
       />
 
-      <EmployeeDetailModal
-        isOpen={!!selectedEmpDetail}
-        onClose={() => setSelectedEmpDetail(null)}
-        employeeId={selectedEmpDetail?.id || null}
-        fallbackData={selectedEmpDetail}
-        onEdit={(emp) => {
-          setSelectedEmpDetail(null);
-          openEdit(emp);
-        }}
-      />
+      {selectedEmpDetail && (
+        <EmployeeDetailModal
+          isOpen={!!selectedEmpDetail}
+          onClose={() => setSelectedEmpDetail(null)}
+          employeeId={selectedEmpDetail?.id || null}
+          fallbackData={selectedEmpDetail}
+          onEdit={(emp) => {
+            setSelectedEmpDetail(null);
+            openEdit(emp);
+          }}
+        />
+      )}
     </div>
   );
 }

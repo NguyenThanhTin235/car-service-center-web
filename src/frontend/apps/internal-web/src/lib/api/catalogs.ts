@@ -10,8 +10,10 @@ export interface CatalogData {
 }
 
 export const catalogApi = {
-  getAll: (params?: { search?: string; catalogType?: string; page?: number; limit?: number }) =>
-    api.get('/api/catalogs', { params }),
+  getAll: (
+    params?: { search?: string; catalogType?: string; page?: number; limit?: number },
+    signal?: AbortSignal
+  ) => api.get('/api/catalogs', { params, signal }),
 
   create: (data: { catalogType: string; name: string; description?: string; sortOrder?: number }) =>
     api.post('/api/catalogs', data),

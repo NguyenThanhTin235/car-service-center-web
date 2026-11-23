@@ -8,6 +8,7 @@ import {
   getAIJobSuggestions,
   applyAIJobs,
 } from '@/lib/api/work-order.api';
+import ModalPortal from '@/components/advisor/common/ModalPortal';
 import toast from 'react-hot-toast';
 
 interface AIJobPlannerModalProps {
@@ -308,36 +309,49 @@ export default function AIJobPlannerModal({
   const totalAllJobsCount = editableServices.reduce((acc, s) => acc + s.jobs.length, 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="relative w-full max-w-4xl max-h-[90vh] bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant/60 flex flex-col overflow-hidden">
+    <ModalPortal>
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md sa-modal-backdrop"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && !applying) onClose();
+        }}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Trợ lý Kỹ thuật AI - Lập kế hoạch Hạng mục và Công việc"
+          className="sa-modal-panel relative w-full max-w-5xl max-h-[90dvh] bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant/60 flex flex-col overflow-hidden"
+        >
         {/* MODAL HEADER */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/30 bg-surface-container-low">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-outline-variant/30 bg-surface-container-low">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-[#0050cd] flex items-center justify-center text-white shadow-xs shrink-0">
               <span className="material-symbols-outlined text-[22px]">auto_awesome</span>
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-title-sm font-bold text-on-surface truncate">
+                <h3 className="text-sm font-bold text-on-surface truncate">
                   {targetServiceName ? (
                     <span>Đề xuất quy trình cho: <strong className="text-primary">{targetServiceName}</strong></span>
                   ) : (
                     'Trợ lý Kỹ thuật AI - Lập kế hoạch Hạng mục & Công việc'
                   )}
                 </h3>
-                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-label-xs font-bold uppercase">
+                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-bold uppercase">
                   {targetServiceName ? 'Hạng mục đơn' : 'RAG Toàn diện'}
                 </span>
               </div>
-              <p className="text-body-xs text-on-surface-variant truncate mt-0.5">
-                Phiếu: <span className="font-semibold text-primary">#{workOrderNumber}</span> • Tự động gom lỗi thành Hạng mục và phân công kỹ thuật viên tối ưu
+              <p className="text-[11px] text-on-surface-variant truncate mt-0.5">
+                Phiếu: <span className="font-mono font-bold text-primary tabular-nums">#{workOrderNumber}</span> • Tự động gom lỗi thành Hạng mục và phân công kỹ thuật viên tối ưu
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             disabled={applying}
-            className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer shrink-0"
+            aria-label="Đóng"
+            className="sa-press w-11 h-11 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer shrink-0"
             title="Đóng (Esc)"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
@@ -506,7 +520,7 @@ export default function AIJobPlannerModal({
                             type="text"
                             value={svc.service_name}
                             onChange={(e) => handleUpdateServiceName(sIdx, e.target.value)}
-                            className="text-body-sm font-bold text-on-surface bg-transparent border-b border-dashed border-transparent hover:border-outline focus:border-primary focus:outline-none px-1 py-0.5 transition-colors flex-1 min-w-[200px]"
+                            className="text-xs font-bold text-on-surface bg-transparent border-b border-dashed border-transparent hover:border-outline focus:border-primary focus:outline-none px-1 py-0.5 transition-colors flex-1 min-w-0 w-full sm:w-auto sm:min-w-[200px]"
                             title="Nhấp để đổi tên hạng mục"
                           />
 
@@ -655,7 +669,7 @@ export default function AIJobPlannerModal({
                                   </div>
                                 ) : (
                                   /* COMPACT CARD VIEW */
-                                  <div className="p-3 flex items-center justify-between gap-3">
+                                  <div className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                                     <div className="flex items-center gap-3 min-w-0 flex-1">
                                       <input
                                         type="checkbox"
@@ -666,7 +680,7 @@ export default function AIJobPlannerModal({
 
                                       <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                          <span className="text-body-sm font-semibold text-on-surface truncate">
+                                          <span className="text-xs font-semibold text-on-surface truncate">
                                             {job.name}
                                           </span>
                                           <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-surface-container text-on-surface-variant shrink-0">
@@ -685,7 +699,7 @@ export default function AIJobPlannerModal({
                                           )}
                                         </div>
                                         {job.description && (
-                                          <p className="text-body-xs text-on-surface-variant truncate mt-0.5">
+                                          <p className="text-[11px] text-on-surface-variant truncate mt-0.5">
                                             {job.description}
                                           </p>
                                         )}
@@ -693,11 +707,11 @@ export default function AIJobPlannerModal({
                                     </div>
 
                                     {/* Right side: KTV + Hours + Quick Edit */}
-                                    <div className="flex items-center gap-3 shrink-0">
+                                    <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3 shrink-0">
                                       {/* Suggested Technician */}
                                       {job.assigned_technician_name ? (
                                         <div
-                                          className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/5 text-primary text-body-xs font-medium"
+                                          className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/5 text-primary text-[11px] font-medium"
                                           title={job.assignment_reason || 'Đề xuất bởi AI'}
                                         >
                                           <span className="material-symbols-outlined text-[15px]">how_to_reg</span>
@@ -709,13 +723,13 @@ export default function AIJobPlannerModal({
                                           )}
                                         </div>
                                       ) : (
-                                        <span className="text-body-xs text-on-surface-variant italic">
+                                        <span className="text-[11px] text-on-surface-variant italic">
                                           Chưa chọn thợ
                                         </span>
                                       )}
 
                                       {/* Hours */}
-                                      <span className="text-body-xs font-bold text-on-surface font-mono min-w-[36px] text-right">
+                                      <span className="text-[11px] font-bold text-on-surface font-mono tabular-nums min-w-[36px] text-right">
                                         {Number(job.estimated_hours).toFixed(1)}h
                                       </span>
 
@@ -724,7 +738,8 @@ export default function AIJobPlannerModal({
                                         <button
                                           type="button"
                                           onClick={() => setEditingJobKey(jobKey)}
-                                          className="p-1 rounded-md text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors cursor-pointer"
+                                          aria-label={`Chỉnh sửa ${job.name}`}
+                                          className="sa-press w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors cursor-pointer"
                                           title="Chỉnh sửa công việc này"
                                         >
                                           <span className="material-symbols-outlined text-[16px]">edit</span>
@@ -732,7 +747,8 @@ export default function AIJobPlannerModal({
                                         <button
                                           type="button"
                                           onClick={() => handleRemoveJobFromService(sIdx, jIdx)}
-                                          className="p-1 rounded-md text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors cursor-pointer"
+                                          aria-label={`Xóa ${job.name}`}
+                                          className="sa-press w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors cursor-pointer"
                                           title="Xóa công việc này khỏi đề xuất"
                                         >
                                           <span className="material-symbols-outlined text-[16px]">delete_outline</span>
@@ -800,6 +816,7 @@ export default function AIJobPlannerModal({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }

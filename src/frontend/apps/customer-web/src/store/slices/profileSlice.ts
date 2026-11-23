@@ -1,6 +1,6 @@
 'use client';
 
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '@/lib/axios';
 import { setCredentials } from './authSlice';
 

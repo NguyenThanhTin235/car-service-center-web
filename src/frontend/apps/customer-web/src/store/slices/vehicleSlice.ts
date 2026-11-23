@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '@/lib/axios';
 
 export interface Vehicle {
@@ -10,6 +10,7 @@ export interface Vehicle {
   color: string | null;
   vehicleSize: 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL' | null;
   isActive: boolean;
+  hasTransactions?: boolean;
   activeWorkOrder?: {
     id: number;
     woNumber: string;
@@ -98,11 +99,7 @@ export const restoreVehicle = createAsyncThunk(
 const vehicleSlice = createSlice({
   name: 'vehicles',
   initialState,
-  reducers: {
-    clearActionError: (state) => {
-      state.actionError = null;
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
       // Fetch
@@ -185,5 +182,4 @@ const vehicleSlice = createSlice({
   },
 });
 
-export const { clearActionError } = vehicleSlice.actions;
 export default vehicleSlice.reducer;

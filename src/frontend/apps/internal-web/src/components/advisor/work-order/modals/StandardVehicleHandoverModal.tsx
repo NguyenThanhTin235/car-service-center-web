@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { WorkOrder, completeVehicleHandover } from '@/lib/api/work-order.api';
 import { FUEL_LEVEL_OPTIONS } from '../work-order.constants';
+import ModalPortal from '@/components/advisor/common/ModalPortal';
 import toast from 'react-hot-toast';
 
 interface StandardVehicleHandoverModalProps {
@@ -31,6 +32,7 @@ export default function StandardVehicleHandoverModal({
 
   // Signature Canvas
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasRectRef = useRef<DOMRect | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
 
@@ -71,7 +73,7 @@ export default function StandardVehicleHandoverModal({
     canvas: HTMLCanvasElement,
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
   ) => {
-    const rect = canvas.getBoundingClientRect();
+    const rect = canvasRectRef.current ?? canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
@@ -88,6 +90,7 @@ export default function StandardVehicleHandoverModal({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    canvasRectRef.current = canvas.getBoundingClientRect();
     setIsDrawing(true);
     setHasSignature(true);
     const { x, y } = getCanvasCoords(canvas, e);
@@ -110,6 +113,7 @@ export default function StandardVehicleHandoverModal({
   };
 
   const stopDrawing = () => {
+    canvasRectRef.current = null;
     setIsDrawing(false);
   };
 
@@ -176,13 +180,24 @@ export default function StandardVehicleHandoverModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-in">
-      <div className="bg-surface-container-lowest w-full max-w-3xl rounded-2xl sm:rounded-3xl shadow-2xl border border-outline-variant flex flex-col max-h-[92vh] overflow-hidden">
+    <ModalPortal>
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-md overflow-y-auto sa-modal-backdrop"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose();
+        }}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Biên Bản Bàn Giao và Xuất Xưởng Phương Tiện"
+          className="sa-modal-panel bg-surface-container-lowest w-full max-w-4xl rounded-2xl shadow-2xl border border-outline-variant flex flex-col max-h-[90dvh] overflow-hidden"
+        >
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-outline-variant bg-gradient-to-r from-emerald-50 via-white to-teal-50 dark:from-emerald-950/25 dark:via-surface-container-lowest dark:to-teal-950/15 flex items-start justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2.5 py-0.5 rounded-md font-mono font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+        <div className="p-5 sm:p-6 border-b border-slate-200/80 bg-emerald-50/60 flex items-start justify-between gap-3">
+          <div className="space-y-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs px-2.5 py-0.5 rounded-md font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 tabular-nums">
                 #{workOrder.wo_number}
               </span>
               <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-600 text-white flex items-center gap-1 shadow-2xs">
@@ -190,11 +205,11 @@ export default function StandardVehicleHandoverModal({
                 Đã thanh toán 100%
               </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-on-surface flex items-center gap-2">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
               <span className="material-symbols-outlined text-emerald-600">directions_car</span>
-              Biên Bản Bàn Giao & Xuất Xưởng Phương Tiện
+              Biên Bản Bàn Giao &amp; Xuất Xưởng Phương Tiện
             </h2>
-            <p className="text-xs text-on-surface-variant">
+            <p className="text-xs text-slate-600">
               Nghiệm thu chất lượng, đối soát hiện trạng và xác nhận xuất xưởng phương tiện cho khách hàng.
             </p>
           </div>
@@ -202,7 +217,8 @@ export default function StandardVehicleHandoverModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+            aria-label="Đóng"
+            className="sa-press w-11 h-11 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors cursor-pointer shrink-0"
             title="Đóng"
           >
             <span className="material-symbols-outlined text-[22px]">close</span>
@@ -483,7 +499,8 @@ export default function StandardVehicleHandoverModal({
           </div>
         </form>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }
 

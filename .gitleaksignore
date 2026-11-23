@@ -1,0 +1,5 @@
+# Historical finding in SETUP_GUIDE.md (commit 85fb230e); secret is no longer present at HEAD.
+85fb230e9d9591f763a9adf44755c2d6eae4c645:SETUP_GUIDE.md:generic-api-key:40
+# False positives on dummy unit-test password ('NewStrongPass123') in profile-controller.spec.ts
+d73e057780804275e692bbe9ca089d06378136ab:src/backend/tests/unit/auth/profile-controller.spec.ts:generic-api-key:235
+d73e057780804275e692bbe9ca089d06378136ab:src/backend/tests/unit/auth/profile-controller.spec.ts:generic-api-key:236

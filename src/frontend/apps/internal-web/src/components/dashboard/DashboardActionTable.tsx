@@ -21,6 +21,7 @@ export interface DashboardActionTableProps<T> {
   pageSize?: number;
   isLoading?: boolean;
   emptyMessage?: string;
+  headerExtra?: React.ReactNode;
 }
 
 export function DashboardActionTable<T extends Record<string, any>>({
@@ -33,6 +34,7 @@ export function DashboardActionTable<T extends Record<string, any>>({
   pageSize = 10,
   isLoading = false,
   emptyMessage = 'Không có dữ liệu trong khoảng thời gian này',
+  headerExtra,
 }: DashboardActionTableProps<T>) {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -72,10 +74,11 @@ export function DashboardActionTable<T extends Record<string, any>>({
 
   // Pagination
   const totalPages = Math.ceil(processedData.length / pageSize) || 1;
+  const safePage = Math.min(page, totalPages);
   const currentData = useMemo(() => {
-    const start = (page - 1) * pageSize;
+    const start = (safePage - 1) * pageSize;
     return processedData.slice(start, start + pageSize);
-  }, [processedData, page, pageSize]);
+  }, [processedData, safePage, pageSize]);
 
   const handleSort = (key: string) => {
     if (sortKey === key) {
@@ -107,28 +110,31 @@ export function DashboardActionTable<T extends Record<string, any>>({
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
           {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
         </div>
-        <div className="relative w-full sm:w-64">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder={searchPlaceholder}
-            className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-          />
-          <span className="material-symbols-outlined text-[16px] text-slate-400 absolute left-2.5 top-2 pointer-events-none">
-            search
-          </span>
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 text-xs"
-            >
-              ✕
-            </button>
-          )}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+          {headerExtra}
+          <div className="relative w-full sm:w-64">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder={searchPlaceholder}
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="material-symbols-outlined text-[16px] text-slate-400 absolute left-2.5 top-2 pointer-events-none">
+              search
+            </span>
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 text-xs"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -190,25 +196,25 @@ export function DashboardActionTable<T extends Record<string, any>>({
 
       {/* Pagination Footer */}
       {processedData.length > 0 && (
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 tabular-nums">
           <span>
-            Hiển thị {(page - 1) * pageSize + 1} -{' '}
-            {Math.min(page * pageSize, processedData.length)} trên tổng {processedData.length}
+            Hiển thị {(safePage - 1) * pageSize + 1} -{' '}
+            {Math.min(safePage * pageSize, processedData.length)} trên tổng {processedData.length}
           </span>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setPage((p) => Math.max(p - 1, 1))}
-              disabled={page === 1}
+              onClick={() => setPage((p) => Math.max(Math.min(p, totalPages) - 1, 1))}
+              disabled={safePage === 1}
               className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-slate-700 dark:text-slate-300 disabled:opacity-40"
             >
               Trước
             </button>
             <span className="px-2 font-mono">
-              {page} / {totalPages}
+              {safePage} / {totalPages}
             </span>
             <button
-              onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-              disabled={page === totalPages}
+              onClick={() => setPage((p) => Math.min(Math.min(p, totalPages) + 1, totalPages))}
+              disabled={safePage === totalPages}
               className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-slate-700 dark:text-slate-300 disabled:opacity-40"
             >
               Sau

@@ -1,4 +1,5 @@
 import api from '../axios';
+import { downloadPdfBlob } from '@/utils/customerHelpers';
 
 export interface ApproveQuotationResponse {
   success: boolean;
@@ -46,14 +47,5 @@ export async function downloadQuotationPdf(id: number, quotationNumber: string):
   const response = await api.get(`/api/quotations/${id}/pdf`, {
     responseType: 'blob',
   });
-
-  const blob = new Blob([response.data], { type: 'application/pdf' });
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `Bao_Gia_${quotationNumber}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  window.URL.revokeObjectURL(url);
-  document.body.removeChild(a);
+  downloadPdfBlob(response.data, `Bao_Gia_${quotationNumber}.pdf`);
 }

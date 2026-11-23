@@ -1,155 +1,414 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import LogoutButton from '@/components/shared/LogoutButton';
+import NotificationBell from '@/components/notifications/NotificationBell';
 import { getDashboardPathByRole } from '@/utils/roleRedirect';
 
-export default function PublicHeader() {
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
-  const [mounted, setMounted] = React.useState(false);
-  const [profileOpen, setProfileOpen] = React.useState(false);
+const PUBLIC_NAV_LINKS = [
+  { href: '/home', label: 'Trang chủ', sectionId: 'top' },
+  { href: '/home#services', label: 'Dịch vụ', sectionId: 'services' },
+  { href: '/home#process', label: 'Quy trình', sectionId: 'process' },
+  { href: '/home#contact', label: 'Liên hệ', sectionId: 'contact' },
+];
 
-  React.useEffect(() => {
+export default function PublicHeader() {
+  const pathname = usePathname();
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const [mounted, setMounted] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleNavClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    sectionId: string
+  ) => {
+    setMobileMenuOpen(false);
+    if (pathname !== '/home' && pathname !== '/') return;
+
+    e.preventDefault();
+    if (sectionId === 'top') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.history.replaceState(null, '', '/home');
+      return;
+    }
+
+    const target = document.getElementById(sectionId);
+    if (target) {
+      const headerOffset = 64;
+      const top = target.getBoundingClientRect().top + window.scrollY - headerOffset;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      window.history.replaceState(null, '', `/home#${sectionId}`);
+    }
+  };
+
+  useEffect(() => {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (!profileOpen && !mobileMenuOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setProfileOpen(false);
+        setMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [profileOpen, mobileMenuOpen]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileMenuOpen]);
+
+  const isCustomer = Boolean(user?.roles?.includes('CUSTOMER'));
+  const bookingHref = mounted && isAuthenticated ? '/customer/profile?tab=appointments' : '/login';
+  const profileHref = isCustomer
+    ? '/customer/profile?tab=profile'
+    : getDashboardPathByRole(user?.roles || []);
+  const userInitial = user?.fullName ? user.fullName.charAt(0).toUpperCase() : 'K';
+
+  const handleCustomerTabClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    tabKey: string
+  ) => {
+    setProfileOpen(false);
+    setMobileMenuOpen(false);
+    if (pathname === '/customer/profile' && typeof window !== 'undefined') {
+      e.preventDefault();
+      window.history.replaceState(null, '', `/customer/profile?tab=${tabKey}`);
+      window.dispatchEvent(new CustomEvent('csc:switch-tab', { detail: tabKey }));
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-50 h-16 w-full bg-surface-container-lowest shadow-sm border-b border-surface-container-highest">
-      <div className="w-full max-w-container-max mx-auto px-gutter-desktop flex items-center justify-between h-full">
-        {/* Logo & Brand identity */}
-        <div className="flex items-center gap-8">
-          <Link className="flex items-center gap-2.5 text-on-surface" href="/">
-            <div className="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center text-on-primary shadow-sm">
-              <span className="material-symbols-outlined text-2xl" data-icon="directions_car">directions_car</span>
+    <>
+      <header className="sticky top-0 z-30 h-16 w-full bg-surface-elevated border-b border-hairline no-print">
+      <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between gap-4">
+        {/* Brand & Desktop Navigation */}
+        <div className="flex items-center gap-6 xl:gap-8 shrink-0">
+          <Link href="/home" className="flex items-center gap-2.5 group min-h-[44px] shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-accent text-white flex items-center justify-center shrink-0 transition-transform duration-150 group-hover:scale-[1.03]">
+              <span className="material-symbols-outlined text-xl" aria-hidden="true">
+                directions_car
+              </span>
             </div>
-            <span className="font-headline-md text-headline-md text-on-surface tracking-tight font-bold">Car Service Center</span>
+            <span className="font-bold text-base tracking-[-0.02em] text-ink-primary whitespace-nowrap">
+              AutoCare Pro
+            </span>
           </Link>
-          
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-7 pt-4" suppressHydrationWarning>
-            <Link className="text-on-surface-variant font-label-lg text-label-lg pb-4 hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="/">Trang chủ</Link>
-            {mounted && isAuthenticated && (
-              <Link className="text-primary-container font-semibold font-label-lg text-label-lg border-b-2 border-primary-container pb-4 active:scale-[0.98] transition-transform duration-150 ease-out" href="/customer">
-                Tổng quan
+
+          <nav className="hidden lg:flex items-center gap-1" aria-label="Điều hướng công khai">
+            {PUBLIC_NAV_LINKS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={(e) => handleNavClick(e, item.sectionId)}
+                className="min-h-[44px] px-3.5 rounded-xl text-sm font-medium text-ink-secondary hover:text-ink-primary hover:bg-surface-subtle transition-colors inline-flex items-center whitespace-nowrap"
+              >
+                {item.label}
               </Link>
-            )}
-            <a className="text-on-surface-variant font-label-lg text-label-lg pb-4 hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="/#services">Dịch vụ</a>
-            <a className="text-on-surface-variant font-label-lg text-label-lg pb-4 hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="/#contact">Liên hệ</a>
+            ))}
           </nav>
         </div>
 
-        {/* Trailing Action Controls */}
-        <div className="flex items-center gap-4">
+        {/* Trailing Controls */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <Link
-            className="hidden sm:inline-flex items-center justify-center px-4 py-2 bg-primary-container text-on-primary-container font-label-lg text-label-lg rounded-lg shadow-sm hover:opacity-95 transition-all duration-150 active:scale-[0.98]"
-            href={mounted && isAuthenticated ? "/customer/profile?tab=appointments" : "/login"}
+            href={bookingHref}
+            onClick={(e) => {
+              if (mounted && isAuthenticated) {
+                handleCustomerTabClick(e, 'appointments');
+              }
+            }}
+            className="hidden sm:inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 rounded-xl bg-accent hover:bg-accent-hover text-white text-sm font-semibold active:scale-[0.98] transition-all duration-150 whitespace-nowrap"
           >
-            Đặt lịch ngay
+            <span className="material-symbols-outlined text-lg" aria-hidden="true">
+              calendar_add_on
+            </span>
+            <span>Đặt lịch ngay</span>
           </Link>
-          
-          {/* User Profile Pill or Login */}
-          <div className="flex items-center gap-3 pl-2 sm:border-l border-surface-container-highest">
+
+          <div className="flex items-center gap-2 sm:pl-2 sm:border-l sm:border-hairline">
             {!mounted ? (
-              <div className="w-24 h-9 bg-surface-container-low animate-pulse rounded-lg"></div>
+              <div
+                className="w-24 h-10 bg-surface-subtle animate-pulse rounded-xl"
+                aria-hidden="true"
+              />
             ) : isAuthenticated && user ? (
               <>
+                <NotificationBell />
                 <div className="relative flex items-center">
                   <button
-                    onClick={() => setProfileOpen(!profileOpen)}
-                    className="flex items-center gap-2 p-1 rounded-lg hover:bg-surface-container-low transition-colors"
+                    type="button"
+                    onClick={() => setProfileOpen((v) => !v)}
+                    aria-expanded={profileOpen}
+                    aria-haspopup="menu"
+                    className="flex items-center gap-2 min-h-[44px] px-1.5 rounded-xl hover:bg-surface-subtle transition-colors cursor-pointer"
                   >
-                    <div className="w-9 h-9 rounded-full bg-primary-fixed flex items-center justify-center text-primary-container font-bold text-sm border border-outline-variant shadow-sm relative">
-                      {user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
-                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-tertiary ring-2 ring-surface-container-lowest"></span>
+                    <div className="w-9 h-9 rounded-full bg-accent-soft text-accent font-bold text-sm flex items-center justify-center shrink-0">
+                      {userInitial}
                     </div>
-                    <div className="hidden lg:flex flex-col text-left">
-                      <span className="font-label-md text-label-md text-on-surface">{user.fullName || 'Tài khoản'}</span>
-                    </div>
-                    <span className="material-symbols-outlined text-on-surface-variant hidden lg:block" style={{ fontSize: '18px' }}>
+                    <span className="hidden lg:inline-block text-sm font-semibold text-ink-primary max-w-[140px] truncate">
+                      {user.fullName || 'Khách hàng'}
+                    </span>
+                    <span
+                      className="material-symbols-outlined text-lg text-ink-muted hidden lg:inline-block"
+                      aria-hidden="true"
+                    >
                       expand_more
                     </span>
                   </button>
 
-                  {/* Dropdown Menu */}
                   {profileOpen && (
-                    <div className="absolute top-full right-0 mt-1 w-52 bg-surface-container-lowest border border-surface-container-highest rounded-xl shadow-lg z-50 py-1 overflow-hidden">
-                      <div className="px-4 py-3 border-b border-surface-container-high">
-                        <p className="text-sm font-semibold text-on-surface truncate">{user.fullName || 'Tài khoản'}</p>
-                        <p className="text-xs text-on-surface-variant truncate">{user.email}</p>
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setProfileOpen(false)}
+                        aria-hidden="true"
+                      />
+                      <div
+                        role="menu"
+                        className="absolute top-full right-0 mt-2 w-64 bg-surface-elevated rounded-2xl shadow-xl z-50 py-1.5 overflow-hidden"
+                      >
+                        <div className="px-4 py-3 border-b border-hairline">
+                          <p className="text-sm font-semibold text-ink-primary truncate">
+                            {user.fullName || 'Khách hàng'}
+                          </p>
+                          <p className="text-xs text-ink-muted truncate mt-0.5">{user.email}</p>
+                        </div>
+
+                        <div className="py-1">
+                          <Link
+                            href="/customer/profile?tab=overview"
+                            role="menuitem"
+                            onClick={(e) => handleCustomerTabClick(e, 'overview')}
+                            className="flex items-center gap-2.5 px-4 min-h-[44px] text-sm font-semibold text-accent hover:bg-accent-soft/60 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-lg" aria-hidden="true">
+                              home
+                            </span>
+                            <span>Tổng quan</span>
+                          </Link>
+                          <Link
+                            href="/customer/profile?tab=tracking"
+                            role="menuitem"
+                            onClick={(e) => handleCustomerTabClick(e, 'tracking')}
+                            className="flex items-center gap-2.5 px-4 min-h-[44px] text-sm text-ink-primary hover:bg-surface-subtle transition-colors"
+                          >
+                            <span
+                              className="material-symbols-outlined text-lg text-ink-secondary"
+                              aria-hidden="true"
+                            >
+                              timeline
+                            </span>
+                            <span>Tiến độ sửa chữa</span>
+                          </Link>
+                          <Link
+                            href="/customer/profile?tab=appointments"
+                            role="menuitem"
+                            onClick={(e) => handleCustomerTabClick(e, 'appointments')}
+                            className="flex items-center gap-2.5 px-4 min-h-[44px] text-sm text-ink-primary hover:bg-surface-subtle transition-colors"
+                          >
+                            <span
+                              className="material-symbols-outlined text-lg text-ink-secondary"
+                              aria-hidden="true"
+                            >
+                              calendar_month
+                            </span>
+                            <span>Lịch hẹn dịch vụ</span>
+                          </Link>
+                          <Link
+                            href="/customer/profile?tab=invoices"
+                            role="menuitem"
+                            onClick={(e) => handleCustomerTabClick(e, 'invoices')}
+                            className="flex items-center gap-2.5 px-4 min-h-[44px] text-sm text-ink-primary hover:bg-surface-subtle transition-colors"
+                          >
+                            <span
+                              className="material-symbols-outlined text-lg text-ink-secondary"
+                              aria-hidden="true"
+                            >
+                              receipt_long
+                            </span>
+                            <span>Hóa đơn &amp; SePay</span>
+                          </Link>
+                          <Link
+                            href={profileHref}
+                            role="menuitem"
+                            onClick={(e) => {
+                              if (isCustomer) {
+                                handleCustomerTabClick(e, 'profile');
+                              } else {
+                                setProfileOpen(false);
+                              }
+                            }}
+                            className="flex items-center gap-2.5 px-4 min-h-[44px] text-sm text-ink-primary hover:bg-surface-subtle transition-colors"
+                          >
+                            <span
+                              className="material-symbols-outlined text-lg text-ink-secondary"
+                              aria-hidden="true"
+                            >
+                              person
+                            </span>
+                            <span>Hồ sơ cá nhân</span>
+                          </Link>
+                        </div>
+
+                        <div className="pt-1 border-t border-hairline">
+                          <LogoutButton
+                            iconOnly={false}
+                            className="w-full px-4 min-h-[44px] text-status-danger hover:bg-status-danger-soft text-left"
+                          />
+                        </div>
                       </div>
-                      <Link
-                        href="/customer"
-                        onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-surface-container-low transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-primary" style={{ fontSize: '18px' }}>dashboard</span>
-                        Trang tổng quan
-                      </Link>
-                      <Link
-                        href={user?.roles?.includes('CUSTOMER') ? '/customer/profile' : getDashboardPathByRole(user?.roles || [])}
-                        onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: '18px' }}>manage_accounts</span>
-                        Hồ sơ & Đặt lịch
-                      </Link>
-                      <Link
-                        href="/customer/profile?tab=tracking"
-                        onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: '18px' }}>car_repair</span>
-                        Tiến độ sửa chữa
-                      </Link>
-                      <Link
-                        href="/customer/profile?tab=invoices"
-                        onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: '18px' }}>receipt_long</span>
-                        Hóa đơn dịch vụ
-                      </Link>
-                      <Link
-                        href="/customer/warranty"
-                        onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-emerald-600" style={{ fontSize: '18px' }}>verified_user</span>
-                        Sổ bảo hành điện tử
-                      </Link>
-                      <div className="px-4 py-2 hover:bg-red-50 cursor-pointer text-red-600 transition-colors">
-                        <LogoutButton iconOnly={false} className="w-full text-left" />
-                      </div>
-                    </div>
-                  )}
-                  {/* Backdrop for profile dropdown */}
-                  {profileOpen && (
-                    <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
+                    </>
                   )}
                 </div>
               </>
             ) : (
-              <>
+              <div className="hidden sm:flex items-center gap-2">
                 <Link
                   href="/login"
-                  className="text-sm font-semibold text-primary-container hover:underline transition-colors"
+                  className="inline-flex items-center justify-center min-h-[44px] px-3.5 rounded-xl text-sm font-semibold text-ink-primary hover:bg-surface-subtle transition-colors whitespace-nowrap"
                 >
                   Đăng nhập
                 </Link>
                 <Link
                   href="/register"
-                  className="text-sm font-semibold bg-surface-container-low text-on-surface px-4 py-2 rounded-lg hover:bg-surface-container-highest transition-colors shadow-sm border border-surface-container-highest"
+                  className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-xl border border-hairline-strong bg-surface-elevated text-ink-primary text-sm font-semibold hover:bg-surface-subtle transition-colors whitespace-nowrap"
                 >
                   Đăng ký
                 </Link>
-              </>
+              </div>
             )}
+
+            {/* Mobile & Tablet Drawer Trigger */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Mở menu điều hướng"
+              aria-expanded={mobileMenuOpen}
+              className="lg:hidden inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl text-ink-primary hover:bg-surface-subtle transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-2xl" aria-hidden="true">
+                menu
+              </span>
+            </button>
           </div>
         </div>
       </div>
-    </header>
+      </header>
+
+      {/* Mobile & Tablet Slide-Over Drawer (Root z-50 above z-40 Chat Widget) */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu điều hướng">
+          <div
+            className="fixed inset-0 bg-ink-primary/40"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="fixed inset-y-0 right-0 w-[min(320px,88vw)] bg-surface-elevated border-l border-hairline flex flex-col justify-between p-5 overflow-y-auto">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-hairline">
+                <Link
+                  href="/home"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 min-h-[44px]"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-accent text-white flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-xl" aria-hidden="true">
+                      directions_car
+                    </span>
+                  </div>
+                  <span className="font-bold text-base tracking-[-0.02em] text-ink-primary">
+                    AutoCare Pro
+                  </span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-label="Đóng menu"
+                  className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl text-ink-secondary hover:bg-surface-subtle hover:text-ink-primary transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-2xl" aria-hidden="true">
+                    close
+                  </span>
+                </button>
+              </div>
+
+              <nav className="space-y-1" aria-label="Điều hướng di động">
+                {PUBLIC_NAV_LINKS.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={(e) => handleNavClick(e, item.sectionId)}
+                    className="flex items-center min-h-[44px] px-3.5 rounded-xl text-sm font-semibold text-ink-primary hover:bg-surface-subtle transition-colors"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+
+            <div className="pt-5 border-t border-hairline space-y-2.5 mt-6">
+              <Link
+                href={bookingHref}
+                onClick={(e) => {
+                  if (mounted && isAuthenticated) {
+                    handleCustomerTabClick(e, 'appointments');
+                  } else {
+                    setMobileMenuOpen(false);
+                  }
+                }}
+                className="w-full min-h-[44px] px-4 rounded-xl bg-accent hover:bg-accent-hover text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
+              >
+                <span className="material-symbols-outlined text-lg" aria-hidden="true">
+                  calendar_add_on
+                </span>
+                <span>Đặt lịch bảo dưỡng</span>
+              </Link>
+
+              {mounted && isAuthenticated && user ? (
+                <div className="pt-1">
+                  <LogoutButton
+                    iconOnly={false}
+                    className="w-full justify-center min-h-[44px] px-4 rounded-xl text-status-danger bg-status-danger-soft/60 hover:bg-status-danger-soft"
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2.5">
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="min-h-[44px] px-3 rounded-xl border border-hairline-strong bg-surface-elevated text-ink-primary text-sm font-semibold flex items-center justify-center hover:bg-surface-subtle transition-colors"
+                  >
+                    Đăng nhập
+                  </Link>
+                  <Link
+                    href="/register"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="min-h-[44px] px-3 rounded-xl bg-surface-subtle text-ink-primary text-sm font-semibold flex items-center justify-center hover:bg-surface-muted transition-colors"
+                  >
+                    Đăng ký
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

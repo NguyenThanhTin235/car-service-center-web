@@ -7,6 +7,7 @@ import Modal from '@/components/shared/Modal';
 import TablePagination from '@/components/shared/TablePagination';
 import toast from 'react-hot-toast';
 import { validateName, validateRequired, validatePrice } from '@/lib/utils/validators';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const PRICING_TYPE_LABELS: Record<string, string> = { FIXED: 'Giá cố định', VEHICLE_SIZE: 'Theo cỡ xe', LABOUR_PARTS: 'Công + Vật tư' };
 const PRICING_COLORS: Record<string, string> = {
@@ -39,6 +40,7 @@ export default function ServicesPage() {
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [pagination, setPagination] = useState({ totalRecords: 0, totalPages: 1, currentPage: 1, limit: 10 });
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [filterCat, setFilterCat] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -50,15 +52,32 @@ export default function ServicesPage() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const load = useCallback(async (page = 1) => {
+  const load = useCallback(async (page = 1, signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const res = await serviceTemplateApi.getAll({ search, categoryId: filterCat ? parseInt(filterCat) : undefined, page, limit: 10 });
-      setTemplates(res.data.data); setPagination(res.data.pagination);
-    } catch (e: any) { setError(e.response?.data?.message || 'Lỗi tải dữ liệu'); } finally { setLoading(false); }
-  }, [search, filterCat]);
+      const res = await serviceTemplateApi.getAll(
+        { search: debouncedSearch, categoryId: filterCat ? parseInt(filterCat) : undefined, page, limit: 10 },
+        signal
+      );
+      if (!signal?.aborted) {
+        setTemplates(res.data.data);
+        setPagination(res.data.pagination);
+      }
+    } catch (e: any) {
+      if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED' || signal?.aborted) return;
+      setError(e.response?.data?.message || 'Lỗi tải dữ liệu');
+    } finally {
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
+    }
+  }, [debouncedSearch, filterCat]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const controller = new AbortController();
+    load(1, controller.signal);
+    return () => controller.abort();
+  }, [load]);
   useEffect(() => { serviceTemplateApi.getCategories().then(r => setCategories(r.data.data)).catch(() => {}); }, []);
 
   const openCreate = () => { setEditing(null); setFormData(defaultForm); setError(''); setFieldErrors({}); setShowModal(true); };
@@ -225,8 +244,10 @@ export default function ServicesPage() {
               {activeCount}
             </div>
             <div className="flex items-center justify-between text-[11px] text-blue-100 mt-2 pt-2 border-t border-white/15">
-              <span>Đang mở báo giá</span>
-              <span className="font-mono font-bold">100% SLA</span>
+              <span>Đang mở báo giá (Trang này)</span>
+              <span className="font-mono font-bold tabular-nums">
+                {templates.length > 0 ? `${Math.round((activeCount / templates.length) * 100)}%` : '0%'}
+              </span>
             </div>
           </div>
 
@@ -398,14 +419,18 @@ export default function ServicesPage() {
                     <td className="py-3.5 px-5 pr-6">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          type="button"
                           onClick={() => openEdit(t)}
+                          aria-label={`Chỉnh sửa ${t.name}`}
                           className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-[#0866ff] flex items-center justify-center transition-colors cursor-pointer"
                           title="Chỉnh sửa"
                         >
                           <span className="material-symbols-outlined text-[17px]">edit</span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleToggle(t)}
+                          aria-label={t.isActive ? `Vô hiệu hóa ${t.name}` : `Kích hoạt ${t.name}`}
                           className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${
                             t.isActive
                               ? 'bg-rose-50 hover:bg-rose-500 hover:text-white border-rose-200/80 text-rose-600'
@@ -418,7 +443,9 @@ export default function ServicesPage() {
                           </span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDelete(t)}
+                          aria-label={`Xóa dịch vụ ${t.name}`}
                           className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-rose-500 hover:text-white border border-slate-200/80 hover:border-rose-500 text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
                           title="Xóa dịch vụ"
                         >
@@ -481,7 +508,7 @@ export default function ServicesPage() {
                 )}
               </label>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label className="flex flex-col gap-1.5">
                   <span className="text-xs font-semibold text-slate-600">Danh mục dịch vụ *</span>
                   <div className="relative">

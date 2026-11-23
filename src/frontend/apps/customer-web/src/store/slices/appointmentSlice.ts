@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '@/lib/axios';
 
 export interface Service {
@@ -23,38 +23,14 @@ export interface Appointment {
 
 export interface AppointmentState {
   appointments: Appointment[];
-  selectedAppointment: Appointment | null;
   loading: boolean;
   error: string | null;
-  filters: {
-    search: string;
-    startDate: string | null;
-    endDate: string | null;
-    status: string;
-  };
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-  };
 }
 
 const initialState: AppointmentState = {
   appointments: [],
-  selectedAppointment: null,
   loading: false,
   error: null,
-  filters: {
-    search: '',
-    startDate: null,
-    endDate: null,
-    status: '',
-  },
-  pagination: {
-    page: 1,
-    limit: 50,
-    total: 0,
-  },
 };
 
 // Async Thunks
@@ -94,18 +70,6 @@ export const rescheduleAppointment = createAsyncThunk(
   }
 );
 
-export const confirmAppointment = createAsyncThunk(
-  'appointments/confirmAppointment',
-  async (id: number, { rejectWithValue }) => {
-    try {
-      const { data } = await api.patch(`/api/appointments/${id}/confirm`);
-      return data.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi xác nhận lịch hẹn');
-    }
-  }
-);
-
 export const cancelAppointment = createAsyncThunk(
   'appointments/cancelAppointment',
   async ({ id, reason }: { id: number; reason: string }, { rejectWithValue }) => {
@@ -118,29 +82,10 @@ export const cancelAppointment = createAsyncThunk(
   }
 );
 
-export const arriveAppointment = createAsyncThunk(
-  'appointments/arriveAppointment',
-  async (id: number, { rejectWithValue }) => {
-    try {
-      const response = await api.patch(`/api/appointments/${id}/arrive`);
-      return response.data.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Có lỗi xảy ra khi tiếp nhận xe');
-    }
-  }
-);
-
 const appointmentSlice = createSlice({
   name: 'appointments',
   initialState,
-  reducers: {
-    setSelectedAppointment: (state, action: PayloadAction<Appointment | null>) => {
-      state.selectedAppointment = action.payload;
-    },
-    setFilters: (state, action: PayloadAction<Partial<AppointmentState['filters']>>) => {
-      state.filters = { ...state.filters, ...action.payload };
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
       .addCase(fetchAppointments.pending, (state) => {
@@ -150,34 +95,16 @@ const appointmentSlice = createSlice({
       .addCase(fetchAppointments.fulfilled, (state, action) => {
         state.loading = false;
         state.appointments = action.payload.data;
-        state.pagination.total = action.payload?.pagination?.totalRecords ?? 0;
       })
       .addCase(fetchAppointments.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-      })
-      // Create
-      .addCase(createAppointment.fulfilled, (state, action) => {
-        // Optimistically add or simply refetch (will rely on refetch from component for full relations)
       })
       // Reschedule
       .addCase(rescheduleAppointment.fulfilled, (state, action) => {
         const index = state.appointments.findIndex(a => a.id === action.payload.id);
         if (index !== -1) {
           state.appointments[index] = { ...state.appointments[index], ...action.payload };
-          if (state.selectedAppointment?.id === action.payload.id) {
-            state.selectedAppointment = state.appointments[index];
-          }
-        }
-      })
-      // Confirm
-      .addCase(confirmAppointment.fulfilled, (state, action) => {
-        const index = state.appointments.findIndex(a => a.id === action.payload.id);
-        if (index !== -1) {
-          state.appointments[index].status = 'CONFIRMED';
-          if (state.selectedAppointment && state.selectedAppointment.id === action.payload.id) {
-            state.selectedAppointment.status = 'CONFIRMED';
-          }
         }
       })
       // Cancel
@@ -185,23 +112,9 @@ const appointmentSlice = createSlice({
         const index = state.appointments.findIndex(a => a.id === action.payload.id);
         if (index !== -1) {
           state.appointments[index] = { ...state.appointments[index], ...action.payload };
-          if (state.selectedAppointment && state.selectedAppointment.id === action.payload.id) {
-            state.selectedAppointment = state.appointments[index];
-          }
-        }
-      })
-      // Arrive
-      .addCase(arriveAppointment.fulfilled, (state, action) => {
-        const index = state.appointments.findIndex(a => a.id === action.payload.id);
-        if (index !== -1) {
-          state.appointments[index].status = 'ARRIVED';
-          if (state.selectedAppointment && state.selectedAppointment.id === action.payload.id) {
-            state.selectedAppointment.status = 'ARRIVED';
-          }
         }
       });
   },
 });
 
-export const { setSelectedAppointment, setFilters } = appointmentSlice.actions;
 export default appointmentSlice.reducer;

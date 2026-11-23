@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { prismaMock, sendEmailMock } = vi.hoisted(() => {
+const { prismaMock, sendEmailMock, notifyAndEmailMock, sendInAppToRolesMock } = vi.hoisted(() => {
   const mock: any = {
     user: {
       findUnique: vi.fn(),
@@ -33,9 +33,20 @@ const { prismaMock, sendEmailMock } = vi.hoisted(() => {
   };
   mock.$transaction = vi.fn(async (cb: (tx: any) => Promise<any>) => cb(mock));
 
+  const sendEmail = vi.fn().mockResolvedValue(true);
+  const notifyAndEmail = vi.fn(async (payload: any) => {
+    if (payload?.email && payload?.subject && payload?.html) {
+      await sendEmail(payload.email, payload.subject, payload.html);
+    }
+    return undefined;
+  });
+  const sendInAppToRoles = vi.fn().mockResolvedValue({ count: 0, userIds: [] });
+
   return {
     prismaMock: mock,
-    sendEmailMock: vi.fn().mockResolvedValue(true),
+    sendEmailMock: sendEmail,
+    notifyAndEmailMock: notifyAndEmail,
+    sendInAppToRolesMock: sendInAppToRoles,
   };
 });
 
@@ -46,6 +57,9 @@ vi.mock('../../../src/utils/prisma', () => ({
 vi.mock('../../../src/services/notification.service', () => ({
   notificationService: {
     sendEmail: sendEmailMock,
+    notifyAndEmail: notifyAndEmailMock,
+    sendInAppToRoles: sendInAppToRolesMock,
+    sendInApp: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -58,6 +72,13 @@ describe('AppointmentService - Desk-Staff Unit Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sendEmailMock.mockResolvedValue(true);
+    notifyAndEmailMock.mockImplementation(async (payload: any) => {
+      if (payload?.email && payload?.subject && payload?.html) {
+        await sendEmailMock(payload.email, payload.subject, payload.html);
+      }
+      return undefined;
+    });
+    sendInAppToRolesMock.mockResolvedValue({ count: 0, userIds: [] });
     prismaMock.$transaction.mockImplementation(async (cb: (tx: any) => Promise<any>) => cb(prismaMock));
     service = new AppointmentService();
   });

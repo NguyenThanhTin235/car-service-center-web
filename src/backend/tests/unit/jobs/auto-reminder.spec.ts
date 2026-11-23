@@ -3,11 +3,22 @@ import { runAppointmentReminderCheck } from '../../../src/jobs/appointment-remin
 import prisma from '../../../src/utils/prisma';
 import { notificationService } from '../../../src/services/notification.service';
 
-vi.mock('../../../src/services/notification.service', () => ({
-  notificationService: {
-    sendEmail: vi.fn().mockResolvedValue(true),
-  },
-}));
+vi.mock('../../../src/services/notification.service', () => {
+  const sendEmail = vi.fn().mockResolvedValue(true);
+  const notifyAndEmail = vi.fn(async (payload: any) => {
+    if (payload?.email && payload?.subject && payload?.html) {
+      await sendEmail(payload.email, payload.subject, payload.html);
+    }
+    return undefined;
+  });
+
+  return {
+    notificationService: {
+      sendEmail,
+      notifyAndEmail,
+    },
+  };
+});
 
 vi.mock('../../../src/utils/prisma', () => ({
   __esModule: true,

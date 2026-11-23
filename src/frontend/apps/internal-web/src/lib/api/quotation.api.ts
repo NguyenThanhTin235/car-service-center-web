@@ -186,6 +186,9 @@ export async function exportOrPrintQuotationPdf(
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      window.URL.revokeObjectURL(fileUrl);
+    } else {
+      setTimeout(() => window.URL.revokeObjectURL(fileUrl), 60_000);
     }
   } else {
     const a = document.createElement('a');
@@ -194,6 +197,7 @@ export async function exportOrPrintQuotationPdf(
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    window.URL.revokeObjectURL(fileUrl);
   }
 }
 

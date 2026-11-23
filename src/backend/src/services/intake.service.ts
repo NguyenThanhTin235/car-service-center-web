@@ -2,6 +2,7 @@ import { IntakeType, IntakeStatus } from '@prisma/client';
 import prisma from '../utils/prisma';
 import { IntakeRepository, IntakeFilters } from '../repositories/intake.repository';
 import { WarrantyService } from './warranty.service';
+import { notificationService } from './notification.service';
 
 const intakeRepo = new IntakeRepository();
 const warrantyService = new WarrantyService();
@@ -47,7 +48,7 @@ export class IntakeService {
       throw new Error('Vui lòng nhập tên người/đơn vị bàn giao xe khi tiếp nhận Tow-in.');
     }
 
-    return prisma.$transaction(async (tx) => {
+    const intakeRecord = await prisma.$transaction(async (tx) => {
       let customerId = dto.customerId;
       let vehicleId = dto.vehicleId;
 
@@ -252,6 +253,18 @@ export class IntakeService {
 
       return intakeRecord;
     });
+
+    notificationService
+      .sendInAppToRoles(['SA'], {
+        type: 'CHECKIN_READY',
+        title: `Xe mới check-in chờ tiếp nhận (#${intakeRecord.id})`,
+        message: `Phiếu tiếp nhận #${intakeRecord.id} (${dto.intakeType}) đã sẵn sàng trong hàng đợi cho cố vấn dịch vụ.`,
+        entityType: 'INTAKE',
+        entityId: intakeRecord.id,
+      })
+      .catch((err) => console.error('Failed to notify SA on intake created:', err));
+
+    return intakeRecord;
   }
 
   /**

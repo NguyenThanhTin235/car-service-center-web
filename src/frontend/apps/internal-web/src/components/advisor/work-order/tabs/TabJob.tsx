@@ -8,18 +8,20 @@ import {
   ServiceTemplateOption,
   addServiceToWO,
   removeServiceFromWO,
-  getServiceCatalog,
-  createServiceFromFinding,
   updateManualJob,
   deleteJob,
   reorderJobs,
   updateJobStatus,
 } from '@/lib/api/work-order.api';
-import { employeeApi, EmployeeData } from '@/lib/api/employees';
+import type { EmployeeData } from '@/lib/api/employees';
+import { getCachedServiceCatalog, getCachedActiveTechnicians } from '@/lib/cache/sa-catalogs';
 import toast from 'react-hot-toast';
-import AIJobPlannerModal from '../modals/AIJobPlannerModal';
-import CreateDispatchJobModal from '../modals/CreateDispatchJobModal';
-import AddPartModal from '../modals/AddPartModal';
+import dynamic from 'next/dynamic';
+
+const AIJobPlannerModal = dynamic(() => import('../modals/AIJobPlannerModal'), { ssr: false });
+const CreateDispatchJobModal = dynamic(() => import('../modals/CreateDispatchJobModal'), { ssr: false });
+const AddPartModal = dynamic(() => import('../modals/AddPartModal'), { ssr: false });
+const CompleteJobPartsModal = dynamic(() => import('../modals/CompleteJobPartsModal'), { ssr: false });
 
 interface TabJobProps {
   workOrder?: WorkOrder;
@@ -38,39 +40,15 @@ const SERVICE_STATUS_MAP: Record<ServiceDerivedStatus, { label: string; color: s
   PASSED: { label: 'Đạt KCS', color: 'text-purple-700 dark:text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20', icon: 'verified' },
 };
 
+const JOB_STATUS_META: Record<string, { label: string; bg: string; text: string; icon: string }> = {
+  COMPLETED: { label: 'Đã hoàn thành', bg: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-700 dark:text-emerald-400', icon: 'check_circle' },
+  IN_PROGRESS: { label: 'Đang làm', bg: 'bg-blue-500/10 border-blue-500/20', text: 'text-blue-700 dark:text-blue-400', icon: 'timelapse' },
+  REWORK: { label: 'Cần làm lại', bg: 'bg-amber-500/10 border-amber-500/20', text: 'text-amber-700 dark:text-amber-400', icon: 'refresh' },
+  PASSED: { label: 'Đạt KĐ', bg: 'bg-purple-500/10 border-purple-500/20', text: 'text-purple-700 dark:text-purple-400', icon: 'verified' },
+};
+
 const getJobStatusInfo = (job: WoJob, currentEmployeeId: number | null) => {
-  if (job.status === 'COMPLETED') {
-    return {
-      label: 'Đã hoàn thành',
-      bg: 'bg-emerald-500/10 border-emerald-500/20',
-      text: 'text-emerald-700 dark:text-emerald-400',
-      icon: 'check_circle',
-    };
-  }
-  if (job.status === 'IN_PROGRESS') {
-    return {
-      label: 'Đang làm',
-      bg: 'bg-blue-500/10 border-blue-500/20',
-      text: 'text-blue-700 dark:text-blue-400',
-      icon: 'timelapse',
-    };
-  }
-  if (job.status === 'REWORK') {
-    return {
-      label: 'Cần làm lại',
-      bg: 'bg-amber-500/10 border-amber-500/20',
-      text: 'text-amber-700 dark:text-amber-400',
-      icon: 'refresh',
-    };
-  }
-  if (job.status === 'PASSED') {
-    return {
-      label: 'Đạt KĐ',
-      bg: 'bg-purple-500/10 border-purple-500/20',
-      text: 'text-purple-700 dark:text-purple-400',
-      icon: 'verified',
-    };
-  }
+  if (JOB_STATUS_META[job.status]) return JOB_STATUS_META[job.status];
   if (currentEmployeeId) {
     return {
       label: 'Đã phân công',
@@ -100,10 +78,6 @@ const getInitials = (name?: string | null) => {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
-
-const CACHE_TTL_MS = 2 * 60 * 1000;
-let techniciansCache: { data: EmployeeData[]; expiresAt: number } | null = null;
-let serviceCatalogCache: { data: ServiceTemplateOption[]; expiresAt: number } | null = null;
 
 const JOB_STATUS_OPTIONS = [
   { value: 'PLANNED', label: 'Chờ thực hiện' },
@@ -138,14 +112,12 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
       (q) => q.status === 'APPROVED'
     ) ?? false;
 
-  // Trích xuất toàn bộ findings từ kiểm tra xe
-  const allFindings = workOrder?.inspections?.flatMap((i) => i.findings) || [];
   // Lọc các lỗi chưa được liên kết với bất kỳ công việc nào
-  const unlinkedFindings = allFindings.filter(
-    (f) => !f.job_findings || f.job_findings.length === 0
-  );
+  const unlinkedFindings = useMemo(() => {
+    const allFindings = workOrder?.inspections?.flatMap((i) => i.findings) || [];
+    return allFindings.filter((f) => !f.job_findings || f.job_findings.length === 0);
+  }, [workOrder?.inspections]);
 
-  const [creatingFindingId, setCreatingFindingId] = useState<number | null>(null);
   const [dispatchFinding, setDispatchFinding] = useState<any | null>(null);
 
   // Trạng thái thu gọn/mở rộng từng Hạng mục
@@ -285,21 +257,13 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
     await submitJobStatusUpdate(jobId, newStatus);
   };
 
-  // Load danh sách nhân viên kỹ thuật (cache 2 phút)
+  // Load danh sách nhân viên kỹ thuật (cached)
   useEffect(() => {
-    if (techniciansCache && Date.now() < techniciansCache.expiresAt) {
-      setTechnicians(techniciansCache.data);
-      return;
-    }
     let mounted = true;
-    employeeApi
-      .getAll({ limit: 100, position: 'TECHNICIAN', status: 'active' })
-      .then((res) => {
+    getCachedActiveTechnicians()
+      .then((list) => {
         if (!mounted) return;
-        const list: EmployeeData[] = res.data?.data || res.data || [];
-        const activeTechs = list.filter((e) => Boolean(e.isActive) && e.position === 'TECHNICIAN');
-        techniciansCache = { data: activeTechs, expiresAt: Date.now() + CACHE_TTL_MS };
-        setTechnicians(activeTechs);
+        setTechnicians(list.filter((e) => Boolean(e.isActive) && e.position === 'TECHNICIAN'));
       })
       .catch((err) => {
         console.error('Lỗi khi tải danh sách kỹ thuật viên:', err);
@@ -413,16 +377,10 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
   }, []);
 
   const loadCatalog = async () => {
-    if (serviceCatalogCache && Date.now() < serviceCatalogCache.expiresAt) {
-      setCatalog(serviceCatalogCache.data);
-      return;
-    }
     try {
       setLoadingCatalog(true);
-      const data = await getServiceCatalog();
-      const list = Array.isArray(data) ? data : [];
-      serviceCatalogCache = { data: list, expiresAt: Date.now() + CACHE_TTL_MS };
-      setCatalog(list);
+      const list = await getCachedServiceCatalog();
+      setCatalog(Array.isArray(list) ? list : []);
     } catch {
       toast.error('Không thể tải danh mục dịch vụ');
     } finally {
@@ -450,24 +408,6 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
     }
   };
 
-  const handleCreateServiceFromFinding = async (findingId: number) => {
-    if (!workOrder) return;
-    try {
-      setCreatingFindingId(findingId);
-      const res = await createServiceFromFinding(workOrder.id, findingId);
-      if (res.success && res.data) {
-        toast.success(`Đã tạo Hạng mục: "${res.data.service.name}"`);
-        if (refetchWO) refetchWO();
-      } else {
-        toast.error(res.message || 'Lỗi khi tạo hạng mục từ vết lỗi');
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || 'Lỗi khi tạo hạng mục');
-    } finally {
-      setCreatingFindingId(null);
-    }
-  };
-
   const handleRemoveService = async (woServiceId: number) => {
     if (!workOrder || deleting) return;
     try {
@@ -487,18 +427,20 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
     }
   };
 
-  const existingTemplateIds = services
-    .map((s) => s.service_id)
-    .filter((id): id is number => id !== null);
-
-  const filteredCatalog = catalog.filter((t) => {
-    if (existingTemplateIds.includes(t.id)) return false;
-    if (!deferredSearchTerm.trim()) return true;
+  const filteredCatalog = useMemo(() => {
+    if (!isAdding) return [];
+    const existingSet = new Set(
+      services.map((s) => s.service_id).filter((id): id is number => id !== null)
+    );
     const q = deferredSearchTerm.toLowerCase().trim();
-    const matchName = t.name.toLowerCase().includes(q);
-    const matchCategory = ((t as any).category?.name || '').toLowerCase().includes(q);
-    return matchName || matchCategory;
-  });
+    return catalog.filter((t) => {
+      if (existingSet.has(t.id)) return false;
+      if (!q) return true;
+      const matchName = t.name.toLowerCase().includes(q);
+      const matchCategory = ((t as any).category?.name || '').toLowerCase().includes(q);
+      return matchName || matchCategory;
+    });
+  }, [isAdding, services, catalog, deferredSearchTerm]);
 
   // Thống kê tổng số lượng công việc & giờ định mức
   const { grandTotalJobs, grandTotalHours, grandAssignedJobs, grandCompletedJobs } = useMemo(() => {
@@ -673,7 +615,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
         return (
           <div className="p-3.5 rounded-2xl bg-[#edf4fe] border border-blue-200 flex items-center justify-between gap-3 shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs animate-pulse">
+              <div className="w-9 h-9 rounded-xl bg-[#0050cd] text-white flex items-center justify-center shrink-0 shadow-xs">
                 <span className="material-symbols-outlined text-[20px]">engineering</span>
               </div>
               <div>
@@ -681,7 +623,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
                   <h4 className="text-body-sm font-bold text-blue-950 dark:text-blue-200">
                     Đang trong quá trình thi công
                   </h4>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold uppercase bg-blue-600 text-white">
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold uppercase bg-[#0050cd] text-white">
                     ĐANG THI CÔNG
                   </span>
                 </div>
@@ -695,7 +637,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
       })()}
 
       {workOrder?.status === 'BILLING_REQUESTED' && (
-        <div className="p-3.5 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-between gap-3 shadow-xs animate-fade-in">
+        <div className="sa-enter p-3.5 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
               <span className="material-symbols-outlined text-[20px]">receipt_long</span>
@@ -778,7 +720,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
               </button>
 
               {isAdding && (
-                <div className="absolute right-0 top-full mt-2 w-80 bg-surface-container-lowest rounded-2xl shadow-xl border border-outline-variant p-3 z-30 animate-in fade-in duration-100">
+                <div className="sa-tab-enter absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-[min(20rem,calc(100vw-2rem))] bg-surface-container-lowest rounded-2xl shadow-xl border border-outline-variant p-3 z-30">
                   <div className="relative mb-2">
                     <span className="material-symbols-outlined text-[18px] text-on-surface-variant absolute left-2.5 top-2">
                       search
@@ -1313,7 +1255,7 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
                                           </button>
                                         </div>
                                       ) : (
-                                        <div className="flex items-center justify-center gap-1">
+                                        <div className="flex items-center justify-center gap-1.5">
                                           <button
                                             type="button"
                                             onClick={() => {
@@ -1321,27 +1263,30 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
                                               setEditingJob(job);
                                               setManualJobModalOpen(true);
                                             }}
-                                            className="p-1 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors cursor-pointer"
+                                            aria-label={`Sửa công việc ${job.name}`}
+                                            className="sa-press w-9 h-9 rounded-lg flex items-center justify-center text-slate-600 hover:text-[#0050cd] hover:bg-slate-100 transition-colors cursor-pointer"
                                             title="Sửa công việc"
                                           >
-                                            <span className="material-symbols-outlined text-[15px]">edit</span>
+                                            <span className="material-symbols-outlined text-[16px]">edit</span>
                                           </button>
                                           <button
                                             type="button"
                                             onClick={() => setAddPartJobId(job.id)}
-                                            className="p-1 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors cursor-pointer"
+                                            aria-label={`Khai báo phụ tùng cho ${job.name}`}
+                                            className="sa-press w-9 h-9 rounded-lg flex items-center justify-center text-slate-600 hover:text-[#0050cd] hover:bg-slate-100 transition-colors cursor-pointer"
                                             title="Khai báo phụ tùng cho công việc này"
                                           >
-                                            <span className="material-symbols-outlined text-[15px]">construction</span>
+                                            <span className="material-symbols-outlined text-[16px]">construction</span>
                                           </button>
                                           {job.status === 'PLANNED' && !isApprovedOrBeyond && (
                                             <button
                                               type="button"
                                               onClick={() => setConfirmDeleteJobId(job.id)}
-                                              className="p-1 rounded text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors cursor-pointer"
+                                              aria-label={`Xóa công việc ${job.name}`}
+                                              className="sa-press w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                                               title="Xóa công việc"
                                             >
-                                              <span className="material-symbols-outlined text-[15px]">delete_outline</span>
+                                              <span className="material-symbols-outlined text-[16px]">delete_outline</span>
                                             </button>
                                           )}
                                         </div>
@@ -1476,136 +1421,25 @@ export default function TabJob({ workOrder, refetchWO, isReadOnly = false, setAc
 
       {/* MODAL XÁC NHẬN VẬT TƯ THỰC DÙNG KHI HOÀN TẤT CÔNG VIỆC */}
       {workOrder && completeJobModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
-          <div className="bg-surface-container-lowest w-full max-w-lg rounded-2xl border border-outline-variant shadow-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-outline-variant/40 flex items-center justify-between bg-surface-container-low/60">
-              <div>
-                <h3 className="text-title-md font-bold text-on-surface">
-                  Xác nhận vật tư thực dùng
-                </h3>
-                <p className="text-xs text-on-surface-variant mt-0.5">
-                  Công việc: <span className="font-semibold text-on-surface">{completeJobModal.job.name}</span>
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCompleteJobModal(null)}
-                className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            <div className="p-6 space-y-3 max-h-[60vh] overflow-y-auto">
-              <p className="text-xs text-on-surface-variant">
-                Nhập số lượng phụ tùng thực tế đã sử dụng. Phần vật tư dư thừa sẽ tự động hoàn trả lại kho khả dụng.
-              </p>
-
-              {(completeJobModal.job.parts || [])
-                .filter(
-                  (p: any) =>
-                    p.status !== 'RETURNED' &&
-                    (Number(p.issued_quantity) > 0 || Number(p.planned_quantity) > 0)
-                )
-                .map((part: any) => {
-                  const issued =
-                    Number(part.issued_quantity) > 0
-                      ? Number(part.issued_quantity)
-                      : Number(part.planned_quantity) || 0;
-                  const used = completeJobModal.usageMap[part.id] ?? issued;
-                  const returned = Math.max(0, Number((issued - used).toFixed(2)));
-                  const partName =
-                    part.item?.part_category?.name || part.item?.sku || `Phụ tùng #${part.item_id}`;
-
-                  return (
-                    <div
-                      key={part.id}
-                      className="p-3.5 rounded-xl border border-outline-variant/60 bg-surface-container-low/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-on-surface truncate">{partName}</p>
-                        <div className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-3 font-mono">
-                          <span>Đã xuất: <strong className="text-on-surface">{issued}</strong></span>
-                          {returned > 0 && (
-                            <span className="text-amber-700 font-semibold">
-                              Trả lại kho: {returned}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <label className="text-xs font-semibold text-on-surface-variant whitespace-nowrap">
-                          Thực dùng:
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          max={issued}
-                          step="any"
-                          value={used}
-                          onChange={(e) => {
-                            const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                            setCompleteJobModal((prev) =>
-                              prev
-                                ? {
-                                    ...prev,
-                                    usageMap: {
-                                      ...prev.usageMap,
-                                      [part.id]: Number.isFinite(val) ? val : 0,
-                                    },
-                                  }
-                                : null
-                            );
-                          }}
-                          className="w-24 px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-sm font-mono font-bold text-on-surface focus:outline-none focus:border-primary"
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-
-            <div className="px-6 py-4 border-t border-outline-variant/40 bg-surface-container-low/50 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setCompleteJobModal(null)}
-                disabled={updatingJobId !== null}
-                className="px-4 py-2 rounded-xl border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-container"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                disabled={updatingJobId !== null}
-                onClick={() => {
-                  const entries = Object.entries(completeJobModal.usageMap).map(([id, qty]) => ({
-                    jobPartId: Number(id),
-                    usedQuantity: Number(qty),
-                  }));
-                  const partsList = completeJobModal.job.parts || [];
-                  const invalid = entries.some((entry) => {
-                    const p: any = partsList.find((item: any) => item.id === entry.jobPartId);
-                    const issued =
-                      Number(p?.issued_quantity) > 0
-                        ? Number(p?.issued_quantity)
-                        : Number(p?.planned_quantity) || 0;
-                    return !Number.isFinite(entry.usedQuantity) || entry.usedQuantity < 0 || entry.usedQuantity > issued;
-                  });
-                  if (invalid) {
-                    toast.error('Số lượng thực dùng phải từ 0 đến số lượng đã xuất');
-                    return;
+        <CompleteJobPartsModal
+          modalState={completeJobModal}
+          updatingJobId={updatingJobId}
+          onClose={() => setCompleteJobModal(null)}
+          onUpdateUsage={(partId, val) => {
+            setCompleteJobModal((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    usageMap: {
+                      ...prev.usageMap,
+                      [partId]: val,
+                    },
                   }
-                  submitJobStatusUpdate(completeJobModal.job.id, 'COMPLETED', entries);
-                }}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                Xác nhận hoàn tất công việc
-              </button>
-            </div>
-          </div>
-        </div>
+                : null
+            );
+          }}
+          onConfirm={(jobId, entries) => submitJobStatusUpdate(jobId, 'COMPLETED', entries)}
+        />
       )}
     </div>
   );

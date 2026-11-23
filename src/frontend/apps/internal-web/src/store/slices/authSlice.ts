@@ -10,6 +10,7 @@ interface User {
 interface AuthState {
   user: User | null;
   token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
 }
 
@@ -34,12 +35,21 @@ const getInitialToken = (): string | null => {
   return null;
 };
 
+const getInitialRefreshToken = (): string | null => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('refreshToken');
+  }
+  return null;
+};
+
 const initialUser = getInitialUser();
 const initialToken = getInitialToken();
+const initialRefreshToken = getInitialRefreshToken();
 
 const initialState: AuthState = {
   user: initialUser,
   token: initialToken,
+  refreshToken: initialRefreshToken,
   isAuthenticated: !!initialUser,
 };
 
@@ -49,11 +59,14 @@ const authSlice = createSlice({
   reducers: {
     setCredentials: (
       state,
-      action: PayloadAction<{ user: User; token?: string }>
+      action: PayloadAction<{ user: User; token?: string; refreshToken?: string }>
     ) => {
       state.user = action.payload.user;
       if (action.payload.token) {
         state.token = action.payload.token;
+      }
+      if (action.payload.refreshToken) {
+        state.refreshToken = action.payload.refreshToken;
       }
       state.isAuthenticated = true;
       if (typeof window !== 'undefined') {
@@ -61,20 +74,32 @@ const authSlice = createSlice({
         if (action.payload.token) {
           localStorage.setItem('token', action.payload.token);
         }
+        if (action.payload.refreshToken) {
+          localStorage.setItem('refreshToken', action.payload.refreshToken);
+        }
+      }
+    },
+    updateAuthUser: (state, action: PayloadAction<Partial<User>>) => {
+      if (!state.user) return;
+      state.user = { ...state.user, ...action.payload };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(state.user));
       }
     },
     logout: (state) => {
       state.user = null;
       state.token = null;
+      state.refreshToken = null;
       state.isAuthenticated = false;
       if (typeof window !== 'undefined') {
         localStorage.removeItem('user');
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
       }
     },
   },
 });
 
-export const { setCredentials, logout } = authSlice.actions;
+export const { setCredentials, updateAuthUser, logout } = authSlice.actions;
 
 export default authSlice.reducer;

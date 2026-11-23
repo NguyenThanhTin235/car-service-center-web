@@ -10,7 +10,7 @@ export class UploadController {
       }
       
       const folder = req.body.folder || 'car_service/general';
-      const secureUrl = await UploadService.uploadImage(req.file.buffer, folder);
+      const secureUrl = await UploadService.uploadImage(req.file.buffer, folder, req.file.mimetype);
       
       res.status(200).json({
         message: 'Tải ảnh lên thành công',

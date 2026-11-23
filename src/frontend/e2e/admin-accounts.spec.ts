@@ -297,17 +297,17 @@ test.describe('Admin Portal E2E: IAM Accounts (/accounts)', () => {
     // 1. Self-deactivation guard: clicking switch on row 0 (current admin) should NOT open modal
     const switches = page.locator('button[role="switch"]');
     await switches.nth(0).click();
-    await expect(page.locator('h3:has-text("Khóa tài khoản")')).toBeHidden();
+    await expect(page.getByRole('heading', { name: 'Khóa tài khoản' })).toBeHidden();
 
     // 2. Deactivate user 2 (Trần Cố Vấn)
     await switches.nth(1).click();
-    await expect(page.locator('h3:has-text("Khóa tài khoản")')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Khóa tài khoản' })).toBeVisible();
     await page.click('button:has-text("Xác nhận khóa")');
     await expect.poll(() => deactivatedId).toBe(2);
 
     // 3. Reactivate user 3 (Nguyễn Kỹ Thuật - currently inactive)
     await switches.nth(2).click();
-    await expect(page.locator('h3:has-text("Mở khóa tài khoản")')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Mở khóa tài khoản' })).toBeVisible();
     await page.click('button:has-text("Xác nhận mở khóa")');
     await expect.poll(() => reactivatedId).toBe(3);
   });

@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
 import ChevronPipeline from './ChevronPipeline';
+import { STATUS_PIPELINE, WO_STATUS_META, formatVehicleSize } from './work-order.constants';
 
 type Props = {
   licensePlate: string;
@@ -12,39 +13,6 @@ type Props = {
   inlineStatus?: boolean;
 };
 
-const STATUS_PIPELINE = [
-  'Tiếp nhận',
-  'Lập kế hoạch',
-  'Chờ duyệt',
-  'Đã duyệt',
-  'Đang sửa',
-  'Chờ thanh toán',
-  'Chờ giao xe',
-  'Đóng'
-];
-
-const statusMap: Record<string, string> = {
-  'DRAFT': 'Tiếp nhận',
-  'IN_PLANNING': 'Lập kế hoạch',
-  'PENDING_APPROVAL': 'Chờ duyệt',
-  'APPROVED': 'Đã duyệt',
-  'IN_PROGRESS': 'Đang sửa',
-  'BILLING_REQUESTED': 'Chờ thanh toán',
-  'FINANCIAL_CLEARED': 'Chờ giao xe',
-  'RELEASED': 'Đóng',
-  'CLOSED': 'Đóng',
-  'CANCELLED': 'Đã hủy'
-};
-
-const VEHICLE_SIZE_MAP: Record<string, string> = {
-  SMALL: 'Cỡ nhỏ',
-  MEDIUM: 'Cỡ vừa',
-  LARGE: 'Cỡ lớn',
-  EXTRA_LARGE: 'Rất lớn',
-  SUV: 'SUV 7 chỗ',
-  TRUCK: 'Bán tải'
-};
-
 export default function WOBadgeBar({
   licensePlate,
   vehicleClass,
@@ -54,7 +22,8 @@ export default function WOBadgeBar({
   orderType,
   inlineStatus = false
 }: Props) {
-  const mappedStatus = statusMap[statusBadge] || statusBadge;
+  const mappedStatus = WO_STATUS_META[statusBadge]?.pipelineLabel || statusBadge;
+  const formattedVehicleClass = formatVehicleSize(vehicleClass) === 'N/A' ? vehicleClass : formatVehicleSize(vehicleClass);
 
   if (inlineStatus) {
     return (
@@ -68,7 +37,7 @@ export default function WOBadgeBar({
           
           {/* Vehicle Class (PHV, Normal, etc) */}
           <span className="px-2 py-0.5 bg-tertiary-fixed text-on-tertiary-fixed rounded text-label-xs font-bold uppercase tracking-wide whitespace-nowrap">
-            {VEHICLE_SIZE_MAP[vehicleClass] || vehicleClass}
+            {formattedVehicleClass}
           </span>
           
           {/* Vehicle Name & Customer */}
@@ -103,7 +72,7 @@ export default function WOBadgeBar({
 
         {/* Right: Status Pipeline */}
         <div className="shrink-0">
-          <ChevronPipeline statuses={STATUS_PIPELINE} currentStatus={mappedStatus} compact />
+          <ChevronPipeline statuses={[...STATUS_PIPELINE]} currentStatus={mappedStatus} compact />
         </div>
       </div>
     );
@@ -119,7 +88,7 @@ export default function WOBadgeBar({
         
         {/* Vehicle Class (PHV, Normal, etc) */}
         <span className="px-2 py-1 bg-tertiary-fixed text-on-tertiary-fixed rounded text-label-sm font-bold uppercase tracking-wide whitespace-nowrap">
-          {VEHICLE_SIZE_MAP[vehicleClass] || vehicleClass}
+          {formattedVehicleClass}
         </span>
         
         {/* Vehicle Name & Customer */}
@@ -145,7 +114,7 @@ export default function WOBadgeBar({
       {/* Status Pipeline */}
       <div className="w-full overflow-x-auto no-scrollbar pb-1">
         <div className="min-w-max">
-          <ChevronPipeline statuses={STATUS_PIPELINE} currentStatus={mappedStatus} />
+          <ChevronPipeline statuses={[...STATUS_PIPELINE]} currentStatus={mappedStatus} />
         </div>
       </div>
     </div>

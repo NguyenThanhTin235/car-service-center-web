@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { parseComplaintData, parseSafeText } from '@/utils/customerHelpers';
 
 interface CustomerCheckInModalProps {
   isOpen: boolean;
@@ -99,42 +100,7 @@ export default function CustomerCheckInModal({
 
   const isConfirmed = checkIn.status === 'CONFIRMED' || !!checkIn.confirmedAt;
 
-  // Parse complaint (handles JSON { tags: string[], notes: string } or plain text)
-  const parseComplaint = (raw: string | undefined | null): { tags: string[]; notes: string } => {
-    if (!raw) return { tags: [], notes: '' };
-    try {
-      const parsed = JSON.parse(raw);
-      if (typeof parsed === 'object' && parsed !== null) {
-        const tags: string[] = Array.isArray(parsed.tags)
-          ? parsed.tags.filter((t: any): t is string => typeof t === 'string' && t.trim().length > 0)
-          : [];
-        const notes: string = typeof parsed.notes === 'string' ? parsed.notes.trim() : '';
-        return { tags, notes };
-      }
-    } catch {
-      // not a JSON string, treat as plain text note
-    }
-    return { tags: [], notes: String(raw).trim() };
-  };
-
-  const complaintData = parseComplaint(checkIn.complaint);
-
-  // Parse safe text in case exteriorCondition or belongings are ever JSON
-  const parseSafeText = (raw: string | undefined | null, fallback: string) => {
-    if (!raw || !raw.trim()) return fallback;
-    try {
-      const parsed = JSON.parse(raw);
-      if (typeof parsed === 'string') return parsed.trim() || fallback;
-      if (typeof parsed === 'object' && parsed !== null) {
-        if (parsed.notes) return String(parsed.notes).trim() || fallback;
-        if (parsed.text) return String(parsed.text).trim() || fallback;
-        if (Array.isArray(parsed)) return parsed.join(', ') || fallback;
-      }
-    } catch {
-      // plain text
-    }
-    return raw.trim() || fallback;
-  };
+  const complaintData = parseComplaintData(checkIn.complaint);
 
   const formattedExterior = parseSafeText(
     checkIn.exteriorCondition,
@@ -144,8 +110,8 @@ export default function CustomerCheckInModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-in">
-        <div className="bg-surface-container-lowest w-full max-w-3xl rounded-2xl sm:rounded-3xl shadow-2xl border border-surface-container-highest flex flex-col max-h-[92vh] overflow-hidden">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm overflow-y-auto cw-modal-overlay">
+        <div className="bg-surface-container-lowest w-full max-w-3xl rounded-2xl sm:rounded-3xl shadow-2xl border border-surface-container-highest flex flex-col max-h-[92vh] overflow-hidden cw-modal-panel">
           
           {/* ================= Header ================= */}
           <div className="p-5 sm:p-6 border-b border-surface-container-highest bg-gradient-to-r from-blue-50/80 via-white to-emerald-50/50 flex items-start justify-between">

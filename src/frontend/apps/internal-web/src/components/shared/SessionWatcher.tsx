@@ -10,6 +10,7 @@ export default function SessionWatcher() {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   const checkingRef = useRef(false);
+  const lastCheckRef = useRef(0);
 
   useEffect(() => {
     if (!isAuthenticated || !user) return;
@@ -20,6 +21,11 @@ export default function SessionWatcher() {
       try {
         channel = new BroadcastChannel('csc_session_channel');
         channel.onmessage = (event) => {
+          if (event.data?.type === 'USER_LOGGED_OUT') {
+            dispatch(logout());
+            window.location.href = '/login';
+            return;
+          }
           if (
             event.data?.type === 'ACCOUNT_DEACTIVATED' &&
             Number(event.data?.userId) === Number(user.id)
@@ -33,11 +39,13 @@ export default function SessionWatcher() {
       }
     }
 
-    // 2. Nhịp tim kiểm tra phiên với máy chủ (Heartbeat mỗi 3 giây)
+    // 2. Nhịp tim kiểm tra phiên với máy chủ (Heartbeat mỗi 3 phút khi tab đang hiển thị)
     const checkSession = async () => {
       if (checkingRef.current) return;
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       if (typeof window !== 'undefined' && window.location.pathname.startsWith('/login')) return;
       checkingRef.current = true;
+      lastCheckRef.current = Date.now();
       try {
         await api.get('/api/auth/me');
       } catch (err: any) {
@@ -52,15 +60,15 @@ export default function SessionWatcher() {
       }
     };
 
-    // Kiểm tra ngay khi chuyển tab quay lại
+    // Kiểm tra khi chuyển tab quay lại (cooldown 60s tránh spam)
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && Date.now() - lastCheckRef.current > 60000) {
         checkSession();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
-    const interval = setInterval(checkSession, 3000);
+    const interval = setInterval(checkSession, 180000);
 
     return () => {
       clearInterval(interval);

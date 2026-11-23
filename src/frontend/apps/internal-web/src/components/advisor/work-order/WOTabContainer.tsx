@@ -1,13 +1,24 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import TabCheckinInspection from './tabs/TabCheckinInspection';
-import TabJob from './tabs/TabJob';
-import TabParts from './tabs/TabParts';
-import TabQuotation from './tabs/TabQuotation';
-import TabQC from './tabs/TabQC';
-import TabRelease from './tabs/TabRelease';
+import React, { useState, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { WorkOrder } from '@/lib/api/work-order.api';
+import type { Quotation } from '@/lib/api/quotation.api';
+
+const TabSkeleton = () => (
+  <div className="space-y-4 p-4 animate-pulse">
+    <div className="h-6 w-48 bg-slate-200 rounded-lg" />
+    <div className="h-32 w-full bg-slate-100 rounded-xl" />
+    <div className="h-48 w-full bg-slate-100 rounded-xl" />
+  </div>
+);
+
+const TabCheckinInspection = dynamic(() => import('./tabs/TabCheckinInspection'), { loading: TabSkeleton });
+const TabJob = dynamic(() => import('./tabs/TabJob'), { loading: TabSkeleton });
+const TabParts = dynamic(() => import('./tabs/TabParts'), { loading: TabSkeleton });
+const TabQuotation = dynamic(() => import('./tabs/TabQuotation'), { loading: TabSkeleton });
+const TabQC = dynamic(() => import('./tabs/TabQC'), { loading: TabSkeleton });
+const TabRelease = dynamic(() => import('./tabs/TabRelease'), { loading: TabSkeleton });
 
 const TABS = [
   { id: 'checkin', number: 1, label: 'Tiếp nhận & Kiểm tra', component: TabCheckinInspection },
@@ -24,30 +35,23 @@ interface WOTabContainerProps {
   workOrder: WorkOrder;
   refetchWO: () => void;
   isReadOnly?: boolean;
+  quotations?: Quotation[];
+}
+
+function getInitialTabFromSearch(): string {
+  if (typeof window === 'undefined') return 'checkin';
+  const param = new URLSearchParams(window.location.search).get('tab');
+  return param && VALID_TAB_IDS.has(param) ? param : 'checkin';
 }
 
 export default function WOTabContainer({
   workOrder,
   refetchWO,
   isReadOnly = false,
+  quotations,
 }: WOTabContainerProps) {
-  const [activeTab, setActiveTab] = useState<string>('checkin');
-  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set(['checkin']));
-
-  // Read initial ?tab= from window.location.search on mount so F5 preserves active tab
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const param = new URLSearchParams(window.location.search).get('tab');
-    if (param && VALID_TAB_IDS.has(param)) {
-      setActiveTab(param);
-      setVisitedTabs((prev) => {
-        if (prev.has(param)) return prev;
-        const next = new Set(prev);
-        next.add(param);
-        return next;
-      });
-    }
-  }, []);
+  const [activeTab, setActiveTab] = useState<string>(getInitialTabFromSearch);
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set([getInitialTabFromSearch()]));
 
   const handleSelectTab = useCallback((tabId: string) => {
     if (!VALID_TAB_IDS.has(tabId)) return;
@@ -95,7 +99,7 @@ export default function WOTabContainer({
               key={tab.id}
               type="button"
               onClick={() => handleSelectTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl font-bold text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer ${
+              className={`sa-press flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl font-bold text-xs sm:text-sm transition-colors whitespace-nowrap cursor-pointer ${
                 isActive
                   ? 'bg-[#0050cd] text-white shadow-sm'
                   : 'text-slate-600 hover:text-zinc-900 hover:bg-white/60'
@@ -130,14 +134,16 @@ export default function WOTabContainer({
         {TABS.map((tab) => {
           if (!visitedTabs.has(tab.id)) return null;
           const isActive = activeTab === tab.id;
-          const TabComponent = tab.component;
+          const TabComponent = tab.component as React.ComponentType<any>;
           return (
-            <div key={tab.id} className={isActive ? 'block' : 'hidden'}>
+            <div key={tab.id} className={isActive ? 'block sa-tab-enter' : 'hidden'}>
               <TabComponent
                 workOrder={workOrder}
                 refetchWO={refetchWO}
                 isReadOnly={isEffectiveReadOnly}
                 setActiveTab={handleSelectTab}
+                isActive={isActive}
+                quotations={quotations}
               />
             </div>
           );

@@ -1,47 +1,63 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchMyTrackingOrders, setSelectedOrder, WorkOrderTrackingDto } from '@/store/slices/trackingSlice';
 import Toast from '@/components/shared/Toast';
-import CustomerQuotationModal from './CustomerQuotationModal';
-import CustomerCheckInModal from './CustomerCheckInModal';
-import CustomerQCModal from './CustomerQCModal';
-import CustomerPaymentModal from '@/components/invoices/CustomerPaymentModal';
+import { ErrorState, LoadingSkeleton } from '@/components/ui';
 import { downloadInvoicePdfBlob } from '@/lib/api/invoice.api';
 import { downloadHandoverPdfBlob } from '@/lib/api/work-order.api';
+import { StoredChatActionPayload } from '@/components/chat/aiChatUtils';
+import { downloadPdfBlob, parseComplaintText } from '@/utils/customerHelpers';
 
-const parseComplaintText = (raw?: string | null): string => {
-  if (!raw || !raw.trim()) return '';
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed === 'object' && parsed !== null) {
-      const parts: string[] = [];
-      if (Array.isArray(parsed.tags) && parsed.tags.length > 0) {
-        const validTags = parsed.tags.filter((t: any) => typeof t === 'string' && t.trim().length > 0);
-        if (validTags.length > 0) parts.push(validTags.join(', '));
-      }
-      if (typeof parsed.notes === 'string' && parsed.notes.trim()) {
-        parts.push(parsed.notes.trim());
-      }
-      if (parts.length > 0) return parts.join(' - ');
-      return '';
-    }
-  } catch {
-    // Không phải JSON, xử lý chuỗi thường
-  }
-  const clean = String(raw).trim();
-  if (clean === '{"tags":[],"notes":""}' || clean === '{}') return '';
-  return clean;
-};
+const CustomerQuotationModal = dynamic(() => import('./CustomerQuotationModal'));
+const CustomerCheckInModal = dynamic(() => import('./CustomerCheckInModal'));
+const CustomerQCModal = dynamic(() => import('./CustomerQCModal'));
+const CustomerPaymentModal = dynamic(() => import('@/components/invoices/CustomerPaymentModal'));
 
-export default function TrackingView({ isEmbedded = false }: { isEmbedded?: boolean }) {
+const LiveCountdownBadge = React.memo(function LiveCountdownBadge() {
+  const [seconds, setSeconds] = useState<number>(30);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSeconds((prev) => (prev <= 1 ? 30 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="text-xs text-on-surface-variant bg-surface-container-lowest px-3 py-2 rounded-lg border border-surface-container-highest shadow-2xs flex items-center gap-1.5">
+      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span>Tự động đồng bộ:</span>
+      <span className="font-semibold text-primary font-mono">{seconds}s</span>
+    </div>
+  );
+});
+
+const LiveClockOverlay = React.memo(function LiveClockOverlay() {
+  const [time, setTime] = useState<string>('');
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTime(new Date().toLocaleTimeString('vi-VN'));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="absolute bottom-2 left-2.5 bg-black/60 backdrop-blur px-2 py-0.5 rounded text-white font-mono text-[10px] z-10">
+      {time || 'Đang kết nối...'}
+    </div>
+  );
+});
+
+export default function TrackingView() {
   const dispatch = useAppDispatch();
-  const { orders, selectedOrder, loading } = useAppSelector((state) => state.tracking);
-  const [refreshCountdown, setRefreshCountdown] = useState<number>(30);
+  const { orders, selectedOrder, loading, error } = useAppSelector((state) => state.tracking);
+  const [syncTick, setSyncTick] = useState<number>(0);
   const [toastMsg, setToastMsg] = useState<string>('');
-  const [currentTime, setCurrentTime] = useState<string>('');
   const [isQuotationModalOpen, setIsQuotationModalOpen] = useState<boolean>(false);
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState<boolean>(false);
   const [isQCModalOpen, setIsQCModalOpen] = useState<boolean>(false);
@@ -56,14 +72,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
     try {
       setDownloadingPdfId(invId);
       const blob = await downloadInvoicePdfBlob(invId);
-      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Hoa_Don_${invNumber || invId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      downloadPdfBlob(blob, `Hoa_Don_${invNumber || invId}.pdf`);
       setToastMsg(`Đã tải hóa đơn PDF ${invNumber ? '#' + invNumber : ''} thành công!`);
     } catch (err: any) {
       setToastMsg('Không thể xuất file PDF: ' + (err.response?.data?.message || err.message || 'Lỗi hệ thống'));
@@ -77,14 +86,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
     try {
       setDownloadingHandoverPdf(true);
       const blob = await downloadHandoverPdfBlob(activeOrder.id);
-      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Bien_Ban_Ban_Giao_${activeOrder.woNumber}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      downloadPdfBlob(blob, `Bien_Ban_Ban_Giao_${activeOrder.woNumber}.pdf`);
       setToastMsg(`Đã tải xuống Biên bản bàn giao xe #${activeOrder.woNumber} thành công!`);
     } catch (err: any) {
       setToastMsg('Không thể xuất file PDF biên bản bàn giao: ' + (err.response?.data?.message || err.message || 'Lỗi hệ thống'));
@@ -107,20 +109,10 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
     loadData();
   }, [loadData]);
 
-  // Cập nhật đồng hồ thời gian thực và đếm ngược hiển thị mỗi giây
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date();
-      setCurrentTime(now.toLocaleTimeString('vi-VN'));
-      setRefreshCountdown((prev) => (prev <= 1 ? 30 : prev - 1));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  // Tự động tải lại dữ liệu định kỳ mỗi 30 giây
+  // Tự động tải lại dữ liệu định kỳ mỗi 30 giây (chỉ khi tab đang hiển thị)
   useEffect(() => {
     const refreshTimer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       loadData(false);
     }, 30000);
 
@@ -128,6 +120,56 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
   }, [loadData]);
 
   const activeOrder: WorkOrderTrackingDto | null = selectedOrder || (orders.length > 0 ? orders[0] : null);
+  const consumedQuotationQueryRef = useRef(false);
+  const [requestedQuotationId, setRequestedQuotationId] = useState<number | null>(null);
+
+  const openQuotationFromAction = useCallback(
+    (workOrderId?: number | null, quotationId?: number | null) => {
+      if (orders.length === 0) return false;
+      const targetOrder = workOrderId
+        ? orders.find((o) => Number(o.id) === Number(workOrderId)) || orders[0]
+        : activeOrder || orders[0];
+      if (!targetOrder) return false;
+      if (Number(selectedOrder?.id) !== Number(targetOrder.id)) {
+        dispatch(setSelectedOrder(targetOrder));
+      }
+      setRequestedQuotationId(quotationId ? Number(quotationId) : null);
+      if (targetOrder.activeQuotation || (targetOrder.quotations && targetOrder.quotations.length > 0)) {
+        setIsQuotationModalOpen(true);
+      }
+      return true;
+    },
+    [orders, activeOrder, selectedOrder?.id, dispatch]
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || orders.length === 0 || consumedQuotationQueryRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('openQuotation') === '1') {
+      const woIdRaw = params.get('workOrderId');
+      const woId = woIdRaw ? Number(woIdRaw) : null;
+      const qIdRaw = params.get('quotationId');
+      const qId = qIdRaw ? Number(qIdRaw) : null;
+      if (openQuotationFromAction(woId, qId)) {
+        consumedQuotationQueryRef.current = true;
+        params.delete('openQuotation');
+        params.delete('workOrderId');
+        params.delete('quotationId');
+        const nextQuery = params.toString();
+        window.history.replaceState(null, '', `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`);
+      }
+    }
+  }, [orders, openQuotationFromAction]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleViewQuotation = (ev: Event) => {
+      const detail = (ev as CustomEvent<StoredChatActionPayload>).detail;
+      openQuotationFromAction(detail?.workOrderId, detail?.quotationId);
+    };
+    window.addEventListener('csc:view-quotation', handleViewQuotation);
+    return () => window.removeEventListener('csc:view-quotation', handleViewQuotation);
+  }, [openQuotationFromAction]);
 
   return (
     <div className="w-full max-w-[1440px] mx-auto space-y-6">
@@ -140,18 +182,9 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
         />
       )}
 
-      {/* Breadcrumb & Header Bar */}
+      {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          {!isEmbedded && (
-          <nav className="flex items-center space-x-2 text-on-surface-variant text-xs mb-1.5 font-medium">
-            <Link href="/customer" className="hover:text-primary transition-colors">
-              Trang chủ
-            </Link>
-            <span>/</span>
-            <span className="text-on-surface font-semibold">Theo dõi tiến độ</span>
-          </nav>
-          )}
           <h1 className="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight">
             Theo dõi tiến độ dịch vụ
           </h1>
@@ -159,14 +192,10 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
 
         {/* Sync Status & Refresh Button */}
         <div className="flex items-center gap-3">
-          <div className="text-xs text-on-surface-variant bg-surface-container-lowest px-3 py-2 rounded-lg border border-surface-container-highest shadow-2xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Tự động đồng bộ:</span>
-            <span className="font-semibold text-primary font-mono">{refreshCountdown}s</span>
-          </div>
+          <LiveCountdownBadge key={syncTick} />
           <button
             onClick={() => {
-              setRefreshCountdown(30);
+              setSyncTick((n) => n + 1);
               loadData(true);
             }}
             disabled={loading}
@@ -209,7 +238,15 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
       )}
 
       {/* Main Content Area */}
-      {!activeOrder ? (
+      {loading && orders.length === 0 ? (
+        <LoadingSkeleton variant="cards" count={3} />
+      ) : error && orders.length === 0 ? (
+        <ErrorState
+          title="Không thể tải tiến độ sửa chữa"
+          message={error}
+          onRetry={() => loadData(true)}
+        />
+      ) : !activeOrder ? (
         /* Empty State */
         <div className="bg-surface-container-lowest rounded-2xl border border-surface-container-highest p-8 sm:p-12 text-center max-w-2xl mx-auto shadow-sm my-8">
           <div className="w-16 h-16 rounded-2xl bg-primary-fixed text-primary flex items-center justify-center mx-auto mb-4">
@@ -223,14 +260,28 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="/customer/appointments"
+              href="/customer/profile?tab=appointments"
+              onClick={(e) => {
+                if (typeof window !== 'undefined' && window.location.pathname === '/customer/profile') {
+                  e.preventDefault();
+                  window.history.replaceState(null, '', '/customer/profile?tab=appointments');
+                  window.dispatchEvent(new CustomEvent('csc:switch-tab', { detail: 'appointments' }));
+                }
+              }}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">calendar_today</span>
               Đặt lịch hẹn ngay
             </Link>
             <Link
-              href="/customer/invoices"
+              href="/customer/profile?tab=invoices"
+              onClick={(e) => {
+                if (typeof window !== 'undefined' && window.location.pathname === '/customer/profile') {
+                  e.preventDefault();
+                  window.history.replaceState(null, '', '/customer/profile?tab=invoices');
+                  window.dispatchEvent(new CustomEvent('csc:switch-tab', { detail: 'invoices' }));
+                }
+              }}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-surface-container-lowest border border-surface-container-highest text-on-surface hover:bg-surface-container-low rounded-xl text-sm font-semibold transition-all shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">receipt_long</span>
@@ -753,7 +804,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
 
                       {/* Step Content Box */}
                       <div
-                        className={`flex-1 rounded-xl p-4 border transition-all ${
+                        className={`flex-1 min-w-0 rounded-xl p-4 border transition-all ${
                           isInProgress
                             ? 'bg-white border-2 border-primary shadow-sm'
                             : isCompleted
@@ -761,28 +812,25 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                             : 'bg-surface-container-lowest border-surface-container-highest opacity-70'
                         }`}
                       >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-sm sm:text-base font-bold text-on-surface">
-                              Bước {step.stepIndex}: {step.title}
-                            </h4>
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
-                                isCompleted
-                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                  : isInProgress
-                                  ? 'bg-blue-100 text-primary border-blue-300'
-                                  : 'bg-surface-container text-on-surface-variant border-surface-container-highest'
-                              }`}
-                            >
-                              {isCompleted ? 'Hoàn thành' : isInProgress ? 'Đang thực hiện' : 'Chờ thực hiện'}
-                            </span>
-                          </div>
-                          {step.time && (
-                            <div className="text-xs text-on-surface-variant font-mono">
-                              {step.time}
-                            </div>
-                          )}
+                        <div className="flex items-start sm:items-center justify-between gap-3 mb-1.5">
+                          <h4 className="text-sm sm:text-base font-bold text-on-surface min-w-0">
+                            Bước {step.stepIndex}: {step.title}
+                          </h4>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap shrink-0 ${
+                              isCompleted
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                : isInProgress
+                                ? 'bg-blue-100 text-primary border-blue-300'
+                                : 'bg-surface-container text-on-surface-variant border-surface-container-highest'
+                            }`}
+                          >
+                            {isCompleted
+                              ? 'Hoàn thành'
+                              : isInProgress
+                              ? step.time || 'Đang thực hiện'
+                              : 'Chờ thực hiện'}
+                          </span>
                         </div>
 
                         <p className="text-xs sm:text-sm text-on-surface-variant">
@@ -923,9 +971,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                   </div>
 
                   {/* Bottom Time Overlay */}
-                  <div className="absolute bottom-2 left-2.5 bg-black/60 backdrop-blur px-2 py-0.5 rounded text-white font-mono text-[10px] z-10">
-                    {currentTime || 'Đang kết nối...'}
-                  </div>
+                  <LiveClockOverlay />
                 </div>
 
                 {/* Description */}
@@ -1046,12 +1092,12 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
             {/* Left: Thợ máy phụ trách (lg:col-span-5) */}
             <div className="lg:col-span-5 bg-surface-container-lowest rounded-2xl border border-surface-container-highest shadow-sm p-5 sm:p-6 flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between pb-3 border-b border-surface-container-highest mb-4">
-                  <div className="flex items-center space-x-2">
-                    <span className="material-symbols-outlined text-primary text-[22px]">engineering</span>
-                    <h3 className="text-base font-bold text-on-surface">Kỹ thuật viên phụ trách</h3>
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-surface-container-highest mb-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="material-symbols-outlined text-primary text-[22px] shrink-0">engineering</span>
+                    <h3 className="text-base font-bold text-on-surface whitespace-nowrap">Kỹ thuật viên phụ trách</h3>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-primary border border-blue-200/80 text-[11px] font-semibold">
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-primary border border-blue-200/80 text-[11px] font-semibold whitespace-nowrap shrink-0">
                     {activeOrder.mechanic ? 'KTV Chuyên trách' : 'Tổ dịch vụ kỹ thuật'}
                   </span>
                 </div>
@@ -1114,12 +1160,12 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
               {/* Call Hotline button */}
               <div className="pt-4 mt-2">
                 <a
-                  className="w-full inline-flex items-center justify-center py-2.5 px-3 rounded-xl bg-surface-container-lowest hover:bg-surface-container-low text-on-surface border border-surface-container-highest text-xs font-semibold transition-all shadow-2xs hover:border-primary/40 group"
+                  className="w-full inline-flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 min-h-[44px] py-2.5 px-3 rounded-xl bg-surface-container-lowest hover:bg-surface-container-low text-on-surface border border-surface-container-highest text-xs font-semibold transition-all shadow-2xs hover:border-primary/40 group text-center"
                   href="tel:19008888"
                 >
-                  <span className="material-symbols-outlined text-[18px] mr-1.5 text-primary group-hover:scale-110 transition-transform">headset_mic</span>
+                  <span className="material-symbols-outlined text-[18px] text-primary group-hover:scale-110 transition-transform shrink-0">headset_mic</span>
                   <span>Tổng đài hỗ trợ kỹ thuật xưởng:</span>
-                  <strong className="ml-1 text-primary">1900 8888</strong>
+                  <strong className="text-primary font-mono tabular-nums whitespace-nowrap">1900 8888</strong>
                 </a>
               </div>
             </div>
@@ -1127,33 +1173,33 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
             {/* Right: Ghi chú & Các vấn đề phát hiện công khai từ Cố vấn (lg:col-span-7) */}
             <div className="lg:col-span-7 bg-surface-container-lowest rounded-2xl border border-surface-container-highest shadow-sm p-5 sm:p-6 flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between pb-3 border-b border-surface-container-highest mb-4">
-                  <div className="flex items-center space-x-2">
-                    <span className="material-symbols-outlined text-primary text-[22px]">assignment_ind</span>
-                    <h3 className="text-base font-bold text-on-surface">Ghi chú & Tiếp nhận từ Cố vấn</h3>
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-surface-container-highest mb-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="material-symbols-outlined text-primary text-[22px] shrink-0">assignment_ind</span>
+                    <h3 className="text-base font-bold text-on-surface">Ghi chú &amp; Tiếp nhận từ Cố vấn</h3>
                   </div>
-                  <span className="text-xs font-mono font-semibold text-on-surface-variant bg-surface-container px-2 py-0.5 rounded border border-surface-container-highest">
+                  <span className="text-xs font-mono tabular-nums font-semibold text-on-surface-variant bg-surface-container px-2.5 py-0.5 rounded border border-surface-container-highest whitespace-nowrap shrink-0">
                     Phiếu #{activeOrder.woNumber}
                   </span>
                 </div>
 
                 {/* Speech Bubble / Advisor Notes */}
                 <div className="bg-blue-50/40 border border-blue-200/80 rounded-2xl p-4 sm:p-5 mb-4 space-y-3">
-                  <div className="flex items-center justify-between pb-2.5 border-b border-blue-100">
-                    <div className="flex items-center space-x-2.5">
-                      <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-blue-100">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
                         {activeOrder.advisor.fullName.charAt(0)}
                       </div>
-                      <div>
-                        <span className="text-xs sm:text-sm font-bold text-on-surface block">
+                      <div className="min-w-0">
+                        <span className="text-xs sm:text-sm font-bold text-on-surface block truncate">
                           Cố vấn: {activeOrder.advisor.fullName}
                         </span>
-                        <span className="text-[11px] text-on-surface-variant">
-                          Phụ trách tiếp nhận & điều phối kỹ thuật
+                        <span className="text-[11px] text-on-surface-variant block">
+                          Phụ trách tiếp nhận &amp; điều phối kỹ thuật
                         </span>
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded bg-white text-primary border border-blue-200 text-[11px] font-semibold shadow-2xs">
+                    <span className="px-2.5 py-0.5 rounded bg-white text-primary border border-blue-200 text-[11px] font-semibold shadow-2xs whitespace-nowrap shrink-0">
                       Ghi nhận kỹ thuật
                     </span>
                   </div>
@@ -1252,68 +1298,65 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                   </p>
 
                   {/* Digital Signature */}
-                  <div className="pt-2.5 border-t border-blue-200/80 flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-1.5 text-on-surface-variant">
-                      <span className="material-symbols-outlined text-[16px] text-primary">draw</span>
-                      <span>Xác nhận: <strong className="text-on-surface">{activeOrder.advisor.fullName}</strong></span>
+                  <div className="pt-2.5 border-t border-blue-200/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-1.5 text-on-surface-variant min-w-0">
+                      <span className="material-symbols-outlined text-[16px] text-primary shrink-0">draw</span>
+                      <span className="truncate">Xác nhận: <strong className="text-on-surface">{activeOrder.advisor.fullName}</strong></span>
                     </div>
-                    <span className="inline-flex items-center text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold">
-                      <span className="material-symbols-outlined text-[12px] mr-0.5">verified</span> Đã xác nhận tiếp nhận
+                    <span className="inline-flex items-center text-[11px] text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 font-semibold whitespace-nowrap shrink-0">
+                      <span className="material-symbols-outlined text-[13px] mr-1">verified</span> Đã xác nhận tiếp nhận
                     </span>
                   </div>
                 </div>
               </div>
 
               {/* Action buttons */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                <div>
-                  {activeOrder.checkIn ? (
-                    <button
-                      onClick={() => setIsCheckInModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-2xs active:scale-95"
-                      type="button"
-                    >
-                      <span className="material-symbols-outlined text-[16px] text-primary">assignment</span>
-                      Xem biên bản tiếp nhận & ngoại thất
-                    </button>
-                  ) : (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container text-on-surface-variant rounded-lg text-xs font-medium">
-                      <span className="material-symbols-outlined text-[16px] text-emerald-600">verified</span>
-                      Hồ sơ kỹ thuật đã đồng bộ
-                    </div>
-                  )}
-                </div>
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-between gap-2 pt-2">
+                {activeOrder.checkIn ? (
+                  <button
+                    onClick={() => setIsCheckInModalOpen(true)}
+                    className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[16px] text-primary shrink-0">assignment</span>
+                    <span>Xem biên bản tiếp nhận &amp; ngoại thất</span>
+                  </button>
+                ) : (
+                  <div className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 py-2 bg-surface-container text-on-surface-variant rounded-xl text-xs font-medium whitespace-nowrap">
+                    <span className="material-symbols-outlined text-[16px] text-emerald-600 shrink-0">verified</span>
+                    <span>Hồ sơ kỹ thuật đã đồng bộ</span>
+                  </div>
+                )}
 
-                <div>
-                  {activeOrder.advisor.phone ? (
-                    <a
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-primary text-white hover:bg-primary-dark rounded-lg text-xs font-semibold transition-all shadow-2xs active:scale-95 cursor-pointer"
-                      href={`tel:${activeOrder.advisor.phone}`}
-                    >
-                      <span className="material-symbols-outlined text-[16px]">phone_in_talk</span>
-                      Gọi Cố vấn: {activeOrder.advisor.phone}
-                    </a>
-                  ) : (
-                    <a
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-primary text-white hover:bg-primary-dark rounded-lg text-xs font-semibold transition-all shadow-2xs active:scale-95 cursor-pointer"
-                      href="tel:19008888"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">phone_in_talk</span>
-                      Hotline: 1900 8888
-                    </a>
-                  )}
-                </div>
+                {activeOrder.advisor.phone ? (
+                  <a
+                    className="sm:ml-auto inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3.5 py-2 bg-primary text-white hover:bg-accent-hover rounded-xl text-xs font-semibold transition-colors active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                    href={`tel:${activeOrder.advisor.phone}`}
+                  >
+                    <span className="material-symbols-outlined text-[16px] shrink-0">phone_in_talk</span>
+                    <span>Gọi Cố vấn: <span className="font-mono tabular-nums">{activeOrder.advisor.phone}</span></span>
+                  </a>
+                ) : (
+                  <a
+                    className="sm:ml-auto inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3.5 py-2 bg-primary text-white hover:bg-accent-hover rounded-xl text-xs font-semibold transition-colors active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                    href="tel:19008888"
+                  >
+                    <span className="material-symbols-outlined text-[16px] shrink-0">phone_in_talk</span>
+                    <span>Hotline: <span className="font-mono tabular-nums">1900 8888</span></span>
+                  </a>
+                )}
               </div>
             </div>
 
           </div>
 
           {/* Customer Quotation Detail Modal */}
-          {activeOrder.activeQuotation && (
+          {isQuotationModalOpen && activeOrder.activeQuotation && (
             <CustomerQuotationModal
               isOpen={isQuotationModalOpen}
               onClose={() => setIsQuotationModalOpen(false)}
               quotation={activeOrder.activeQuotation as any}
+              initialQuotationId={requestedQuotationId}
               allQuotations={activeOrder.quotations as any}
               cumulativeSummary={activeOrder.cumulativeSummary}
               advisorName={activeOrder.advisor.fullName}
@@ -1327,7 +1370,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
           )}
 
           {/* Customer CheckIn Detail Modal */}
-          {activeOrder.checkIn && (
+          {isCheckInModalOpen && activeOrder.checkIn && (
             <CustomerCheckInModal
               isOpen={isCheckInModalOpen}
               onClose={() => setIsCheckInModalOpen(false)}
@@ -1339,7 +1382,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
           )}
 
           {/* Customer QC Certificate Modal */}
-          {activeOrder.qcReport && (
+          {isQCModalOpen && activeOrder.qcReport && (
             <CustomerQCModal
               isOpen={isQCModalOpen}
               onClose={() => setIsQCModalOpen(false)}

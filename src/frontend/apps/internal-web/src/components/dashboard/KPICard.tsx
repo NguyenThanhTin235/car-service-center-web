@@ -29,7 +29,9 @@ export interface KPICardProps {
   slaPercentage?: number;
 }
 
-export const KPICard: React.FC<KPICardProps> = ({
+const DEFAULT_WAVE_LABELS = ['Tiếp nhận', 'Kế hoạch', 'Thi công', 'KCS', 'Giao xe'];
+
+export const KPICard: React.FC<KPICardProps> = React.memo(({
   label,
   value,
   prevValue,
@@ -47,7 +49,7 @@ export const KPICard: React.FC<KPICardProps> = ({
   splitPercentage = 75,
   splitLeftLabel,
   splitRightLabel,
-  waveLabels = ['Tiếp nhận', 'Kế hoạch', 'Thi công', 'KCS', 'Giao xe'],
+  waveLabels = DEFAULT_WAVE_LABELS,
   sparklinePoints,
   heatmapHighlightCol,
   slaPercentage,
@@ -94,11 +96,19 @@ export const KPICard: React.FC<KPICardProps> = ({
         : 'south_east'
       : 'trending_up');
 
-  // Dynamic SVG curve generation from sparklinePoints or fallback
+  // Dynamic SVG curve generation from real sparklinePoints or actual prevValue -> numVal trend
+  const safeNum = !isNaN(numVal) ? numVal : 0;
+  const safePrev = typeof prevValue === 'number' && !isNaN(prevValue) ? prevValue : safeNum;
   const points =
     sparklinePoints && sparklinePoints.length >= 2
       ? sparklinePoints
-      : [22, 34, 26, 46, 32];
+      : [
+          safePrev,
+          Math.round(safePrev + (safeNum - safePrev) * 0.25),
+          Math.round(safePrev + (safeNum - safePrev) * 0.5),
+          Math.round(safePrev + (safeNum - safePrev) * 0.75),
+          safeNum,
+        ];
 
   const minP = Math.min(...points);
   const maxP = Math.max(...points);
@@ -133,7 +143,7 @@ export const KPICard: React.FC<KPICardProps> = ({
   // ================= VARIANT 1: DARK NAVY (#0c2340) =================
   if (variant === 'navy') {
     return (
-      <div className="bg-[#0c2340] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md hover:shadow-lg transition-all relative overflow-hidden group">
+      <div className="sa-card-lift bg-[#0c2340] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md hover:shadow-lg relative overflow-hidden group">
         <div>
           <div className="flex items-center justify-between text-zinc-300 text-xs font-semibold tracking-wide">
             <span>{label}</span>
@@ -233,7 +243,7 @@ export const KPICard: React.FC<KPICardProps> = ({
     const splitRight = 100 - splitLeft;
 
     return (
-      <div className="bg-[#0050cd] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md shadow-[#0050cd]/20 hover:shadow-lg transition-all relative overflow-hidden group">
+      <div className="sa-card-lift bg-[#0050cd] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md shadow-[#0050cd]/20 hover:shadow-lg relative overflow-hidden group">
         <div>
           <div className="flex items-center justify-between text-blue-100 text-xs font-semibold tracking-wide">
             <span>{label}</span>
@@ -259,14 +269,14 @@ export const KPICard: React.FC<KPICardProps> = ({
 
         {/* 2-Tone Split Bar Inside Deep Navy Container */}
         <div className="mt-3">
-          <div className="bg-[#07192e] rounded-2xl p-1.5 flex items-stretch h-12 gap-1.5">
+          <div className="bg-[#07192e] rounded-xl p-1 flex items-stretch h-7 gap-1">
             <div
               style={{ width: `${splitLeft}%` }}
-              className="bg-white text-zinc-900 rounded-xl px-2.5 py-1 flex items-end font-mono font-extrabold text-xs tabular-nums transition-all"
+              className="bg-white text-zinc-900 rounded-lg px-2.5 flex items-center font-mono font-extrabold text-[11px] leading-none tabular-nums whitespace-nowrap transition-all"
             >
               {splitLeft}%
             </div>
-            <div className="flex-1 text-white px-2.5 py-1 flex items-end justify-end font-mono font-extrabold text-xs tabular-nums">
+            <div className="flex-1 text-white px-2.5 flex items-center justify-end font-mono font-extrabold text-[11px] leading-none tabular-nums whitespace-nowrap">
               {splitRight}%
             </div>
           </div>
@@ -289,7 +299,7 @@ export const KPICard: React.FC<KPICardProps> = ({
   // ================= VARIANT 3: SOFT COOL SLATE (#e4e7ec) =================
   if (variant === 'slate') {
     return (
-      <div className="bg-[#e4e7ec] text-zinc-900 rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-xs hover:shadow-md transition-all relative overflow-hidden group">
+      <div className="sa-card-lift bg-[#e4e7ec] text-zinc-900 rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-xs hover:shadow-md relative overflow-hidden group">
         <div>
           <div className="flex items-center justify-between text-slate-700 text-xs font-semibold tracking-wide">
             <span>{label}</span>
@@ -320,28 +330,32 @@ export const KPICard: React.FC<KPICardProps> = ({
           </div>
 
           <div className="grid grid-cols-7 gap-1">
-            {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((day, colIdx) => {
-              const isPeakCol = colIdx === 4 || colIdx === 5;
-              return (
-                <div key={day} className="flex flex-col items-center gap-1">
-                  <div className="w-full grid grid-cols-2 gap-0.5">
-                    {[0, 1, 2, 3].map((cell) => (
-                      <span
-                        key={cell}
-                        className={`h-2 rounded-xs transition-colors ${
-                          isPeakCol
-                            ? 'bg-[#0c2340]'
-                            : cell < 2
-                            ? 'bg-slate-400'
-                            : 'bg-slate-300'
-                        }`}
-                      />
-                    ))}
+            {(() => {
+              const todayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+              const activeCol = typeof heatmapHighlightCol === 'number' ? heatmapHighlightCol : todayIdx;
+              return ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((day, colIdx) => {
+                const isPeakCol = colIdx === activeCol;
+                return (
+                  <div key={day} className="flex flex-col items-center gap-1">
+                    <div className="w-full grid grid-cols-2 gap-0.5">
+                      {[0, 1, 2, 3].map((cell) => (
+                        <span
+                          key={cell}
+                          className={`h-2 rounded-xs transition-colors ${
+                            isPeakCol
+                              ? 'bg-[#0c2340]'
+                              : cell < 2
+                              ? 'bg-slate-400'
+                              : 'bg-slate-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[9px] font-mono text-slate-500 font-semibold">{day}</span>
                   </div>
-                  <span className="text-[9px] font-mono text-slate-500 font-semibold">{day}</span>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </div>
       </div>
@@ -350,7 +364,7 @@ export const KPICard: React.FC<KPICardProps> = ({
 
   // ================= VARIANT 4: MIDNIGHT / DEEP INDIGO (#111827) =================
   return (
-    <div className="bg-[#111827] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md hover:shadow-lg transition-all relative overflow-hidden group">
+    <div className="sa-card-lift bg-[#111827] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md hover:shadow-lg relative overflow-hidden group">
       <div>
         <div className="flex items-center justify-between text-slate-300 text-xs font-semibold tracking-wide">
           <span>{label}</span>
@@ -375,22 +389,35 @@ export const KPICard: React.FC<KPICardProps> = ({
       </div>
 
       {/* SLA Tier Progress Indicators */}
-      <div className="mt-3 bg-[#1e293b] rounded-2xl p-2.5 space-y-1.5">
-        <div className="flex justify-between text-[10px] text-slate-300 font-mono">
-          <span>Tiêu chuẩn dịch vụ</span>
-          <span className="text-cyan-400 font-bold">100% SLA</span>
-        </div>
-        <div className="h-2 w-full bg-slate-700 rounded-full overflow-hidden">
-          <div className="h-full bg-linear-to-r from-blue-500 to-cyan-400 rounded-full w-4/5" />
-        </div>
-        <div className="flex justify-between text-[9px] text-slate-400 font-mono pt-0.5">
-          <span>Sửa chữa lớn</span>
-          <span>Bảo dưỡng nhanh</span>
-          <span>Chăm sóc xe</span>
-        </div>
-      </div>
+      {(() => {
+        const resolvedSla =
+          typeof slaPercentage === 'number'
+            ? Math.max(0, Math.min(100, Math.round(slaPercentage)))
+            : safeNum > 0
+            ? 100
+            : 0;
+        return (
+          <div className="mt-3 bg-[#1e293b] rounded-2xl p-2.5 space-y-1.5">
+            <div className="flex justify-between text-[10px] text-slate-300 font-mono tabular-nums">
+              <span>Tỷ lệ đáp ứng quy chuẩn</span>
+              <span className="text-cyan-400 font-bold">{resolvedSla}%</span>
+            </div>
+            <div className="h-2 w-full bg-slate-700 rounded-full overflow-hidden">
+              <div
+                style={{ width: `${resolvedSla}%` }}
+                className="h-full bg-linear-to-r from-blue-500 to-cyan-400 rounded-full transition-all duration-300"
+              />
+            </div>
+            <div className="flex justify-between text-[9px] text-slate-400 font-mono pt-0.5">
+              <span>Sửa chữa lớn</span>
+              <span>Bảo dưỡng nhanh</span>
+              <span>Chăm sóc xe</span>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
-};
+});
 
 export default KPICard;

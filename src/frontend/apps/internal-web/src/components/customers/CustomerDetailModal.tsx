@@ -129,8 +129,19 @@ export default function CustomerDetailModal({ isOpen, onClose, customerData }: C
   const displayTotalVisits = summary?.totalVisits ?? customerData.stats?.totalVisits ?? 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[85vh]">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Hồ sơ chi tiết Khách hàng"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-200"
+    >
+      <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[88vh]">
         {/* Header (Sticky top) */}
         <div className="px-6 py-4 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/70">
           <div className="flex items-center gap-2.5">
@@ -139,11 +150,12 @@ export default function CustomerDetailModal({ isOpen, onClose, customerData }: C
             </span>
             <div>
               <h2 className="text-base font-bold text-slate-900 tracking-tight">Hồ sơ chi tiết Khách hàng</h2>
-              <p className="text-xs text-slate-500">Mã định danh KH #{customerData.id}</p>
+              <p className="text-xs text-slate-500 font-mono tabular-nums">Mã định danh KH #{customerData.id}</p>
             </div>
           </div>
           <button
             onClick={onClose}
+            aria-label="Đóng cửa sổ"
             className="w-9 h-9 rounded-xl hover:bg-slate-200/70 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
             title="Đóng cửa sổ"
             type="button"

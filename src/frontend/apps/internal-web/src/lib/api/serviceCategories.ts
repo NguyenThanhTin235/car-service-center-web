@@ -16,8 +16,8 @@ export interface CreateServiceCategoryPayload {
 }
 
 export const serviceCategoryApi = {
-  getAll: (params?: { search?: string; page?: number; limit?: number }) =>
-    api.get('/api/service-categories', { params }),
+  getAll: (params?: { search?: string; page?: number; limit?: number }, signal?: AbortSignal) =>
+    api.get('/api/service-categories', { params, signal }),
 
   create: (data: CreateServiceCategoryPayload) =>
     api.post('/api/service-categories', data),

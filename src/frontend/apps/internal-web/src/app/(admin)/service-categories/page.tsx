@@ -7,6 +7,7 @@ import Modal from '@/components/shared/Modal';
 import TablePagination from '@/components/shared/TablePagination';
 import toast from 'react-hot-toast';
 import { validateName } from '@/lib/utils/validators';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface FormData {
   name: string;
@@ -20,6 +21,7 @@ export default function ServiceCategoriesPage() {
   const [categories, setCategories] = useState<ServiceCategoryData[]>([]);
   const [pagination, setPagination] = useState({ totalRecords: 0, totalPages: 1, currentPage: 1, limit: 10 });
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<ServiceCategoryData | null>(null);
@@ -29,20 +31,29 @@ export default function ServiceCategoriesPage() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const load = useCallback(async (page = 1) => {
+  const load = useCallback(async (page = 1, signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const res = await serviceCategoryApi.getAll({ search, page, limit: 10 });
-      setCategories(res.data.data); 
-      setPagination(res.data.pagination);
+      const res = await serviceCategoryApi.getAll({ search: debouncedSearch, page, limit: 10 }, signal);
+      if (!signal?.aborted) {
+        setCategories(res.data.data); 
+        setPagination(res.data.pagination);
+      }
     } catch (e: any) { 
+      if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED' || signal?.aborted) return;
       setError(e.response?.data?.message || 'Lỗi tải dữ liệu'); 
     } finally { 
-      setLoading(false); 
+      if (!signal?.aborted) {
+        setLoading(false); 
+      }
     }
-  }, [search]);
+  }, [debouncedSearch]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const controller = new AbortController();
+    load(1, controller.signal);
+    return () => controller.abort();
+  }, [load]);
 
   const openCreate = () => { setEditing(null); setFormData(defaultForm); setError(''); setFieldErrors({}); setShowModal(true); };
   const openEdit = (c: ServiceCategoryData) => {
@@ -178,10 +189,10 @@ export default function ServiceCategoriesPage() {
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-mono font-extrabold tabular-nums text-zinc-900 mt-2">
-            {Math.max(0, pagination.totalRecords - activeCount)}
+            {Math.max(0, categories.length - activeCount)}
           </div>
           <div className="flex items-center justify-between text-xs text-slate-600 mt-2 pt-2 border-t border-slate-300/80">
-            <span>Đã ẩn khỏi lựa chọn</span>
+            <span>Đã ẩn (Trang này)</span>
             <span className="font-mono font-semibold text-rose-700">Tạm dừng</span>
           </div>
         </div>
@@ -189,7 +200,7 @@ export default function ServiceCategoriesPage() {
 
       {/* 3. Table */}
       <div className="w-full saas-card overflow-hidden">
-        <div className="p-4 flex items-center justify-between gap-3 border-b border-slate-200/80">
+        <div className="p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-200/80">
           <div className="flex items-center gap-2 flex-1 max-w-md h-9 px-3 rounded-xl bg-slate-50/80 border border-slate-200/80 focus-within:bg-white focus-within:border-[#0866ff] transition-all">
             <span className="material-symbols-outlined text-slate-500 text-[18px] shrink-0">
               search
@@ -285,14 +296,18 @@ export default function ServiceCategoriesPage() {
                     <td className="py-3.5 px-5 pr-6">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          type="button"
                           onClick={() => openEdit(c)}
+                          aria-label={`Chỉnh sửa ${c.name}`}
                           className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-[#0050cd] flex items-center justify-center transition-colors cursor-pointer"
                           title="Chỉnh sửa"
                         >
                           <span className="material-symbols-outlined text-[17px]">edit</span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDelete(c)}
+                          aria-label={`Xóa hoặc vô hiệu hóa ${c.name}`}
                           className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-200/80 text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
                           title="Xóa / Vô hiệu hóa"
                         >

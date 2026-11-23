@@ -1,0 +1,487 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target deployment environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - prod
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/v') }}
+
+jobs:
+  # ===========================================================================
+  # Resolve Target Environment & Image Metadata
+  # ===========================================================================
+  prepare:
+    name: Resolve Environment & Metadata
+    runs-on: ubuntu-latest
+    outputs:
+      env_name: ${{ steps.meta.outputs.env_name }}
+      domain_name: ${{ steps.meta.outputs.domain_name }}
+      next_public_api_url: ${{ steps.meta.outputs.next_public_api_url }}
+      next_public_internal_url: ${{ steps.meta.outputs.next_public_internal_url }}
+      next_public_customer_url: ${{ steps.meta.outputs.next_public_customer_url }}
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+      latest_tag: ${{ steps.meta.outputs.latest_tag }}
+
+    steps:
+      - name: Compute Deployment Context
+        id: meta
+        run: |
+          DOMAIN="${{ vars.DOMAIN_NAME || 'carservice.id.vn' }}"
+          if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == refs/tags/v* || "${{ inputs.environment }}" == "prod" ]]; then
+            ENV_NAME="prod"
+            API_URL="https://api.${DOMAIN}"
+            INTERNAL_URL="https://ops.${DOMAIN}"
+            CUSTOMER_URL="https://${DOMAIN}"
+          else
+            ENV_NAME="staging"
+            API_URL="https://staging-api.${DOMAIN}"
+            INTERNAL_URL="https://staging-ops.${DOMAIN}"
+            CUSTOMER_URL="https://staging.${DOMAIN}"
+          fi
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "env_name=${ENV_NAME}" >> "$GITHUB_OUTPUT"
+          echo "domain_name=${DOMAIN}" >> "$GITHUB_OUTPUT"
+          echo "next_public_api_url=${API_URL}" >> "$GITHUB_OUTPUT"
+          echo "next_public_internal_url=${INTERNAL_URL}" >> "$GITHUB_OUTPUT"
+          echo "next_public_customer_url=${CUSTOMER_URL}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${ENV_NAME}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "latest_tag=${ENV_NAME}-latest" >> "$GITHUB_OUTPUT"
+
+  # ===========================================================================
+  # Stage 1: Build
+  # ===========================================================================
+  build:
+    name: Stage 1 - Build (Backend & Frontend)
+    needs: prepare
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20 (Backend Cache)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: src/backend/package-lock.json
+
+      - name: Build Backend
+        working-directory: src/backend
+        env:
+          DATABASE_URL: "mysql://ci_user:ci_pass@localhost:3306/car_service_center"
+        run: npm ci && npx prisma generate && npm run build
+
+      - name: Setup Node.js 20 (Frontend Cache)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: Setup Next.js Build Cache (Customer Web)
+        uses: actions/cache@v4
+        with:
+          path: src/frontend/apps/customer-web/.next/cache
+          key: ${{ runner.os }}-nextjs-customer-${{ hashFiles('src/frontend/package-lock.json', 'src/frontend/apps/customer-web/**/*.{js,jsx,ts,tsx}') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-customer-
+
+      - name: Setup Next.js Build Cache (Internal Web)
+        uses: actions/cache@v4
+        with:
+          path: src/frontend/apps/internal-web/.next/cache
+          key: ${{ runner.os }}-nextjs-internal-${{ hashFiles('src/frontend/package-lock.json', 'src/frontend/apps/internal-web/**/*.{js,jsx,ts,tsx}') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-internal-
+
+      - name: Install Frontend Dependencies
+        working-directory: src/frontend
+        run: npm ci
+
+      - name: Build Frontend
+        working-directory: src/frontend
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          NODE_ENV: production
+          NEXT_PUBLIC_API_URL: ${{ needs.prepare.outputs.next_public_api_url }}
+          NEXT_PUBLIC_INTERNAL_URL: ${{ needs.prepare.outputs.next_public_internal_url }}
+          NEXT_PUBLIC_CUSTOMER_URL: ${{ needs.prepare.outputs.next_public_customer_url }}
+        run: npm run build
+
+  # ===========================================================================
+  # Stage 2: Lint & Static Analysis
+  # ===========================================================================
+  lint-static:
+    name: Stage 2 - Lint & Static Analysis
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Backend Prisma Validate, Typecheck & Lint
+        working-directory: src/backend
+        env:
+          DATABASE_URL: "mysql://ci_user:ci_pass@localhost:3306/car_service_center"
+        run: npm ci && npx prisma validate && npx prisma generate && npm run typecheck && npm run lint
+
+      - name: Frontend Lint & Typegen/Typecheck
+        working-directory: src/frontend
+        run: |
+          npm ci
+          npm run lint
+          npm --workspace=@car-service-center/customer-web exec -- next typegen
+          npm --workspace=@car-service-center/customer-web exec -- tsc --noEmit
+          npm --workspace=@car-service-center/internal-web exec -- next typegen
+          npm --workspace=@car-service-center/internal-web exec -- tsc --noEmit
+
+  # ===========================================================================
+  # Stage 3: Automated Tests
+  # ===========================================================================
+  test:
+    name: Stage 3 - Automated Tests
+    needs: lint-static
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/backend
+    env:
+      DATABASE_URL: "mysql://ci_user:ci_pass@localhost:3306/car_service_center"
+      JWT_SECRET: "ci_jwt_secret_key_123456789"
+      PORT: 5000
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: src/backend/package-lock.json
+
+      - name: Install Dependencies & Run Tests
+        run: npm ci && npx prisma generate && npm test
+
+      - name: Setup Node.js 22 (Frontend Unit & CDK)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: Run Customer Web Unit Tests
+        working-directory: src/frontend
+        run: npm ci && npm run test:unit:customer
+
+      - name: Run AWS CDK Infrastructure Tests
+        working-directory: infra
+        run: npm ci && npm run typecheck && npm test
+
+  # ===========================================================================
+  # Stage 4: Security & Dependency Scan
+  # ===========================================================================
+  security-scan:
+    name: Stage 4 - Security & Dependency Scan
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout Code (Full History for Gitleaks)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: NPM Audit (Backend)
+        working-directory: src/backend
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+      - name: NPM Audit (Frontend)
+        working-directory: src/frontend
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+      - name: Trivy Filesystem Vulnerability Scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "table"
+          ignore-unfixed: true
+          severity: "CRITICAL,HIGH"
+          exit-code: "0"
+
+      - name: Gitleaks Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_SUMMARY: true
+
+  # ===========================================================================
+  # Stage 5: Package & Push Docker Images to Amazon ECR + Image Scan
+  # ===========================================================================
+  package-ecr:
+    name: Stage 5 - Package & Push to ECR
+    needs: [prepare, security-scan]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      ecr_registry: ${{ steps.login-ecr.outputs.registry }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-southeast-1' }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push Backend Image
+        uses: docker/build-push-action@v6
+        with:
+          context: src/backend
+          file: src/backend/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/car-service/backend:${{ needs.prepare.outputs.image_tag }}
+            ${{ steps.login-ecr.outputs.registry }}/car-service/backend:${{ needs.prepare.outputs.latest_tag }}
+          cache-from: type=gha,scope=backend-${{ needs.prepare.outputs.env_name }}
+          cache-to: type=gha,mode=max,scope=backend-${{ needs.prepare.outputs.env_name }}
+
+      - name: Build & Push Customer Web Image
+        uses: docker/build-push-action@v6
+        with:
+          context: src/frontend
+          file: src/frontend/apps/customer-web/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ needs.prepare.outputs.next_public_api_url }}
+            NEXT_PUBLIC_INTERNAL_URL=${{ needs.prepare.outputs.next_public_internal_url }}
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/car-service/customer-web:${{ needs.prepare.outputs.image_tag }}
+            ${{ steps.login-ecr.outputs.registry }}/car-service/customer-web:${{ needs.prepare.outputs.latest_tag }}
+          cache-from: type=gha,scope=customer-web-${{ needs.prepare.outputs.env_name }}
+          cache-to: type=gha,mode=max,scope=customer-web-${{ needs.prepare.outputs.env_name }}
+
+      - name: Build & Push Internal Web Image
+        uses: docker/build-push-action@v6
+        with:
+          context: src/frontend
+          file: src/frontend/apps/internal-web/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ needs.prepare.outputs.next_public_api_url }}
+            NEXT_PUBLIC_CUSTOMER_URL=${{ needs.prepare.outputs.next_public_customer_url }}
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/car-service/internal-web:${{ needs.prepare.outputs.image_tag }}
+            ${{ steps.login-ecr.outputs.registry }}/car-service/internal-web:${{ needs.prepare.outputs.latest_tag }}
+          cache-from: type=gha,scope=internal-web-${{ needs.prepare.outputs.env_name }}
+          cache-to: type=gha,mode=max,scope=internal-web-${{ needs.prepare.outputs.env_name }}
+
+      - name: Trivy Image Scan (Backend)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: "${{ steps.login-ecr.outputs.registry }}/car-service/backend:${{ needs.prepare.outputs.image_tag }}"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: "CRITICAL"
+
+      - name: Trivy Image Scan (Customer Web)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: "${{ steps.login-ecr.outputs.registry }}/car-service/customer-web:${{ needs.prepare.outputs.image_tag }}"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: "CRITICAL"
+
+      - name: Trivy Image Scan (Internal Web)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: "${{ steps.login-ecr.outputs.registry }}/car-service/internal-web:${{ needs.prepare.outputs.image_tag }}"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: "CRITICAL"
+
+  # ===========================================================================
+  # Stage 6: Deploy to EC2 via AWS SSM
+  # ===========================================================================
+  deploy:
+    name: Stage 6 - Deploy to EC2 (${{ needs.prepare.outputs.env_name }})
+    needs: [prepare, package-ecr]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.prepare.outputs.env_name }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-southeast-1' }}
+
+      - name: Sync deploy/ & Execute deploy.sh via AWS SSM
+        id: ssm-deploy
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          AWS_REGION: ${{ vars.AWS_REGION || 'ap-southeast-1' }}
+          ENV_NAME: ${{ needs.prepare.outputs.env_name }}
+          IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
+          ECR_REGISTRY: ${{ needs.package-ecr.outputs.ecr_registry }}
+          DOMAIN_NAME: ${{ needs.prepare.outputs.domain_name }}
+        run: |
+          set -euo pipefail
+          DEPLOY_TAR_B64="$(tar -czf - -C deploy . | base64 -w0)"
+
+          PARAMS_FILE="$(mktemp)"
+          jq -n \
+            --arg b64 "$DEPLOY_TAR_B64" \
+            --arg env_name "$ENV_NAME" \
+            --arg image_tag "$IMAGE_TAG" \
+            --arg ecr_registry "$ECR_REGISTRY" \
+            --arg aws_region "$AWS_REGION" \
+            --arg domain_name "$DOMAIN_NAME" \
+            '{
+              commands: [
+                "set -euo pipefail",
+                "mkdir -p /opt/car-service/deploy",
+                ("echo \"" + $b64 + "\" | base64 -d | tar -xzf - -C /opt/car-service/deploy"),
+                "find /opt/car-service/deploy/scripts -type f -name \"*.sh\" -exec sed -i \"s/\\r$//\" {} + -exec chmod +x {} +",
+                ("export ENV_NAME=\"" + $env_name + "\" IMAGE_TAG=\"" + $image_tag + "\" ECR_REGISTRY=\"" + $ecr_registry + "\" AWS_REGION=\"" + $aws_region + "\" DOMAIN_NAME=\"" + $domain_name + "\""),
+                "/opt/car-service/deploy/scripts/deploy.sh"
+              ]
+            }' > "$PARAMS_FILE"
+
+          COMMAND_ID="$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy ${ENV_NAME} (${IMAGE_TAG})" \
+            --timeout-seconds 600 \
+            --parameters "file://${PARAMS_FILE}" \
+            --query "Command.CommandId" \
+            --output text)"
+
+          echo "SSM Command ID: ${COMMAND_ID}"
+
+          STATUS="Pending"
+          for _ in $(seq 1 120); do
+            sleep 5
+            STATUS="$(aws ssm get-command-invocation \
+              --region "$AWS_REGION" \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "Status" \
+              --output text || echo "Pending")"
+            echo "SSM status: ${STATUS}"
+            if [[ "$STATUS" != "Pending" && "$STATUS" != "InProgress" && "$STATUS" != "Delayed" ]]; then
+              break
+            fi
+          done
+
+          echo "--- SSM StandardOutputContent ---"
+          aws ssm get-command-invocation \
+            --region "$AWS_REGION" \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query "StandardOutputContent" \
+            --output text || true
+
+          echo "--- SSM StandardErrorContent ---"
+          aws ssm get-command-invocation \
+            --region "$AWS_REGION" \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query "StandardErrorContent" \
+            --output text || true
+
+          if [[ "$STATUS" != "Success" ]]; then
+            echo "Deployment failed with SSM status: ${STATUS}"
+            exit 1
+          fi
+
+      - name: Post-Deploy HTTPS & Socket.IO Smoke Test
+        env:
+          API_URL: ${{ needs.prepare.outputs.next_public_api_url }}
+          CUSTOMER_URL: ${{ needs.prepare.outputs.next_public_customer_url }}
+          INTERNAL_URL: ${{ needs.prepare.outputs.next_public_internal_url }}
+        run: |
+          set -euo pipefail
+          echo "==> Checking ${API_URL}/health..."
+          curl -fsS "${API_URL}/health"
+          echo ""
+          echo "==> Checking Socket.IO handshake at ${API_URL}/socket.io/..."
+          curl -fsS "${API_URL}/socket.io/?EIO=4&transport=polling" >/dev/null
+          customer_code=$(curl -sS -o /dev/null -w "%{http_code}" "${CUSTOMER_URL}/")
+          internal_code=$(curl -sS -o /dev/null -w "%{http_code}" "${INTERNAL_URL}/")
+          echo "HTTPS status: customer=${customer_code}, internal=${internal_code}"
+          if [[ ! "$customer_code" =~ ^[23][0-9]{2}$ || ! "$internal_code" =~ ^[23][0-9]{2}$ ]]; then
+            echo "ERROR: Frontend HTTPS smoke test failed!" >&2
+            exit 1
+          fi
+
+      - name: Send SNS Alert on Deployment Failure
+        if: failure() && vars.SNS_ALERT_TOPIC_ARN != ''
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION || 'ap-southeast-1' }}
+          SNS_TOPIC_ARN: ${{ vars.SNS_ALERT_TOPIC_ARN }}
+          ENV_NAME: ${{ needs.prepare.outputs.env_name }}
+          IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
+        run: |
+          aws sns publish \
+            --region "$AWS_REGION" \
+            --topic-arn "$SNS_TOPIC_ARN" \
+            --subject "[ALERT] Car Service Center Deploy Failed (${ENV_NAME})" \
+            --message "CD deployment failed for environment=${ENV_NAME}, image_tag=${IMAGE_TAG}, commit=${GITHUB_SHA}. Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"

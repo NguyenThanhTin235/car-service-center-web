@@ -10,8 +10,10 @@ import {
   deleteJob,
 } from '@/lib/api/work-order.api';
 import { InspectionFinding } from '@/lib/api/inspection.api';
-import { jobTypeApi, JobTypeData } from '@/lib/api/jobTypes';
-import { employeeApi, EmployeeData } from '@/lib/api/employees';
+import type { JobTypeData } from '@/lib/api/jobTypes';
+import type { EmployeeData } from '@/lib/api/employees';
+import { getCachedActiveJobTypes, getCachedActiveTechnicians } from '@/lib/cache/sa-catalogs';
+import ModalPortal from '@/components/advisor/common/ModalPortal';
 import toast from 'react-hot-toast';
 
 interface CreateDispatchJobModalProps {
@@ -40,7 +42,6 @@ export default function CreateDispatchJobModal({
   // Loading & Data states
   const [jobTypes, setJobTypes] = useState<JobTypeData[]>([]);
   const [employees, setEmployees] = useState<EmployeeData[]>([]);
-  const [loadingData, setLoadingData] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -145,33 +146,31 @@ export default function CreateDispatchJobModal({
       setLabourPrice(150000);
 
       // Auto-focus vào ô tên công việc sau khi modal hiển thị
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         if (nameInputRef.current && !isReadOnlyMode) {
           nameInputRef.current.focus();
           nameInputRef.current.select();
         }
       }, 100);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, finding, targetServiceId, targetServiceName, markerLabel, workOrder, job, isReadOnlyMode]);
 
-  // Load danh mục Loại công việc & Nhân viên kỹ thuật
+  // Load danh mục Loại công việc & Nhân viên kỹ thuật (cached)
   useEffect(() => {
     if (!isOpen) return;
 
     let mounted = true;
-    setLoadingData(true);
 
     Promise.allSettled([
-      jobTypeApi.getAll({ limit: 100, isActive: true }),
-      employeeApi.getAll({ limit: 100, position: 'TECHNICIAN', status: 'active' }),
+      getCachedActiveJobTypes(),
+      getCachedActiveTechnicians(),
     ])
       .then(([jobTypeRes, employeeRes]) => {
         if (!mounted) return;
 
         if (jobTypeRes.status === 'fulfilled') {
-          const rawTypes: JobTypeData[] =
-            jobTypeRes.value?.data?.data || jobTypeRes.value?.data || [];
-          const types = rawTypes.filter((jt) => jt.isActive !== false);
+          const types = jobTypeRes.value.filter((jt) => jt.isActive !== false);
           setJobTypes(types);
           if (types.length > 0 && !selectedJobTypeId) {
             setSelectedJobTypeId(types[0].id);
@@ -179,15 +178,10 @@ export default function CreateDispatchJobModal({
         }
 
         if (employeeRes.status === 'fulfilled') {
-          const emps: EmployeeData[] =
-            employeeRes.value?.data?.data || employeeRes.value?.data || [];
           setEmployees(
-            emps.filter((e) => Boolean(e.isActive) && e.position === 'TECHNICIAN')
+            employeeRes.value.filter((e) => Boolean(e.isActive) && e.position === 'TECHNICIAN')
           );
         }
-      })
-      .finally(() => {
-        if (mounted) setLoadingData(false);
       });
 
     return () => {
@@ -195,19 +189,21 @@ export default function CreateDispatchJobModal({
     };
   }, [isOpen]);
 
-  // Phím tắt bàn phím: Esc để đóng, Enter để lưu (khi không ở textarea)
+  const handleSaveRef = useRef<() => void>(() => {});
+
+  // Phím tắt bàn phím: Esc để đóng, Ctrl/Cmd+Enter để lưu
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
       } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        handleSave();
+        handleSaveRef.current();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, jobName, selectedJobTypeId, selectedTechnicianId, estimatedHours, description]);
+  }, [isOpen, onClose]);
 
   // Submit Lưu / Cập nhật công việc
   const handleSave = async () => {
@@ -293,6 +289,8 @@ export default function CreateDispatchJobModal({
     }
   };
 
+  handleSaveRef.current = handleSave;
+
   // Xóa công việc khi chưa phân công
   const handleDelete = async () => {
     if (!job?.id) return;
@@ -335,13 +333,17 @@ export default function CreateDispatchJobModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div
-        className="w-full max-w-xl bg-surface-container-lowest text-on-surface rounded-2xl shadow-2xl border border-outline-variant/60 overflow-hidden flex flex-col max-h-[90vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalPortal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md sa-modal-backdrop">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={job ? (isReadOnlyMode ? 'Chi tiết công việc' : 'Chỉnh sửa công việc') : 'Thêm công việc mới'}
+          className="sa-modal-panel w-full max-w-2xl bg-surface-container-lowest text-on-surface rounded-2xl shadow-2xl border border-outline-variant/60 overflow-hidden flex flex-col max-h-[90dvh]"
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* HEADER MODAL - Tinh gọn, hiển thị ngữ cảnh bằng Breadcrumb Tag */}
-        <div className="px-6 py-4 border-b border-outline-variant/30 bg-surface-container-low flex items-center justify-between gap-3">
+        <div className="px-5 sm:px-6 py-4 border-b border-outline-variant/30 bg-surface-container-low flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-2xs">
               <span className="material-symbols-outlined text-[22px]">
@@ -350,18 +352,18 @@ export default function CreateDispatchJobModal({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-title-sm font-bold text-on-surface tracking-tight">
+                <h2 className="text-sm font-bold text-on-surface tracking-tight">
                   {job ? (isReadOnlyMode ? 'Chi tiết công việc' : 'Chỉnh sửa công việc') : 'Thêm công việc mới'}
                 </h2>
                 {job && (
-                  <span className="px-2 py-0.5 rounded-full text-label-xs font-semibold bg-surface-container text-on-surface-variant font-mono">
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-surface-container text-on-surface-variant font-mono tabular-nums">
                     {jobCode}
                   </span>
                 )}
               </div>
               {/* Context breadcrumb tag */}
-              <div className="flex items-center gap-1.5 text-body-xs text-on-surface-variant mt-0.5 truncate">
-                <span className="font-semibold text-primary">#{workOrder.wo_number}</span>
+              <div className="flex items-center gap-1.5 text-[11px] text-on-surface-variant mt-0.5 truncate">
+                <span className="font-mono font-bold text-primary tabular-nums">#{workOrder.wo_number}</span>
                 {resolvedServiceName && (
                   <>
                     <span>›</span>
@@ -643,6 +645,7 @@ export default function CreateDispatchJobModal({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }

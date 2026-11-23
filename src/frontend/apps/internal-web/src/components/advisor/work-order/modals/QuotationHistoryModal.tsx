@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Quotation, QuotationLine, exportOrPrintQuotationPdf } from '@/lib/api/quotation.api';
+import { Quotation, exportOrPrintQuotationPdf } from '@/lib/api/quotation.api';
 import { WorkOrder } from '@/lib/api/work-order.api';
 import { formatVND } from '@/lib/utils/formatters';
+import ModalPortal from '@/components/advisor/common/ModalPortal';
 import toast from 'react-hot-toast';
 
 interface QuotationHistoryModalProps {
@@ -102,54 +103,66 @@ export default function QuotationHistoryModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="w-full max-w-4xl max-h-[90vh] bg-surface-container-lowest rounded-3xl border border-outline-variant shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+    <ModalPortal>
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md sa-modal-backdrop"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose();
+        }}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Lịch sử các phiên bản Báo giá"
+          className="sa-modal-panel w-full max-w-5xl max-h-[90dvh] bg-surface-container-lowest rounded-2xl border border-outline-variant shadow-2xl flex flex-col overflow-hidden"
+        >
         {/* Header */}
-        <div className="bg-[#0c2340] border-b border-white/10 text-white px-6 py-5 flex items-center justify-between shrink-0 shadow-sm">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-[#0050cd] flex items-center justify-center shrink-0 shadow-inner">
-              <span className="material-symbols-outlined text-[26px]">history</span>
+        <div className="bg-[#0c2340] border-b border-white/10 text-white px-5 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-3 shrink-0 shadow-sm">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#0050cd] flex items-center justify-center shrink-0 shadow-inner">
+              <span className="material-symbols-outlined text-[24px]">history</span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-title-md font-bold">Lịch sử các phiên bản Báo giá</h3>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-[#0050cd] text-white">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-bold">Lịch sử các phiên bản Báo giá</h3>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-[#0050cd] text-white tabular-nums">
                   {quotations.length} phiên bản
                 </span>
               </div>
-              <p className="text-body-xs text-white/80 mt-0.5">
-                Lệnh: <span className="font-mono font-bold text-white">{workOrder.wo_number}</span> • Xe: {workOrder.vehicle.license_plate} ({workOrder.vehicle.make} {workOrder.vehicle.model})
+              <p className="text-[11px] text-white/80 mt-0.5 truncate">
+                Phiếu: <span className="font-mono font-bold text-white tabular-nums">{workOrder.wo_number}</span> • Xe: <span className="font-mono font-semibold text-white tabular-nums">{workOrder.vehicle.license_plate}</span> ({workOrder.vehicle.make} {workOrder.vehicle.model})
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
-            title="Đóng modal"
+            aria-label="Đóng"
+            className="sa-press w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer shrink-0"
+            title="Đóng"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
         {/* Highlights banner & Filter tabs */}
-        <div className="p-5 bg-surface-container-low border-b border-outline-variant/60 space-y-4 shrink-0">
+        <div className="p-4 sm:p-5 bg-surface-container-low border-b border-outline-variant/60 space-y-4 shrink-0">
           {/* Main quote highlight badge */}
           {latestSentQuotation ? (
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-body-xs">
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
               <div className="flex items-start sm:items-center gap-2.5">
                 <span className="material-symbols-outlined text-[22px] text-emerald-600 shrink-0">
                   verified
                 </span>
                 <div>
-                  <div className="flex items-center gap-2 font-bold text-emerald-800 dark:text-emerald-300">
+                  <div className="flex flex-wrap items-center gap-2 font-bold text-emerald-800 dark:text-emerald-300">
                     <span>Báo giá chính thức (Gửi cuối cùng cho khách):</span>
-                    <span className="font-mono px-2 py-0.5 rounded-md bg-emerald-600 text-white text-[11px]">
+                    <span className="font-mono px-2 py-0.5 rounded-md bg-emerald-600 text-white text-[11px] tabular-nums">
                       {latestSentQuotation.quotationNumber}
                     </span>
                   </div>
                   <div className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
-                    Gửi lúc {formatDateTime(latestSentQuotation.sentAt)} • Tổng thanh toán: <b className="font-mono">{formatVND(latestSentQuotation.grandTotal)}</b>
+                    Gửi lúc {formatDateTime(latestSentQuotation.sentAt)} • Tổng thanh toán: <b className="font-mono tabular-nums">{formatVND(latestSentQuotation.grandTotal)}</b>
                   </div>
                 </div>
               </div>
@@ -159,25 +172,25 @@ export default function QuotationHistoryModal({
                   onSelectQuotation(latestSentQuotation.id);
                   onClose();
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer"
+                className="sa-press inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[15px]">visibility</span>
                 <span>Xem báo giá này</span>
               </button>
             </div>
           ) : (
-            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-body-xs flex items-center gap-2">
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px] text-amber-600">info</span>
               <span>Chưa có báo giá nào được gửi cho khách hàng. Các bản báo giá hiện tại đều đang là <b>Bản nháp</b>.</span>
             </div>
           )}
 
           {/* Filter Tabs */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setFilterTab('ALL')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`sa-press px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                 filterTab === 'ALL'
                   ? 'bg-primary text-white shadow-xs'
                   : 'bg-surface-container hover:bg-surface-container-high text-on-surface-variant'
@@ -188,10 +201,10 @@ export default function QuotationHistoryModal({
             <button
               type="button"
               onClick={() => setFilterTab('SENT')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`sa-press px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
                 filterTab === 'SENT'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'bg-surface-container hover:bg-surface-container-high text-blue-700 dark:text-blue-400'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'bg-surface-container hover:bg-surface-container-high text-[#0050cd]'
               }`}
             >
               <span className="material-symbols-outlined text-[14px]">send</span>
@@ -224,7 +237,6 @@ export default function QuotationHistoryModal({
               const isMainSent = latestSentQuotation?.id === q.id;
               const isSelected = activeQuotationId === q.id;
               const isExpanded = Boolean(expandedQuotationIds[q.id]);
-              const isDraft = q.status === 'DRAFT';
               const isSent = Boolean(q.sentAt || ['SENT', 'APPROVED', 'REJECTED'].includes(q.status));
 
               return (
@@ -451,7 +463,7 @@ export default function QuotationHistoryModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-surface-container-low border-t border-outline-variant/60 flex items-center justify-between text-xs text-on-surface-variant shrink-0">
+        <div className="p-4 bg-surface-container-low border-t border-outline-variant/60 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs text-on-surface-variant shrink-0">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[16px] text-primary">lightbulb</span>
             <span>Báo giá gửi cuối cùng cho khách hàng được tự động xác định là <b>Báo giá chính thức</b> phục vụ theo dõi và thi công.</span>
@@ -465,6 +477,7 @@ export default function QuotationHistoryModal({
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }

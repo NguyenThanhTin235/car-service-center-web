@@ -727,39 +727,38 @@ export class InvoiceService {
         },
       });
 
-      // Tạo thông báo cho Khách hàng
-      await tx.notification.create({
-        data: {
-          user_id: invoice.work_order.customer_id,
-          notification_type: isZeroTotal ? 'PAYMENT_SUCCESS' : 'INVOICE_ISSUED',
-          title: isZeroTotal 
+      // Tạo thông báo In-App + Socket.IO push và gửi email phát hành hóa đơn cho Khách hàng
+      const emailData = invoice.work_order.customer?.email
+        ? buildInvoiceIssuedEmail({
+            customerName: invoice.work_order.customer.full_name,
+            invoiceNumber: invoice.invoice_number,
+            licensePlate: invoice.work_order.vehicle.license_plate,
+            vehicleName: `${invoice.work_order.vehicle.make} ${invoice.work_order.vehicle.model}`,
+            totalAmount: Number(invoice.total_amount),
+            amountDue: Number(amountDue),
+            issuedAt,
+          })
+        : undefined;
+
+      notificationService
+        .notifyAndEmail({
+          userId: invoice.work_order.customer_id,
+          type: isZeroTotal ? 'PAYMENT_SUCCESS' : 'INVOICE_ISSUED',
+          title: isZeroTotal
             ? `Hóa đơn bảo hành 0đ xe ${invoice.work_order.vehicle.license_plate} đã hoàn tất quyết toán`
             : `Hóa đơn xe ${invoice.work_order.vehicle.license_plate} đã được phát hành`,
           message: isZeroTotal
             ? `Hóa đơn bảo hành ${invoice.invoice_number} (0 đồng) đã được xử lý hoàn tất. Quý khách có thể đến trung tâm nhận xe.`
             : `Hóa đơn ${invoice.invoice_number} với tổng số tiền ${Number(invoice.total_amount).toLocaleString('vi-VN')} đ đã sẵn sàng thanh toán.`,
-          entity_type: 'INVOICE',
-          entity_id: invoice.id,
-        },
-      });
-
-      // Gửi email phát hành hóa đơn nếu khách hàng có email
-      if (invoice.work_order.customer?.email) {
-        const emailData = buildInvoiceIssuedEmail({
-          customerName: invoice.work_order.customer.full_name,
-          invoiceNumber: invoice.invoice_number,
-          licensePlate: invoice.work_order.vehicle.license_plate,
-          vehicleName: `${invoice.work_order.vehicle.make} ${invoice.work_order.vehicle.model}`,
-          totalAmount: Number(invoice.total_amount),
-          amountDue: Number(amountDue),
-          issuedAt,
-        });
-        notificationService.sendEmail(
-          invoice.work_order.customer.email,
-          isZeroTotal ? `[Car Service Center] Hóa đơn bảo hành 0đ số ${invoice.invoice_number}` : emailData.subject,
-          emailData.html
-        );
-      }
+          entityType: 'INVOICE',
+          entityId: invoice.id,
+          email: invoice.work_order.customer?.email || undefined,
+          subject: isZeroTotal
+            ? `[Car Service Center] Hóa đơn bảo hành 0đ số ${invoice.invoice_number}`
+            : emailData?.subject,
+          html: emailData?.html,
+        })
+        .catch((err: any) => console.warn('[InvoiceIssued Notification Error]', err?.message));
 
       return {
         id: updatedInvoice.id,
