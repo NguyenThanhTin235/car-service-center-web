@@ -11,7 +11,8 @@ export type CustomerTabKey =
   | 'appointments'
   | 'tracking'
   | 'invoices'
-  | 'history';
+  | 'history'
+  | 'warranty';
 
 interface CustomerOverviewTabProps {
   onSelectTab: (tab: CustomerTabKey) => void;

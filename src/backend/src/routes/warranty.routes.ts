@@ -23,18 +23,30 @@ router.get('/lookup', lookupWarranty);
 // UC-81: Tra cứu theo ID phương tiện
 router.get('/vehicles/:vehicleId/eligibility', checkVehicleWarrantyEligibility);
 
+const INTERNAL_STAFF_ROLES = [
+  'ADMIN',
+  'MANAGER',
+  'SERVICE_MANAGER',
+  'SYSTEM_ADMIN',
+  'ADVISOR',
+  'SA',
+  'SERVICE_ADVISOR',
+  'DESK STAFF',
+  'FRONT_DESK',
+];
+
 // UC-83: Lấy danh sách phiếu sửa chữa đã hoàn tất của xe để chọn phiếu gốc
-router.get('/vehicles/:vehicleId/history', getCompletedWorkOrdersForVehicle);
+router.get('/vehicles/:vehicleId/history', authorize(...INTERNAL_STAFF_ROLES), getCompletedWorkOrdersForVehicle);
 
 // UC-83: Xác thực chống tua lùi ODO khi tiếp nhận xe bảo hành
-router.post('/validate-odo', validateOdoIntake);
+router.post('/validate-odo', authorize(...INTERNAL_STAFF_ROLES), validateOdoIntake);
 
 // ==========================================
 // UC-86: QUẢN LÝ BẢO HÀNH THIỆN CHÍ (GOODWILL CLAIMS)
 // ==========================================
 
 // Nhân viên quầy / Cố vấn đề xuất hỗ trợ bảo hành thiện chí khi quá hạn nhẹ
-router.post('/goodwill-claims', createGoodwillClaim);
+router.post('/goodwill-claims', authorize(...INTERNAL_STAFF_ROLES), createGoodwillClaim);
 
 // Quản lý xem danh sách hồ sơ bảo hành thiện chí
 router.get(

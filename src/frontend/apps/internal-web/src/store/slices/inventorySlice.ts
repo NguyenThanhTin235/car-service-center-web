@@ -43,6 +43,8 @@ export interface InventoryItem {
   averageCost: number;
   onHand: number;
   reorderLevel: number;
+  warrantyMonths?: number | null;
+  warrantyMileage?: number | null;
   isActive: boolean;
   createdAt: string;
 }
@@ -53,6 +55,8 @@ export interface InventoryItemPayload {
   brandId?: number | null;
   sellingPrice?: number;
   reorderLevel?: number;
+  warrantyMonths?: number | null;
+  warrantyMileage?: number | null;
   isActive?: boolean;
 }
 

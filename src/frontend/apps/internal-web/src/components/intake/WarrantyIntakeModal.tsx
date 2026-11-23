@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import warrantyApi, { WarrantyItem } from '@/lib/api/warranty.api';
+import warrantyApi, { WarrantyItem, CompletedWorkOrderOption } from '@/lib/api/warranty.api';
+import Modal from '@/components/shared/Modal';
+import { useDebounce } from '@/hooks/useDebounce';
 import toast from 'react-hot-toast';
 
 export interface WarrantyIntakeModalProps {
@@ -27,8 +29,9 @@ export default function WarrantyIntakeModal({
   const [notes, setNotes] = useState<string>('');
 
   // Async data state
-  const [historyOrders, setHistoryOrders] = useState<any[]>([]);
+  const [historyOrders, setHistoryOrders] = useState<CompletedWorkOrderOption[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const debouncedOdometer = useDebounce(currentOdometer, 350);
   const [odoValidation, setOdoValidation] = useState<{
     tested: boolean;
     isValid: boolean;
@@ -71,43 +74,52 @@ export default function WarrantyIntakeModal({
 
   // Load completed work orders history when vehicle is selected
   useEffect(() => {
-    if (selectedVehicleId) {
-      setLoadingHistory(true);
-      setParentWoId('');
-      warrantyApi
-        .getCompletedWorkOrders(Number(selectedVehicleId))
-        .then((orders) => {
-          setHistoryOrders(orders || []);
-          if (orders && orders.length > 0) {
-            setParentWoId(String(orders[0].id));
-          }
-        })
-        .catch((err) => {
-          console.error('Lỗi khi tải lịch sử phiếu gốc', err);
-          setHistoryOrders([]);
-        })
-        .finally(() => setLoadingHistory(false));
-    } else {
+    if (!selectedVehicleId) {
       setHistoryOrders([]);
+      return;
     }
+    const controller = new AbortController();
+    setLoadingHistory(true);
+    setParentWoId('');
+    warrantyApi
+      .getCompletedWorkOrders(Number(selectedVehicleId), controller.signal)
+      .then((orders) => {
+        setHistoryOrders(orders || []);
+        if (orders && orders.length > 0) {
+          setParentWoId(String(orders[0].id));
+        }
+      })
+      .catch((err) => {
+        if (err?.name === 'CanceledError' || err?.name === 'AbortError' || err?.code === 'ERR_CANCELED') {
+          return;
+        }
+        console.error('Lỗi khi tải lịch sử phiếu gốc', err);
+        setHistoryOrders([]);
+      })
+      .finally(() => setLoadingHistory(false));
+
+    return () => controller.abort();
   }, [selectedVehicleId]);
 
   // Validate ODO and check warranty eligibility
   const validateOdoAndCheckEligibility = useCallback(
-    async (pWoId: number, odo: number, vId: number) => {
+    async (pWoId: number, odo: number, vId: number, signal?: AbortSignal) => {
       try {
         // 1. Kiểm tra chống tua lùi ODO
-        const odoRes = await warrantyApi.validateOdoIntake({
-          parentWoId: pWoId,
-          currentOdometer: odo,
-        });
+        const odoRes = await warrantyApi.validateOdoIntake(
+          {
+            parentWoId: pWoId,
+            intakeOdo: odo,
+          },
+          signal
+        );
 
-        if (!odoRes.isValid) {
+        if (!odoRes.valid) {
           setOdoValidation({
             tested: true,
             isValid: false,
             message: odoRes.message,
-            previousOdo: odoRes.data?.previousReleaseOdo,
+            previousOdo: odoRes.lastRecordedOdo,
           });
           return;
         }
@@ -115,11 +127,11 @@ export default function WarrantyIntakeModal({
         setOdoValidation({
           tested: true,
           isValid: true,
-          previousOdo: odoRes.data?.previousReleaseOdo,
+          previousOdo: odoRes.lastRecordedOdo,
         });
 
         // 2. Tra cứu trạng thái hạn bảo hành
-        const elig = await warrantyApi.getVehicleWarrantyEligibility(vId, odo);
+        const elig = await warrantyApi.getVehicleWarrantyEligibility(vId, odo, signal);
         const hasValid = (elig.items || []).some((i) => i.status === 'VALID');
         const hasLight = (elig.items || []).some((i) => i.status === 'OVERDUE_LIGHT');
 
@@ -130,6 +142,9 @@ export default function WarrantyIntakeModal({
           items: elig.items || [],
         });
       } catch (err: any) {
+        if (err?.name === 'CanceledError' || err?.name === 'AbortError' || err?.code === 'ERR_CANCELED') {
+          return;
+        }
         setOdoValidation({
           tested: true,
           isValid: false,
@@ -141,16 +156,23 @@ export default function WarrantyIntakeModal({
   );
 
   useEffect(() => {
-    if (parentWoId && currentOdometer && selectedVehicleId) {
-      const parsedOdo = parseInt(currentOdometer, 10);
+    if (parentWoId && debouncedOdometer && selectedVehicleId) {
+      const parsedOdo = parseInt(debouncedOdometer, 10);
       if (!isNaN(parsedOdo) && parsedOdo >= 0) {
-        validateOdoAndCheckEligibility(Number(parentWoId), parsedOdo, Number(selectedVehicleId));
+        const controller = new AbortController();
+        validateOdoAndCheckEligibility(
+          Number(parentWoId),
+          parsedOdo,
+          Number(selectedVehicleId),
+          controller.signal
+        );
+        return () => controller.abort();
       }
     } else {
       setOdoValidation({ tested: false, isValid: true });
       setWarrantyEligibility({ tested: false, hasValidItems: false, hasOverdueLight: false, items: [] });
     }
-  }, [parentWoId, currentOdometer, selectedVehicleId, validateOdoAndCheckEligibility]);
+  }, [parentWoId, debouncedOdometer, selectedVehicleId, validateOdoAndCheckEligibility]);
 
   // Handle Goodwill Proposal Submit
   const handleProposeGoodwill = async () => {
@@ -161,12 +183,12 @@ export default function WarrantyIntakeModal({
 
     setSubmittingGoodwill(true);
     try {
+      const complaintText = [notes.trim(), goodwillReason.trim()].filter(Boolean).join(' — ');
       await warrantyApi.createGoodwillClaim({
         vehicleId: Number(selectedVehicleId),
+        customerId: Number(selectedCustomerId),
         parentWoId: Number(parentWoId),
-        faultDescription: notes.trim() || 'Khách phản ánh sự cố cần hỗ trợ bảo hành thiện chí',
-        justificationNotes: goodwillReason.trim(),
-        currentOdometer: Number(currentOdometer),
+        complaint: complaintText || 'Khách phản ánh sự cố cần hỗ trợ bảo hành thiện chí',
       });
 
       toast.success('Đã gửi đề xuất bảo hành thiện chí tới Quản lý dịch vụ phê duyệt.');
@@ -208,47 +230,43 @@ export default function WarrantyIntakeModal({
       customerId: Number(selectedCustomerId),
       vehicleId: Number(selectedVehicleId),
       intakeType: 'WARRANTY',
-      odometer_reading: Number(currentOdometer),
-      parent_work_order_id: Number(parentWoId),
+      arrivedAt: new Date().toISOString(),
+      odometerReading: Number(currentOdometer),
+      parentWorkOrderId: Number(parentWoId),
       notes: notes.trim(),
     };
 
     await onSubmit(payload);
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-8">
-        {/* Header */}
-        <div className="px-6 py-4.5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
-              <span className="material-symbols-outlined text-2xl">verified_user</span>
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Tiếp nhận xe bảo hành (UC-83)"
+        size="2xl"
+      >
+        <div className="space-y-4">
+          <div className="px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-xl">verified_user</span>
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold">Tiếp nhận xe bảo hành (UC-83)</h2>
-                <span className="px-2 py-0.5 rounded-md bg-white/20 text-xs font-mono font-bold tracking-wider uppercase">
+                <span className="text-xs font-bold text-emerald-900">Quy trình bảo hành tiêu chuẩn</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-200/70 text-emerald-900 text-[10px] font-mono font-bold tracking-wider uppercase">
                   WARRANTY
                 </span>
               </div>
-              <p className="text-xs text-emerald-100 mt-0.5">
+              <p className="text-xs text-emerald-800 mt-0.5">
                 Xác thực số km ODO chống tua lùi và kiểm tra hạn bảo hành phiếu dịch vụ gốc
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
-          >
-            <span className="material-symbols-outlined text-lg">close</span>
-          </button>
-        </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Form Body */}
+          <form onSubmit={handleSubmit} className="space-y-5">
           {/* 1. Chọn khách hàng & Xe */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -266,7 +284,7 @@ export default function WarrantyIntakeModal({
                 <option value="">-- Chọn khách hàng --</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.full_name} ({c.phone})
+                    {c.fullName || c.full_name} ({c.phone})
                   </option>
                 ))}
               </select>
@@ -318,7 +336,7 @@ export default function WarrantyIntakeModal({
                 >
                   {historyOrders.map((wo) => (
                     <option key={wo.id} value={wo.id}>
-                      {wo.wo_number} — ODO xuất: {wo.release_odometer?.toLocaleString() ?? 'Chưa rõ'} km
+                      {wo.woNumber} — ODO xuất: {wo.releaseOdo != null ? wo.releaseOdo.toLocaleString('vi-VN') : 'Chưa rõ'} km
                     </option>
                   ))}
                 </select>
@@ -445,50 +463,48 @@ export default function WarrantyIntakeModal({
             </button>
           </div>
         </form>
-      </div>
+        </div>
+      </Modal>
 
       {/* MODAL ĐỀ XUẤT THIỆN CHÍ (GOODWILL PROPOSAL) */}
-      {isGoodwillModalOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 border border-slate-200">
-            <div className="flex items-center gap-2.5 text-amber-700">
-              <span className="material-symbols-outlined text-2xl">volunteer_activism</span>
-              <h3 className="text-base font-bold text-slate-900">
-                Đề xuất bảo hành thiện chí (UC-86)
-              </h3>
-            </div>
-            <p className="text-xs text-slate-600">
-              Hạng mục này đã quá hạn cam kết nhẹ. Vui lòng nhập lý do giải trình (khách hàng thân
-              thiết, sự cố bất khả kháng...) để Quản lý dịch vụ thẩm định.
-            </p>
-            <textarea
-              rows={4}
-              value={goodwillReason}
-              onChange={(e) => setGoodwillReason(e.target.value)}
-              placeholder="Nhập lý do giải trình cụ thể đề xuất hỗ trợ..."
-              className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
-            <div className="flex justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsGoodwillModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={handleProposeGoodwill}
-                disabled={submittingGoodwill}
-                className="px-5 py-2 text-xs font-bold rounded-lg bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50"
-              >
-                {submittingGoodwill ? 'Đang gửi...' : 'Gửi phê duyệt'}
-              </button>
-            </div>
+      <Modal
+        isOpen={isGoodwillModalOpen}
+        onClose={() => setIsGoodwillModalOpen(false)}
+        title="Đề xuất bảo hành thiện chí (UC-86)"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-600">
+            Hạng mục này đã quá hạn cam kết nhẹ. Vui lòng nhập lý do giải trình (khách hàng thân
+            thiết, sự cố bất khả kháng...) để Quản lý dịch vụ thẩm định.
+          </p>
+          <textarea
+            rows={4}
+            value={goodwillReason}
+            onChange={(e) => setGoodwillReason(e.target.value)}
+            placeholder="Nhập lý do giải trình cụ thể đề xuất hỗ trợ..."
+            className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <div className="flex justify-end gap-2.5 pt-2">
+            <button
+              type="button"
+              onClick={() => setIsGoodwillModalOpen(false)}
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 cursor-pointer"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleProposeGoodwill}
+              disabled={submittingGoodwill}
+              className="px-5 py-2 text-xs font-bold rounded-lg bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50 cursor-pointer"
+            >
+              {submittingGoodwill ? 'Đang gửi...' : 'Gửi phê duyệt'}
+            </button>
           </div>
         </div>
-      )}
-    </div>
+      </Modal>
+    </>
   );
 }
 

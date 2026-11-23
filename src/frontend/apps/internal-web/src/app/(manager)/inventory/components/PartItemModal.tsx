@@ -57,6 +57,8 @@ export function PartItemModal({
     brandId: '',
     sellingPrice: '',
     reorderLevel: '5',
+    warrantyMonths: '',
+    warrantyMileage: '',
   });
 
   useEffect(() => {
@@ -67,6 +69,8 @@ export function PartItemModal({
           brandId: item.brandId?.toString() || '',
           sellingPrice: Math.round(item.sellingPrice || 0).toString(),
           reorderLevel: (item.reorderLevel ?? 0).toString(),
+          warrantyMonths: item.warrantyMonths != null ? item.warrantyMonths.toString() : '',
+          warrantyMileage: item.warrantyMileage != null ? item.warrantyMileage.toString() : '',
         });
       } else {
         setFormData({
@@ -74,6 +78,8 @@ export function PartItemModal({
           brandId: '',
           sellingPrice: '',
           reorderLevel: '5',
+          warrantyMonths: '',
+          warrantyMileage: '',
         });
       }
       dispatch(clearActionError());
@@ -109,6 +115,8 @@ export function PartItemModal({
       brandId: formData.brandId ? parseInt(formData.brandId, 10) : null,
       sellingPrice: sellingPriceNum,
       reorderLevel: Math.max(0, parseInt(formData.reorderLevel || '0', 10) || 0),
+      warrantyMonths: formData.warrantyMonths ? Math.max(0, parseInt(formData.warrantyMonths, 10) || 0) : null,
+      warrantyMileage: formData.warrantyMileage ? Math.max(0, parseInt(formData.warrantyMileage, 10) || 0) : null,
     };
 
     const resultAction = item
@@ -354,6 +362,35 @@ export function PartItemModal({
                   Cảnh báo nhập bù khi tồn thực tế chạm hoặc dưới ngưỡng này.
                 </p>
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+                Bảo hành (tháng)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.warrantyMonths}
+                onChange={(e) => setFormData({ ...formData, warrantyMonths: e.target.value })}
+                placeholder="VD: 12"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono tabular-nums"
+              />
+            </div>
+            <div>
+              <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+                Bảo hành (km)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.warrantyMileage}
+                onChange={(e) => setFormData({ ...formData, warrantyMileage: e.target.value })}
+                placeholder="VD: 10000"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono tabular-nums"
+              />
             </div>
           </div>
 

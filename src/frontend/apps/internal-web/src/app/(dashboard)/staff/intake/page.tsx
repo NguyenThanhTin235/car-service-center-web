@@ -30,6 +30,8 @@ const getTypeStyles = (type: string) => {
       return 'bg-amber-50 text-amber-700 border border-amber-200/70';
     case 'APPOINTMENT':
       return 'bg-emerald-50 text-emerald-700 border border-emerald-200/70';
+    case 'WARRANTY':
+      return 'bg-purple-50 text-purple-700 border border-purple-200/70';
     default:
       return 'bg-slate-100 text-slate-600 border border-slate-200';
   }
@@ -43,6 +45,8 @@ const getTypeName = (type: string) => {
       return 'Xe cứu hộ';
     case 'APPOINTMENT':
       return 'Hẹn trước';
+    case 'WARRANTY':
+      return 'Bảo hành';
     default:
       return type;
   }
@@ -61,7 +65,7 @@ export default function IntakePage() {
   const [isTowInModalOpen, setTowInModalOpen] = useState(false);
   const [isWarrantyModalOpen, setWarrantyModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'QUEUED' | 'CONVERTED' | 'CANCELLED'>('QUEUED');
-  const [intakeTypeFilter, setIntakeTypeFilter] = useState<'ALL' | 'APPOINTMENT' | 'WALK_IN' | 'TOW_IN'>('ALL');
+  const [intakeTypeFilter, setIntakeTypeFilter] = useState<'ALL' | 'APPOINTMENT' | 'WALK_IN' | 'TOW_IN' | 'WARRANTY'>('ALL');
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
   const [viewingROId, setViewingROId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -532,7 +536,7 @@ export default function IntakePage() {
                 <span className="material-symbols-outlined text-[17px] text-emerald-600">
                   verified_user
                 </span>
-                <span>🛡️ Tiếp nhận bảo hành</span>
+                <span>Tiếp nhận bảo hành</span>
               </button>
               <button
                 onClick={() => setTowInModalOpen(true)}
@@ -575,7 +579,7 @@ export default function IntakePage() {
               aria-label="Lọc theo loại tiếp nhận"
               value={intakeTypeFilter}
               onChange={(e) => {
-                setIntakeTypeFilter(e.target.value as 'ALL' | 'APPOINTMENT' | 'WALK_IN' | 'TOW_IN');
+                setIntakeTypeFilter(e.target.value as 'ALL' | 'APPOINTMENT' | 'WALK_IN' | 'TOW_IN' | 'WARRANTY');
                 setCurrentPage(1);
               }}
               className="h-9 px-3 bg-slate-50/80 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 focus:bg-white focus:border-[#0866ff] focus:ring-2 focus:ring-[#0866ff]/15 outline-none transition-all cursor-pointer sm:w-52"
@@ -584,6 +588,7 @@ export default function IntakePage() {
               <option value="APPOINTMENT">Hẹn trước</option>
               <option value="WALK_IN">Khách vãng lai</option>
               <option value="TOW_IN">Xe cứu hộ</option>
+              <option value="WARRANTY">Bảo hành</option>
             </select>
           </div>
         </div>
@@ -759,20 +764,8 @@ export default function IntakePage() {
             {/* Mobile Card List (< md) */}
             <div className="md:hidden divide-y divide-slate-200/70">
               {paginatedRecords.map((record) => {
-              const typeLabel =
-                record.intake_type === 'WALK_IN'
-                  ? 'Khách vãng lai'
-                  : record.intake_type === 'TOW_IN'
-                    ? 'Xe cứu hộ'
-                    : record.intake_type === 'APPOINTMENT'
-                      ? 'Hẹn trước'
-                      : record.intake_type;
-              const typeBadge =
-                record.intake_type === 'WALK_IN'
-                  ? 'bg-blue-50 text-[#0866ff] border border-blue-200/70'
-                  : record.intake_type === 'TOW_IN'
-                    ? 'bg-amber-50 text-amber-700 border border-amber-200/70'
-                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200/70';
+              const typeLabel = getTypeName(record.intake_type);
+              const typeBadge = getTypeStyles(record.intake_type);
 
               return (
                 <div key={record.id} className="p-4 space-y-2.5 bg-white">

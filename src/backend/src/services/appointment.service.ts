@@ -226,6 +226,25 @@ export class AppointmentService {
       if (!eligibility.hasHistory || (eligibility.summary.validItems === 0 && eligibility.summary.overdueLightItems === 0)) {
         throw new Error('Phương tiện không có hạng mục nào còn trong thời hạn bảo hành để đặt lịch.');
       }
+      if (Array.isArray(eligibility.items) && eligibility.items.length > 0) {
+        const eligibleIds = new Set(
+          eligibility.items
+            .filter((i) => i.status === 'VALID' || i.status === 'OVERDUE_LIGHT')
+            .map((i) => String(i.id))
+        );
+        const compositeEligibleIds = new Set(
+          eligibility.items
+            .filter((i) => i.status === 'VALID' || i.status === 'OVERDUE_LIGHT')
+            .flatMap((i) => (i.type ? [`${i.type}-${i.id}`] : [`SERVICE-${i.id}`, `PART-${i.id}`]))
+        );
+        const hasInvalidSelection = data.warranty_item_ids.some((rawId) => {
+          const idStr = String(rawId);
+          return !eligibleIds.has(idStr) && !compositeEligibleIds.has(idStr);
+        });
+        if (hasInvalidSelection) {
+          throw new Error('Một hoặc nhiều hạng mục đã chọn đã hết hạn bảo hành hoặc không thuộc phương tiện này.');
+        }
+      }
     }
 
     let finalNotes = data.notes || '';
@@ -666,6 +685,23 @@ export class AppointmentService {
       }
       if (arrivalData?.parentWorkOrderId) {
         await warrantyService.validateOdoIntake(arrivalData.parentWorkOrderId, odo);
+      }
+      if (arrivalData?.goodwillClaimId) {
+        const claim = await prisma.goodwillClaim.findUnique({
+          where: { id: Number(arrivalData.goodwillClaimId) },
+        });
+        if (!claim) {
+          throw new Error('Không tìm thấy hồ sơ bảo hành thiện chí.');
+        }
+        if (claim.vehicle_id !== appointment.vehicle_id) {
+          throw new Error('Hồ sơ bảo hành thiện chí không thuộc về phương tiện này.');
+        }
+        if (claim.status !== 'APPROVED') {
+          throw new Error('Hồ sơ bảo hành thiện chí chưa được Quản lý phê duyệt.');
+        }
+        if (claim.intake_id) {
+          throw new Error('Hồ sơ bảo hành thiện chí này đã được sử dụng cho phiếu tiếp nhận khác.');
+        }
       }
     }
 

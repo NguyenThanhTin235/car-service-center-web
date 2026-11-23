@@ -143,7 +143,7 @@ class ReportService {
       }),
       prisma.workOrder.count({
         where: {
-          order_type: WorkOrderType.WARRANTY,
+          order_type: { in: [WorkOrderType.WARRANTY, WorkOrderType.MIXED] },
           created_at: { gte: startDate, lte: endDate },
         },
       }),
@@ -154,10 +154,10 @@ class ReportService {
         ? Number(((warrantyCasesCount / totalServedCount) * 100).toFixed(2))
         : 0;
 
-    // 4. Lấy danh sách các lệnh bảo hành và phụ tùng bảo hành trong kỳ
+    // 4. Lấy danh sách các lệnh bảo hành (WARRANTY & MIXED) và phụ tùng bảo hành trong kỳ
     const warrantyWorkOrders = await prisma.workOrder.findMany({
       where: {
-        order_type: WorkOrderType.WARRANTY,
+        order_type: { in: [WorkOrderType.WARRANTY, WorkOrderType.MIXED] },
         created_at: { gte: startDate, lte: endDate },
       },
       include: {
@@ -260,7 +260,10 @@ class ReportService {
         }
 
         for (const job of woService.jobs) {
+          const isWarrantyOrderOrJob = wo.order_type === WorkOrderType.WARRANTY || Boolean(job.is_warranty);
           for (const part of job.parts) {
+            if (part.status === 'RETURNED') continue;
+            if (!isWarrantyOrderOrJob && !part.is_warranty) continue;
             // Xác định số lượng xuất và chi phí MWA xuất kho
             let partQty = 0;
             let partMwaCost = 0;

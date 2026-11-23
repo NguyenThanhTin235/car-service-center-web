@@ -231,6 +231,20 @@ export default function PublicHeader() {
                             <span>Lịch hẹn dịch vụ</span>
                           </Link>
                           <Link
+                            href="/customer/profile?tab=warranty"
+                            role="menuitem"
+                            onClick={(e) => handleCustomerTabClick(e, 'warranty')}
+                            className="flex items-center gap-2.5 px-4 min-h-[44px] text-sm text-ink-primary hover:bg-surface-subtle transition-colors"
+                          >
+                            <span
+                              className="material-symbols-outlined text-lg text-ink-secondary"
+                              aria-hidden="true"
+                            >
+                              verified_user
+                            </span>
+                            <span>Bảo hành &amp; Hậu mãi</span>
+                          </Link>
+                          <Link
                             href="/customer/profile?tab=invoices"
                             role="menuitem"
                             onClick={(e) => handleCustomerTabClick(e, 'invoices')}

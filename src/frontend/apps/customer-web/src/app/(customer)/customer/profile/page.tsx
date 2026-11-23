@@ -45,10 +45,13 @@ const InvoicesView = dynamic(() => import('@/components/invoices/InvoicesView'),
 const HistoryView = dynamic(() => import('@/components/history/HistoryView'), {
   loading: TabLoadingFallback,
 });
+const WarrantyView = dynamic(() => import('@/components/warranty/WarrantyView'), {
+  loading: TabLoadingFallback,
+});
 const CustomerBookingModal = dynamic(() => import('@/components/profile/CustomerBookingModal'));
 
-export type TabKey = 'overview' | 'profile' | 'vehicles' | 'appointments' | 'tracking' | 'invoices' | 'history';
-const VALID_TABS: TabKey[] = ['overview', 'profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history'];
+export type TabKey = 'overview' | 'profile' | 'vehicles' | 'appointments' | 'tracking' | 'invoices' | 'history' | 'warranty';
+const VALID_TABS: TabKey[] = ['overview', 'profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history', 'warranty'];
 
 // Vehicle Form Types & Presets
 interface VehicleFormData {
@@ -219,6 +222,8 @@ export default function ProfilePage() {
     undefined
   );
   const [bookingPreselectedNotes, setBookingPreselectedNotes] = useState<string | undefined>(undefined);
+  const [bookingIsWarranty, setBookingIsWarranty] = useState<boolean>(false);
+  const [bookingWarrantyItemIds, setBookingWarrantyItemIds] = useState<string[] | undefined>(undefined);
   const consumedBookingIntentRef = useRef(false);
 
   const effectiveCustomerId = data?.id ?? authUser?.id;
@@ -595,6 +600,8 @@ export default function ProfilePage() {
 
     setBookingPreselectedServiceIds(undefined);
     setBookingPreselectedNotes(undefined);
+    setBookingIsWarranty(false);
+    setBookingWarrantyItemIds(undefined);
     setBookingModalOpen(true);
   };
 
@@ -634,20 +641,39 @@ export default function ProfilePage() {
         : undefined
     );
     setBookingPreselectedNotes(intent?.notes || undefined);
+    setBookingIsWarranty(Boolean(intent?.isWarranty));
+    setBookingWarrantyItemIds(undefined);
     setBookingModalOpen(true);
   }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const shouldOpenFromQuery = searchParams.get('openBooking') === '1';
+    const isWarrantyFromQuery = searchParams.get('warranty') === 'true';
+    const warrantyVehicleId = searchParams.get('vehicle_id');
+    const warrantyItemId = searchParams.get('warranty_item_id');
     const pendingIntent = consumePendingBookingIntent(window.sessionStorage);
 
-    if ((shouldOpenFromQuery || pendingIntent) && !consumedBookingIntentRef.current) {
+    if ((shouldOpenFromQuery || isWarrantyFromQuery || pendingIntent) && !consumedBookingIntentRef.current) {
       consumedBookingIntentRef.current = true;
-      openBookingModalWithIntent(pendingIntent);
-      if (shouldOpenFromQuery) {
+      if (isWarrantyFromQuery) {
+        openBookingModalWithIntent({
+          isWarranty: true,
+          preselectedVehicleId: warrantyVehicleId ? Number(warrantyVehicleId) : undefined,
+        });
+        if (warrantyItemId) {
+          setBookingWarrantyItemIds([warrantyItemId]);
+        }
+      } else {
+        openBookingModalWithIntent(pendingIntent);
+      }
+      if (shouldOpenFromQuery || isWarrantyFromQuery) {
         const cleanUrl = new URL(window.location.href);
         cleanUrl.searchParams.delete('openBooking');
+        cleanUrl.searchParams.delete('warranty');
+        cleanUrl.searchParams.delete('vehicle_id');
+        cleanUrl.searchParams.delete('warranty_item_id');
+        cleanUrl.searchParams.delete('warranty_item_name');
         window.history.replaceState(null, '', cleanUrl.pathname + cleanUrl.search);
       }
     }
@@ -735,6 +761,7 @@ export default function ProfilePage() {
     { key: 'tracking', label: 'Tiến độ sửa chữa', icon: 'car_repair' },
     { key: 'invoices', label: 'Hóa đơn dịch vụ', icon: 'receipt_long' },
     { key: 'history', label: 'Lịch sử sửa chữa', icon: 'history' },
+    { key: 'warranty', label: 'Bảo hành', icon: 'verified_user' },
   ];
 
   if (loading && !data) {
@@ -837,12 +864,7 @@ export default function ProfilePage() {
           {activeTab === 'profile' && (
             <div className="bg-surface-elevated rounded-2xl p-5 sm:p-8 border border-hairline space-y-6">
               <div className="flex items-center justify-between gap-4 pb-4 border-b border-hairline">
-                <div>
-                  <h2 className="text-xl font-bold text-ink-primary">Hồ sơ cá nhân</h2>
-                  <p className="text-xs text-ink-secondary mt-1">
-                    Quản lý và cập nhật thông tin hồ sơ của bạn
-                  </p>
-                </div>
+                <h2 className="text-xl font-bold text-ink-primary">Hồ sơ cá nhân</h2>
                 {!isEditing && (
                   <button
                     type="button"
@@ -1023,12 +1045,7 @@ export default function ProfilePage() {
           {activeTab === 'vehicles' && (
             <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100 space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Xe của tôi</h2>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Quản lý danh sách phương tiện, thêm mới hoặc điều chỉnh thông số xe của bạn
-                  </p>
-                </div>
+                <h2 className="text-xl font-bold text-slate-900">Xe của tôi</h2>
                 <button
                   type="button"
                   onClick={handleOpenAddVehicle}
@@ -1173,12 +1190,7 @@ export default function ProfilePage() {
             <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100 space-y-6">
               {/* Header Box with Month Navigation & Book Button */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Lịch hẹn dịch vụ</h2>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Theo dõi lịch hẹn dịch vụ của bạn trên lịch lớn hoặc đặt hẹn mới
-                  </p>
-                </div>
+                <h2 className="text-xl font-bold text-slate-900">Lịch hẹn dịch vụ</h2>
 
                 <div className="flex items-center gap-3">
                   {/* Month Navigation */}
@@ -1318,14 +1330,14 @@ export default function ProfilePage() {
           {/* TAB: TIẾN ĐỘ SỬA CHỮA (UC-15) */}
           {activeTab === 'tracking' && (
             <div className="space-y-6">
-              <TrackingView />
+              <TrackingView isEmbedded />
             </div>
           )}
 
           {/* TAB: HÓA ĐƠN DỊCH VỤ (UC-16) */}
           {activeTab === 'invoices' && (
             <div className="space-y-6">
-              <InvoicesView />
+              <InvoicesView isEmbedded />
             </div>
           )}
 
@@ -1333,6 +1345,7 @@ export default function ProfilePage() {
           {activeTab === 'history' && (
             <div className="space-y-6">
               <HistoryView
+                isEmbedded
                 onViewTracking={() => handleTabChange('tracking')}
                 onBookNew={() => {
                   handleTabChange('appointments');
@@ -1340,6 +1353,20 @@ export default function ProfilePage() {
                 }}
               />
             </div>
+          )}
+
+          {/* TAB 8: BẢO HÀNH & HẬU MÃI */}
+          {activeTab === 'warranty' && (
+            <WarrantyView
+              isEmbedded
+              onBookWarranty={({ vehicleId, warrantyItemId }) => {
+                openBookingModalWithIntent({
+                  isWarranty: true,
+                  preselectedVehicleId: vehicleId,
+                });
+                setBookingWarrantyItemIds(warrantyItemId ? [warrantyItemId] : undefined);
+              }}
+            />
           )}
 
         </main>
@@ -1355,6 +1382,8 @@ export default function ProfilePage() {
           initialVehicleId={bookingPreselectedVehicleId}
           initialServiceIds={bookingPreselectedServiceIds}
           initialNotes={bookingPreselectedNotes}
+          initialIsWarranty={bookingIsWarranty}
+          initialWarrantyItemIds={bookingWarrantyItemIds}
           customerId={data?.id}
           vehicles={vehicles}
           activeVehicles={activeVehicles}

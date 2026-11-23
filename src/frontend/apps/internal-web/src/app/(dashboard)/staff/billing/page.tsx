@@ -541,7 +541,16 @@ export default function BillingQueuePage() {
                         <InvoiceStatusBadge status={rec.status as any} />
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono font-semibold tabular-nums text-slate-900 whitespace-nowrap">
-                        {formatVND(rec.totalAmount ?? 0)}
+                        {(rec.totalAmount ?? 0) === 0 ? (
+                          <div className="inline-flex items-center gap-1.5 justify-end">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                              Bảo hành 0đ
+                            </span>
+                            <span>{formatVND(0)}</span>
+                          </div>
+                        ) : (
+                          formatVND(rec.totalAmount ?? 0)
+                        )}
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono font-bold tabular-nums whitespace-nowrap">
                         {rec.amountDue && rec.amountDue > 0 ? (
@@ -641,8 +650,13 @@ export default function BillingQueuePage() {
                       <p className="text-slate-500 font-mono tabular-nums">{rec.customer?.phone || '-'}</p>
                     </div>
                     <div className="text-right shrink-0 space-y-0.5">
-                      <p className="font-mono tabular-nums font-bold text-slate-900">
-                        {formatVND(isWorkOrder ? (rec.estimatedTotal ?? 0) : (rec.totalAmount ?? 0))}
+                      <p className="font-mono tabular-nums font-bold text-slate-900 flex items-center justify-end gap-1.5">
+                        {(isWorkOrder ? (rec.estimatedTotal ?? 0) : (rec.totalAmount ?? 0)) === 0 && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                            Bảo hành 0đ
+                          </span>
+                        )}
+                        <span>{formatVND(isWorkOrder ? (rec.estimatedTotal ?? 0) : (rec.totalAmount ?? 0))}</span>
                       </p>
                       {!isWorkOrder && rec.amountDue !== undefined && rec.amountDue > 0 && (
                         <p className="text-[11px] font-mono tabular-nums font-semibold text-amber-700">

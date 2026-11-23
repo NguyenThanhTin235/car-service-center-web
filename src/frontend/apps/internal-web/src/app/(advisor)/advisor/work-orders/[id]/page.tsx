@@ -350,11 +350,21 @@ export default function WorkOrderDetailPage() {
                 Bảo hành (0đ)
               </span>
             )}
-            {(workOrder as any).order_type === 'MIXED' && (
+            {workOrder.order_type === 'MIXED' && (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
                 <span className="material-symbols-outlined text-[14px]">tune</span>
                 Hỗn hợp
               </span>
+            )}
+            {workOrder.parent_work_order_id && (
+              <Link
+                href={`/advisor/work-orders/${workOrder.parent_work_order_id}`}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors"
+                title="Xem phiếu dịch vụ gốc"
+              >
+                <span className="material-symbols-outlined text-[14px]">link</span>
+                Phiếu gốc: {workOrder.parent_work_order?.wo_number || `#${workOrder.parent_work_order_id}`}
+              </Link>
             )}
           </div>
 

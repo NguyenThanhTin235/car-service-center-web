@@ -73,9 +73,11 @@ const formatDateTime = (value?: string | null) => {
 };
 
 export default function HistoryView({
+  isEmbedded = false,
   onViewTracking,
   onBookNew,
 }: {
+  isEmbedded?: boolean;
   onViewTracking?: () => void;
   onBookNew?: () => void;
 }) {
@@ -208,9 +210,11 @@ export default function HistoryView({
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                 Lịch sử bảo dưỡng
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                Tra cứu toàn bộ hồ sơ kỹ thuật, biên bản bàn giao điện tử và phụ tùng đã thay thế.
-              </p>
+              {!isEmbedded && (
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                  Tra cứu toàn bộ hồ sơ kỹ thuật, biên bản bàn giao điện tử và phụ tùng đã thay thế.
+                </p>
+              )}
             </div>
           </div>
         </div>

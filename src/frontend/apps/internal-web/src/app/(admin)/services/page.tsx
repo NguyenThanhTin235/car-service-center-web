@@ -31,9 +31,11 @@ interface FormData {
   pricingType: string;
   fixedPrice: string;
   sizePrices: Record<string, string>;
+  warrantyMonths: string;
+  warrantyMileage: string;
 }
 
-const defaultForm: FormData = { categoryId: '', name: '', description: '', pricingType: 'FIXED', fixedPrice: '', sizePrices: {} };
+const defaultForm: FormData = { categoryId: '', name: '', description: '', pricingType: 'FIXED', fixedPrice: '', sizePrices: {}, warrantyMonths: '', warrantyMileage: '' };
 
 export default function ServicesPage() {
   const [templates, setTemplates] = useState<ServiceTemplateData[]>([]);
@@ -85,7 +87,16 @@ export default function ServicesPage() {
     const sp: Record<string, string> = {};
     (t.sizePrices || []).forEach(s => { sp[s.vehicleSize] = String(s.price); });
     setEditing(t);
-    setFormData({ categoryId: String(t.category.id), name: t.name, description: t.description || '', pricingType: t.pricingType, fixedPrice: t.fixedPrice ? String(t.fixedPrice) : '', sizePrices: sp });
+    setFormData({
+      categoryId: String(t.category.id),
+      name: t.name,
+      description: t.description || '',
+      pricingType: t.pricingType,
+      fixedPrice: t.fixedPrice ? String(t.fixedPrice) : '',
+      sizePrices: sp,
+      warrantyMonths: t.warrantyMonths != null ? String(t.warrantyMonths) : '',
+      warrantyMileage: t.warrantyMileage != null ? String(t.warrantyMileage) : '',
+    });
     setError(''); setFieldErrors({}); setShowModal(true);
   };
 
@@ -139,6 +150,8 @@ export default function ServicesPage() {
         sizePrices: formData.pricingType === 'VEHICLE_SIZE'
           ? VEHICLE_SIZES.filter(s => formData.sizePrices[s]).map(s => ({ vehicleSize: s, price: parseFloat(formData.sizePrices[s]) }))
           : undefined,
+        warrantyMonths: formData.warrantyMonths ? parseInt(formData.warrantyMonths, 10) : null,
+        warrantyMileage: formData.warrantyMileage ? parseInt(formData.warrantyMileage, 10) : null,
       };
       if (editing) {
         await serviceTemplateApi.update(editing.id, payload);
@@ -380,15 +393,24 @@ export default function ServicesPage() {
                     </td>
                     <td className="py-3.5 px-5">
                       <div className="text-sm font-semibold text-slate-900">{t.name}</div>
-                      <span
-                        className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                          t.isActive
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                            : 'bg-rose-50 text-rose-700 border-rose-200/80'
-                        }`}
-                      >
-                        {t.isActive ? 'Đang cung cấp' : 'Ngừng cung cấp'}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                            t.isActive
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                              : 'bg-rose-50 text-rose-700 border-rose-200/80'
+                          }`}
+                        >
+                          {t.isActive ? 'Đang cung cấp' : 'Ngừng cung cấp'}
+                        </span>
+                        {((t.warrantyMonths ?? 0) > 0 || (t.warrantyMileage ?? 0) > 0) && (
+                          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-blue-50 text-blue-700 border-blue-200/80 font-mono tabular-nums">
+                            BH {t.warrantyMonths ? `${t.warrantyMonths}T` : ''}
+                            {t.warrantyMonths && t.warrantyMileage ? ' / ' : ''}
+                            {t.warrantyMileage ? `${Number(t.warrantyMileage).toLocaleString('vi-VN')}km` : ''}
+                          </span>
+                        )}
+                      </div>
                       {t.description && (
                         <div className="text-xs text-slate-400 truncate max-w-[240px]">
                           {t.description}
@@ -675,6 +697,30 @@ export default function ServicesPage() {
                 </div>
               )}
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-slate-600">Bảo hành (tháng)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="VD: 12"
+                    value={formData.warrantyMonths}
+                    onChange={(e) => setFormData({ ...formData, warrantyMonths: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono tabular-nums"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-slate-600">Bảo hành (km)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="VD: 10000"
+                    value={formData.warrantyMileage}
+                    onChange={(e) => setFormData({ ...formData, warrantyMileage: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono tabular-nums"
+                  />
+                </label>
+              </div>
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-semibold text-slate-600">Mô tả</span>
                 <textarea

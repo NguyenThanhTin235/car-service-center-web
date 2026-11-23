@@ -144,6 +144,15 @@ export default function PublicFooter() {
                   Lịch sử bảo dưỡng
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/customer/profile?tab=warranty"
+                  onClick={(e) => handlePortalTabClick(e, 'warranty')}
+                  className="inline-flex items-center min-h-[36px] text-white/85 hover:text-white transition-colors"
+                >
+                  Tra cứu bảo hành
+                </Link>
+              </li>
             </ul>
           </div>
 

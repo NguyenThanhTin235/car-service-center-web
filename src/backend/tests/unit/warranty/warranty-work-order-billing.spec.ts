@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { prismaMock, sendEmailMock } = vi.hoisted(() => {
+const { prismaMock, sendEmailMock, sendInAppMock } = vi.hoisted(() => {
   const mock: any = {
     user: {
       findUnique: vi.fn(),
@@ -74,6 +74,7 @@ const { prismaMock, sendEmailMock } = vi.hoisted(() => {
   return {
     prismaMock: mock,
     sendEmailMock: vi.fn().mockResolvedValue(true),
+    sendInAppMock: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -84,6 +85,9 @@ vi.mock('../../../src/utils/prisma', () => ({
 vi.mock('../../../src/services/notification.service', () => ({
   notificationService: {
     sendEmail: sendEmailMock,
+    notifyAndEmail: vi.fn().mockResolvedValue(undefined),
+    sendInAppToRoles: vi.fn().mockResolvedValue(undefined),
+    sendInApp: sendInAppMock,
   },
 }));
 
@@ -436,12 +440,10 @@ describe('Warranty Work Order, Quotation 0đ & Invoice 0đ (UC-84 & UC-85)', () 
       });
 
       // Bắn thông báo VEHICLE_READY cho Cố vấn dịch vụ
-      expect(prismaMock.notification.create).toHaveBeenCalledWith(
+      expect(sendInAppMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            user_id: 99,
-            notification_type: 'VEHICLE_READY',
-          }),
+          userId: 99,
+          type: 'VEHICLE_READY',
         })
       );
     });

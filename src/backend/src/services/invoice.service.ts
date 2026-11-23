@@ -703,16 +703,16 @@ export class InvoiceService {
         });
 
         // Thông báo cho Cố vấn dịch vụ xe đã sẵn sàng làm thủ tục xuất xưởng (UC-43)
-        await tx.notification.create({
-          data: {
-            user_id: invoice.work_order.advisor_id,
-            notification_type: 'VEHICLE_READY',
+        notificationService
+          .sendInApp({
+            userId: invoice.work_order.advisor_id,
+            type: 'VEHICLE_READY',
             title: `Xe ${invoice.work_order.vehicle.license_plate} đã quyết toán tài chính`,
             message: `Hóa đơn bảo hành 0 đồng (${invoice.invoice_number}) đã được quyết toán. Phương tiện đã đủ điều kiện làm thủ tục bàn giao xuất xưởng.`,
-            entity_type: 'WORK_ORDER',
-            entity_id: invoice.work_order_id,
-          },
-        });
+            entityType: 'WORK_ORDER',
+            entityId: invoice.work_order_id,
+          })
+          .catch((err: any) => console.warn('[ZeroInvoice Advisor Notification Error]', err?.message));
       }
 
       // Ghi Audit Log cho Invoice

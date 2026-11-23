@@ -53,7 +53,7 @@ const LiveClockOverlay = React.memo(function LiveClockOverlay() {
   );
 });
 
-export default function TrackingView() {
+export default function TrackingView({ isEmbedded = false }: { isEmbedded?: boolean }) {
   const dispatch = useAppDispatch();
   const { orders, selectedOrder, loading, error } = useAppSelector((state) => state.tracking);
   const [syncTick, setSyncTick] = useState<number>(0);

@@ -2,15 +2,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import {
-  ResponsiveContainer,
-  BarChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Bar,
-} from 'recharts';
 import api from '@/lib/axios';
 
 const ChartLoadingSkeleton = () => (
@@ -24,6 +15,11 @@ const RevenueBarChart = dynamic(
 
 const ServicesBarChart = dynamic(
   () => import('./components/ReportsCharts').then((mod) => mod.ServicesBarChart),
+  { ssr: false, loading: ChartLoadingSkeleton }
+);
+
+const WarrantyAnalysisBarChart = dynamic(
+  () => import('./components/ReportsCharts').then((mod) => mod.WarrantyAnalysisBarChart),
   { ssr: false, loading: ChartLoadingSkeleton }
 );
 
@@ -422,17 +418,16 @@ function WarrantySection({ data }: { data: WarrantyData }) {
       `"${p.supplier.supplierContact || ''}"`,
     ]);
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,\uFEFF' +
-      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-
-    const encodedUri = encodeURI(csvContent);
+    const csvBody = '\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const blob = new Blob([csvBody], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', url);
     link.setAttribute('download', `Bao_Cao_Bao_Hanh_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   return (
@@ -509,48 +504,20 @@ function WarrantySection({ data }: { data: WarrantyData }) {
           data.technicalAnalysis.byTechnician.length === 0 ? (
             <EmptyState message="Chưa ghi nhận sự cố lặp lại theo kỹ thuật viên trong kỳ." />
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart
-                data={data.technicalAnalysis.byTechnician}
-                margin={{ top: 10, right: 20, left: 10, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="technicianName" tick={{ fontSize: 11, fill: '#64748b' }} />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
-                <Tooltip
-                  formatter={(val: any) => [val, 'Số vụ bảo hành']}
-                  contentStyle={{
-                    fontSize: '12px',
-                    borderRadius: '10px',
-                    border: '1px solid #e2e8f0',
-                  }}
-                />
-                <Bar dataKey="warrantyCasesCount" fill="#e11d48" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <WarrantyAnalysisBarChart
+              data={data.technicalAnalysis.byTechnician}
+              dataKey="technicianName"
+              fill="#e11d48"
+            />
           )
         ) : data.technicalAnalysis.byCategory.length === 0 ? (
           <EmptyState message="Chưa ghi nhận sự cố theo nhóm dịch vụ trong kỳ." />
         ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart
-              data={data.technicalAnalysis.byCategory}
-              margin={{ top: 10, right: 20, left: 10, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="categoryName" tick={{ fontSize: 11, fill: '#64748b' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
-              <Tooltip
-                formatter={(val: any) => [val, 'Số vụ bảo hành']}
-                contentStyle={{
-                  fontSize: '12px',
-                  borderRadius: '10px',
-                  border: '1px solid #e2e8f0',
-                }}
-              />
-              <Bar dataKey="warrantyCasesCount" fill="#f59e0b" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <WarrantyAnalysisBarChart
+            data={data.technicalAnalysis.byCategory}
+            dataKey="categoryName"
+            fill="#f59e0b"
+          />
         )}
       </div>
 
@@ -582,7 +549,7 @@ function WarrantySection({ data }: { data: WarrantyData }) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
+            <table className="w-full text-left text-xs text-slate-700 min-w-[800px]">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
                 <tr>
                   <th className="py-3 px-4">Mã SKU</th>
@@ -648,6 +615,7 @@ export default function ReportsPage() {
   const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const fetchReport = useCallback(async () => {
@@ -656,6 +624,7 @@ export default function ReportsPage() {
     abortRef.current = controller;
 
     setLoading(true);
+    setErrorMsg(null);
     try {
       if (reportType === 'warranty') {
         const res = await api.get('/api/reports/warranty', {
@@ -689,6 +658,7 @@ export default function ReportsPage() {
         return;
       }
       console.error('Lỗi tải báo cáo vận hành:', err);
+      setErrorMsg(err.response?.data?.message || err.message || 'Không thể tải dữ liệu báo cáo.');
     } finally {
       if (!controller.signal.aborted) {
         setLoading(false);
@@ -791,6 +761,23 @@ export default function ReportsPage() {
         <div className="bg-white rounded-2xl border border-slate-200/80 p-8 space-y-4">
           <div className="h-8 w-52 bg-slate-100 rounded-lg animate-pulse" />
           <div className="h-64 w-full bg-slate-100 rounded-xl animate-pulse" />
+        </div>
+      ) : errorMsg ? (
+        <div
+          role="alert"
+          className="bg-rose-50 border border-rose-200 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-3 text-rose-800 text-sm font-semibold">
+            <span className="material-symbols-outlined text-rose-600 text-2xl">error</span>
+            <span>{errorMsg}</span>
+          </div>
+          <button
+            type="button"
+            onClick={fetchReport}
+            className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
+          >
+            Thử lại
+          </button>
         </div>
       ) : !reportData ? (
         <div className="text-center py-16 px-6 bg-white rounded-2xl border border-dashed border-slate-300">

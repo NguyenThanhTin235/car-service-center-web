@@ -236,6 +236,28 @@ export class QuotationService {
         throw new Error(`Phiếu công việc đã ở trạng thái ${wo.status}, không thể tạo báo giá mới`);
       }
 
+      // 1.5. Tra cứu hồ sơ bảo hành thiện chí (Goodwill Claim) nếu có (UC-86 / TC-WAR-13)
+      const goodwillClaim = wo.intake_record_id
+        ? await (tx as any).goodwillClaim?.findUnique?.({
+            where: { intake_id: wo.intake_record_id },
+          })
+        : null;
+      const activeGoodwill =
+        goodwillClaim && goodwillClaim.status === 'APPROVED' ? goodwillClaim : null;
+
+      const calcWarrantyPrice = (basePrice: number, lineKind: 'PACKAGE' | 'LABOUR' | 'PART'): number => {
+        if (!activeGoodwill) return 0;
+        if (activeGoodwill.support_type === 'FULL') return 0;
+        if (activeGoodwill.support_type === 'LABOUR_ONLY') {
+          return lineKind === 'PART' ? basePrice : 0;
+        }
+        if (activeGoodwill.support_type === 'PERCENTAGE') {
+          const pct = Math.min(100, Math.max(0, Number(activeGoodwill.support_pct || 0)));
+          return Math.round(basePrice * (1 - pct / 100));
+        }
+        return 0;
+      };
+
       // 2. Bóc tách toàn bộ chi phí theo 3 mô hình tính giá
       const lineInputs: PricingLineItemInput[] = [];
       let sortIndex = 0;
@@ -244,7 +266,8 @@ export class QuotationService {
         // Mô hình 1: Gói cố định (FIXED)
         if (woService.pricing_type === 'FIXED') {
           const isWarranty = wo.order_type === 'WARRANTY';
-          const packagePrice = isWarranty ? 0 : Number(woService.service?.fixed_price || 0);
+          const baseFixedPrice = Number(woService.service?.fixed_price || 0);
+          const packagePrice = isWarranty ? calcWarrantyPrice(baseFixedPrice, 'PACKAGE') : baseFixedPrice;
           const desc = isWarranty && !woService.name.includes('[Bảo hành]')
             ? `[Bảo hành] ${woService.name}`
             : woService.name;
@@ -265,7 +288,8 @@ export class QuotationService {
             (sp) => sp.vehicle_size === vehicleSize
           );
           const isWarranty = wo.order_type === 'WARRANTY';
-          const sizePrice = isWarranty ? 0 : Number(sizePriceObj?.price || 0);
+          const baseSizePrice = Number(sizePriceObj?.price || 0);
+          const sizePrice = isWarranty ? calcWarrantyPrice(baseSizePrice, 'PACKAGE') : baseSizePrice;
 
           const sizeLabelsVi: Record<string, string> = {
             SMALL: 'Cỡ nhỏ',
@@ -293,9 +317,10 @@ export class QuotationService {
           for (const job of woService.jobs) {
             const isWarrantyJob = Boolean(job.is_warranty);
 
-            // Tiền nhân công (Fixed price theo JobLabour, áp dụng 0đ nếu là bảo hành - UC-84)
+            // Tiền nhân công (Fixed price theo JobLabour, áp dụng 0đ hoặc mức Goodwill nếu là bảo hành - UC-84)
             for (const labour of job.labours) {
-              const unitPrice = isWarrantyJob ? 0 : Number(labour.price);
+              const baseLabourPrice = Number(labour.price);
+              const unitPrice = isWarrantyJob ? calcWarrantyPrice(baseLabourPrice, 'LABOUR') : baseLabourPrice;
               const desc = isWarrantyJob && !labour.description?.includes('[Bảo hành]')
                 ? `[Bảo hành] ${labour.description || `Tiền công: ${job.name}`}`
                 : labour.description || `Tiền công: ${job.name}`;
@@ -312,10 +337,11 @@ export class QuotationService {
               });
             }
 
-            // Tiền phụ tùng (Số lượng x Giá bán, áp dụng 0đ nếu là phụ tùng bảo hành - UC-84)
+            // Tiền phụ tùng (Số lượng x Giá bán, áp dụng 0đ hoặc mức Goodwill nếu là phụ tùng bảo hành - UC-84)
             for (const part of job.parts) {
               const isWarrantyPart = Boolean(part.is_warranty || isWarrantyJob);
-              const unitPrice = isWarrantyPart ? 0 : Number(part.unit_price);
+              const basePartPrice = Number(part.unit_price);
+              const unitPrice = isWarrantyPart ? calcWarrantyPrice(basePartPrice, 'PART') : basePartPrice;
               const rawPartName =
                 part.item.part_category.name +
                 (part.item.brand ? ` (${part.item.brand.name})` : ` - ${part.item.sku}`);

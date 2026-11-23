@@ -96,6 +96,18 @@ export default function WOBadgeBar({
           <span className="font-semibold text-on-surface whitespace-nowrap">{vehicleName}</span>
           <span className="text-outline font-bold hidden sm:inline">·</span>
           <span className="text-on-surface-variant whitespace-nowrap">{customerName}</span>
+          {orderType === 'WARRANTY' && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300">
+              <span className="material-symbols-outlined text-[14px]">verified_user</span>
+              Bảo hành (0đ)
+            </span>
+          )}
+          {orderType === 'MIXED' && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
+              <span className="material-symbols-outlined text-[14px]">tune</span>
+              Hỗn hợp
+            </span>
+          )}
           {statusBadge === 'BILLING_REQUESTED' && (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300">
               <span className="material-symbols-outlined text-[14px]">receipt_long</span>

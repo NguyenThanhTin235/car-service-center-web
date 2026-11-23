@@ -1,5 +1,6 @@
 import { GoodwillClaimStatus, GoodwillSupportType, NotificationType } from '@prisma/client';
 import prisma from '../utils/prisma';
+import { notificationService } from './notification.service';
 
 export interface CreateGoodwillClaimDto {
   vehicleId: number;
@@ -250,8 +251,8 @@ export class WarrantyService {
         const overdueDays = daysRemaining !== null && daysRemaining < 0 ? Math.abs(daysRemaining) : 0;
         const overdueKm = kmRemaining !== null && kmRemaining < 0 ? Math.abs(kmRemaining) : 0;
 
-        // Quá hạn nhẹ (UC-83 & UC-86): quá hạn <= 30 ngày hoặc <= 1.000 km
-        const isOverdueLight = !isValid && (overdueDays <= 30 || overdueKm <= 1000);
+        // Quá hạn nhẹ (UC-83 & UC-86): quá hạn <= 30 ngày và <= 1.000 km
+        const isOverdueLight = !isValid && overdueDays <= 30 && overdueKm <= 1000;
 
         let status: 'VALID' | 'OVERDUE_LIGHT' | 'EXPIRED' = 'EXPIRED';
         let statusLabel = 'Hết hạn bảo hành';
@@ -329,7 +330,7 @@ export class WarrantyService {
             const isPartValid = isPartDateValid && isPartMileageValid;
             const partOverdueDays = partDaysRemaining !== null && partDaysRemaining < 0 ? Math.abs(partDaysRemaining) : 0;
             const partOverdueKm = partKmRemaining !== null && partKmRemaining < 0 ? Math.abs(partKmRemaining) : 0;
-            const isPartOverdueLight = !isPartValid && (partOverdueDays <= 30 || partOverdueKm <= 1000);
+            const isPartOverdueLight = !isPartValid && partOverdueDays <= 30 && partOverdueKm <= 1000;
 
             let partStatus: 'VALID' | 'OVERDUE_LIGHT' | 'EXPIRED' = 'EXPIRED';
             let partStatusLabel = 'Hết hạn bảo hành';
@@ -532,6 +533,16 @@ export class WarrantyService {
         parent_wo: { select: { id: true, wo_number: true } },
       },
     });
+
+    notificationService
+      .sendInAppToRoles(['MANAGER', 'ADMIN'], {
+        type: NotificationType.GENERAL,
+        title: `Đề xuất bảo hành thiện chí mới #${claim.id}`,
+        message: `Xe ${claim.vehicle?.license_plate || `#${data.vehicleId}`} cần thẩm định bảo hành thiện chí (${claim.parent_wo?.wo_number || `WO #${claim.parent_wo_id}`}).`,
+        entityType: 'GOODWILL_CLAIM',
+        entityId: claim.id,
+      })
+      .catch(() => {});
 
     return claim;
   }
@@ -738,16 +749,14 @@ export class WarrantyService {
         ? 'Miễn phí 100% tiền công'
         : `Hỗ trợ ${dto.supportPct}% chi phí`;
 
-    await prisma.notification
-      .create({
-        data: {
-          user_id: claim.created_by_id,
-          notification_type: NotificationType.GENERAL,
-          title: `Yêu cầu bảo hành thiện chí #${claim.id} đã được phê duyệt`,
-          message: `Quản lý đã phê duyệt hỗ trợ bảo hành thiện chí cho xe ${updatedClaim.vehicle.license_plate} với mức: ${supportLabel}. Ghi chú: ${dto.approvalNote.trim()}`,
-          entity_type: 'GOODWILL_CLAIM',
-          entity_id: claim.id,
-        },
+    await notificationService
+      .sendInApp({
+        userId: claim.created_by_id,
+        type: NotificationType.GENERAL,
+        title: `Yêu cầu bảo hành thiện chí #${claim.id} đã được phê duyệt`,
+        message: `Quản lý đã phê duyệt hỗ trợ bảo hành thiện chí cho xe ${updatedClaim.vehicle.license_plate} với mức: ${supportLabel}. Ghi chú: ${dto.approvalNote.trim()}`,
+        entityType: 'GOODWILL_CLAIM',
+        entityId: claim.id,
       })
       .catch(() => {});
 
@@ -793,16 +802,14 @@ export class WarrantyService {
     });
 
     // Thông báo cho nhân viên tạo đề xuất để giải thích với khách (UC-86 Bước 6b)
-    await prisma.notification
-      .create({
-        data: {
-          user_id: claim.created_by_id,
-          notification_type: NotificationType.GENERAL,
-          title: `Yêu cầu bảo hành thiện chí #${claim.id} bị từ chối`,
-          message: `Quản lý từ chối yêu cầu bảo hành thiện chí cho xe ${updatedClaim.vehicle.license_plate}. Lý do: ${dto.approvalNote.trim()}`,
-          entity_type: 'GOODWILL_CLAIM',
-          entity_id: claim.id,
-        },
+    await notificationService
+      .sendInApp({
+        userId: claim.created_by_id,
+        type: NotificationType.GENERAL,
+        title: `Yêu cầu bảo hành thiện chí #${claim.id} bị từ chối`,
+        message: `Quản lý từ chối yêu cầu bảo hành thiện chí cho xe ${updatedClaim.vehicle.license_plate}. Lý do: ${dto.approvalNote.trim()}`,
+        entityType: 'GOODWILL_CLAIM',
+        entityId: claim.id,
       })
       .catch(() => {});
 

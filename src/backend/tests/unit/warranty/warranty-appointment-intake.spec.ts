@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { prismaMock, sendEmailMock, warrantyServiceMock } = vi.hoisted(() => {
+const { prismaMock, sendEmailMock, notifyAndEmailMock, warrantyServiceMock } = vi.hoisted(() => {
   const mock: any = {
     user: {
       findUnique: vi.fn(),
@@ -55,6 +55,7 @@ const { prismaMock, sendEmailMock, warrantyServiceMock } = vi.hoisted(() => {
       checkVehicleWarrantyEligibility: vi.fn(),
       validateOdoIntake: vi.fn(),
     },
+    notifyAndEmailMock: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -65,6 +66,9 @@ vi.mock('../../../src/utils/prisma', () => ({
 vi.mock('../../../src/services/notification.service', () => ({
   notificationService: {
     sendEmail: sendEmailMock,
+    notifyAndEmail: notifyAndEmailMock,
+    sendInAppToRoles: vi.fn().mockResolvedValue(undefined),
+    sendInApp: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -105,7 +109,7 @@ describe('Warranty Appointment & Intake Unit Tests (UC-82 & UC-83)', () => {
       warrantyServiceMock.checkVehicleWarrantyEligibility.mockResolvedValue({
         hasHistory: true,
         summary: { totalItems: 2, validItems: 1, expiredItems: 1, overdueLightItems: 0 },
-        items: [{ id: 1, status: 'VALID' }],
+        items: [{ id: 1, type: 'PART', status: 'VALID' }],
       });
 
       prismaMock.appointment.create.mockResolvedValue({
@@ -140,11 +144,12 @@ describe('Warranty Appointment & Intake Unit Tests (UC-82 & UC-83)', () => {
           }),
         })
       );
-      // Gửi email xác nhận bảo hành
-      expect(sendEmailMock).toHaveBeenCalledWith(
-        'a@example.com',
-        expect.stringContaining('Xác nhận đặt lịch bảo hành'),
-        expect.any(String)
+      // Gửi thông báo & email xác nhận bảo hành
+      expect(notifyAndEmailMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'a@example.com',
+          subject: expect.stringContaining('Xác nhận đặt lịch bảo hành'),
+        })
       );
     });
 
@@ -299,6 +304,12 @@ describe('Warranty Appointment & Intake Unit Tests (UC-82 & UC-83)', () => {
       ).rejects.toThrow('Vui lòng nhập số km ODO hiện tại của xe khi tiếp nhận bảo hành.');
 
       // Tiếp nhận có ODO và parentWorkOrderId
+      prismaMock.goodwillClaim.findUnique.mockResolvedValue({
+        id: 5,
+        vehicle_id: 20,
+        status: 'APPROVED',
+        intake_id: null,
+      });
       prismaMock.appointment.update.mockResolvedValue({
         id: 200,
         status: 'ARRIVED',

@@ -75,3 +75,32 @@ export function ServicesBarChart({ data }: { data: ServiceChartRow[] }) {
     </ResponsiveContainer>
   );
 }
+
+export function WarrantyAnalysisBarChart({
+  data,
+  dataKey,
+  fill,
+}: {
+  data: any[];
+  dataKey: 'technicianName' | 'categoryName';
+  fill: string;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <BarChart data={data} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+        <XAxis dataKey={dataKey} tick={{ fontSize: 11, fill: '#64748b' }} />
+        <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+        <Tooltip
+          formatter={(val: any) => [val, 'Số vụ bảo hành']}
+          contentStyle={{
+            fontSize: '12px',
+            borderRadius: '10px',
+            border: '1px solid #e2e8f0',
+          }}
+        />
+        <Bar dataKey="warrantyCasesCount" fill={fill} radius={[6, 6, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}

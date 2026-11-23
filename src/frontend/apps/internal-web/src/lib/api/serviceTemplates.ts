@@ -6,6 +6,8 @@ export interface ServiceTemplateData {
   description?: string;
   pricingType: 'FIXED' | 'VEHICLE_SIZE' | 'LABOUR_PARTS';
   fixedPrice?: number | null;
+  warrantyMonths?: number | null;
+  warrantyMileage?: number | null;
   isActive: boolean;
   category: { id: number; name: string };
   sizePrices: { vehicleSize: string; price: number }[];
@@ -27,6 +29,8 @@ export interface CreateServiceTemplatePayload {
   pricingType: string;
   fixedPrice?: number;
   sizePrices?: { vehicleSize: string; price: number }[];
+  warrantyMonths?: number | null;
+  warrantyMileage?: number | null;
 }
 
 export const serviceTemplateApi = {

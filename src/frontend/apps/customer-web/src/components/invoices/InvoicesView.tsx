@@ -19,7 +19,7 @@ import { downloadPdfBlob } from '@/utils/customerHelpers';
 const CustomerPaymentModal = dynamic(() => import('./CustomerPaymentModal'));
 const InvoiceDetailModal = dynamic(() => import('./InvoiceDetailModal'));
 
-export default function InvoicesView() {
+export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: boolean }) {
   const dispatch = useAppDispatch();
   const { invoices, summary, selectedInvoice, loading, detailLoading, error } = useAppSelector(
     (state) => state.invoices
@@ -184,9 +184,11 @@ export default function InvoicesView() {
           <h1 className="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight">
             Hóa đơn & Lịch sử thanh toán
           </h1>
-          <p className="text-xs sm:text-sm text-on-surface-variant mt-1">
-            Theo dõi, kiểm tra chi phí bảo dưỡng và tải hóa đơn điện tử VAT trực tuyến.
-          </p>
+          {!isEmbedded && (
+            <p className="text-xs sm:text-sm text-on-surface-variant mt-1">
+              Theo dõi, kiểm tra chi phí bảo dưỡng và tải hóa đơn điện tử VAT trực tuyến.
+            </p>
+          )}
         </div>
 
         {/* CTA Buttons */}

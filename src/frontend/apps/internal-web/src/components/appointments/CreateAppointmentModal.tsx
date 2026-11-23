@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAppDispatch } from '@/store';
 import { createAppointment } from '@/store/slices/appointmentSlice';
 import api from '@/lib/axios';
-import { warrantyApi, WarrantyItem } from '@/lib/api/warranty.api';
+import { warrantyApi, WarrantyItem, getWarrantyCompositeKey } from '@/lib/api/warranty.api';
 import toast from 'react-hot-toast';
 
 interface CreateAppointmentModalProps {
@@ -382,7 +382,13 @@ export default function CreateAppointmentModal({
               {/* Step 3 Pill */}
               <div
                 onClick={() => {
-                  if (customerId && vehicleId && (selectedServiceIds.length > 0 || notes.trim())) {
+                  if (
+                    customerId &&
+                    vehicleId &&
+                    (isWarranty
+                      ? selectedWarrantyItemIds.length > 0 && symptomsDescription.trim()
+                      : selectedServiceIds.length > 0 || notes.trim())
+                  ) {
                     setStep(3);
                   }
                 }}
@@ -685,12 +691,13 @@ export default function CreateAppointmentModal({
                         </label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[260px] overflow-y-auto pr-1">
                           {warrantyItems.map((item) => {
-                            const isChecked = selectedWarrantyItemIds.includes(item.id);
-                            const isGreen = item.badgeColor === 'green';
+                            const compositeKey = getWarrantyCompositeKey(item);
+                            const isChecked = selectedWarrantyItemIds.includes(compositeKey);
+                            const isGreen = item.status === 'VALID';
                             return (
                               <div
-                                key={item.id}
-                                onClick={() => handleToggleWarrantyItem(item.id)}
+                                key={compositeKey}
+                                onClick={() => handleToggleWarrantyItem(compositeKey)}
                                 className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
                                   isChecked
                                     ? 'border-emerald-600 bg-emerald-50/30 shadow-xs'
@@ -718,13 +725,15 @@ export default function CreateAppointmentModal({
                                         isGreen ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                                       }`}
                                     >
-                                      {item.statusLabel}
+                                      {isGreen ? 'Còn bảo hành' : 'Quá hạn nhẹ (Thiện chí)'}
                                     </span>
                                   </div>
                                   <h4 className="font-bold text-xs text-slate-900 leading-snug">{item.name}</h4>
                                   <div className="text-[10px] text-slate-500 mt-1 space-y-0.5">
-                                    <div>Phiếu gốc: <strong className="text-slate-700">{item.parentWoNumber}</strong></div>
-                                    <div>Hạn: {new Date(item.expireDate).toLocaleDateString('vi-VN')} ({item.expireMileage.toLocaleString()} km)</div>
+                                    <div>Phiếu gốc: <strong className="text-slate-700">{item.woNumber}</strong></div>
+                                    <div className="font-mono tabular-nums">
+                                      Hạn: {item.expirationDate ? new Date(item.expirationDate).toLocaleDateString('vi-VN') : 'Theo km'} ({item.expirationMileage != null ? `${item.expirationMileage.toLocaleString('vi-VN')} km` : 'Không giới hạn km'})
+                                    </div>
                                   </div>
                                 </div>
                               </div>
