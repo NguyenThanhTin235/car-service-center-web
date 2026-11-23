@@ -46,12 +46,12 @@ export default function SideNavBar() {
       {/* Top & Navigation Cluster */}
       <div className="flex flex-col h-full overflow-y-auto">
         {/* Brand Header */}
-        <div className="h-[68px] px-4 border-b border-outline-variant flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-primary-container text-on-primary flex items-center justify-center shadow-sm">
-            <span className="material-symbols-outlined text-[24px]">car_repair</span>
+        <div className="h-[68px] px-4 border-b border-outline-variant flex items-center gap-2.5 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-[#0050CD] text-white flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-xl" aria-hidden="true">directions_car</span>
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-headline-md font-headline-md font-bold text-primary dark:text-inverse-primary tracking-tight truncate leading-tight">
+            <span className="font-bold text-base tracking-[-0.02em] text-slate-900 dark:text-white truncate leading-tight">
               AutoCare Pro
             </span>
             <span className="text-label-sm font-label-sm text-on-surface-variant truncate">

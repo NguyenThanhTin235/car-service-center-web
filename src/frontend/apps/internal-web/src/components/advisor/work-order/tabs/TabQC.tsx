@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { WorkOrder } from '@/lib/api/work-order.api';
 import {
   QcDetailsResponse,
@@ -11,15 +11,23 @@ import {
   requestBilling,
 } from '@/lib/api/qc.api';
 import toast from 'react-hot-toast';
+import { WO_STATUS_META } from '../work-order.constants';
 
 interface TabQCProps {
   workOrder: WorkOrder;
   refetchWO: () => void;
   isReadOnly?: boolean;
   setActiveTab?: (tabId: string) => void;
+  isActive?: boolean;
 }
 
-export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly = false, setActiveTab }: TabQCProps) {
+export default function TabQC({
+  workOrder,
+  refetchWO,
+  isReadOnly: propIsReadOnly = false,
+  setActiveTab,
+  isActive = true,
+}: TabQCProps) {
   const [qcData, setQcData] = useState<QcDetailsResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,11 +56,13 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
     >
   >({});
 
+  const lastSyncedUpdatedAtRef = useRef<string | undefined>(workOrder?.updated_at);
+
   // Tải dữ liệu QC
-  const fetchQcData = useCallback(async () => {
+  const fetchQcData = useCallback(async (silent = false) => {
     if (!workOrder?.id) return;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       const res = await getWOQcDetails(workOrder.id);
       if (res.success && res.data) {
@@ -93,6 +103,13 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
   useEffect(() => {
     fetchQcData();
   }, [fetchQcData]);
+
+  useEffect(() => {
+    if (isActive && workOrder?.updated_at && lastSyncedUpdatedAtRef.current !== workOrder.updated_at) {
+      lastSyncedUpdatedAtRef.current = workOrder.updated_at;
+      fetchQcData(true);
+    }
+  }, [isActive, workOrder?.updated_at, fetchQcData]);
 
   // Cập nhật kết quả đánh giá cho một item (hỗ trợ toggle khi bấm lại)
   const handleItemResultChange = (
@@ -198,40 +215,43 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
     return list;
   }, [qcData]);
 
-  const handleSubmitServiceQc = async (service: QcServiceItem) => {
-    if (incompleteJobs.length > 0) {
-      toast.error(
-        `Không thể nghiệm thu chất lượng vì vẫn còn ${incompleteJobs.length} công việc thi công dở dang chưa hoàn thành.`
-      );
-      return;
-    }
+  const validateAndBuildServiceQc = (service: QcServiceItem, prefixServiceName = false) => {
     const serviceForm = evaluationForms[service.id];
-    if (!serviceForm) return;
+    if (!serviceForm) {
+      return { error: `Dịch vụ "${service.name}" chưa có dữ liệu đánh giá` } as const;
+    }
 
-    // Kiểm tra xem có mục nào chưa được đánh giá không
     const unsetItem = service.template.items.find((tItem) => {
       const form = serviceForm[tItem.id];
       return !form || form.result === null || form.result === undefined;
     });
-
     if (unsetItem) {
-      toast.error(`Vui lòng đánh giá toàn bộ các tiêu chí (mục "${unsetItem.name}" chưa chọn kết quả)`);
-      return;
+      return {
+        error: prefixServiceName
+          ? `Dịch vụ "${service.name}": Vui lòng đánh giá mục "${unsetItem.name}" trước khi lưu toàn bộ`
+          : `Vui lòng đánh giá toàn bộ các tiêu chí (mục "${unsetItem.name}" chưa chọn kết quả)`,
+      } as const;
     }
 
-    // Kiểm tra có mục Không đạt nào thiếu lý do sửa lại không
     const failWithoutReason = service.template.items.find((tItem) => {
       const form = serviceForm[tItem.id];
       return form?.result === 'FAIL' && !form.reworkDescription?.trim();
     });
-
     if (failWithoutReason) {
-      toast.error(`Vui lòng nhập lý do sửa lại cho mục "${failWithoutReason.name}"`);
-      return;
+      return {
+        error: prefixServiceName
+          ? `Dịch vụ "${service.name}": Vui lòng nhập lý do sửa lại cho mục "${failWithoutReason.name}"`
+          : `Vui lòng nhập lý do sửa lại cho mục "${failWithoutReason.name}"`,
+      } as const;
     }
 
-    const itemsPayload = service.template.items.map((tItem) => {
-      const formData = serviceForm[tItem.id] || { itemName: tItem.name, result: 'PASS', notes: '', reworkDescription: '' };
+    const items = service.template.items.map((tItem) => {
+      const formData = serviceForm[tItem.id] || {
+        itemName: tItem.name,
+        result: 'PASS',
+        notes: '',
+        reworkDescription: '',
+      };
       return {
         templateItemId: tItem.id > 0 ? tItem.id : undefined,
         itemName: tItem.name,
@@ -242,13 +262,31 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
       };
     });
 
-    try {
-      setActionLoading(true);
-      const res = await submitQcEvaluation(workOrder.id, {
+    return {
+      payload: {
         woServiceId: service.id,
         templateId: service.template.id,
-        items: itemsPayload,
-      });
+        items,
+      },
+    } as const;
+  };
+
+  const handleSubmitServiceQc = async (service: QcServiceItem) => {
+    if (incompleteJobs.length > 0) {
+      toast.error(
+        `Không thể nghiệm thu chất lượng vì vẫn còn ${incompleteJobs.length} công việc thi công dở dang chưa hoàn thành.`
+      );
+      return;
+    }
+    const built = validateAndBuildServiceQc(service, false);
+    if ('error' in built) {
+      toast.error(built.error || 'Dữ liệu kiểm định chưa hợp lệ');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      const res = await submitQcEvaluation(workOrder.id, built.payload);
 
       if (res.success) {
         if (res.data?.overallResult === 'PASS') {
@@ -259,8 +297,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
             { icon: '⚠️', duration: 4000 }
           );
         }
-        await fetchQcData();
-        refetchWO();
+        await Promise.all([fetchQcData(true), refetchWO()]);
       } else {
         toast.error(res.message || 'Lỗi khi lưu kết quả kiểm định');
       }
@@ -281,66 +318,17 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
     }
     if (!qcData?.services || qcData.services.length === 0) return;
 
-    // 1. Kiểm tra validation toàn bộ các dịch vụ
+    // 1. Kiểm tra validation & gom payload cho toàn bộ các dịch vụ
+    const evaluations = [];
     for (const service of qcData.services) {
-      const serviceForm = evaluationForms[service.id];
-      if (!serviceForm) {
+      const built = validateAndBuildServiceQc(service, true);
+      if ('error' in built) {
         setSelectedServiceId(service.id);
-        toast.error(`Dịch vụ "${service.name}" chưa có dữ liệu đánh giá`);
+        toast.error(built.error || 'Dữ liệu kiểm định chưa hợp lệ');
         return;
       }
-
-      // Kiểm tra có mục nào chưa chọn kết quả
-      const unsetItem = service.template.items.find((tItem) => {
-        const form = serviceForm[tItem.id];
-        return !form || form.result === null || form.result === undefined;
-      });
-
-      if (unsetItem) {
-        setSelectedServiceId(service.id);
-        toast.error(`Dịch vụ "${service.name}": Vui lòng đánh giá mục "${unsetItem.name}" trước khi lưu toàn bộ`);
-        return;
-      }
-
-      // Kiểm tra có mục Không đạt nào thiếu lý do sửa lại
-      const failWithoutReason = service.template.items.find((tItem) => {
-        const form = serviceForm[tItem.id];
-        return form?.result === 'FAIL' && !form.reworkDescription?.trim();
-      });
-
-      if (failWithoutReason) {
-        setSelectedServiceId(service.id);
-        toast.error(`Dịch vụ "${service.name}": Vui lòng nhập lý do sửa lại cho mục "${failWithoutReason.name}"`);
-        return;
-      }
+      evaluations.push(built.payload);
     }
-
-    // 2. Gom payload cho toàn bộ các dịch vụ
-    const evaluations = qcData.services.map((service) => {
-      const serviceForm = evaluationForms[service.id] || {};
-      const itemsPayload = service.template.items.map((tItem) => {
-        const formData = serviceForm[tItem.id] || {
-          itemName: tItem.name,
-          result: 'PASS',
-          notes: '',
-          reworkDescription: '',
-        };
-        return {
-          templateItemId: tItem.id > 0 ? tItem.id : undefined,
-          itemName: tItem.name,
-          result: formData.result as 'PASS' | 'FAIL',
-          notes: formData.notes?.trim() || undefined,
-          reworkDescription: formData.result === 'FAIL' ? formData.reworkDescription?.trim() : undefined,
-          reworkJobName: formData.result === 'FAIL' ? `[Sửa lại - KCS] ${tItem.name}` : undefined,
-        };
-      });
-
-      return {
-        woServiceId: service.id,
-        templateId: service.template.id,
-        items: itemsPayload,
-      };
-    });
 
     try {
       setActionLoading(true);
@@ -355,8 +343,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
             { icon: '⚠️', duration: 4500 }
           );
         }
-        await fetchQcData();
-        refetchWO();
+        await Promise.all([fetchQcData(true), refetchWO()]);
       } else {
         toast.error(res.message || 'Lỗi khi lưu kết quả kiểm định');
       }
@@ -374,8 +361,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
       const res = await requestBilling(workOrder.id);
       if (res.success) {
         toast.success('Đã gửi yêu cầu thanh toán sang quầy Thu ngân thành công!');
-        await fetchQcData();
-        refetchWO();
+        await Promise.all([fetchQcData(true), refetchWO()]);
       } else {
         toast.error(res.message || 'Lỗi khi yêu cầu thanh toán');
       }
@@ -409,7 +395,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
         <p className="text-xs text-rose-700 max-w-md">{error}</p>
         <button
           type="button"
-          onClick={fetchQcData}
+          onClick={() => fetchQcData()}
           className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
         >
           <span className="material-symbols-outlined text-[16px]">refresh</span>
@@ -451,7 +437,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
           </div>
           <div className="w-full bg-slate-200 h-2 rounded-full mt-2.5 overflow-hidden">
             <div
-              className={`h-full transition-all duration-500 ${
+              className={`h-full transition-all duration-200 ease-out ${
                 stats.progressPercent === 100 ? 'bg-emerald-500' : 'bg-[#0050cd]'
               }`}
               style={{ width: `${stats.progressPercent}%` }}
@@ -462,25 +448,25 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
         {/* Stat 2: Công việc đã nghiệm thu */}
         <div className="lg:px-4 pb-3 sm:pb-0 border-b sm:border-b-0 border-slate-200/80">
           <div className="flex items-center justify-between text-slate-600 mb-1.5">
-            <span className="text-xs font-bold">Hạng mục đã Pass</span>
+            <span className="text-xs font-bold">Hạng mục đạt chuẩn</span>
             <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono tabular-nums">{stats.passedJobs}</span>
-            <span className="text-xs text-slate-500 font-medium tabular-nums">/ {stats.totalJobs} jobs kỹ thuật</span>
+            <span className="text-xs text-slate-500 font-medium tabular-nums">/ {stats.totalJobs} công việc kỹ thuật</span>
           </div>
           <p className="text-xs text-slate-500 mt-2 font-medium">
-            Đã đạt chuẩn an toàn & chạy thử
+            Đã đạt chuẩn an toàn &amp; chạy thử
           </p>
         </div>
 
-        {/* Stat 3: Công việc Rework cần sửa lại */}
+        {/* Stat 3: Công việc cần làm lại */}
         <div className="lg:px-4 pb-3 sm:pb-0 sm:pt-3 lg:pt-0 border-b sm:border-b-0 sm:border-t lg:border-t-0 border-slate-200/80">
           <div className="flex items-center justify-between mb-1.5">
             <span className={`text-xs font-bold ${
               stats.reworkJobs > 0 ? 'text-rose-700' : 'text-slate-600'
             }`}>
-              Cần sửa lại (Rework)
+              Cần làm lại
             </span>
             <span className={`material-symbols-outlined text-[18px] ${
               stats.reworkJobs > 0 ? 'text-rose-600' : 'text-slate-500'
@@ -490,14 +476,21 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
           </div>
           <div className="flex items-baseline gap-2">
             <span className={`text-xl sm:text-2xl font-black font-mono tabular-nums ${
-              stats.reworkJobs > 0 ? 'text-rose-600' : 'text-zinc-900'
+              stats.reworkJobs > 0 ? 'text-rose-600' : 'text-slate-900'
             }`}>
               {stats.reworkJobs}
             </span>
             <span className="text-xs text-slate-500 font-medium">hạng mục phát hiện lỗi</span>
           </div>
-          <p className="text-xs text-slate-500 mt-2 font-medium">
-            {stats.reworkJobs > 0 ? '⚠️ Cần thợ khắc phục trước khi giao xe' : 'Không có lỗi kỹ thuật nào'}
+          <p className="text-xs text-slate-600 mt-2 font-medium flex items-center gap-1">
+            {stats.reworkJobs > 0 ? (
+              <>
+                <span className="material-symbols-outlined text-[14px] text-amber-600 shrink-0">warning</span>
+                <span>Cần thợ khắc phục trước khi giao xe</span>
+              </>
+            ) : (
+              'Không có lỗi kỹ thuật nào'
+            )}
           </p>
         </div>
 
@@ -511,7 +504,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
             {stats.isBillingRequested ? (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800 font-bold text-xs">
                 <span className="material-symbols-outlined text-[14px]">receipt_long</span>
-                Đã gửi Billing
+                Đã chuyển thu ngân
               </span>
             ) : stats.canRequestBilling ? (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs">
@@ -521,7 +514,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
             ) : (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs">
                 <span className="material-symbols-outlined text-[14px]">hourglass_top</span>
-                Đang thi công & QC
+                Đang thi công &amp; KCS
               </span>
             )}
           </div>
@@ -533,14 +526,14 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
 
       {/* 2. Billing Gate Notification Banner */}
       {stats.canRequestBilling && !stats.isBillingRequested && !isReadOnly && (
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-2xl p-5 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
+        <div className="sa-enter bg-emerald-50 border border-emerald-200 text-emerald-950 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-[28px] text-white">verified</span>
+            <div className="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <span className="material-symbols-outlined text-[24px]">verified</span>
             </div>
             <div>
-              <h4 className="font-bold text-base">Toàn bộ dịch vụ đã hoàn tất & Vượt qua kiểm định KCS!</h4>
-              <p className="text-xs text-emerald-100 mt-0.5">
+              <h4 className="font-bold text-base text-emerald-950">Toàn bộ dịch vụ đã hoàn tất &amp; Vượt qua kiểm định KCS!</h4>
+              <p className="text-xs text-emerald-800 mt-0.5">
                 Chất lượng kỹ thuật xe đã đạt 100%. Nhấn nút bên dưới để gửi lệnh sang quầy Thu ngân phát hành hóa đơn.
               </p>
             </div>
@@ -549,7 +542,7 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
           <button
             onClick={handleRequestBilling}
             disabled={actionLoading}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-emerald-800 hover:bg-emerald-50 font-bold rounded-xl text-sm transition-all shadow-md active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
+            className="sa-press w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-colors shadow-sm disabled:opacity-50 shrink-0 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[20px]">receipt_long</span>
             {actionLoading ? 'Đang gửi...' : 'Gửi yêu cầu lập hóa đơn'}
@@ -561,28 +554,28 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
         <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900 text-purple-900 dark:text-purple-200 rounded-2xl p-4 flex items-center gap-3">
           <span className="material-symbols-outlined text-purple-600 text-[24px]">task_alt</span>
           <div className="text-xs sm:text-sm">
-            <span className="font-bold">Hồ sơ đã được nghiệm thu KCS hoàn tất.</span> Đang chờ Thu ngân xử lý thanh toán tại quầy. Chế độ chỉ đọc (Read-only).
+            <span className="font-bold">Hồ sơ đã được nghiệm thu KCS hoàn tất.</span> Đang chờ Thu ngân xử lý thanh toán tại quầy (chế độ chỉ xem).
           </div>
         </div>
       )}
 
       {isReadOnly && !stats.isBillingRequested && (
-        <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs sm:text-sm">
+        <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
           <div className="flex items-center gap-2.5">
             <span className="material-symbols-outlined text-[#0050cd] text-[22px]">lock</span>
             <div>
-              <span className="font-bold text-zinc-900">Chế độ xem chỉ đọc (Read-only): </span>
+              <span className="font-bold text-slate-900">Chế độ chỉ xem: </span>
               <span className="text-slate-600">
                 {['BILLING_REQUESTED', 'FINANCIAL_CLEARED', 'RELEASED', 'CLOSED'].includes(workOrder?.status || '')
-                  ? `Phiếu công việc đã hoàn thành giai đoạn kiểm định (${workOrder?.status}). Không thể chỉnh sửa kết quả KCS.`
+                  ? `Phiếu công việc đã hoàn thành giai đoạn kiểm định (${WO_STATUS_META[workOrder?.status || '']?.label || workOrder?.status}). Không thể chỉnh sửa kết quả KCS.`
                   : workOrder?.status === 'CANCELLED'
                   ? 'Phiếu công việc đã bị hủy.'
-                  : `Phiếu công việc đang ở trạng thái "${workOrder?.status || 'N/A'}", chỉ có thể đánh giá KCS khi đang thi công (IN_PROGRESS).`}
+                  : `Phiếu công việc đang ở trạng thái "${WO_STATUS_META[workOrder?.status || '']?.label || workOrder?.status || 'Chưa xác định'}", chỉ có thể đánh giá KCS khi đang thi công.`}
               </span>
             </div>
           </div>
-          <span className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 font-mono font-bold text-xs uppercase tracking-wider shrink-0 shadow-2xs">
-            {workOrder?.status}
+          <span className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 font-semibold text-xs shrink-0 shadow-2xs">
+            {WO_STATUS_META[workOrder?.status || '']?.label || workOrder?.status}
           </span>
         </div>
       )}
@@ -747,6 +740,27 @@ export default function TabQC({ workOrder, refetchWO, isReadOnly: propIsReadOnly
                 </div>
               )}
             </div>
+
+            {/* Inline notice when save is blocked by incomplete jobs */}
+            {!isReadOnly && incompleteJobs.length > 0 && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-amber-900">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0">warning</span>
+                  <span>
+                    Còn <strong>{incompleteJobs.length} công việc</strong> chưa hoàn thành thi công — chưa thể lưu nghiệm thu KCS cho dịch vụ này.
+                  </span>
+                </div>
+                {setActiveTab && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('job')}
+                    className="sa-press px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer self-start sm:self-auto shrink-0"
+                  >
+                    Xem hạng mục sửa chữa
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Checklist Items Table */}
             <div className="space-y-3">

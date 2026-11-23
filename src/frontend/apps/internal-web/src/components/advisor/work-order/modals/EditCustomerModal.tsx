@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { updateCustomerInfo } from '@/lib/api/work-order.api';
+import ModalPortal from '@/components/advisor/common/ModalPortal';
 
 interface EditCustomerModalProps {
   isOpen: boolean;
@@ -75,24 +76,30 @@ export default function EditCustomerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+    <ModalPortal>
       <div
-        className="bg-white rounded-[28px] max-w-lg w-full p-6 shadow-2xl border border-slate-200/90 flex flex-col gap-5"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="edit-customer-title"
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md sa-modal-backdrop"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose();
+        }}
       >
+        <div
+          className="sa-modal-panel bg-white rounded-2xl max-w-xl w-full max-h-[90dvh] overflow-y-auto p-5 sm:p-6 shadow-2xl border border-slate-200/90 flex flex-col gap-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-customer-title"
+        >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#0c2340] text-white flex items-center justify-center shadow-xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-[#0c2340] text-white flex items-center justify-center shadow-xs shrink-0">
               <span className="material-symbols-outlined text-[22px]">person</span>
             </div>
-            <div>
-              <h2 id="edit-customer-title" className="text-base font-extrabold text-zinc-900 tracking-tight">
+            <div className="min-w-0">
+              <h2 id="edit-customer-title" className="text-base font-extrabold text-slate-900 tracking-tight truncate">
                 Sửa Thông Tin Khách Hàng
               </h2>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs text-slate-500 font-medium truncate">
                 Cập nhật tên, số điện thoại liên hệ và email
               </p>
             </div>
@@ -100,7 +107,8 @@ export default function EditCustomerModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-zinc-800 hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label="Đóng"
+            className="sa-press w-11 h-11 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
@@ -192,6 +200,7 @@ export default function EditCustomerModal({
           </div>
         </form>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }

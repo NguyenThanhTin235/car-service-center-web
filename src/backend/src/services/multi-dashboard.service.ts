@@ -293,107 +293,245 @@ export class MultiDashboardService {
   }
 
   /**
-   * 3. Dashboard Cố Vấn Dịch Vụ (Service Advisor)
+   * 3. Dashboard Cố Vấn Dịch Vụ (Service Advisor) - Cá nhân hóa tuyệt đối theo userId
    */
   async getSaDashboard(
     userId: number,
-    scope: DashboardScope = 'my',
     periodKey: DashboardPeriodKey = '7days',
     start?: string,
     end?: string
   ): Promise<DashboardResponseData> {
-    const { startDate, endDate } = this.resolvePeriodDates(periodKey, start, end);
-    const woWhere: any = scope === 'my' ? { advisor_id: userId } : {};
+    const { startDate, endDate, prevStartDate, prevEndDate } = this.resolvePeriodDates(periodKey, start, end);
+    const saWhere = { advisor_id: userId };
+
+    const activeWoStatuses: WorkOrderStatus[] = [
+      WorkOrderStatus.DRAFT,
+      WorkOrderStatus.IN_PLANNING,
+      WorkOrderStatus.PENDING_APPROVAL,
+      WorkOrderStatus.APPROVED,
+      WorkOrderStatus.IN_PROGRESS,
+      WorkOrderStatus.BILLING_REQUESTED,
+      WorkOrderStatus.FINANCIAL_CLEARED,
+    ];
 
     const [
-      pendingQuotations,
-      inInspectionWos,
-      qcReadyWos,
-      handoverReadyWos,
+      currRevenueAgg,
+      prevRevenueAgg,
+      currQuotationGroups,
+      prevQuotationGroups,
+      currCompletedWos,
+      prevCompletedWos,
+      statusGroups,
+      sourceGroups,
+      periodPaidInvoices,
       activeWos,
-      appointmentsToday,
     ] = await Promise.all([
-      prisma.quotation.count({
+      prisma.invoice.aggregate({
+        _sum: { total_amount: true },
         where: {
-          status: 'SENT',
-          ...(scope === 'my' ? { work_order: { advisor_id: userId } } : {}),
+          status: InvoiceStatus.PAID,
+          work_order: saWhere,
+          issued_at: { gte: startDate, lte: endDate },
+        },
+      }),
+      prisma.invoice.aggregate({
+        _sum: { total_amount: true },
+        where: {
+          status: InvoiceStatus.PAID,
+          work_order: saWhere,
+          issued_at: { gte: prevStartDate, lte: prevEndDate },
+        },
+      }),
+      prisma.quotation.groupBy({
+        by: ['status'],
+        where: {
+          work_order: saWhere,
+          created_at: { gte: startDate, lte: endDate },
+          status: { in: ['SENT', 'APPROVED', 'REJECTED'] },
+        },
+        _count: { id: true },
+      }),
+      prisma.quotation.groupBy({
+        by: ['status'],
+        where: {
+          work_order: saWhere,
+          created_at: { gte: prevStartDate, lte: prevEndDate },
+          status: { in: ['SENT', 'APPROVED', 'REJECTED'] },
+        },
+        _count: { id: true },
+      }),
+      prisma.workOrder.count({
+        where: {
+          ...saWhere,
+          status: WorkOrderStatus.CLOSED,
+          closed_at: { gte: startDate, lte: endDate },
         },
       }),
       prisma.workOrder.count({
         where: {
-          ...woWhere,
-          status: { in: [WorkOrderStatus.DRAFT, WorkOrderStatus.IN_PLANNING] },
+          ...saWhere,
+          status: WorkOrderStatus.CLOSED,
+          closed_at: { gte: prevStartDate, lte: prevEndDate },
         },
       }),
-      prisma.workOrder.count({
-        where: {
-          ...woWhere,
-          status: WorkOrderStatus.IN_PROGRESS,
-        },
+      prisma.workOrder.groupBy({
+        by: ['status'],
+        where: saWhere,
+        _count: { id: true },
       }),
-      prisma.workOrder.count({
+      prisma.workOrder.groupBy({
+        by: ['source_type'],
         where: {
-          ...woWhere,
-          status: WorkOrderStatus.FINANCIAL_CLEARED,
+          ...saWhere,
+          created_at: { gte: startDate, lte: endDate },
         },
+        _count: { id: true },
+      }),
+      prisma.invoice.findMany({
+        where: {
+          status: InvoiceStatus.PAID,
+          work_order: saWhere,
+          issued_at: { gte: startDate, lte: endDate },
+        },
+        select: { issued_at: true, total_amount: true },
+        orderBy: { issued_at: 'asc' },
       }),
       prisma.workOrder.findMany({
-        where: woWhere,
-        take: 10,
+        where: {
+          ...saWhere,
+          status: { in: [...activeWoStatuses, WorkOrderStatus.CLOSED] },
+        },
+        take: 50,
         orderBy: { updated_at: 'desc' },
         include: {
           customer: { select: { full_name: true, phone: true } },
           vehicle: { select: { license_plate: true, make: true, model: true } },
         },
       }),
-      prisma.appointment.count({
-        where: {
-          scheduled_date: { gte: startDate, lte: endDate },
-        },
-      }),
     ]);
+
+    const personalRevenue = Number(currRevenueAgg._sum.total_amount || 0);
+    const prevPersonalRevenue = Number(prevRevenueAgg._sum.total_amount || 0);
+
+    const calcApprovalStats = (groups: Array<{ status: string; _count: { id: number } }>) => {
+      const map: Record<string, number> = {};
+      for (const g of groups) {
+        map[g.status] = g._count.id;
+      }
+      const approved = map['APPROVED'] || 0;
+      const total = approved + (map['REJECTED'] || 0) + (map['SENT'] || 0);
+      const rate = total > 0 ? Math.round((approved / total) * 100) : 0;
+      return { approved, total, rate };
+    };
+
+    const currQuoteStats = calcApprovalStats(currQuotationGroups);
+    const prevQuoteStats = calcApprovalStats(prevQuotationGroups);
+
+    const statusCountMap: Record<string, number> = {};
+    for (const sg of statusGroups) {
+      statusCountMap[sg.status] = sg._count.id;
+    }
+
+    const activeWosCount = activeWoStatuses.reduce((sum, st) => sum + (statusCountMap[st] || 0), 0);
+
+    const stageOrder: WorkOrderStatus[] = [
+      WorkOrderStatus.DRAFT,
+      WorkOrderStatus.IN_PLANNING,
+      WorkOrderStatus.PENDING_APPROVAL,
+      WorkOrderStatus.APPROVED,
+      WorkOrderStatus.IN_PROGRESS,
+      WorkOrderStatus.BILLING_REQUESTED,
+      WorkOrderStatus.FINANCIAL_CLEARED,
+      WorkOrderStatus.CLOSED,
+    ];
+
+    const stagePipeline = stageOrder.map((status) => ({
+      status,
+      count: statusCountMap[status] || 0,
+    }));
+
+    const distribution = activeWoStatuses
+      .map((status) => ({
+        category: status,
+        count: statusCountMap[status] || 0,
+      }))
+      .filter((item) => item.count > 0);
+
+    const sourceCountMap: Record<string, number> = {};
+    let totalPeriodIntake = 0;
+    for (const sg of sourceGroups) {
+      sourceCountMap[sg.source_type] = sg._count.id;
+      totalPeriodIntake += sg._count.id;
+    }
+
+    const sourceBreakdown = (['APPOINTMENT', 'WALK_IN', 'TOW_IN'] as const).map((sourceType) => {
+      const count = sourceCountMap[sourceType] || 0;
+      return {
+        sourceType,
+        count,
+        pct: totalPeriodIntake > 0 ? Math.round((count / totalPeriodIntake) * 100) : 0,
+      };
+    });
+
+    const trendMap: Record<string, { label: string; value: number; count: number }> = {};
+    for (const inv of periodPaidInvoices) {
+      if (!inv.issued_at) continue;
+      const key = inv.issued_at.toISOString().slice(5, 10);
+      if (!trendMap[key]) trendMap[key] = { label: key, value: 0, count: 0 };
+      trendMap[key].value += Number(inv.total_amount);
+      trendMap[key].count += 1;
+    }
 
     return {
       portal: 'sa',
       period: { key: periodKey, startDate: startDate.toISOString(), endDate: endDate.toISOString() },
       kpis: [
         {
-          key: 'pendingQuotations',
-          label: 'Báo giá chờ khách duyệt',
-          value: pendingQuotations,
+          key: 'personalRevenue',
+          label: 'Doanh thu cá nhân',
+          value: personalRevenue,
+          prevValue: prevPersonalRevenue,
+          format: 'currency',
+        },
+        {
+          key: 'quotationApprovalRate',
+          label: 'Tỷ lệ chốt báo giá',
+          value: currQuoteStats.rate,
+          prevValue: prevQuoteStats.rate,
+          format: 'percent',
+          unit: '%',
+        },
+        {
+          key: 'completedWos',
+          label: 'Hồ sơ hoàn tất',
+          value: currCompletedWos,
+          prevValue: prevCompletedWos,
           format: 'number',
           unit: 'hồ sơ',
         },
         {
-          key: 'inInspectionWos',
-          label: 'Xe đang khám / Lập kế hoạch',
-          value: inInspectionWos,
+          key: 'activeWosCount',
+          label: 'Hồ sơ đang phụ trách',
+          value: activeWosCount,
           format: 'number',
-          unit: 'xe',
-        },
-        {
-          key: 'qcReadyWos',
-          label: 'Chờ nghiệm thu QC',
-          value: qcReadyWos,
-          format: 'number',
-          unit: 'xe',
-        },
-        {
-          key: 'handoverReadyWos',
-          label: 'Đã thanh toán / Chờ bàn giao',
-          value: handoverReadyWos,
-          format: 'number',
-          unit: 'xe',
+          unit: 'hồ sơ',
         },
       ],
       charts: {
-        appointmentsVolume: appointmentsToday,
-        distribution: [
-          { category: 'Chờ báo giá', count: pendingQuotations },
-          { category: 'Đang khám', count: inInspectionWos },
-          { category: 'Chờ QC', count: qcReadyWos },
-          { category: 'Chờ giao xe', count: handoverReadyWos },
-        ],
+        distribution,
+        stagePipeline,
+        sourceBreakdown,
+        revenueTrend: Object.values(trendMap),
+        summary: {
+          pendingApprovalCount: statusCountMap[WorkOrderStatus.PENDING_APPROVAL] || 0,
+          inInspectionCount:
+            (statusCountMap[WorkOrderStatus.DRAFT] || 0) + (statusCountMap[WorkOrderStatus.IN_PLANNING] || 0),
+          inProgressCount: statusCountMap[WorkOrderStatus.IN_PROGRESS] || 0,
+          handoverReadyCount: statusCountMap[WorkOrderStatus.FINANCIAL_CLEARED] || 0,
+          approvedQuotations: currQuoteStats.approved,
+          totalQuotations: currQuoteStats.total,
+          totalPeriodIntake,
+        },
       },
       actionableList: activeWos.map((wo) => ({
         id: wo.id,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import IntakeQueueStats from '@/components/advisor/IntakeQueueStats';
 import IntakeQueueTable from '@/components/advisor/IntakeQueueTable';
 import { IntakeQueueItem, getIntakeQueue } from '@/lib/api/work-order.api';
@@ -9,16 +9,21 @@ import toast from 'react-hot-toast';
 export default function IntakeQueuePage() {
   const [items, setItems] = useState<IntakeQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'QUEUED' | 'CONVERTED' | 'CANCELLED'>('QUEUED');
 
   const fetchQueue = async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await getIntakeQueue();
       if (res.success) {
         setItems(res.data);
+      } else {
+        setError('Không thể tải danh sách xe đang chờ.');
       }
     } catch {
+      setError('Không thể kết nối máy chủ khi tải danh sách chờ.');
       toast.error('Lỗi tải danh sách chờ');
     } finally {
       setLoading(false);
@@ -29,21 +34,45 @@ export default function IntakeQueuePage() {
     fetchQueue();
   }, []);
 
-  const totalQueue = items.filter((i) => i.status === 'QUEUED').length;
-  const convertedCount = items.filter((i) => i.status === 'CONVERTED').length;
-  let totalWaitMinutes = 0;
-  let urgentCount = 0;
+  const {
+    totalQueue,
+    convertedCount,
+    urgentCount,
+    avgWaitMinutes,
+    tabCounts,
+    filteredItems,
+  } = useMemo(() => {
+    const counts = { QUEUED: 0, CONVERTED: 0, CANCELLED: 0 };
+    const filtered: IntakeQueueItem[] = [];
+    let totalWaitMins = 0;
+    let urgent = 0;
+    const now = Date.now();
 
-  items
-    .filter((i) => i.status === 'QUEUED')
-    .forEach((item) => {
-      const diff = Date.now() - new Date(item.arrived_at).getTime();
-      const waitMins = Math.floor(diff / 60000);
-      totalWaitMinutes += Math.max(0, waitMins);
-      if (waitMins > 30) urgentCount++;
-    });
+    for (const item of items) {
+      if (item.status === 'QUEUED') {
+        counts.QUEUED += 1;
+        const waitMins = Math.max(0, Math.floor((now - new Date(item.arrived_at).getTime()) / 60000));
+        totalWaitMins += waitMins;
+        if (waitMins > 30) urgent += 1;
+      } else if (item.status === 'CONVERTED') {
+        counts.CONVERTED += 1;
+      } else if (item.status === 'CANCELLED') {
+        counts.CANCELLED += 1;
+      }
+      if (item.status === activeTab) {
+        filtered.push(item);
+      }
+    }
 
-  const avgWaitMinutes = totalQueue > 0 ? Math.floor(totalWaitMinutes / totalQueue) : 0;
+    return {
+      totalQueue: counts.QUEUED,
+      convertedCount: counts.CONVERTED,
+      urgentCount: urgent,
+      avgWaitMinutes: counts.QUEUED > 0 ? Math.floor(totalWaitMins / counts.QUEUED) : 0,
+      tabCounts: counts,
+      filteredItems: filtered,
+    };
+  }, [items, activeTab]);
 
   return (
     <div className="flex flex-col gap-5 px-3 sm:px-5 lg:px-6 py-3 max-w-[1440px] mx-auto w-full">
@@ -83,7 +112,7 @@ export default function IntakeQueuePage() {
           <div className="bg-[#f2f4f8] p-1.5 rounded-2xl inline-flex items-center gap-1 flex-wrap">
             {(['QUEUED', 'CONVERTED', 'CANCELLED'] as const).map((tab) => {
               const isActive = activeTab === tab;
-              const count = items.filter((r) => r.status === tab).length;
+              const count = tabCounts[tab];
               return (
                 <button
                   key={tab}
@@ -113,12 +142,28 @@ export default function IntakeQueuePage() {
           </div>
         </div>
 
+        {error && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-rose-800">
+            <div className="flex items-center gap-2 font-semibold">
+              <span className="material-symbols-outlined text-[18px] text-rose-600">error</span>
+              <span>{error}</span>
+            </div>
+            <button
+              type="button"
+              onClick={fetchQueue}
+              className="sa-press px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer self-start sm:self-auto"
+            >
+              Thử lại
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex flex-col" aria-busy="true" aria-label="Đang tải danh sách xe đang chờ">
             <div className="overflow-x-auto">
               <table className="table-auto w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
                     <th className="py-3.5 pl-2 pr-1.5 sm:pl-3 sm:pr-2 lg:pl-4 w-10 sm:w-12 text-center">#</th>
                     <th className="py-3.5 px-2 sm:px-3 lg:px-4">Thông tin xe & Biển số</th>
                     <th className="py-3.5 px-3 lg:px-4 hidden lg:table-cell">Loại dịch vụ</th>
@@ -173,7 +218,7 @@ export default function IntakeQueuePage() {
           </div>
         ) : (
           <IntakeQueueTable
-            items={items.filter((i) => i.status === activeTab)}
+            items={filteredItems}
             onWorkOrderCreated={fetchQueue}
           />
         )}

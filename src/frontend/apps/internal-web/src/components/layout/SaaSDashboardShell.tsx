@@ -226,16 +226,16 @@ export default function SaaSDashboardShell({
               href={navItems[0]?.href || navItems[0]?.children?.[0]?.href || '/'}
               className="flex items-center gap-2.5 min-w-0 group"
             >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-[18px]">directions_car</span>
+              <div className="w-9 h-9 rounded-xl bg-[#0050CD] text-white flex items-center justify-center shrink-0 transition-transform duration-150 group-hover:scale-[1.03]">
+                <span className="material-symbols-outlined text-xl" aria-hidden="true">directions_car</span>
               </div>
               {!isMini && (
                 <span
-                  className={`text-[15px] font-bold tracking-tight truncate ${
+                  className={`font-bold text-base tracking-[-0.02em] whitespace-nowrap truncate ${
                     isLight ? 'text-slate-900' : 'text-white'
                   }`}
                 >
-                  AutoCare
+                  AutoCare Pro
                 </span>
               )}
             </Link>
