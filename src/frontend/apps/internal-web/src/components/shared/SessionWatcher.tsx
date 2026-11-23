@@ -38,9 +38,10 @@ export default function SessionWatcher() {
       }
     }
 
-    // 2. Nhịp tim kiểm tra phiên với máy chủ (Heartbeat mỗi 3 giây)
+    // 2. Nhịp tim kiểm tra phiên với máy chủ (Heartbeat mỗi 30 giây khi tab đang hiển thị)
     const checkSession = async () => {
       if (checkingRef.current) return;
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       if (typeof window !== 'undefined' && window.location.pathname.startsWith('/login')) return;
       checkingRef.current = true;
       try {
@@ -65,7 +66,7 @@ export default function SessionWatcher() {
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
-    const interval = setInterval(checkSession, 3000);
+    const interval = setInterval(checkSession, 30000);
 
     return () => {
       clearInterval(interval);

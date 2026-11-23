@@ -37,6 +37,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [activeQuotationId, setActiveQuotationId] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
@@ -59,6 +60,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
       if (!silent) {
         setLoading(true);
       }
+      setError(null);
       const res = await getWOQuotations(workOrder.id);
       if (res.success && res.data) {
         setQuotations(res.data);
@@ -75,7 +77,9 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
       }
     } catch (err: any) {
       console.error('Lỗi tải báo giá:', err);
-      toast.error('Không thể tải danh sách báo giá');
+      const msg = err?.response?.data?.message || err?.message || 'Không thể tải danh sách báo giá';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -306,6 +310,26 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
     return (
       <div className="flex h-64 items-center justify-center">
         <span className="material-symbols-outlined animate-spin text-[36px] text-primary">progress_activity</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-10 text-center border border-rose-200 rounded-2xl bg-rose-50/70 space-y-3">
+        <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center">
+          <span className="material-symbols-outlined text-[26px]">error</span>
+        </div>
+        <h3 className="text-sm font-bold text-rose-900">Không thể tải danh sách báo giá</h3>
+        <p className="text-xs text-rose-700 max-w-md">{error}</p>
+        <button
+          type="button"
+          onClick={() => fetchQuotations(false)}
+          className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+        >
+          <span className="material-symbols-outlined text-[16px]">refresh</span>
+          <span>Thử lại</span>
+        </button>
       </div>
     );
   }

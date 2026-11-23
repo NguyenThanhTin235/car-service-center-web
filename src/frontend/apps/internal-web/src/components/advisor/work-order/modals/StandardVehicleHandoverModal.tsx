@@ -31,6 +31,7 @@ export default function StandardVehicleHandoverModal({
 
   // Signature Canvas
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasRectRef = useRef<DOMRect | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
 
@@ -71,7 +72,7 @@ export default function StandardVehicleHandoverModal({
     canvas: HTMLCanvasElement,
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
   ) => {
-    const rect = canvas.getBoundingClientRect();
+    const rect = canvasRectRef.current ?? canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
@@ -88,6 +89,7 @@ export default function StandardVehicleHandoverModal({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    canvasRectRef.current = canvas.getBoundingClientRect();
     setIsDrawing(true);
     setHasSignature(true);
     const { x, y } = getCanvasCoords(canvas, e);
@@ -110,6 +112,7 @@ export default function StandardVehicleHandoverModal({
   };
 
   const stopDrawing = () => {
+    canvasRectRef.current = null;
     setIsDrawing(false);
   };
 

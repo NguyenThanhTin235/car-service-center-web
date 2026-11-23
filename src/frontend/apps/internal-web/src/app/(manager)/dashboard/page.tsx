@@ -2,15 +2,29 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { KPICard, KPICardVariant } from '@/components/dashboard/KPICard';
 import { formatVND } from '@/lib/utils/formatters';
 import { DashboardFilterBar } from '@/components/dashboard/DashboardFilterBar';
-import { DashboardTrendChart } from '@/components/dashboard/DashboardTrendChart';
 import { DashboardStatusBreakdown } from '@/components/dashboard/DashboardStatusBreakdown';
 import { DashboardStageBars } from '@/components/dashboard/DashboardStageBars';
 import { DashboardTelemetryMiniBars } from '@/components/dashboard/DashboardTelemetryMiniBars';
 import { DashboardActionTable, TableColumn } from '@/components/dashboard/DashboardActionTable';
+
+const DashboardTrendChart = dynamic(
+  () => import('@/components/dashboard/DashboardTrendChart').then((mod) => mod.DashboardTrendChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm animate-pulse">
+        <div className="h-4 w-44 bg-slate-200 dark:bg-slate-800 rounded mb-2" />
+        <div className="h-3 w-64 bg-slate-100 dark:bg-slate-800 rounded mb-6" />
+        <div className="h-[360px] w-full bg-slate-50 dark:bg-slate-800/50 rounded-lg" />
+      </div>
+    ),
+  }
+);
 
 const WO_STATUS_CONFIG: Record<string, { label: string; badgeCls: string; dotColor: string }> = {
   IN_PLANNING: { label: 'Lập kế hoạch', badgeCls: 'bg-slate-100 text-slate-700 border-slate-200', dotColor: '#64748b' },

@@ -3,50 +3,15 @@ import Link from 'next/link';
 import SurfaceCard from './SurfaceCard';
 
 export interface LoadingSkeletonProps {
-  variant?: 'cards' | 'list' | 'detail';
+  variant?: 'cards';
   count?: number;
   className?: string;
 }
 
 export function LoadingSkeleton({
-  variant = 'cards',
   count = 3,
   className = '',
 }: LoadingSkeletonProps) {
-  if (variant === 'detail') {
-    return (
-      <div className={`space-y-4 animate-pulse ${className}`.trim()} aria-busy="true" aria-label="Đang tải dữ liệu">
-        <div className="h-32 rounded-2xl bg-surface-subtle" />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          <div className="lg:col-span-8 h-72 rounded-2xl bg-surface-elevated border border-hairline" />
-          <div className="lg:col-span-4 h-72 rounded-2xl bg-surface-elevated border border-hairline" />
-        </div>
-      </div>
-    );
-  }
-
-  if (variant === 'list') {
-    return (
-      <div className={`space-y-3 animate-pulse ${className}`.trim()} aria-busy="true" aria-label="Đang tải danh sách">
-        {Array.from({ length: count }).map((_, index) => (
-          <div
-            key={index}
-            className="h-20 rounded-2xl bg-surface-elevated border border-hairline px-5 flex items-center justify-between gap-4"
-          >
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-surface-subtle shrink-0" />
-              <div className="space-y-2 flex-1 max-w-md">
-                <div className="h-4 bg-surface-subtle rounded w-2/3" />
-                <div className="h-3 bg-surface-subtle rounded w-1/2" />
-              </div>
-            </div>
-            <div className="h-7 w-24 rounded-full bg-surface-subtle shrink-0" />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
   return (
     <div
       className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse ${className}`.trim()}

@@ -69,7 +69,7 @@ export default function CreateAppointmentModal({
       setFetchingData(true);
       try {
         const [customersRes, servicesRes] = await Promise.all([
-          api.get('/api/customers', { params: { limit: 100 } }),
+          api.get('/api/customers', { params: { limit: 50 } }),
           api.get('/api/services', { params: { limit: 100, isActive: 'true' } }),
         ]);
         setCustomers(customersRes.data.data || []);
@@ -83,6 +83,34 @@ export default function CreateAppointmentModal({
     };
     fetchData();
   }, []);
+
+  // Debounced server-side customer search so customers beyond the initial batch are reachable
+  useEffect(() => {
+    const q = customerSearch.trim();
+    if (q.length < 2) return;
+    // Skip if input already matches a selected customer's exact display label
+    if (customers.some((c) => `${c.fullName} - ${c.phone}` === q)) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get('/api/customers', {
+          params: { search: q, limit: 50 },
+        });
+        const fetched: any[] = res.data?.data || [];
+        if (fetched.length > 0) {
+          setCustomers((prev) => {
+            const byId = new Map(prev.map((c) => [c.id, c]));
+            for (const c of fetched) byId.set(c.id, c);
+            return Array.from(byId.values());
+          });
+        }
+      } catch (err) {
+        console.error('Customer search error:', err);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [customerSearch]);
 
   const selectedCustomer = customers.find((c) => c.id.toString() === customerId);
   const availableVehicles = selectedCustomer?.vehicles || [];

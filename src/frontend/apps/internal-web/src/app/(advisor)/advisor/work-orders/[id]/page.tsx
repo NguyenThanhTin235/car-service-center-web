@@ -30,6 +30,7 @@ export default function WorkOrderDetailPage() {
 
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [quoStats, setQuoStats] = useState({ quotes: 0, total: 0, approved: 0, pending: 0 });
   const [editVehicleOpen, setEditVehicleOpen] = useState(false);
   const [editCustomerOpen, setEditCustomerOpen] = useState(false);
@@ -52,6 +53,7 @@ export default function WorkOrderDetailPage() {
       if (!initialLoadDone.current) {
         setLoading(true);
       }
+      setError(null);
       const [res, quoRes] = await Promise.all([
         getWorkOrderById(id),
         getWOQuotations(id).catch(() => null),
@@ -61,8 +63,9 @@ export default function WorkOrderDetailPage() {
         setWorkOrder(res.data);
         initialLoadDone.current = true;
       } else {
-        toast.error(res.message || 'Không tìm thấy phiếu công việc');
-        router.push('/advisor/intake-queue');
+        const msg = res.message || 'Không tìm thấy phiếu công việc';
+        setError(msg);
+        toast.error(msg);
         return;
       }
 
@@ -82,13 +85,14 @@ export default function WorkOrderDetailPage() {
           pending: qPending,
         });
       }
-    } catch {
-      toast.error('Lỗi khi tải phiếu công việc');
-      router.push('/advisor/intake-queue');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi khi tải phiếu công việc';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, [id, router]);
+  }, [id]);
 
   useEffect(() => {
     fetchWO();
@@ -242,7 +246,36 @@ export default function WorkOrderDetailPage() {
     );
   }
 
-  if (!workOrder) return null;
+  if (error || !workOrder) {
+    return (
+      <div className="max-w-xl mx-auto py-16 px-4 text-center space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center mx-auto">
+          <span className="material-symbols-outlined text-[32px]">error</span>
+        </div>
+        <h2 className="text-lg font-extrabold text-zinc-900">Không thể tải phiếu công việc</h2>
+        <p className="text-xs text-slate-600">
+          {error || 'Phiếu công việc không tồn tại hoặc đã bị xóa.'}
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+          <button
+            type="button"
+            onClick={fetchWO}
+            className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px]">refresh</span>
+            <span>Thử lại</span>
+          </button>
+          <Link
+            href="/advisor/work-orders"
+            className="h-10 px-4 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-zinc-800 text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+            <span>Quay lại danh sách</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // Derived real metrics from workOrder & quoStats (100% real API fields)
   const servicesCount = workOrder.services?.length || 0;

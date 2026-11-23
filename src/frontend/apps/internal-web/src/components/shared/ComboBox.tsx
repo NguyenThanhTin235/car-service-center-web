@@ -10,6 +10,7 @@ interface Props {
   options: ComboBoxOption[];
   value: number | string;
   onChange: (val: number | string) => void;
+  onSearchChange?: (query: string) => void;
   placeholder?: string;
   allowClear?: boolean;
   className?: string;
@@ -20,6 +21,7 @@ export default function ComboBox({
   options,
   value,
   onChange,
+  onSearchChange,
   placeholder = 'Chọn hoặc nhập để tìm kiếm...',
   allowClear = true,
   className = '',
@@ -97,9 +99,11 @@ export default function ComboBox({
           placeholder={placeholder}
           value={search}
           onChange={(e) => {
-            setSearch(e.target.value);
+            const nextVal = e.target.value;
+            setSearch(nextVal);
             setIsTyping(true);
             setIsOpen(true);
+            onSearchChange?.(nextVal);
           }}
           onFocus={(e) => {
             if (disabled) return;

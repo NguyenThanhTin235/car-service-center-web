@@ -11,13 +11,10 @@ import SaaSDashboardShell, {
 
 export default function ManagerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { items: inventoryItems, categories: partCategories } = useAppSelector(
-    (state) => state.inventory
-  );
-
-  const lowStockCount = useMemo(
-    () => inventoryItems.filter((i) => i.onHand < i.reorderLevel).length,
-    [inventoryItems]
+  const inventoryItemsCount = useAppSelector((state) => state.inventory.items.length);
+  const partCategoriesCount = useAppSelector((state) => state.inventory.categories.length);
+  const lowStockCount = useAppSelector(
+    (state) => state.inventory.items.filter((i) => i.onHand < i.reorderLevel).length
   );
 
   const navItems: SaaSNavItem[] = useMemo(
@@ -30,18 +27,18 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
           {
             label: 'Kho phụ tùng',
             href: '/inventory',
-            badge: lowStockCount > 0 ? `${lowStockCount}!` : inventoryItems.length || undefined,
+            badge: lowStockCount > 0 ? `${lowStockCount}!` : inventoryItemsCount || undefined,
           },
           {
             label: 'Danh mục phụ tùng',
             href: '/part-categories',
-            badge: partCategories.length > 0 ? partCategories.length : undefined,
+            badge: partCategoriesCount > 0 ? partCategoriesCount : undefined,
           },
         ],
       },
       { label: 'Báo cáo vận hành', href: '/reports', icon: 'monitoring' },
     ],
-    [lowStockCount, inventoryItems.length, partCategories.length]
+    [lowStockCount, inventoryItemsCount, partCategoriesCount]
   );
 
   const telemetryItems: SaaSTelemetryDotItem[] = useMemo(
@@ -54,7 +51,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
       },
       {
         label: 'Mã phụ tùng (SKU)',
-        value: inventoryItems.length || '—',
+        value: inventoryItemsCount || '—',
         dotColor: '#38bdf8',
         href: '/inventory',
       },
@@ -66,7 +63,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
       },
       {
         label: 'Nhóm vật tư',
-        value: partCategories.length || '—',
+        value: partCategoriesCount || '—',
         dotColor: '#818cf8',
         href: '/part-categories',
       },
@@ -77,7 +74,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
         href: '/reports',
       },
     ],
-    [inventoryItems.length, lowStockCount, partCategories.length]
+    [inventoryItemsCount, lowStockCount, partCategoriesCount]
   );
 
   return (

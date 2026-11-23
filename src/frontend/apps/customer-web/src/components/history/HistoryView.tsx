@@ -14,6 +14,9 @@ import { fetchVehicles } from '@/store/slices/vehicleSlice';
 import { downloadHandoverPdfBlob } from '@/lib/api/work-order.api';
 import { downloadInvoicePdfBlob } from '@/lib/api/invoice.api';
 import Toast from '@/components/shared/Toast';
+import { downloadPdfBlob, formatVnd, parseComplaintText } from '@/utils/customerHelpers';
+
+const DEFAULT_COMPLAINT_FALLBACK = 'Kiểm tra bảo dưỡng định kỳ tổng quát phương tiện';
 
 const HistoryDetailModal = dynamic(() => import('./HistoryDetailModal'));
 
@@ -69,72 +72,10 @@ const formatDateTime = (value?: string | null) => {
   }
 };
 
-const formatMoney = (value?: string | number | null) => {
-  if (value === null || value === undefined) return '0 đ';
-  const num = Number(value);
-  if (isNaN(num)) return '0 đ';
-  return `${num.toLocaleString('vi-VN')} đ`;
-};
-
-const parseComplaintText = (raw?: string | null): string => {
-  if (!raw || !raw.trim()) return 'Kiểm tra bảo dưỡng định kỳ tổng quát phương tiện';
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed === 'object' && parsed !== null) {
-      const parts: string[] = [];
-      if (Array.isArray(parsed.tags) && parsed.tags.length > 0) {
-        const validTags = parsed.tags.filter((t: any) => typeof t === 'string' && t.trim().length > 0);
-        if (validTags.length > 0) parts.push(validTags.join(', '));
-      }
-      if (typeof parsed.notes === 'string' && parsed.notes.trim()) {
-        parts.push(parsed.notes.trim());
-      }
-      if (parts.length > 0) return parts.join(' - ');
-      return 'Kiểm tra bảo dưỡng định kỳ tổng quát phương tiện';
-    }
-  } catch {
-    // not JSON, fallback to plain text
-  }
-  const clean = String(raw).trim();
-  if (!clean || clean === '{}' || clean === '[]') {
-    return 'Kiểm tra bảo dưỡng định kỳ tổng quát phương tiện';
-  }
-  return clean;
-};
-
-const parseSafeText = (raw?: string | null, fallback = 'Bàn giao đầy đủ'): string => {
-  if (!raw || !raw.trim()) return fallback;
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed === 'string') return parsed.trim() || fallback;
-    if (typeof parsed === 'object' && parsed !== null) {
-      if (parsed.notes) return String(parsed.notes).trim() || fallback;
-      if (parsed.text) return String(parsed.text).trim() || fallback;
-      if (Array.isArray(parsed.items) && parsed.items.length > 0) return parsed.items.join(', ');
-    }
-  } catch {
-    // not JSON
-  }
-  return String(raw).trim() || fallback;
-};
-
-async function saveBlob(blob: Blob, fileName: string) {
-  const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', fileName);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
-}
-
 export default function HistoryView({
-  isEmbedded = false,
   onViewTracking,
   onBookNew,
 }: {
-  isEmbedded?: boolean;
   onViewTracking?: () => void;
   onBookNew?: () => void;
 }) {
@@ -227,11 +168,11 @@ export default function HistoryView({
       setDownloading(key);
       if (kind === 'handover') {
         const blob = await downloadHandoverPdfBlob(item.id);
-        await saveBlob(blob, `Bien_Ban_Ban_Giao_${item.woNumber}.pdf`);
+        downloadPdfBlob(blob, `Bien_Ban_Ban_Giao_${item.woNumber}.pdf`);
         setToastMsg(`Đã tải xuống Biên bản bàn giao #${item.woNumber}`);
       } else if (item.invoice) {
         const blob = await downloadInvoicePdfBlob(item.invoice.id);
-        await saveBlob(blob, `Hoa_Don_${item.invoice.invoice_number}.pdf`);
+        downloadPdfBlob(blob, `Hoa_Don_${item.invoice.invoice_number}.pdf`);
         setToastMsg(`Đã tải xuống Hóa đơn #${item.invoice.invoice_number}`);
       }
       setToastType('success');
@@ -253,21 +194,12 @@ export default function HistoryView({
   };
 
   return (
-    <div className={`w-full max-w-[1440px] mx-auto space-y-6 ${!isEmbedded ? 'px-4 sm:px-6 py-8' : ''}`}>
+    <div className="w-full max-w-[1440px] mx-auto space-y-6">
       {toastMsg && <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg('')} />}
 
-      {/* ================= BREADCRUMB & HEADER ================= */}
+      {/* ================= HEADER ================= */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          {!isEmbedded && (
-            <nav className="flex items-center space-x-2 text-on-surface-variant text-xs mb-1.5 font-medium">
-              <Link href="/customer" className="hover:text-primary transition-colors">
-                Trang chủ
-              </Link>
-              <span>/</span>
-              <span className="text-on-surface font-semibold">Lịch sử dịch vụ</span>
-            </nav>
-          )}
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-[22px]">history_edu</span>
@@ -357,7 +289,7 @@ export default function HistoryView({
                 Chi phí đã quyết toán
               </span>
               <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                {formatMoney(stats.totalSpent)}
+                {formatVnd(stats.totalSpent)}
               </h3>
               <p className="text-xs text-slate-500 flex items-center gap-1 pt-1">
                 <span className="material-symbols-outlined text-[16px] text-emerald-600">receipt_long</span>
@@ -543,7 +475,7 @@ export default function HistoryView({
       </div>
 
       {/* ================= HISTORY LIST ================= */}
-      {loading ? (
+      {loading && items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-3xl space-y-3">
           <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
           <p className="text-sm font-medium text-slate-500">Đang tải sổ bảo dưỡng điện tử...</p>
@@ -631,7 +563,7 @@ export default function HistoryView({
                       {item.status === 'CANCELLED' && !item.invoice ? (
                         <span className="text-xs font-semibold text-slate-400">Miễn phí kiểm tra</span>
                       ) : (
-                        formatMoney(item.invoice?.total_amount)
+                        formatVnd(item.invoice?.total_amount)
                       )}
                     </span>
                   </div>
@@ -671,7 +603,7 @@ export default function HistoryView({
                       Yêu cầu lúc tiếp nhận
                     </span>
                     <p className="font-medium text-slate-700 text-xs sm:text-sm line-clamp-1">
-                      {parseComplaintText(item.complaint)}
+                      {parseComplaintText(item.complaint, DEFAULT_COMPLAINT_FALLBACK)}
                     </p>
                   </div>
 
@@ -818,9 +750,6 @@ export default function HistoryView({
           onClose={closeDetail}
           statusConfig={STATUS_CONFIG}
           formatDateTime={formatDateTime}
-          formatMoney={formatMoney}
-          parseComplaintText={parseComplaintText}
-          parseSafeText={parseSafeText}
         />
       )}
 

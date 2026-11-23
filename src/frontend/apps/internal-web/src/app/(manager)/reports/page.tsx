@@ -1,16 +1,22 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import api from '@/lib/axios';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+
+const ChartLoadingSkeleton = () => (
+  <div className="h-[300px] w-full bg-slate-100 rounded-xl animate-pulse" />
+);
+
+const RevenueBarChart = dynamic(
+  () => import('./components/ReportsCharts').then((mod) => mod.RevenueBarChart),
+  { ssr: false, loading: ChartLoadingSkeleton }
+);
+
+const ServicesBarChart = dynamic(
+  () => import('./components/ReportsCharts').then((mod) => mod.ServicesBarChart),
+  { ssr: false, loading: ChartLoadingSkeleton }
+);
 
 type ReportType = 'revenue' | 'services' | 'inventory';
 
@@ -156,25 +162,7 @@ function RevenueSection({
           <h3 className="text-sm font-bold text-slate-900 mb-5">
             Biểu đồ biến động doanh thu theo ngày
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data} margin={{ top: 10, right: 20, left: 20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} />
-              <YAxis
-                tickFormatter={(v: number) => `${(v / 1_000_000).toFixed(1)}M`}
-                tick={{ fontSize: 11, fill: '#64748b' }}
-              />
-              <Tooltip
-                formatter={(val: any) => [`${fmtCurrency(Number(val || 0))} ₫`, 'Doanh thu']}
-                contentStyle={{
-                  fontSize: '12px',
-                  borderRadius: '10px',
-                  border: '1px solid #e2e8f0',
-                }}
-              />
-              <Bar dataKey="totalRevenue" fill="#0866ff" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <RevenueBarChart data={data} />
 
           <div className="mt-6 overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[480px]">
@@ -233,27 +221,7 @@ function ServicesSection({
           <h3 className="text-sm font-bold text-slate-900 mb-5">
             Xếp hạng dịch vụ theo số lượt thực hiện
           </h3>
-          <ResponsiveContainer width="100%" height={Math.max(260, data.length * 40)}>
-            <BarChart
-              data={data}
-              layout="vertical"
-              margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
-              <YAxis
-                dataKey="serviceName"
-                type="category"
-                width={180}
-                tick={{ fontSize: 12, fill: '#334155' }}
-              />
-              <Tooltip
-                formatter={(val: any) => [`${val} lượt`, 'Số lần']}
-                contentStyle={{ fontSize: '12px', borderRadius: '10px' }}
-              />
-              <Bar dataKey="count" fill="#0050cd" radius={[0, 6, 6, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <ServicesBarChart data={data} />
 
           <div className="mt-6 overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[480px]">

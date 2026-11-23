@@ -63,11 +63,11 @@ export default function WeeklyCalendarGrid({
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col relative">
-      <div className="overflow-x-auto styled-scrollbar">
-        <div className="min-w-[1100px]">
+      <div className="overflow-auto max-h-[70vh] styled-scrollbar">
+        <div className="min-w-[820px] lg:min-w-[1060px]">
           {/* Header Row */}
-          <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-slate-50 border-b border-slate-200 divide-x divide-slate-200">
-            <div className="p-3 text-center text-xs font-bold text-slate-700 flex items-center justify-center">
+          <div className="sticky top-0 z-20 grid grid-cols-[72px_repeat(7,1fr)] lg:grid-cols-[80px_repeat(7,1fr)] bg-slate-50/95 backdrop-blur border-b border-slate-200 divide-x divide-slate-200">
+            <div className="sticky left-0 z-30 bg-slate-50/95 p-3 text-center text-xs font-bold text-slate-700 flex items-center justify-center">
               Giờ
             </div>
             
@@ -96,9 +96,9 @@ export default function WeeklyCalendarGrid({
           {/* Time Grid Body */}
           <div className="relative divide-y divide-slate-200/70">
             {hours.map((hour, hIdx) => (
-              <div key={hIdx} className="grid grid-cols-[80px_repeat(7,1fr)] min-h-[92px] divide-x divide-slate-200/70 relative">
+              <div key={hIdx} className="grid grid-cols-[72px_repeat(7,1fr)] lg:grid-cols-[80px_repeat(7,1fr)] min-h-[92px] divide-x divide-slate-200/70 relative">
                 {/* Time label */}
-                <div className="flex items-center justify-center font-mono text-xs text-slate-700 font-bold bg-slate-50/60">
+                <div className="sticky left-0 z-10 flex items-center justify-center font-mono text-xs text-slate-700 font-bold bg-slate-50/95 backdrop-blur">
                   {hour}
                 </div>
 

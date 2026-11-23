@@ -111,6 +111,137 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
+function sendOptionalAuthError(
+  res: Response,
+  errorCode: 'TOKEN_EXPIRED' | 'SESSION_REVOKED' | 'UNAUTHORIZED',
+  message: string
+): void {
+  res.status(401).json({
+    success: false,
+    code: 401,
+    message,
+    error: { code: errorCode },
+    timestamp: new Date().toISOString(),
+  });
+}
+
+/**
+ * Optional authentication for public/customer dual-mode endpoints (e.g. AI chat).
+ * - No token -> req.user = undefined, next() (Guest mode)
+ * - Explicit Bearer token expired/revoked -> HTTP 401 so frontend interceptor can auto-refresh
+ * - Stale/invalid cookie without Bearer header -> degrades cleanly to Guest mode
+ */
+export const optionalAuthenticate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const authHeader = req.headers.authorization;
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
+  const isBearerToken = Boolean(bearerToken);
+
+  const portal = resolvePortalFromHeaders({
+    headerPortal: req.headers['x-portal'],
+    origin: req.headers.origin,
+    referer: req.headers.referer,
+  });
+
+  let token: string | null = bearerToken;
+  if (!token) {
+    if (portal === 'customer') {
+      token = req.cookies?.customer_jwt || null;
+    } else {
+      token = req.cookies?.customer_jwt || req.cookies?.jwt || null;
+    }
+  }
+
+  if (!token) {
+    req.user = undefined;
+    next();
+    return;
+  }
+
+  try {
+    const payload = verifyAccessToken(token);
+
+    if (payload.jti) {
+      const isBlacklisted = await getCache(BLACKLIST_JTI_KEY(payload.jti));
+      if (isBlacklisted) {
+        if (isBearerToken) {
+          sendOptionalAuthError(res, 'SESSION_REVOKED', 'Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.');
+          return;
+        }
+        req.user = undefined;
+        next();
+        return;
+      }
+    }
+
+    const invalidBeforeRaw = await getCache(TOKEN_INVALID_BEFORE_KEY(payload.id));
+    if (invalidBeforeRaw && payload.iat && payload.iat < Number(invalidBeforeRaw)) {
+      if (isBearerToken) {
+        sendOptionalAuthError(res, 'SESSION_REVOKED', 'Phiên đăng nhập đã hết hiệu lực do thay đổi bảo mật.');
+        return;
+      }
+      req.user = undefined;
+      next();
+      return;
+    }
+
+    const isRevoked = await getCache(`revoked_user:${payload.id}`);
+    if (isRevoked) {
+      if (isBearerToken) {
+        sendOptionalAuthError(res, 'SESSION_REVOKED', 'Tài khoản đã bị tạm khóa và phiên đăng nhập bị thu hồi.');
+        return;
+      }
+      req.user = undefined;
+      next();
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: payload.id },
+      select: {
+        is_active: true,
+        roles: {
+          select: { role: { select: { name: true } } },
+        },
+      },
+    });
+
+    if (!user || !user.is_active) {
+      if (isBearerToken) {
+        sendOptionalAuthError(res, 'UNAUTHORIZED', 'Tài khoản không tồn tại hoặc đã bị vô hiệu hóa.');
+        return;
+      }
+      req.user = undefined;
+      next();
+      return;
+    }
+
+    const liveRoles = user.roles.map((r: any) => r.role.name);
+    req.user = {
+      ...payload,
+      roles: liveRoles.length > 0 ? liveRoles : payload.roles,
+    };
+    next();
+  } catch (err: any) {
+    if (isBearerToken) {
+      const errorCode = err?.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'UNAUTHORIZED';
+      sendOptionalAuthError(
+        res,
+        errorCode,
+        errorCode === 'TOKEN_EXPIRED'
+          ? 'Phiên đăng nhập đã hết hạn.'
+          : 'Phiên đăng nhập không hợp lệ.'
+      );
+      return;
+    }
+    req.user = undefined;
+    next();
+  }
+};
+
 /**
  * Authorize by role(s)
  * Usage: authorize('ADMIN') or authorize('ADMIN', 'MANAGER')
