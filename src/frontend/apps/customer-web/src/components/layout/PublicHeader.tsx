@@ -112,6 +112,14 @@ export default function PublicHeader() {
                         <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: '18px' }}>receipt_long</span>
                         Hóa đơn dịch vụ
                       </Link>
+                      <Link
+                        href="/customer/warranty"
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-emerald-600" style={{ fontSize: '18px' }}>verified_user</span>
+                        Sổ bảo hành điện tử
+                      </Link>
                       <div className="px-4 py-2 hover:bg-red-50 cursor-pointer text-red-600 transition-colors">
                         <LogoutButton iconOnly={false} className="w-full text-left" />
                       </div>

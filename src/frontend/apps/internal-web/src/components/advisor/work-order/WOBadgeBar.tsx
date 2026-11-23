@@ -8,6 +8,7 @@ type Props = {
   vehicleName: string;
   customerName: string;
   statusBadge: string;
+  orderType?: string;
   inlineStatus?: boolean;
 };
 
@@ -50,6 +51,7 @@ export default function WOBadgeBar({
   vehicleName,
   customerName,
   statusBadge,
+  orderType,
   inlineStatus = false
 }: Props) {
   const mappedStatus = statusMap[statusBadge] || statusBadge;
@@ -74,6 +76,18 @@ export default function WOBadgeBar({
             <span className="font-semibold text-on-surface">{vehicleName}</span>
             <span className="text-outline font-bold">·</span>
             <span className="text-on-surface-variant">{customerName}</span>
+            {orderType === 'WARRANTY' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300">
+                <span className="material-symbols-outlined text-[14px]">verified_user</span>
+                Bảo hành (0đ)
+              </span>
+            )}
+            {orderType === 'MIXED' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                <span className="material-symbols-outlined text-[14px]">tune</span>
+                Hỗn hợp
+              </span>
+            )}
             {statusBadge === 'BILLING_REQUESTED' && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300">
                 Chờ thanh toán

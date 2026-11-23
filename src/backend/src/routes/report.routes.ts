@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import { getOperationalReport, getWarrantyReport } from '../controllers/report.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 

@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-type ReportType = 'revenue' | 'services' | 'inventory';
+type ReportType = 'revenue' | 'services' | 'inventory' | 'warranty';
 
 interface RevenueRow {
   date: string;
@@ -34,10 +34,61 @@ interface InventoryRow {
   deficit: number;
 }
 
+interface WarrantyData {
+  period: { start: string; end: string };
+  operationalMetrics: {
+    totalServedCount: number;
+    warrantyCasesCount: number;
+    warrantyRate: number;
+  };
+  costMetrics: {
+    totalWarrantyMwaCost: number;
+    totalPartsQuantity: number;
+  };
+  topFaultyParts: Array<{
+    itemId: number;
+    sku: string;
+    partName: string;
+    categoryName: string;
+    faultyCount: number;
+    totalWarrantyMwaCost: number;
+    defectRate: number;
+    supplier: {
+      supplierId: number | null;
+      supplierName: string;
+      supplierPhone: string | null;
+      supplierEmail: string | null;
+      supplierContact: string | null;
+    };
+  }>;
+  technicalAnalysis: {
+    byTechnician: Array<{
+      technicianId: number;
+      technicianName: string;
+      position?: string;
+      warrantyCasesCount: number;
+      workOrders: Array<{
+        warrantyWoId: number;
+        warrantyWoNumber: string;
+        parentWoId?: number | null;
+        parentWoNumber?: string | null;
+        licensePlate?: string;
+        createdAt: string;
+      }>;
+    }>;
+    byCategory: Array<{
+      categoryId: number;
+      categoryName: string;
+      warrantyCasesCount: number;
+      totalWarrantyMwaCost: number;
+    }>;
+  };
+}
+
 interface ReportData {
   type: ReportType;
   period: { start: string; end: string } | null;
-  data: RevenueRow[] | ServiceRow[] | InventoryRow[];
+  data: RevenueRow[] | ServiceRow[] | InventoryRow[] | WarrantyData;
   summary: {
     totalRevenue?: number;
     totalInvoices?: number;
@@ -49,7 +100,7 @@ interface ReportData {
 const fmtCurrency = (n: number) =>
   new Intl.NumberFormat('vi-VN').format(Math.round(n));
 
-// ============ Report Type Button (Blue SaaS Theme) ============
+// ============ Report Type Button ============
 function TypeBtn({
   active,
   label,
@@ -65,10 +116,10 @@ function TypeBtn({
     <button
       type="button"
       onClick={onClick}
-      className={`h-10 flex items-center gap-2 px-4 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+      className={`h-10 px-3.5 sm:px-4 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
         active
-          ? 'bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white border-[#0866ff] shadow-sm shadow-[#0866ff]/20'
-          : 'bg-white text-slate-700 border-slate-200/90 hover:bg-slate-50'
+          ? 'bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white shadow-sm shadow-[#0866ff]/25 font-bold'
+          : 'bg-white hover:bg-slate-100/90 text-slate-600 border border-slate-200/80 shadow-2xs'
       }`}
     >
       <span className="material-symbols-outlined text-[18px]">{icon}</span>
@@ -77,39 +128,54 @@ function TypeBtn({
   );
 }
 
-// ============ Summary Metric Card ============
+// ============ KPI Summary Card ============
 function SummaryCard({
   label,
   value,
   icon,
-  variant = 'blue',
+  subtext,
+  badge,
+  variant = 'default',
 }: {
   label: string;
   value: string;
   icon: string;
-  variant?: 'blue' | 'danger';
+  subtext?: string;
+  badge?: string;
+  variant?: 'default' | 'emerald' | 'amber' | 'blue';
 }) {
+  const bgColors = {
+    default: 'bg-slate-50 text-slate-600',
+    emerald: 'bg-emerald-50 text-emerald-700',
+    amber: 'bg-amber-50 text-amber-700',
+    blue: 'bg-blue-50 text-blue-700',
+  };
+
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-200/80 flex items-center gap-4 shadow-2xs">
+    <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex items-center gap-4">
       <div
-        className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${variant === 'danger'
-          ? 'bg-rose-50 text-rose-600'
-          : 'bg-blue-50 text-[#0050cd]'
-          }`}
+        className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${bgColors[variant]}`}
       >
         <span className="material-symbols-outlined text-[24px]">{icon}</span>
       </div>
-      <div>
-        <div className="font-mono tabular-nums text-2xl font-extrabold text-slate-900 leading-tight">
-          {value}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <div className="font-mono tabular-nums text-2xl font-extrabold text-slate-900 leading-tight">
+            {value}
+          </div>
+          {badge && (
+            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800">
+              {badge}
+            </span>
+          )}
         </div>
-        <div className="text-xs text-slate-500 mt-1 font-medium">{label}</div>
+        <div className="text-xs text-slate-500 mt-0.5 font-medium">{label}</div>
+        {subtext && <div className="text-[11px] text-slate-400 mt-0.5">{subtext}</div>}
       </div>
     </div>
   );
 }
 
-// ============ Empty State Component ============
 function EmptyState({ message }: { message?: string }) {
   return (
     <div className="text-center py-14 px-6 bg-white rounded-2xl border border-dashed border-slate-300">
@@ -119,9 +185,7 @@ function EmptyState({ message }: { message?: string }) {
       <p className="text-sm font-bold text-slate-700">
         {message || 'Không có dữ liệu trong khoảng thời gian đã chọn.'}
       </p>
-      <p className="text-xs text-slate-500 mt-1">
-        Vui lòng thử chọn một khoảng thời gian khác.
-      </p>
+      <p className="text-xs text-slate-500 mt-1">Vui lòng thử chọn một khoảng thời gian khác.</p>
     </div>
   );
 }
@@ -141,11 +205,13 @@ function RevenueSection({
           label="Tổng doanh thu đã thanh toán"
           value={`${fmtCurrency(summary.totalRevenue ?? 0)} ₫`}
           icon="payments"
+          variant="emerald"
         />
         <SummaryCard
           label="Số lượt hóa đơn thực thu"
           value={`${summary.totalInvoices ?? 0} hóa đơn`}
           icon="receipt_long"
+          variant="blue"
         />
       </div>
 
@@ -175,33 +241,6 @@ function RevenueSection({
               <Bar dataKey="totalRevenue" fill="#0866ff" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-
-          <div className="mt-6 overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[480px]">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4">Ngày</th>
-                  <th className="py-3 px-4 text-center">Số hóa đơn</th>
-                  <th className="py-3 px-4 text-right">Tổng doanh thu</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {data.map((row) => (
-                  <tr key={row.date} className="hover:bg-blue-50/30 transition-colors">
-                    <td className="py-3 px-4 font-mono tabular-nums text-slate-700">
-                      {new Date(row.date).toLocaleDateString('vi-VN')}
-                    </td>
-                    <td className="py-3 px-4 text-center font-mono tabular-nums font-semibold">
-                      {row.count}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono tabular-nums font-bold text-[#0050cd]">
-                      {fmtCurrency(row.totalRevenue)} ₫
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
       )}
     </div>
@@ -218,74 +257,40 @@ function ServicesSection({
 }) {
   return (
     <div className="space-y-6">
-      <div className="max-w-md">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <SummaryCard
           label="Tổng lượt dịch vụ thực hiện"
           value={`${summary.totalWorkOrders ?? 0} lượt`}
-          icon="build"
+          icon="assignment_turned_in"
+        />
+        <SummaryCard
+          label="Danh mục dịch vụ cung cấp"
+          value={`${data.length} dịch vụ`}
+          icon="category"
         />
       </div>
 
       {data.length === 0 ? (
-        <EmptyState message="Không có dịch vụ nào được thực hiện trong khoảng thời gian này." />
+        <EmptyState message="Không có dữ liệu dịch vụ trong khoảng thời gian này." />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs">
-          <h3 className="text-sm font-bold text-slate-900 mb-5">
-            Xếp hạng dịch vụ theo số lượt thực hiện
-          </h3>
-          <ResponsiveContainer width="100%" height={Math.max(260, data.length * 40)}>
-            <BarChart
-              data={data}
-              layout="vertical"
-              margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
-              <YAxis
-                dataKey="serviceName"
-                type="category"
-                width={180}
-                tick={{ fontSize: 12, fill: '#334155' }}
-              />
+          <h3 className="text-sm font-bold text-slate-900 mb-5">Top dịch vụ được yêu cầu nhiều nhất</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={data} margin={{ top: 10, right: 20, left: 20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="serviceName" tick={{ fontSize: 11, fill: '#64748b' }} />
+              <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
               <Tooltip
-                formatter={(val: any) => [`${val} lượt`, 'Số lần']}
-                contentStyle={{ fontSize: '12px', borderRadius: '10px' }}
+                formatter={(val: any) => [val, 'Số lượt']}
+                contentStyle={{
+                  fontSize: '12px',
+                  borderRadius: '10px',
+                  border: '1px solid #e2e8f0',
+                }}
               />
-              <Bar dataKey="count" fill="#0050cd" radius={[0, 6, 6, 0]} />
+              <Bar dataKey="count" fill="#0050cd" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-
-          <div className="mt-6 overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[480px]">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4">Tên dịch vụ</th>
-                  <th className="py-3 px-4 text-center">Số lượt thực hiện</th>
-                  <th className="py-3 px-4 text-right">Tỷ trọng</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {data.map((row) => {
-                  const pct = summary.totalWorkOrders
-                    ? ((row.count / summary.totalWorkOrders) * 100).toFixed(1)
-                    : '0';
-                  return (
-                    <tr key={row.serviceId} className="hover:bg-blue-50/30 transition-colors">
-                      <td className="py-3 px-4 font-semibold text-slate-800">
-                        {row.serviceName}
-                      </td>
-                      <td className="py-3 px-4 text-center font-mono tabular-nums font-bold text-[#0050cd]">
-                        {row.count}
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono tabular-nums text-slate-500">
-                        {pct}%
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
         </div>
       )}
     </div>
@@ -302,101 +307,330 @@ function InventorySection({
 }) {
   return (
     <div className="space-y-6">
-      <div className="max-w-md">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <SummaryCard
-          label="Mã phụ tùng dưới mức cảnh báo tồn kho"
-          value={`${summary.lowStockCount ?? 0} mã`}
+          label="Phụ tùng dưới mức tồn an toàn"
+          value={`${summary.lowStockCount ?? 0} mục`}
           icon="warning"
-          variant={summary.lowStockCount && summary.lowStockCount > 0 ? 'danger' : 'blue'}
+          variant="amber"
         />
       </div>
 
       {data.length === 0 ? (
-        <div className="text-center py-14 px-6 bg-blue-50/60 rounded-2xl border border-blue-200/80 text-[#0050cd]">
-          <span className="material-symbols-outlined text-[48px] block mb-3 text-[#0866ff]">
-            check_circle
-          </span>
-          <h3 className="text-base font-bold">Kho phụ tùng đang đảm bảo</h3>
-          <p className="text-xs text-slate-600 mt-1">
-            Tất cả các mặt hàng phụ tùng đều đạt hoặc vượt mức tồn kho an toàn quy định.
-          </p>
+        <div className="text-center py-14 px-6 bg-white rounded-2xl border border-slate-200">
+          <p className="text-sm font-bold text-emerald-700">Tồn kho phụ tùng đều đạt mức an toàn!</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
-          <div className="p-4 bg-rose-50 border-b border-rose-200/80">
-            <h3 className="text-xs font-bold text-rose-800 flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">error</span>
-              <span>Danh sách các mặt hàng phụ tùng cần lên đơn đặt nhập thêm</span>
-            </h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[680px]">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4">Mã SKU</th>
-                  <th className="py-3 px-4">Tên phụ tùng</th>
-                  <th className="py-3 px-4">Danh mục</th>
-                  <th className="py-3 px-4 text-center">Tồn kho thực tế</th>
-                  <th className="py-3 px-4 text-center">Mức cảnh báo</th>
-                  <th className="py-3 px-4 text-center text-rose-600">Số lượng thiếu</th>
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs overflow-x-auto">
+          <table className="w-full text-left text-xs text-slate-700">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+              <tr>
+                <th className="p-3">Mã SKU</th>
+                <th className="p-3">Tên phụ tùng</th>
+                <th className="p-3">Tồn kho</th>
+                <th className="p-3">Định mức an toàn</th>
+                <th className="p-3">Thiếu hụt</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {data.map((item) => (
+                <tr key={item.id} className="hover:bg-slate-50">
+                  <td className="p-3 font-mono font-bold">{item.sku}</td>
+                  <td className="p-3 font-semibold">{item.name}</td>
+                  <td className="p-3 font-mono">{item.onHand}</td>
+                  <td className="p-3 font-mono">{item.reorderLevel}</td>
+                  <td className="p-3 font-mono font-bold text-red-600">-{item.deficit}</td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {data.map((row) => (
-                  <tr key={row.id} className="hover:bg-rose-50/20 transition-colors">
-                    <td className="py-3 px-4 font-mono tabular-nums font-bold text-slate-700">
-                      {row.sku}
-                    </td>
-                    <td className="py-3 px-4 font-semibold text-slate-800">{row.name}</td>
-                    <td className="py-3 px-4 text-slate-500">{row.categoryName}</td>
-                    <td className="py-3 px-4 text-center font-mono tabular-nums font-bold text-rose-600">
-                      {row.onHand}
-                    </td>
-                    <td className="py-3 px-4 text-center font-mono tabular-nums text-slate-500">
-                      {row.reorderLevel}
-                    </td>
-                    <td className="py-3 px-4 text-center font-mono tabular-nums font-bold text-rose-600">
-                      +{row.deficit}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   );
 }
 
-// ============ Main Operational Reports Page ============
-export default function OperationalReportsPage() {
+// ============ Section 4: WARRANTY REPORT (UC-87) ============
+function WarrantySection({ data }: { data: WarrantyData }) {
+  const [activeAnalysis, setActiveAnalysis] = useState<'TECH' | 'CAT'>('TECH');
+
+  const handleExportCsv = () => {
+    const headers = [
+      'Mã SKU',
+      'Tên phụ tùng',
+      'Nhóm',
+      'Số lượng lỗi',
+      'Tỷ lệ lỗi (%)',
+      'Chi phí vốn MWA (VNĐ)',
+      'Nhà cung cấp',
+      'SĐT NCC',
+      'Người liên hệ',
+    ];
+
+    const rows = data.topFaultyParts.map((p) => [
+      `"${p.sku}"`,
+      `"${p.partName}"`,
+      `"${p.categoryName}"`,
+      p.faultyCount,
+      `${p.defectRate}%`,
+      p.totalWarrantyMwaCost,
+      `"${p.supplier.supplierName}"`,
+      `"${p.supplier.supplierPhone || ''}"`,
+      `"${p.supplier.supplierContact || ''}"`,
+    ]);
+
+    const csvContent =
+      'data:text/csv;charset=utf-8,\uFEFF' +
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Bao_Cao_Bao_Hanh_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* 4 Core KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <SummaryCard
+          label="Lượt xe tiếp nhận bảo hành"
+          value={`${data.operationalMetrics.warrantyCasesCount} xe`}
+          icon="verified_user"
+          variant="amber"
+          subtext={`Trên tổng ${data.operationalMetrics.totalServedCount} lượt phục vụ`}
+        />
+        <SummaryCard
+          label="Tỷ lệ xe bảo hành"
+          value={`${data.operationalMetrics.warrantyRate}%`}
+          icon="pie_chart"
+          variant="blue"
+          subtext="Tỷ lệ lỗi quay lại xưởng"
+        />
+        <SummaryCard
+          label="Chi phí vốn thiệt hại (MWA)"
+          value={`${fmtCurrency(data.costMetrics.totalWarrantyMwaCost)} ₫`}
+          icon="account_balance_wallet"
+          variant="emerald"
+          subtext="Giá vốn xuất kho phụ tùng"
+        />
+        <SummaryCard
+          label="Linh kiện bảo hành đã xuất"
+          value={`${data.costMetrics.totalPartsQuantity} món`}
+          icon="inventory_2"
+          variant="default"
+          subtext="Linh kiện thay thế miễn phí"
+        />
+      </div>
+
+      {/* Chart: Technical Analysis by Technician or Category */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">
+              Phân tích lỗi kỹ thuật lặp lại (Chất lượng xưởng)
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Thống kê sự cố bảo hành theo thợ thi công phiếu gốc hoặc nhóm dịch vụ
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl">
+            <button
+              onClick={() => setActiveAnalysis('TECH')}
+              className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                activeAnalysis === 'TECH'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Theo Kỹ thuật viên ({data.technicalAnalysis.byTechnician.length})
+            </button>
+            <button
+              onClick={() => setActiveAnalysis('CAT')}
+              className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                activeAnalysis === 'CAT'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Theo Nhóm dịch vụ ({data.technicalAnalysis.byCategory.length})
+            </button>
+          </div>
+        </div>
+
+        {activeAnalysis === 'TECH' ? (
+          data.technicalAnalysis.byTechnician.length === 0 ? (
+            <EmptyState message="Chưa ghi nhận sự cố lặp lại theo kỹ thuật viên trong kỳ." />
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart
+                data={data.technicalAnalysis.byTechnician}
+                margin={{ top: 10, right: 20, left: 10, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="technicianName" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+                <Tooltip
+                  formatter={(val: any) => [val, 'Số vụ bảo hành']}
+                  contentStyle={{
+                    fontSize: '12px',
+                    borderRadius: '10px',
+                    border: '1px solid #e2e8f0',
+                  }}
+                />
+                <Bar dataKey="warrantyCasesCount" fill="#e11d48" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )
+        ) : data.technicalAnalysis.byCategory.length === 0 ? (
+          <EmptyState message="Chưa ghi nhận sự cố theo nhóm dịch vụ trong kỳ." />
+        ) : (
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart
+              data={data.technicalAnalysis.byCategory}
+              margin={{ top: 10, right: 20, left: 10, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="categoryName" tick={{ fontSize: 11, fill: '#64748b' }} />
+              <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+              <Tooltip
+                formatter={(val: any) => [val, 'Số vụ bảo hành']}
+                contentStyle={{
+                  fontSize: '12px',
+                  borderRadius: '10px',
+                  border: '1px solid #e2e8f0',
+                }}
+              />
+              <Bar dataKey="warrantyCasesCount" fill="#f59e0b" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Table: Top Faulty Parts & Suppliers for Reimbursement */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+        <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">
+              Danh sách phụ tùng hư hỏng nhiều nhất & Nhà cung cấp bồi hoàn
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Thông tin liên hệ NCC để xưởng thực hiện thủ tục yêu cầu bồi hoàn phụ tùng lỗi
+            </p>
+          </div>
+
+          <button
+            onClick={handleExportCsv}
+            disabled={data.topFaultyParts.length === 0}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer self-start sm:self-auto"
+          >
+            <span className="material-symbols-outlined text-[17px]">download</span>
+            <span>Xuất file CSV báo cáo</span>
+          </button>
+        </div>
+
+        {data.topFaultyParts.length === 0 ? (
+          <div className="p-8 text-center text-slate-500 text-xs">
+            Chưa phát sinh phụ tùng bảo hành xuất kho trong khoảng thời gian này.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                <tr>
+                  <th className="py-3 px-4">Mã SKU</th>
+                  <th className="py-3 px-4">Tên linh kiện</th>
+                  <th className="py-3 px-4">Nhóm</th>
+                  <th className="py-3 px-4">Số lượng hỏng</th>
+                  <th className="py-3 px-4">Tỷ lệ lỗi</th>
+                  <th className="py-3 px-4">Giá vốn MWA</th>
+                  <th className="py-3 px-4">Nhà cung cấp bồi hoàn</th>
+                  <th className="py-3 px-4">Liên hệ NCC</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {data.topFaultyParts.map((part) => (
+                  <tr key={part.itemId} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{part.sku}</td>
+                    <td className="py-3.5 px-4 font-bold text-slate-900">{part.partName}</td>
+                    <td className="py-3.5 px-4 text-slate-500">{part.categoryName}</td>
+                    <td className="py-3.5 px-4">
+                      <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-bold font-mono">
+                        {part.faultyCount} cái
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono font-semibold text-slate-700">
+                      {part.defectRate}%
+                    </td>
+                    <td className="py-3.5 px-4 font-mono font-bold text-emerald-700">
+                      {fmtCurrency(part.totalWarrantyMwaCost)} ₫
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <strong className="text-slate-900 block font-semibold">
+                        {part.supplier.supplierName}
+                      </strong>
+                      {part.supplier.supplierContact && (
+                        <span className="text-[11px] text-slate-500">
+                          LH: {part.supplier.supplierContact}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
+                      {part.supplier.supplierPhone || part.supplier.supplierEmail || 'Chưa cập nhật'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============ Main Report Component ============
+export default function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType>('revenue');
-  const [startDate, setStartDate] = useState(() => {
+  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [hasLoaded, setHasLoaded] = useState<boolean>(false);
+
+  const [startDate, setStartDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(1);
     return d.toISOString().slice(0, 10);
   });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [reportData, setReportData] = useState<ReportData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const [endDate, setEndDate] = useState<string>(() => {
+    return new Date().toISOString().slice(0, 10);
+  });
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string> = { type: reportType };
-      if (reportType !== 'inventory') {
-        params.start = startDate;
-        params.end = endDate;
-      }
-      const res = await api.get('/api/reports/operational', { params });
-      if (res.data?.success) {
+      if (reportType === 'warranty') {
+        const res = await api.get('/api/reports/warranty', {
+          params: { startDate, endDate },
+        });
+        setReportData({
+          type: 'warranty',
+          period: res.data.data.period,
+          data: res.data.data,
+          summary: {},
+        });
+      } else {
+        const res = await api.get('/api/reports/operational', {
+          params: { type: reportType, start: startDate, end: endDate },
+        });
         setReportData(res.data.data);
-        setHasLoaded(true);
       }
-    } catch (err) {
-      console.error('Lỗi tải báo cáo vận hành:', err);
+      setHasLoaded(true);
+    } catch (err: any) {
+      console.error('Lỗi tải báo cáo:', err);
     } finally {
       setLoading(false);
     }
@@ -420,16 +654,19 @@ export default function OperationalReportsPage() {
       {/* Header */}
       <div>
         <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
-          Báo cáo vận hành
+          Báo cáo quản trị & Vận hành
         </h1>
+        <p className="text-xs text-slate-500 mt-1">
+          Theo dõi doanh thu, dịch vụ, kho phụ tùng và phân tích chất lượng bảo hành xưởng
+        </p>
       </div>
 
-      {/* Control Toolbar: Tabs & Date Filters in one unified row */}
+      {/* Control Toolbar */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs flex flex-col xl:flex-row xl:items-center justify-between gap-3.5">
         <div className="flex flex-wrap items-center gap-2">
           <TypeBtn
             active={reportType === 'revenue'}
-            label="Báo cáo Doanh thu"
+            label="Doanh thu"
             icon="payments"
             onClick={() => handleTypeChange('revenue')}
           />
@@ -444,6 +681,12 @@ export default function OperationalReportsPage() {
             label="Tồn kho phụ tùng"
             icon="inventory_2"
             onClick={() => handleTypeChange('inventory')}
+          />
+          <TypeBtn
+            active={reportType === 'warranty'}
+            label="Báo cáo Bảo hành (UC-87)"
+            icon="verified_user"
+            onClick={() => handleTypeChange('warranty')}
           />
         </div>
 
@@ -518,6 +761,9 @@ export default function OperationalReportsPage() {
               data={reportData.data as InventoryRow[]}
               summary={reportData.summary}
             />
+          )}
+          {reportData.type === 'warranty' && (
+            <WarrantySection data={reportData.data as WarrantyData} />
           )}
         </>
       ) : null}

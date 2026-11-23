@@ -301,6 +301,19 @@ export default function WorkOrderDetailPage() {
             <span className="font-mono font-extrabold text-zinc-900 tracking-tight text-sm sm:text-base">
               {workOrder.wo_number}
             </span>
+
+            {(workOrder as any).order_type === 'WARRANTY' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300">
+                <span className="material-symbols-outlined text-[14px]">verified_user</span>
+                Bảo hành (0đ)
+              </span>
+            )}
+            {(workOrder as any).order_type === 'MIXED' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                <span className="material-symbols-outlined text-[14px]">tune</span>
+                Hỗn hợp
+              </span>
+            )}
           </div>
 
           {/* Center: Chevron Status Pipeline Stepper */}

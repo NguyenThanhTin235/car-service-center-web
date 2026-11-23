@@ -6,6 +6,10 @@ export interface CreateAppointmentDto {
   scheduled_date: string;
   scheduled_time: string;
   notes?: string;
+  is_warranty?: boolean;
+  warranty_item_ids?: string[];
+  symptoms_description?: string;
+  evidence_urls?: string[];
 }
 
 export interface UpdateAppointmentDto {

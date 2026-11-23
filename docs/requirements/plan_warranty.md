@@ -194,23 +194,22 @@ flowchart TD
 
 ---
 
-## 📦 PHẦN 7: Giao diện Người dùng (Frontend Implementation)
+## 📦 PHẦN 7: Giao diện Người dùng (Frontend Implementation) [✅ ĐÃ HOÀN THÀNH 100%]
 
 ### 7.1. Ứng dụng Khách hàng (`customer-web`)
 | Trang / Component | Use Case | Mô tả giao diện |
 |---|:---:|---|
-| `app/(customer)/customer/warranty/page.tsx` | **UC-81** | **Sổ bảo hành điện tử:** Danh sách xe của khách, thẻ danh mục dịch vụ/phụ tùng kèm badge xanh (*Còn bảo hành - X ngày / Y km*) hoặc xám (*Hết hạn*). Có nút *"Đặt lịch bảo hành ngay"*. |
-| `components/appointments/CreateWarrantyModal.tsx` | **UC-82** | **Modal Đặt lịch bảo hành:** Chọn hạng mục bảo hành bị lỗi, mô tả sự cố (tiếng kêu, rung lắc...), upload ảnh/video, chọn giờ hẹn còn trống. |
+| `app/(customer)/customer/warranty/page.tsx` & `components/warranty/WarrantyView.tsx` | **UC-81** | **Sổ bảo hành điện tử:** Danh sách xe của khách, thẻ danh mục dịch vụ/phụ tùng kèm badge xanh (*Còn bảo hành - X ngày / Y km*), vàng (*Quá hạn nhẹ - Đủ điều kiện Thiện chí*), hoặc xám (*Hết hạn*). Có nút *"Đặt lịch bảo hành ngay"*. |
+| `app/(customer)/customer/appointments/new/page.tsx` | **UC-82** | **Đặt lịch bảo hành:** Switch chuyển đổi "Dịch vụ thường" và "Bảo hành (0đ)", chọn xe tự động tải linh kiện/dịch vụ bảo hành, bắt buộc chọn ít nhất 1 mục, bắt buộc mô tả sự cố, đính kèm minh chứng. |
 
 ### 7.2. Ứng dụng Nội bộ (`internal-web`)
 | Trang / Component | Use Case | Mô tả giao diện |
 |---|:---:|---|
-| `components/intake/WarrantyIntakeModal.tsx` | **UC-83** | **Tiếp nhận bảo hành:** Ô nhập ODO hiện tại, kiểm tra chống tua ODO với phiếu gốc; nút *"Gửi yêu cầu thiện chí"* khi quá hạn nhẹ. |
-| `components/advisor/work-order/tabs/TabJob.tsx` & `TabParts.tsx` | **UC-84** | **Lập phiếu bảo hành:** Checkbox `is_warranty` trên từng công việc và phụ tùng, tự nhảy đơn giá 0đ. |
-| `components/advisor/work-order/tabs/TabQuotation.tsx` | **UC-84** | Badge *"Báo giá Bảo hành 0đ"*, cho phép duyệt nhanh để thi công. |
-| `app/(dashboard)/staff/billing/[id]/page.tsx` | **UC-85** | Xem trước hóa đơn 0đ, nút phát hành hóa đơn tự động chuyển `PAID` và `FINANCIAL_CLEARED`. |
+| `components/intake/WarrantyIntakeModal.tsx` & `app/(dashboard)/staff/intake/page.tsx` | **UC-83** | **Tiếp nhận bảo hành:** Chọn xe, chọn phiếu gốc, ô nhập ODO hiện tại và xác thực chống tua ODO với phiếu gốc; nút *"Đề xuất bảo hành thiện chí"* khi quá hạn nhẹ. |
+| `components/advisor/work-order/` (`WOBadgeBar.tsx`, `TabQuotation.tsx`, `[id]/page.tsx`) | **UC-84** | **Lập phiếu bảo hành:** Badge *"Bảo hành (0đ)"*, Báo giá 0đ, cho phép Cố vấn duyệt nhanh để chuyển thi công và giữ kho phụ tùng (`RESERVED`). |
+| `app/(dashboard)/staff/billing/[id]/page.tsx` | **UC-85** | Banner hóa đơn 0đ, nút phát hành hóa đơn tự động chuyển `PAID` và thông quan xuất xưởng `FINANCIAL_CLEARED`. |
 | `app/(manager)/warranty/page.tsx` | **UC-86** | **Hàng đợi Phê duyệt Thiện chí:** Danh sách yêu cầu chờ duyệt; popup thẩm định chi tiết khách hàng; 3 lựa chọn hỗ trợ (`100%`, `Tiền công`, `% Giảm trừ`); bắt buộc nhập lý do phê duyệt/từ chối. |
-| `app/(manager)/reports/page.tsx` (Tab Bảo hành) | **UC-87** | **Báo cáo Bảo hành Quản trị:** 4 thẻ KPI (Lượt xe, Tỷ lệ %, Chi phí MWA, Số phụ tùng lỗi), Biểu đồ phân tích lỗi theo thợ, Bảng linh kiện hỏng kèm Nhà cung cấp và nút Xuất CSV/PDF. |
+| `app/(manager)/reports/page.tsx` (Tab Báo cáo Bảo hành) | **UC-87** | **Báo cáo Bảo hành Quản trị:** 4 thẻ KPI (Lượt xe, Tỷ lệ %, Chi phí MWA, Số phụ tùng lỗi), Biểu đồ phân tích lỗi theo thợ / nhóm dịch vụ, Bảng linh kiện hỏng kèm Nhà cung cấp và nút Xuất CSV. |
 
 ---
 

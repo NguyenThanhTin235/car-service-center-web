@@ -1,4 +1,4 @@
-﻿import prisma from '../utils/prisma';
+import prisma from '../utils/prisma';
 import { InvoiceStatus, MovementType, WorkOrderType } from '@prisma/client';
 import {
   WarrantyReportFilterDto,

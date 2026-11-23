@@ -25,8 +25,9 @@ import ConfirmModal from '@/components/shared/ConfirmModal';
 import TrackingView from '@/components/tracking/TrackingView';
 import InvoicesView from '@/components/invoices/InvoicesView';
 import HistoryView from '@/components/history/HistoryView';
+import WarrantyView from '@/components/warranty/WarrantyView';
 
-export type TabKey = 'profile' | 'vehicles' | 'appointments' | 'tracking' | 'invoices' | 'history';
+export type TabKey = 'profile' | 'vehicles' | 'appointments' | 'tracking' | 'invoices' | 'history' | 'warranty';
 
 // Vehicle Form Types & Presets
 interface VehicleFormData {
@@ -695,6 +696,7 @@ export default function ProfilePage() {
     { key: 'tracking', label: 'Tiến độ sửa chữa', icon: 'car_repair' },
     { key: 'invoices', label: 'Hóa đơn dịch vụ', icon: 'receipt_long' },
     { key: 'history', label: 'Lịch sử sửa chữa', icon: 'history' },
+    { key: 'warranty', label: 'Sổ bảo hành điện tử', icon: 'verified_user' },
   ];
 
   // Selected vehicle for step 3 summary
@@ -1233,6 +1235,13 @@ export default function ProfilePage() {
           {activeTab === 'history' && (
             <div className="space-y-6">
               <HistoryView isEmbedded={true} />
+            </div>
+          )}
+
+          {/* TAB 7: SỔ BẢO HÀNH ĐIỆN TỬ (UC-81) */}
+          {activeTab === 'warranty' && (
+            <div className="space-y-6">
+              <WarrantyView isEmbedded={true} />
             </div>
           )}
 

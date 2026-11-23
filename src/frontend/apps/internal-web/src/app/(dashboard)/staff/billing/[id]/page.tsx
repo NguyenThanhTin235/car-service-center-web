@@ -136,6 +136,31 @@ export default function InvoiceDetailPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       {/* 1. Header Toolbar */}
+      {invoice.totalAmount === 0 && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <span className="material-symbols-outlined text-2xl">verified</span>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-emerald-900">
+                Hóa đơn dịch vụ bảo hành 0 đồng (UC-85)
+              </h3>
+              <p className="text-xs text-emerald-700 mt-0.5">
+                {invoice.status === 'PAID'
+                  ? 'Hóa đơn đã được quyết toán tự động. Lệnh sửa chữa đã chuyển sang trạng thái ĐÃ QUYẾT TOÁN TÀI CHÍNH (FINANCIAL_CLEARED), Cổng xuất xưởng sẵn sàng bàn giao xe.'
+                  : 'Hóa đơn bảo hành miễn phí 100%. Khi nhấn Phát hành, hệ thống sẽ tự động quyết toán và mở khóa Cổng xuất xưởng.'}
+              </p>
+            </div>
+          </div>
+          {invoice.status === 'PAID' && (
+            <span className="px-3 py-1 rounded-xl bg-emerald-200/80 text-emerald-900 font-bold text-xs shrink-0">
+              Đã thông quan xuất xưởng
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs">
         <div className="space-y-1.5">
           <div className="flex items-center gap-3">
@@ -184,7 +209,7 @@ export default function InvoiceDetailPage() {
                 className="h-9 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined text-[18px]">send</span>
-                <span>Phát hành hóa đơn</span>
+                <span>{invoice.totalAmount === 0 ? 'Phát hành & Quyết toán 0đ' : 'Phát hành hóa đơn'}</span>
               </button>
 
               <button
@@ -472,9 +497,13 @@ export default function InvoiceDetailPage() {
 
           <ConfirmModal
             isOpen={isIssueConfirmOpen}
-            title="Xác nhận phát hành hóa đơn"
-            message={`Bạn có chắc muốn phát hành chính thức hóa đơn ${invoice.invoiceNumber}? Sau khi phát hành, khách hàng có thể thanh toán và hóa đơn không thể hoàn trả trạng thái nháp.`}
-            confirmText="Phát hành ngay"
+            title={invoice.totalAmount === 0 ? "Xác nhận phát hành hóa đơn 0đ (Quyết toán bảo hành)" : "Xác nhận phát hành hóa đơn"}
+            message={
+              invoice.totalAmount === 0
+                ? `Hóa đơn ${invoice.invoiceNumber} có tổng tiền bằng 0 đồng. Khi phát hành, hệ thống sẽ tự động chuyển hóa đơn sang ĐÃ THANH TOÁN (PAID) và cập nhật Lệnh sửa chữa sang ĐÃ QUYẾT TOÁN TÀI CHÍNH (FINANCIAL_CLEARED) để mở khóa xuất xưởng xe.`
+                : `Bạn có chắc muốn phát hành chính thức hóa đơn ${invoice.invoiceNumber}? Sau khi phát hành, khách hàng có thể thanh toán và hóa đơn không thể hoàn trả trạng thái nháp.`
+            }
+            confirmText={invoice.totalAmount === 0 ? "Quyết toán ngay" : "Phát hành ngay"}
             cancelText="Kiểm tra lại"
             onConfirm={handleConfirmIssue}
             onCancel={() => setIsIssueConfirmOpen(false)}

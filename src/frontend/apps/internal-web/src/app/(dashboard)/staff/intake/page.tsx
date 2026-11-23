@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useState, useMemo, useDeferredValue } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -12,6 +12,7 @@ import { fetchAppointments } from '@/store/slices/appointmentSlice';
 import api from '@/lib/axios';
 import WalkInIntakeModal from '@/components/intake/WalkInIntakeModal';
 import TowInIntakeModal from '@/components/intake/TowInIntakeModal';
+import WarrantyIntakeModal from '@/components/intake/WarrantyIntakeModal';
 import IntakeDetailModal from '@/components/intake/IntakeDetailModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import TablePagination from '@/components/shared/TablePagination';
@@ -30,6 +31,7 @@ export default function IntakePage() {
   // Local UI state
   const [isWalkInModalOpen, setWalkInModalOpen] = useState(false);
   const [isTowInModalOpen, setTowInModalOpen] = useState(false);
+  const [isWarrantyModalOpen, setWarrantyModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'QUEUED' | 'CONVERTED' | 'CANCELLED'>('QUEUED');
   const [intakeTypeFilter, setIntakeTypeFilter] = useState<'ALL' | 'APPOINTMENT' | 'WALK_IN' | 'TOW_IN'>('ALL');
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
@@ -133,6 +135,17 @@ export default function IntakePage() {
       dispatch(fetchIntakeQueue({}));
     } catch (err: any) {
       toast.error(err || 'Có lỗi xảy ra');
+    }
+  };
+
+  const handleWarrantySubmit = async (data: any) => {
+    try {
+      await dispatch(createIntakeRecord(data)).unwrap();
+      setWarrantyModalOpen(false);
+      toast.success('Tiếp nhận xe bảo hành thành công!');
+      dispatch(fetchIntakeQueue({}));
+    } catch (err: any) {
+      toast.error(err || 'Có lỗi xảy ra khi tiếp nhận xe bảo hành');
     }
   };
 
@@ -462,6 +475,15 @@ export default function IntakePage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 lg:justify-end">
+              <button
+                onClick={() => setWarrantyModalOpen(true)}
+                className="h-9 px-3.5 bg-emerald-50/90 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <span className="material-symbols-outlined text-[17px] text-emerald-600">
+                  verified_user
+                </span>
+                <span>🛡️ Tiếp nhận bảo hành</span>
+              </button>
               <button
                 onClick={() => setTowInModalOpen(true)}
                 className="h-9 px-3.5 bg-amber-50/90 hover:bg-amber-100/90 text-amber-800 border border-amber-200/90 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0"
@@ -822,6 +844,12 @@ export default function IntakePage() {
             )
           );
         }}
+      />
+      <WarrantyIntakeModal
+        isOpen={isWarrantyModalOpen}
+        onClose={() => setWarrantyModalOpen(false)}
+        onSubmit={handleWarrantySubmit}
+        customers={customers}
       />
       <ConfirmModal
         isOpen={confirmAction?.isOpen || false}

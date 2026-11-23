@@ -29,6 +29,13 @@ const quickLinks = [
     color: 'bg-primary-fixed text-primary',
   },
   {
+    href: '/customer/warranty',
+    icon: 'verified_user',
+    title: 'Sổ bảo hành điện tử',
+    desc: 'Tra cứu hạn bảo hành linh kiện & dịch vụ đã làm',
+    color: 'bg-emerald-100 text-emerald-800',
+  },
+  {
     href: '/customer/profile?tab=appointments',
     icon: 'calendar_today',
     title: 'Đặt lịch hẹn',
