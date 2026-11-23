@@ -150,7 +150,18 @@ export default function CustomerFormModal({ isOpen, onClose, onSave, initialData
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={initialData ? 'Cập nhật hồ sơ Khách hàng & Phương tiện' : 'Thêm mới Khách hàng & Phương tiện'}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-200"
+    >
       <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header (Sticky top) */}
         <div className="px-4 sm:px-6 py-4 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/70 shrink-0">
@@ -171,6 +182,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSave, initialData
           </div>
           <button
             onClick={onClose}
+            aria-label="Đóng cửa sổ"
             className="w-9 h-9 rounded-xl hover:bg-slate-200/70 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
             title="Đóng cửa sổ"
             type="button"
@@ -280,8 +292,9 @@ export default function CustomerFormModal({ isOpen, onClose, onSave, initialData
                   <div key={index} className="p-4 rounded-xl border border-slate-200 bg-white relative shadow-2xs">
                     <button
                       type="button"
+                      aria-label={`Xóa phương tiện #${index + 1}`}
                       onClick={() => removeVehicle(index)}
-                      className="absolute top-3 right-3 w-8 h-8 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
+                      className="absolute top-3 right-3 w-8 h-8 rounded-lg hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
                       title="Xóa phương tiện này"
                     >
                       <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -345,7 +358,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSave, initialData
                           <option value="SMALL">Nhỏ (Mini, Hatchback)</option>
                           <option value="MEDIUM">Vừa (Sedan, Crossover)</option>
                           <option value="LARGE">Lớn (CUV, MPV)</option>
-                          <option value="SUV">SUV (7 chỗ, Khung gầm rời)</option>
+                          <option value="EXTRA_LARGE">SUV / Xe 7 chỗ cỡ lớn</option>
                           <option value="TRUCK">Bán tải (Pickup, Van)</option>
                         </select>
                       </div>

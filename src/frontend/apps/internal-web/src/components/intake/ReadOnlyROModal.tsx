@@ -138,7 +138,18 @@ export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 lg:p-8 backdrop-blur-sm">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Chi tiết Lệnh sửa chữa ${workOrder.wo_number}`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 lg:p-8 backdrop-blur-sm"
+    >
       <div className="bg-surface w-full max-w-[1400px] h-full max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/40 bg-surface-container-lowest shrink-0">
@@ -150,6 +161,8 @@ export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
             <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold ml-2">Chỉ xem</span>
           </div>
           <button 
+            type="button"
+            aria-label="Đóng"
             onClick={onClose} 
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors group cursor-pointer"
           >
@@ -162,7 +175,7 @@ export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
           <div className="flex flex-col gap-6">
             <WOBadgeBar 
               licensePlate={workOrder.vehicle?.license_plate || '...'}
-              vehicleClass={workOrder.vehicle?.vehicle_size || 'N/A'}
+              vehicleClass={workOrder.vehicle?.vehicle_size || 'Chưa rõ'}
               vehicleName={`${workOrder.vehicle?.make || ''} ${workOrder.vehicle?.model || ''}`}
               customerName={workOrder.customer?.full_name || '...'}
               statusBadge={workOrder.status}
@@ -172,7 +185,7 @@ export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
 
             <WOVehicleCustomerInfo 
               isReadOnly={true}
-              vehicle={{ vin: 'N/A', color: workOrder.vehicle?.color || 'N/A', class: workOrder.vehicle?.vehicle_size || 'N/A', classDesc: '' }} 
+              vehicle={{ vin: 'Chưa ghi nhận', color: workOrder.vehicle?.color || 'Chưa rõ', class: workOrder.vehicle?.vehicle_size || 'Chưa rõ', classDesc: '' }} 
               customer={customerInfo} 
               workOrderInfo={{
                 type: woAny.order_type === 'WARRANTY' ? 'Bảo hành' : 'Dịch vụ & Sửa chữa',

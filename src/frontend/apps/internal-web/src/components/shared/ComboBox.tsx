@@ -1,4 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+'use client';
+
+import React, { useState, useRef, useEffect, useId, useMemo } from 'react';
 
 export interface ComboBoxOption {
   id: number | string;
@@ -12,6 +14,7 @@ interface Props {
   onChange: (val: number | string) => void;
   onSearchChange?: (query: string) => void;
   placeholder?: string;
+  emptyMessage?: string;
   allowClear?: boolean;
   className?: string;
   disabled?: boolean;
@@ -23,13 +26,16 @@ export default function ComboBox({
   onChange,
   onSearchChange,
   placeholder = 'Chọn hoặc nhập để tìm kiếm...',
+  emptyMessage = 'Không tìm thấy kết quả phù hợp',
   allowClear = true,
   className = '',
   disabled = false,
 }: Props) {
+  const listboxId = useId();
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -42,6 +48,7 @@ export default function ComboBox({
   }, [value, options, isTyping, selectedOption]);
 
   useEffect(() => {
+    if (!isOpen) return;
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -51,15 +58,17 @@ export default function ComboBox({
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [selectedOption]);
+  }, [isOpen, selectedOption]);
 
-  const filtered = options.filter((o) => {
-    if (!isTyping || !search.trim()) return true;
+  const filtered = useMemo(() => {
+    if (!isTyping || !search.trim()) return options;
     const q = search.toLowerCase().trim();
-    const matchLabel = o.label.toLowerCase().includes(q);
-    const matchSub = o.subLabel ? o.subLabel.toLowerCase().includes(q) : false;
-    return matchLabel || matchSub;
-  });
+    return options.filter((o) => {
+      const matchLabel = o.label.toLowerCase().includes(q);
+      const matchSub = o.subLabel ? o.subLabel.toLowerCase().includes(q) : false;
+      return matchLabel || matchSub;
+    });
+  }, [options, isTyping, search]);
 
   const handleSelect = (opt: ComboBoxOption) => {
     onChange(opt.id);
@@ -94,8 +103,12 @@ export default function ComboBox({
         <input
           ref={inputRef}
           type="text"
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
           disabled={disabled}
-          className="w-full h-full pl-2 pr-16 bg-transparent text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none"
+          className="w-full h-full pl-2 pr-16 bg-transparent text-xs text-slate-900 placeholder:text-slate-500 focus:outline-none"
           placeholder={placeholder}
           value={search}
           onChange={(e) => {
@@ -103,6 +116,7 @@ export default function ComboBox({
             setSearch(nextVal);
             setIsTyping(true);
             setIsOpen(true);
+            setActiveIndex(0);
             onSearchChange?.(nextVal);
           }}
           onFocus={(e) => {
@@ -114,7 +128,21 @@ export default function ComboBox({
             if (e.key === 'Escape') {
               setIsOpen(false);
               setIsTyping(false);
+              setActiveIndex(-1);
               setSearch(selectedOption ? selectedOption.label : '');
+            } else if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              setIsOpen(true);
+              setActiveIndex((prev) => (filtered.length > 0 ? (prev + 1) % filtered.length : -1));
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              setIsOpen(true);
+              setActiveIndex((prev) =>
+                filtered.length > 0 ? (prev - 1 + filtered.length) % filtered.length : -1
+              );
+            } else if (e.key === 'Enter' && isOpen && activeIndex >= 0 && filtered[activeIndex]) {
+              e.preventDefault();
+              handleSelect(filtered[activeIndex]);
             }
           }}
         />
@@ -124,7 +152,8 @@ export default function ComboBox({
             <button
               type="button"
               onClick={handleClear}
-              className="w-5 h-5 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              aria-label="Xóa lựa chọn"
+              className="w-5 h-5 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
               title="Xóa lựa chọn"
             >
               <span className="material-symbols-outlined text-[15px]">close</span>
@@ -134,6 +163,7 @@ export default function ComboBox({
           <button
             type="button"
             tabIndex={-1}
+            aria-label="Mở danh sách lựa chọn"
             disabled={disabled}
             onClick={() => {
               if (disabled) return;
@@ -142,7 +172,7 @@ export default function ComboBox({
                 inputRef.current.focus();
               }
             }}
-            className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+            className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
           >
             <span
               className={`material-symbols-outlined text-[19px] transition-transform duration-200 ${
@@ -156,24 +186,33 @@ export default function ComboBox({
       </div>
 
       {isOpen && !disabled && (
-        <ul className="absolute z-50 w-full mt-1.5 bg-white border border-slate-200/90 rounded-xl shadow-xl max-h-56 overflow-y-auto styled-scrollbar p-1 animate-in fade-in slide-in-from-top-1 duration-150">
+        <ul
+          id={listboxId}
+          role="listbox"
+          className="absolute z-50 w-full mt-1.5 bg-white border border-slate-200/90 rounded-xl shadow-xl max-h-56 overflow-y-auto styled-scrollbar p-1 animate-in fade-in slide-in-from-top-1 duration-150"
+        >
           {filtered.length > 0 ? (
-            filtered.map((opt) => {
+            filtered.map((opt, idx) => {
               const isSelected = String(opt.id) === String(value);
+              const isFocused = idx === activeIndex;
               return (
                 <li
                   key={String(opt.id)}
+                  role="option"
+                  aria-selected={isSelected}
                   onClick={() => handleSelect(opt)}
                   className={`px-3 py-2 rounded-lg cursor-pointer text-xs font-medium flex items-center justify-between transition-colors ${
                     isSelected
                       ? 'bg-blue-50 text-[#0866ff] font-bold'
+                      : isFocused
+                      ? 'bg-slate-100 text-[#0866ff]'
                       : 'text-slate-700 hover:bg-slate-50 hover:text-[#0866ff]'
                   }`}
                 >
                   <div className="flex flex-col min-w-0 pr-2">
                     <span className="truncate">{opt.label}</span>
                     {opt.subLabel && (
-                      <span className="text-[10px] text-slate-400 font-normal truncate">
+                      <span className="text-[10px] text-slate-500 font-normal truncate">
                         {opt.subLabel}
                       </span>
                     )}
@@ -187,8 +226,8 @@ export default function ComboBox({
               );
             })
           ) : (
-            <li className="px-3 py-3 text-xs text-slate-400 italic text-center">
-              Không tìm thấy tài khoản phù hợp
+            <li className="px-3 py-3 text-xs text-slate-500 italic text-center">
+              {emptyMessage}
             </li>
           )}
         </ul>

@@ -458,32 +458,6 @@ const inventorySlice = createSlice({
         state.error = action.payload as string;
       })
       
-      // Create Item
-      .addCase(createInventoryItem.pending, (state) => {
-        state.actionLoading = true;
-        state.actionError = null;
-      })
-      .addCase(createInventoryItem.fulfilled, (state) => {
-        state.actionLoading = false;
-      })
-      .addCase(createInventoryItem.rejected, (state, action) => {
-        state.actionLoading = false;
-        state.actionError = action.payload as string;
-      })
-      
-      // Update Item
-      .addCase(updateInventoryItem.pending, (state) => {
-        state.actionLoading = true;
-        state.actionError = null;
-      })
-      .addCase(updateInventoryItem.fulfilled, (state) => {
-        state.actionLoading = false;
-      })
-      .addCase(updateInventoryItem.rejected, (state, action) => {
-        state.actionLoading = false;
-        state.actionError = action.payload as string;
-      })
-
       // Fetch All Items (for KPI & Autocomplete)
       .addCase(fetchAllInventoryItems.fulfilled, (state, action) => {
         state.allItems = Array.isArray(action.payload?.data?.items)
@@ -519,41 +493,6 @@ const inventorySlice = createSlice({
       })
       .addCase(fetchReceipts.rejected, (state) => {
         state.receiptsLoading = false;
-      })
-      
-      // Create / Post / Cancel Receipt
-      .addCase(createReceipt.pending, (state) => {
-        state.actionLoading = true;
-        state.actionError = null;
-      })
-      .addCase(createReceipt.fulfilled, (state) => {
-        state.actionLoading = false;
-      })
-      .addCase(createReceipt.rejected, (state, action) => {
-        state.actionLoading = false;
-        state.actionError = action.payload as string;
-      })
-      .addCase(postDraftReceipt.pending, (state) => {
-        state.actionLoading = true;
-        state.actionError = null;
-      })
-      .addCase(postDraftReceipt.fulfilled, (state) => {
-        state.actionLoading = false;
-      })
-      .addCase(postDraftReceipt.rejected, (state, action) => {
-        state.actionLoading = false;
-        state.actionError = action.payload as string;
-      })
-      .addCase(cancelReceipt.pending, (state) => {
-        state.actionLoading = true;
-        state.actionError = null;
-      })
-      .addCase(cancelReceipt.fulfilled, (state) => {
-        state.actionLoading = false;
-      })
-      .addCase(cancelReceipt.rejected, (state, action) => {
-        state.actionLoading = false;
-        state.actionError = action.payload as string;
       })
 
       // Fetch / Create / Update Suppliers
@@ -594,17 +533,50 @@ const inventorySlice = createSlice({
       .addCase(fetchUoms.fulfilled, (state, action) => {
         state.uoms = Array.isArray(action.payload?.data) ? action.payload.data : [];
       })
-      .addMatcher(isAnyOf(createPartCategory.pending, updatePartCategory.pending), (state) => {
-        state.actionLoading = true;
-        state.actionError = null;
-      })
-      .addMatcher(isAnyOf(createPartCategory.fulfilled, updatePartCategory.fulfilled), (state) => {
-        state.actionLoading = false;
-      })
-      .addMatcher(isAnyOf(createPartCategory.rejected, updatePartCategory.rejected), (state, action) => {
-        state.actionLoading = false;
-        state.actionError = action.payload as string;
-      });
+      .addMatcher(
+        isAnyOf(
+          createInventoryItem.pending,
+          updateInventoryItem.pending,
+          createReceipt.pending,
+          postDraftReceipt.pending,
+          cancelReceipt.pending,
+          createPartCategory.pending,
+          updatePartCategory.pending
+        ),
+        (state) => {
+          state.actionLoading = true;
+          state.actionError = null;
+        }
+      )
+      .addMatcher(
+        isAnyOf(
+          createInventoryItem.fulfilled,
+          updateInventoryItem.fulfilled,
+          createReceipt.fulfilled,
+          postDraftReceipt.fulfilled,
+          cancelReceipt.fulfilled,
+          createPartCategory.fulfilled,
+          updatePartCategory.fulfilled
+        ),
+        (state) => {
+          state.actionLoading = false;
+        }
+      )
+      .addMatcher(
+        isAnyOf(
+          createInventoryItem.rejected,
+          updateInventoryItem.rejected,
+          createReceipt.rejected,
+          postDraftReceipt.rejected,
+          cancelReceipt.rejected,
+          createPartCategory.rejected,
+          updatePartCategory.rejected
+        ),
+        (state, action) => {
+          state.actionLoading = false;
+          state.actionError = action.payload as string;
+        }
+      );
   },
 });
 

@@ -11,7 +11,7 @@ import {
   Brand,
 } from '@/store/slices/inventorySlice';
 import Modal from '@/components/shared/Modal';
-import Toast from '@/components/shared/Toast';
+import toast from 'react-hot-toast';
 
 interface PartItemModalProps {
   isOpen: boolean;
@@ -59,16 +59,6 @@ export function PartItemModal({
     reorderLevel: '5',
   });
 
-  const [toast, setToast] = useState<{
-    show: boolean;
-    type: 'success' | 'error';
-    message: string;
-  }>({
-    show: false,
-    type: 'success',
-    message: '',
-  });
-
   useEffect(() => {
     if (isOpen) {
       if (item) {
@@ -104,13 +94,13 @@ export function PartItemModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.partCategoryId) {
-      setToast({ show: true, type: 'error', message: 'Vui lòng chọn Danh mục phụ tùng' });
+      toast.error('Vui lòng chọn Danh mục phụ tùng');
       return;
     }
 
     const sellingPriceNum = parseFloat(formData.sellingPrice || '0');
     if (isNaN(sellingPriceNum) || sellingPriceNum <= 0) {
-      setToast({ show: true, type: 'error', message: 'Vui lòng nhập Giá bán dự kiến hợp lệ (> 0)' });
+      toast.error('Vui lòng nhập Giá bán dự kiến hợp lệ (> 0)');
       return;
     }
 
@@ -126,21 +116,13 @@ export function PartItemModal({
       : await dispatch(createInventoryItem(data));
 
     if (resultAction.meta.requestStatus === 'fulfilled') {
-      setToast({
-        show: true,
-        type: 'success',
-        message: item ? 'Cập nhật phụ tùng thành công!' : 'Đã thêm phụ tùng mới vào danh mục kho!',
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 900);
+      toast.success(
+        item ? 'Cập nhật phụ tùng thành công!' : 'Đã thêm phụ tùng mới vào danh mục kho!'
+      );
+      onSuccess();
+      onClose();
     } else {
-      setToast({
-        show: true,
-        type: 'error',
-        message: (resultAction.payload as string) || 'Không thể lưu thông tin phụ tùng',
-      });
+      toast.error((resultAction.payload as string) || 'Không thể lưu thông tin phụ tùng');
     }
   };
 
@@ -411,14 +393,6 @@ export function PartItemModal({
           </div>
         </form>
       </Modal>
-
-      {toast.show && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast({ ...toast, show: false })}
-        />
-      )}
     </>
   );
 }

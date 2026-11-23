@@ -62,59 +62,95 @@ export default function InvoiceLinesTable({ lines, pageSize = 5 }: Props) {
   };
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200/90 bg-white">
-      <table className="w-full text-left text-xs min-w-[700px]">
-        <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200/80">
-          <tr>
-            <th className="py-3 px-3 w-14 text-center whitespace-nowrap">STT</th>
-            <th className="py-3 px-4 min-w-[220px]">Nội dung hạng mục</th>
-            <th className="py-3 px-3 w-32 text-center whitespace-nowrap">Phân loại</th>
-            <th className="py-3 px-3 w-24 text-center whitespace-nowrap">Số lượng</th>
-            <th className="py-3 px-4 w-36 text-right whitespace-nowrap">Đơn giá</th>
-            <th className="py-3 px-4 w-40 text-right whitespace-nowrap">Thành tiền</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {lines.length === 0 ? (
+    <div className="rounded-xl border border-slate-200/90 bg-white overflow-hidden">
+      {/* Desktop & Tablet Table (>= md) */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-left text-xs min-w-[700px]">
+          <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200/80">
             <tr>
-              <td colSpan={6} className="py-8 text-center text-slate-500">
-                Chưa có dòng chi phí nào.
-              </td>
+              <th className="py-3 px-3 w-14 text-center whitespace-nowrap">STT</th>
+              <th className="py-3 px-4 min-w-[220px]">Nội dung hạng mục</th>
+              <th className="py-3 px-3 w-32 text-center whitespace-nowrap">Phân loại</th>
+              <th className="py-3 px-3 w-24 text-center whitespace-nowrap">Số lượng</th>
+              <th className="py-3 px-4 w-36 text-right whitespace-nowrap">Đơn giá</th>
+              <th className="py-3 px-4 w-40 text-right whitespace-nowrap">Thành tiền</th>
             </tr>
-          ) : (
-            pagedLines.map((line, idx) => {
-              const rowSTT = (currentPage - 1) * pageSize + idx + 1;
-              return (
-                <tr key={line.id || rowSTT} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3 px-3 text-center text-slate-500 font-mono tabular-nums whitespace-nowrap">
-                    {rowSTT}
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="font-bold text-slate-900 leading-snug">{line.description}</div>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {lines.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-8 text-center text-slate-500">
+                  Chưa có dòng chi phí nào.
+                </td>
+              </tr>
+            ) : (
+              pagedLines.map((line, idx) => {
+                const rowSTT = (currentPage - 1) * pageSize + idx + 1;
+                return (
+                  <tr key={line.id || rowSTT} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3 px-3 text-center text-slate-500 font-mono tabular-nums whitespace-nowrap">
+                      {rowSTT}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="font-bold text-slate-900 leading-snug">{line.description}</div>
+                      {line.serviceName && (
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          Thuộc gói: <span className="font-semibold text-slate-700">{line.serviceName}</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3 px-3 text-center whitespace-nowrap">
+                      {renderTypeBadge(line.lineType)}
+                    </td>
+                    <td className="py-3 px-3 text-center font-mono tabular-nums font-bold text-slate-800 whitespace-nowrap">
+                      {line.quantity}
+                    </td>
+                    <td className="py-3 px-4 text-right text-slate-600 font-mono tabular-nums whitespace-nowrap">
+                      {formatMoney(line.unitPrice)}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono tabular-nums font-extrabold text-slate-900 whitespace-nowrap">
+                      {formatMoney(line.amount)}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Card List (< md) */}
+      <div className="md:hidden divide-y divide-slate-100 text-xs">
+        {lines.length === 0 ? (
+          <div className="py-8 text-center text-slate-500">Chưa có dòng chi phí nào.</div>
+        ) : (
+          pagedLines.map((line, idx) => {
+            const rowSTT = (currentPage - 1) * pageSize + idx + 1;
+            return (
+              <div key={line.id || rowSTT} className="p-3.5 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <span className="font-mono tabular-nums text-[11px] text-slate-500 mr-1.5">#{rowSTT}</span>
+                    <span className="font-bold text-slate-900 leading-snug">{line.description}</span>
                     {line.serviceName && (
                       <div className="text-[11px] text-slate-500 mt-0.5">
                         Thuộc gói: <span className="font-semibold text-slate-700">{line.serviceName}</span>
                       </div>
                     )}
-                  </td>
-                  <td className="py-3 px-3 text-center whitespace-nowrap">
-                    {renderTypeBadge(line.lineType)}
-                  </td>
-                  <td className="py-3 px-3 text-center font-mono tabular-nums font-bold text-slate-800 whitespace-nowrap">
-                    {line.quantity}
-                  </td>
-                  <td className="py-3 px-4 text-right text-slate-600 font-mono tabular-nums whitespace-nowrap">
-                    {formatMoney(line.unitPrice)}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono tabular-nums font-extrabold text-slate-900 whitespace-nowrap">
-                    {formatMoney(line.amount)}
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
+                  </div>
+                  <div className="shrink-0">{renderTypeBadge(line.lineType)}</div>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1 border-t border-slate-100 font-mono tabular-nums">
+                  <span>
+                    SL: <strong className="text-slate-800">{line.quantity}</strong> × {formatMoney(line.unitPrice)}
+                  </span>
+                  <span className="font-extrabold text-slate-900 text-xs">{formatMoney(line.amount)}</span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
 
       {/* Pagination Footer */}
       {totalPages > 1 && (

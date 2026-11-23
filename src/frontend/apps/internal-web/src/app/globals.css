@@ -108,18 +108,18 @@
   --text-code-sm--letter-spacing: 0.05em;
   --text-code-sm--font-weight: 500;
 
-  --font-body-lg: var(--font-be-vietnam-pro), sans-serif;
-  --font-headline-lg-mobile: var(--font-be-vietnam-pro), sans-serif;
-  --font-title-md: var(--font-be-vietnam-pro), sans-serif;
-  --font-body-md: var(--font-be-vietnam-pro), sans-serif;
-  --font-headline-sm: var(--font-be-vietnam-pro), sans-serif;
-  --font-display: var(--font-be-vietnam-pro), sans-serif;
-  --font-body-sm: var(--font-be-vietnam-pro), sans-serif;
-  --font-label-sm: var(--font-be-vietnam-pro), sans-serif;
-  --font-label-md: var(--font-be-vietnam-pro), sans-serif;
-  --font-headline-lg: var(--font-be-vietnam-pro), sans-serif;
-  --font-headline-md: var(--font-be-vietnam-pro), sans-serif;
-  --font-code-sm: var(--font-be-vietnam-pro), sans-serif;
+  --font-body-lg: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
+  --font-headline-lg-mobile: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
+  --font-title-md: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
+  --font-body-md: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
+  --font-headline-sm: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
+  --font-display: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
+  --font-body-sm: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
+  --font-label-sm: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
+  --font-label-md: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
+  --font-headline-lg: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
+  --font-headline-md: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
+  --font-code-sm: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   --spacing-space-xxs: 0.125rem;
   --spacing-space-xs: 0.25rem;
@@ -152,7 +152,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Be Vietnam Pro', sans-serif;
+  font-family: var(--font-be-vietnam-pro), 'Be Vietnam Pro', sans-serif;
 }
 
 .material-symbols-outlined {
@@ -161,6 +161,8 @@ body {
   font-style: normal;
   font-size: 24px;
   line-height: 1;
+  width: 1em;
+  overflow: hidden;
   letter-spacing: normal;
   text-transform: none;
   display: inline-block;
@@ -327,16 +329,13 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-slide-up,
-  .sa-enter,
-  .sa-tab-enter,
-  .sa-modal-backdrop,
-  .sa-modal-panel {
-    animation: none;
-  }
-  .sa-press,
-  .sa-card-lift {
-    transition: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
   .sa-press:active,
   .sa-card-lift:hover {

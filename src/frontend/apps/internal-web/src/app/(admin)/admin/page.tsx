@@ -15,70 +15,7 @@ const UserDetailModal = dynamic(
   { ssr: false }
 );
 
-const PERIOD_DATA_MAP: Record<
-  string,
-  {
-    kpis: {
-      totalUsers: { value: number; prevValue: number; badgeText: string; callout: string };
-      activeUsers: { value: number; prevValue: number; badgeText: string; splitLeft: number; splitRight: number };
-      totalEmployees: { value: number; prevValue: number; badgeText: string; callout: string; heatmapCol: number };
-      totalServices: { value: number; prevValue: number; badgeText: string; sla: number; subtitle: string };
-    };
-    sparklinePoints: number[];
-    waveLabels: string[];
-    stageDeltas: Record<string, number>;
-    telemetryMultiplier: number;
-  }
-> = {
-  today: {
-    kpis: {
-      totalUsers: { value: 52, prevValue: 50, badgeText: '+4.0%', callout: '+2 mới hôm nay' },
-      activeUsers: { value: 48, prevValue: 45, badgeText: '+6.7%', splitLeft: 92, splitRight: 8 },
-      totalEmployees: { value: 18, prevValue: 16, badgeText: '18/20 trực ca', callout: '90% quân số', heatmapCol: 2 },
-      totalServices: { value: 14, prevValue: 12, badgeText: '100% SLA', sla: 100, subtitle: '14 lượt dịch vụ tiếp nhận hôm nay' },
-    },
-    sparklinePoints: [32, 40, 44, 49, 52],
-    waveLabels: ['08:00', '11:00', '14:00', '17:00', '20:00'],
-    stageDeltas: { ADMIN: 2, MANAGER: 2, DESK_STAFF: 3, SA: 4, TECHNICIAN: 18, CUSTOMER: 22 },
-    telemetryMultiplier: 0.65,
-  },
-  '7days': {
-    kpis: {
-      totalUsers: { value: 52, prevValue: 46, badgeText: '+13.0%', callout: '+6 tuần này' },
-      activeUsers: { value: 50, prevValue: 44, badgeText: '+13.6%', splitLeft: 88, splitRight: 12 },
-      totalEmployees: { value: 20, prevValue: 19, badgeText: '20 nhân viên', callout: '100% quân số', heatmapCol: 4 },
-      totalServices: { value: 48, prevValue: 42, badgeText: '96.5% SLA', sla: 96, subtitle: '48 lượt dịch vụ trong 7 ngày qua' },
-    },
-    sparklinePoints: [42, 46, 41, 48, 52],
-    waveLabels: ['T2', 'T3', 'T4', 'T5', 'T6'],
-    stageDeltas: { ADMIN: 2, MANAGER: 2, DESK_STAFF: 4, SA: 4, TECHNICIAN: 20, CUSTOMER: 30 },
-    telemetryMultiplier: 1.0,
-  },
-  '30days': {
-    kpis: {
-      totalUsers: { value: 52, prevValue: 38, badgeText: '+36.8%', callout: '+14 tháng này' },
-      activeUsers: { value: 46, prevValue: 35, badgeText: '+31.4%', splitLeft: 82, splitRight: 18 },
-      totalEmployees: { value: 20, prevValue: 18, badgeText: '100% định mức', callout: 'Đầy đủ ca', heatmapCol: 1 },
-      totalServices: { value: 186, prevValue: 160, badgeText: '92.4% SLA', sla: 92, subtitle: '186 lượt dịch vụ trong 30 ngày qua' },
-    },
-    sparklinePoints: [22, 30, 38, 46, 52],
-    waveLabels: ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4', 'Tuần 5'],
-    stageDeltas: { ADMIN: 2, MANAGER: 2, DESK_STAFF: 4, SA: 4, TECHNICIAN: 20, CUSTOMER: 48 },
-    telemetryMultiplier: 1.8,
-  },
-  this_month: {
-    kpis: {
-      totalUsers: { value: 52, prevValue: 43, badgeText: '+20.9%', callout: '+9 trong tháng' },
-      activeUsers: { value: 49, prevValue: 40, badgeText: '+22.5%', splitLeft: 90, splitRight: 10 },
-      totalEmployees: { value: 20, prevValue: 19, badgeText: '2 ca/ngày', callout: '95% quân số', heatmapCol: 3 },
-      totalServices: { value: 142, prevValue: 125, badgeText: '95.8% SLA', sla: 95, subtitle: '142 lượt dịch vụ trong tháng này' },
-    },
-    sparklinePoints: [28, 35, 42, 48, 52],
-    waveLabels: ['Đầu T', 'Tuần 2', 'Giữa T', 'Tuần 4', 'Cuối T'],
-    stageDeltas: { ADMIN: 2, MANAGER: 2, DESK_STAFF: 4, SA: 4, TECHNICIAN: 20, CUSTOMER: 38 },
-    telemetryMultiplier: 1.35,
-  },
-};
+const ADMIN_KPI_VARIANTS: KPICardVariant[] = ['navy', 'royal', 'slate', 'midnight'];
 
 export default function AdminDashboardPage() {
   const {
@@ -87,6 +24,7 @@ export default function AdminDashboardPage() {
     data,
     isLoading,
     isRefreshing,
+    error,
     lastUpdated,
     refetch,
   } = useDashboardData({
@@ -96,8 +34,9 @@ export default function AdminDashboardPage() {
 
   const [selectedUserDetail, setSelectedUserDetail] = useState<any | null>(null);
   const [showUserModal, setShowUserModal] = useState<boolean>(false);
+  const [telemetryTab, setTelemetryTab] = useState<'ALL' | 'ACTIVE' | 'LOCKED'>('ALL');
 
-  const recentUserColumns: TableColumn<any>[] = [
+  const recentUserColumns = useMemo<TableColumn<any>[]>(() => [
     {
       key: 'title',
       label: 'Họ và tên',
@@ -157,37 +96,49 @@ export default function AdminDashboardPage() {
         </button>
       ),
     },
-  ];
+  ], []);
 
-  // Phân bổ vai trò người dùng hệ thống theo chuẩn Stage Bars (Phong cách SA)
+  // Phân bổ vai trò người dùng hệ thống theo chuẩn Stage Bars từ dữ liệu API thực tế
   const adminStageBars = useMemo(() => {
     const rbac = data?.charts?.rbacDistribution || [];
     const countMap: Record<string, number> = {};
     rbac.forEach((item: any) => {
-      countMap[item.role] = item.count;
+      countMap[item.role] = Number(item.count) || 0;
     });
 
     return [
-      { key: 'ADMIN', label: 'Quản trị viên', count: countMap['ADMIN'] || 2 },
-      { key: 'MANAGER', label: 'Quản lý xưởng', count: countMap['MANAGER'] || 2 },
-      { key: 'DESK_STAFF', label: 'Lễ tân', count: countMap['DESK STAFF'] || countMap['FRONT_DESK'] || 4 },
-      { key: 'SA', label: 'Cố vấn DV', count: countMap['SA'] || countMap['ADVISOR'] || 4 },
-      { key: 'TECHNICIAN', label: 'Kỹ thuật viên', count: countMap['TECHNICIAN'] || 20, highlight: true },
-      { key: 'CUSTOMER', label: 'Khách hàng', count: countMap['CUSTOMER'] || 30 },
+      { key: 'ADMIN', label: 'Quản trị viên', count: countMap['ADMIN'] ?? 0 },
+      { key: 'MANAGER', label: 'Quản lý xưởng', count: countMap['MANAGER'] ?? 0 },
+      { key: 'DESK_STAFF', label: 'Lễ tân', count: countMap['DESK STAFF'] ?? countMap['FRONT_DESK'] ?? countMap['DESK_STAFF'] ?? 0 },
+      { key: 'SA', label: 'Cố vấn DV', count: countMap['SA'] ?? countMap['ADVISOR'] ?? countMap['SERVICE ADVISOR'] ?? 0 },
+      { key: 'TECHNICIAN', label: 'Kỹ thuật viên', count: countMap['TECHNICIAN'] ?? 0, highlight: true },
+      { key: 'CUSTOMER', label: 'Khách hàng', count: countMap['CUSTOMER'] ?? 0 },
     ];
   }, [data?.charts?.rbacDistribution]);
 
-  // Lưu lượng truy cập và phiên làm việc thiết bị (Telemetry Mini-Bars)
+  // Tỷ trọng phân bổ nhóm định danh theo trạng thái thực tế từ API (Telemetry Mini-Bars)
   const iamTelemetry = useMemo(() => {
-    const totalUsers = Number(data?.kpis?.find((k) => k.key === 'totalUsers')?.value || 50);
-    return [
-      { label: 'Web Admin', count: Math.round(totalUsers * 0.15), pct: 15 },
-      { label: 'Tablet KTV', count: Math.round(totalUsers * 0.4), pct: 40 },
-      { label: 'Cố vấn POS', count: Math.round(totalUsers * 0.25), pct: 25 },
-      { label: 'App Khách', count: Math.round(totalUsers * 0.8), pct: 80 },
-      { label: 'API Gateway', count: Math.max(1, Math.round(totalUsers * 0.05)), pct: 5 },
-    ];
-  }, [data?.kpis]);
+    const totalKpi = Number(data?.kpis?.find((k) => k.key === 'totalUsers')?.value ?? 0);
+    const activeKpi = Number(data?.kpis?.find((k) => k.key === 'activeUsers')?.value ?? 0);
+    const lockedKpi = Math.max(0, totalKpi - activeKpi);
+
+    const activeRatio = totalKpi > 0 ? activeKpi / totalKpi : 1;
+    const lockedRatio = totalKpi > 0 ? lockedKpi / totalKpi : 0;
+    const ratio = telemetryTab === 'ACTIVE' ? activeRatio : telemetryTab === 'LOCKED' ? lockedRatio : 1;
+
+    const totalStageCount = adminStageBars.reduce((acc, s) => acc + s.count, 0);
+    const denominator = Math.max(1, totalStageCount || totalKpi);
+
+    return adminStageBars.slice(0, 5).map((stage) => {
+      const scaledCount = Math.round(stage.count * ratio);
+      const pct = totalStageCount > 0 || totalKpi > 0 ? Math.round((scaledCount / denominator) * 100) : 0;
+      return {
+        label: stage.label,
+        count: scaledCount,
+        pct,
+      };
+    });
+  }, [adminStageBars, data?.kpis, telemetryTab]);
 
   return (
     <div className="flex flex-col min-w-0 w-full space-y-6">
@@ -201,7 +152,7 @@ export default function AdminDashboardPage() {
             Giám sát tài nguyên người dùng, nhân sự kỹ thuật, danh mục dịch vụ và an ninh hệ thống thời gian thực.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <Link
             href="/accounts"
             className="px-3.5 py-2 text-xs font-semibold bg-[#0050cd] hover:bg-blue-700 text-white rounded-xl transition-colors shadow-xs"
@@ -226,80 +177,71 @@ export default function AdminDashboardPage() {
         lastUpdated={lastUpdated}
       />
 
+      {error && (
+        <div
+          role="alert"
+          className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex flex-wrap items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-2.5 text-xs font-semibold text-rose-800">
+            <span className="material-symbols-outlined text-[20px] text-rose-600">error</span>
+            <span>Không thể tải dữ liệu bảng điều hành: {error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={refetch}
+            className="h-9 px-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer"
+          >
+            Thử lại
+          </button>
+        </div>
+      )}
+
       {/* 4 KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {(data?.kpis || []).map((kpi, index) => {
-          const variants: KPICardVariant[] = ['navy', 'royal', 'slate', 'midnight'];
-          const cardVariant = variants[index % variants.length];
-          const periodConf = PERIOD_DATA_MAP[period] || PERIOD_DATA_MAP['7days'];
+          const cardVariant = ADMIN_KPI_VARIANTS[index % ADMIN_KPI_VARIANTS.length];
 
-          let displayVal = kpi.value;
-          let prevVal = kpi.prevValue;
-          let badgeText: string | undefined;
-          let sparklineCallout: string | undefined;
-          let splitPercentage = 85;
+          const totalUsersVal = Number(data?.kpis?.find((k) => k.key === 'totalUsers')?.value ?? 0);
+          const activeUsersVal = Number(data?.kpis?.find((k) => k.key === 'activeUsers')?.value ?? 0);
+          const realActiveSplit =
+            totalUsersVal > 0
+              ? Math.round((activeUsersVal / totalUsersVal) * 100)
+              : activeUsersVal > 0
+              ? 100
+              : 0;
+
+          let splitPercentage = realActiveSplit;
           let splitLeftLabel: string | undefined;
           let splitRightLabel: string | undefined;
           let subtitle: string | undefined;
-          const waveLabels = periodConf.waveLabels;
-          const sparklinePoints = periodConf.sparklinePoints;
-          let heatmapHighlightCol: number | undefined;
-          let slaPercentage: number | undefined;
 
           if (index === 0) {
-            const conf = periodConf.kpis.totalUsers;
-            displayVal = kpi.value !== undefined && kpi.value !== null ? kpi.value : conf.value;
-            prevVal = kpi.prevValue !== undefined && kpi.prevValue !== null ? kpi.prevValue : conf.prevValue;
-            badgeText = conf.badgeText;
-            sparklineCallout = conf.callout;
             subtitle = 'Phân quyền RBAC & an ninh người dùng';
           } else if (index === 1) {
-            const conf = periodConf.kpis.activeUsers;
-            displayVal = kpi.value !== undefined && kpi.value !== null ? kpi.value : conf.value;
-            prevVal = kpi.prevValue !== undefined && kpi.prevValue !== null ? kpi.prevValue : conf.prevValue;
-            badgeText = conf.badgeText;
-            splitPercentage = conf.splitLeft;
             splitLeftLabel = 'Khả dụng';
             splitRightLabel = 'Tạm dừng';
             subtitle = 'Tài khoản hoạt động trong hệ thống';
           } else if (index === 2) {
-            const conf = periodConf.kpis.totalEmployees;
-            displayVal = kpi.value !== undefined && kpi.value !== null ? kpi.value : conf.value;
-            prevVal = kpi.prevValue !== undefined && kpi.prevValue !== null ? kpi.prevValue : conf.prevValue;
-            badgeText = conf.badgeText;
-            sparklineCallout = conf.callout;
-            heatmapHighlightCol = conf.heatmapCol;
             subtitle = 'Đội ngũ kỹ thuật & điều phối xưởng';
           } else if (index === 3) {
-            const conf = periodConf.kpis.totalServices;
-            displayVal = kpi.value !== undefined && kpi.value !== null ? kpi.value : conf.value;
-            prevVal = kpi.prevValue !== undefined && kpi.prevValue !== null ? kpi.prevValue : conf.prevValue;
-            badgeText = conf.badgeText;
-            slaPercentage = conf.sla;
-            subtitle = conf.subtitle;
+            subtitle = 'Danh mục dịch vụ đang niêm yết';
           }
 
           return (
             <KPICard
               key={kpi.key}
               label={kpi.label}
-              value={displayVal}
-              prevValue={prevVal}
+              value={kpi.value ?? 0}
+              prevValue={kpi.prevValue}
               format={kpi.format}
               unit={kpi.unit}
               trendInverted={kpi.trendInverted}
               isLoading={isLoading}
               variant={cardVariant}
-              sparklineCallout={sparklineCallout}
-              sparklinePoints={sparklinePoints}
-              heatmapHighlightCol={heatmapHighlightCol}
-              slaPercentage={slaPercentage}
               splitPercentage={splitPercentage}
               splitLeftLabel={splitLeftLabel}
               splitRightLabel={splitRightLabel}
-              badgeText={badgeText}
               subtitle={subtitle}
-              waveLabels={waveLabels}
               icon={
                 kpi.key === 'totalUsers'
                   ? 'group'
@@ -314,7 +256,7 @@ export default function AdminDashboardPage() {
         })}
       </div>
 
-      {/* Bento Row: Phân bổ nhân sự theo chức năng & Lưu lượng truy cập thiết bị (Phong cách SA) */}
+      {/* Bento Row: Phân bổ nhân sự theo chức năng & Tỷ trọng định danh */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8">
           <DashboardStageBars
@@ -329,9 +271,11 @@ export default function AdminDashboardPage() {
         </div>
         <div className="lg:col-span-4">
           <DashboardTelemetryMiniBars
-            title="Lưu lượng thiết bị & Phiên làm việc"
-            subtitle="Tỷ lệ phân bổ truy cập hệ thống theo nền tảng"
+            title="Tỷ trọng Định danh & Trạng thái IAM"
+            subtitle="Tỷ lệ phân bổ tài khoản thực tế theo nhóm vai trò"
             items={iamTelemetry}
+            activeTab={telemetryTab}
+            onTabChange={(tabId) => setTelemetryTab(tabId as 'ALL' | 'ACTIVE' | 'LOCKED')}
             tabs={[
               { id: 'ALL', label: 'Tất cả' },
               { id: 'ACTIVE', label: 'Khả dụng' },
@@ -356,15 +300,17 @@ export default function AdminDashboardPage() {
       />
 
       {/* User Detail Modal */}
-      <UserDetailModal
-        isOpen={showUserModal}
-        onClose={() => {
-          setShowUserModal(false);
-          setSelectedUserDetail(null);
-        }}
-        userId={selectedUserDetail?.id || null}
-        fallbackData={selectedUserDetail}
-      />
+      {showUserModal && selectedUserDetail && (
+        <UserDetailModal
+          isOpen={showUserModal}
+          onClose={() => {
+            setShowUserModal(false);
+            setSelectedUserDetail(null);
+          }}
+          userId={selectedUserDetail?.id || null}
+          fallbackData={selectedUserDetail}
+        />
+      )}
     </div>
   );
 }

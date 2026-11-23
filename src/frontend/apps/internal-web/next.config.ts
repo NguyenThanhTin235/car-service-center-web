@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   experimental: {
-    optimizePackageImports: ['lucide-react', 'recharts', 'react-hot-toast', '@reduxjs/toolkit'],
+    optimizePackageImports: ['recharts', 'react-hot-toast', '@reduxjs/toolkit'],
   },
 };
 

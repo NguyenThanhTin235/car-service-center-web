@@ -29,7 +29,17 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
   const [sepayData, setSepayData] = useState<SepayPaymentResponse | null>(null);
   const [sepayPaid, setSepayPaid] = useState<boolean>(false);
   const [simulating, setSimulating] = useState<boolean>(false);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inFlightRef = useRef(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onSuccessRef = useRef(onSuccess);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+    onCloseRef.current = onClose;
+  }, [onSuccess, onClose]);
 
   const formatMoney = (val: number) => (Number(val) || 0).toLocaleString('vi-VN') + ' đ';
   const changeAmount = Math.max(0, (tenderedAmount || 0) - invoice.amountDue);
@@ -39,7 +49,8 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
     navigator.clipboard.writeText(text);
     setCopiedField(fieldName);
     toast.success('Đã sao chép vào bộ nhớ tạm!');
-    setTimeout(() => setCopiedField(null), 2000);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => setCopiedField(null), 2000);
   };
 
   // Khởi tạo phiên SePay (Hiển thị mã VietQR trực tiếp tại modal, không điều hướng ra trang ngoài)
@@ -62,13 +73,25 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
     }
   }, [isOpen, tab]);
 
-  // Reset SePay state khi đóng modal
+  // Reset SePay state khi đóng modal & dọn dẹp timer
   useEffect(() => {
     if (!isOpen) {
       setSepayData(null);
       setSepayPaid(false);
       setCopiedField(null);
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+        copyTimeoutRef.current = null;
+      }
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+        successTimeoutRef.current = null;
+      }
     }
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+    };
   }, [isOpen]);
 
   // Giả lập thanh toán SePay thành công (chỉ cho dev/test)
@@ -79,9 +102,10 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
       await simulateQrSuccess(sepayData.paymentId);
       setSepayPaid(true);
       toast.success('Giả lập thanh toán SePay thành công!');
-      setTimeout(() => {
-        onSuccess();
-        onClose();
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = setTimeout(() => {
+        onSuccessRef.current();
+        onCloseRef.current();
       }, 1500);
     } catch (err: any) {
       toast.error(err.response?.data?.message || err.message || 'Lỗi khi giả lập thanh toán');
@@ -90,36 +114,51 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
     }
   };
 
-  // Polling trạng thái SePay
+  // Polling trạng thái SePay (chống chồng lấn request + tạm dừng khi tab ẩn)
   useEffect(() => {
     if (!isOpen || tab !== 'SEPAY') {
-      if (pollingRef.current) clearInterval(pollingRef.current);
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
       return;
     }
 
     const checkStatus = async () => {
+      if (document.visibilityState !== 'visible' || inFlightRef.current) return;
+      inFlightRef.current = true;
       try {
         const res = await getInvoicePaymentStatus(invoice.id);
         if (res.isPaid) {
           setSepayPaid(true);
-          if (pollingRef.current) clearInterval(pollingRef.current);
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
           toast.success('Thanh toán SePay thành công! Hóa đơn đã được quyết toán.');
-          setTimeout(() => {
-            onSuccess();
-            onClose();
+          if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+          successTimeoutRef.current = setTimeout(() => {
+            onSuccessRef.current();
+            onCloseRef.current();
           }, 1500);
         }
-      } catch (e) {
+      } catch {
         // Silent error on polling
+      } finally {
+        inFlightRef.current = false;
       }
     };
 
     pollingRef.current = setInterval(checkStatus, 3000);
 
     return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+      inFlightRef.current = false;
     };
-  }, [isOpen, tab, invoice.id, onSuccess, onClose]);
+  }, [isOpen, tab, invoice.id]);
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,10 +194,21 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-scrim/40 backdrop-blur-xs animate-fade-in">
-      <div className={`bg-surface-container-lowest rounded-2xl ${tab === 'SEPAY' ? 'max-w-3xl' : 'max-w-lg'} w-full shadow-2xl border border-outline-variant overflow-hidden animate-scale-up transition-all duration-200`}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Thanh toán hóa đơn"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-scrim/40 backdrop-blur-xs animate-fade-in"
+    >
+      <div className={`bg-surface-container-lowest rounded-2xl ${tab === 'SEPAY' ? 'max-w-3xl' : 'max-w-lg'} w-full max-h-[90vh] flex flex-col shadow-2xl border border-outline-variant overflow-hidden animate-scale-up transition-all duration-200`}>
         {/* Header */}
-        <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
+        <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-[24px]">payments</span>
             <div>
@@ -169,6 +219,8 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
             </div>
           </div>
           <button
+            type="button"
+            aria-label="Đóng"
             onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
           >
@@ -177,7 +229,7 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
         </div>
 
         {/* Tab selection: 3 Tabs (CASH, CARD, SEPAY) */}
-        <div className="px-6 pt-4">
+        <div className="px-4 sm:px-6 pt-4 shrink-0">
           <div className="grid grid-cols-3 gap-1.5 p-1 bg-surface-container-high rounded-xl">
             <button
               type="button"
@@ -185,50 +237,56 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
                 setTab('CASH');
                 setTenderedAmount(invoice.amountDue);
               }}
-              className={`py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              className={`py-2 px-1 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
                 tab === 'CASH'
                   ? 'bg-surface-container-lowest text-primary shadow-sm font-bold'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
-              <span className="material-symbols-outlined text-[16px]">point_of_sale</span>
-              <span>Tiền mặt</span>
+              <span className="material-symbols-outlined text-[16px] shrink-0">point_of_sale</span>
+              <span className="truncate">Tiền mặt</span>
             </button>
             <button
               type="button"
               onClick={() => setTab('CARD')}
-              className={`py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              className={`py-2 px-1 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
                 tab === 'CARD'
                   ? 'bg-surface-container-lowest text-primary shadow-sm font-bold'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
-              <span className="material-symbols-outlined text-[16px]">credit_card</span>
-              <span>Quẹt thẻ máy POS</span>
+              <span className="material-symbols-outlined text-[16px] shrink-0">credit_card</span>
+              <span className="truncate">
+                <span className="sm:hidden">Thẻ POS</span>
+                <span className="hidden sm:inline">Quẹt thẻ máy POS</span>
+              </span>
             </button>
             <button
               type="button"
               onClick={() => setTab('SEPAY')}
-              className={`py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              className={`py-2 px-1 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
                 tab === 'SEPAY'
                   ? 'bg-surface-container-lowest text-primary shadow-sm font-bold'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
-              <span className="material-symbols-outlined text-[16px]">qr_code_2</span>
-              <span>Chuyển khoản VietQR</span>
+              <span className="material-symbols-outlined text-[16px] shrink-0">qr_code_2</span>
+              <span className="truncate">
+                <span className="sm:hidden">VietQR</span>
+                <span className="hidden sm:inline">Chuyển khoản VietQR</span>
+              </span>
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
           {/* Amount due highlight */}
-          <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-center justify-between mb-4">
+          <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex flex-wrap items-center justify-between gap-2 mb-4">
             <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
               Số tiền cần thu:
             </span>
-            <span className="text-xl font-extrabold text-primary font-mono">
+            <span className="text-xl font-extrabold text-primary font-mono tabular-nums">
               {formatMoney(invoice.amountDue)}
             </span>
           </div>
@@ -304,7 +362,7 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
                           <span className="font-bold text-on-surface uppercase">{sepayData.bankInfo.accountName}</span>
                         </div>
 
-                        <div className="flex items-center justify-between py-1.5 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                        <div className="flex flex-wrap items-center justify-between gap-2 py-1.5 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
                           <div>
                             <span className="text-amber-900 font-bold block">Nội dung CK:</span>
                             <span className="text-[10px] text-amber-700">Bắt buộc giữ nguyên nội dung</span>
@@ -332,16 +390,18 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
                       <span>Hệ thống đang tự động nhận diện thanh toán...</span>
                     </div>
 
-                    {/* Nút Test giả lập */}
-                    <button
-                      type="button"
-                      onClick={handleSimulateSepay}
-                      disabled={simulating}
-                      className="w-full py-2 bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 text-[11px] font-semibold rounded-lg transition cursor-pointer flex items-center justify-center gap-1 shadow-2xs active:scale-98"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">science</span>
-                      <span>{simulating ? 'Đang xử lý...' : 'Giả lập thanh toán thành công (Test Sandbox)'}</span>
-                    </button>
+                    {/* Nút Test giả lập (Chỉ hiển thị khi bật cờ môi trường sandbox) */}
+                    {process.env.NEXT_PUBLIC_ENABLE_SEPAY_SIMULATE === 'true' && (
+                      <button
+                        type="button"
+                        onClick={handleSimulateSepay}
+                        disabled={simulating}
+                        className="w-full py-2 bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 text-[11px] font-semibold rounded-lg transition cursor-pointer flex items-center justify-center gap-1 shadow-2xs active:scale-98"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">science</span>
+                        <span>{simulating ? 'Đang xử lý...' : 'Giả lập thanh toán thành công (Test Sandbox)'}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -396,7 +456,7 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
                     </div>
 
                     {/* Quick presets */}
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex flex-wrap gap-2 mt-2">
                       <button
                         type="button"
                         onClick={() => setTenderedAmount(invoice.amountDue)}
@@ -422,11 +482,11 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
                   </div>
 
                   {/* Change calculation */}
-                  <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+                  <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 flex flex-wrap items-center justify-between gap-2">
                     <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">
                       Tiền thối lại cho khách:
                     </span>
-                    <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                    <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono tabular-nums">
                       {formatMoney(changeAmount)}
                     </span>
                   </div>
@@ -450,7 +510,7 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
               )}
 
               {/* Action buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-outline-variant">
+              <div className="flex flex-wrap items-center justify-end gap-2.5 pt-4 border-t border-outline-variant">
                 <button
                   type="button"
                   onClick={onClose}

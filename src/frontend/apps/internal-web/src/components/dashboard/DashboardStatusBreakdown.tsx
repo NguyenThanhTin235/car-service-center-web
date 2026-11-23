@@ -194,8 +194,8 @@ export const DashboardStatusBreakdown: React.FC<DashboardStatusBreakdownProps> =
       </div>
 
       {onSelectCategory && (
-        <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 pt-3 border-t border-slate-100 dark:border-slate-800 mt-4">
-          <span className="material-symbols-outlined text-[15px] text-slate-400">filter_alt</span>
+        <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 pt-3 border-t border-slate-100 dark:border-slate-800 mt-4">
+          <span className="material-symbols-outlined text-[15px] text-slate-500">filter_alt</span>
           <span>Nhấp vào bất kỳ thanh phân loại nào để lọc chéo dữ liệu danh sách</span>
         </div>
       )}

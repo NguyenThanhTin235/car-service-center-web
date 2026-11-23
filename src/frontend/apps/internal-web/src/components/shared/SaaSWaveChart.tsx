@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 
 export interface WaveSeriesItem {
   label: string;
   value: string | number;
   color: string;
-  peakRatio?: number; // 0.25 to 1.0
+  peakRatio?: number; // 0 to 1.0 (computed from numeric value if omitted)
 }
 
 export interface SaaSWaveChartProps {
@@ -22,41 +22,81 @@ export interface SaaSWaveChartProps {
   testId?: string;
   periodOptions?: string[];
   defaultPeriod?: string;
+  onPeriodChange?: (period: string) => void;
 }
 
-export default function SaaSWaveChart({
+const SaaSWaveChart = React.memo(function SaaSWaveChart({
   title,
   primaryMetric,
   deltaText,
   deltaPositive = true,
   comparisonText = 'so với kỳ trước',
-  xLabels = ['T8', 'T9', 'T10', 'T11', 'T12'],
-  yLabels = ['160', '120', '80', '40', '0'],
+  xLabels,
+  yLabels,
   series,
   darkTheme = false,
   testId = 'saas-wave-chart',
-  periodOptions = ['Tháng này', 'Quý 4', 'Năm 2026'],
+  periodOptions = [],
   defaultPeriod,
+  onPeriodChange,
 }: SaaSWaveChartProps) {
-  const [activePeriod, setActivePeriod] = useState(defaultPeriod || periodOptions[0]);
+  const uid = useId().replace(/:/g, '');
+  const glowFilterId = `blueWaveGlow-${uid}`;
+  const areaGradId = `primaryBlueArea-${uid}`;
+
+  const [activePeriod, setActivePeriod] = useState(defaultPeriod || periodOptions[0] || '');
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-  // Period multiplier for interactive feel
-  const periodFactor =
-    activePeriod === periodOptions[1] ? 0.92 : activePeriod === periodOptions[2] ? 1.05 : 1;
+  // Extract real numeric values from series to drive accurate proportional heights & Y-axis
+  const numericValues = series.map((s) => {
+    if (typeof s.value === 'number') return Math.max(0, s.value);
+    const parsed = Number(String(s.value).replace(/[^0-9.-]/g, ''));
+    return isNaN(parsed) ? 0 : Math.max(0, parsed);
+  });
+  const maxVal = Math.max(0, ...numericValues);
+  const axisTop = maxVal > 0 ? Math.max(4, Math.ceil(maxVal / 4) * 4) : 4;
 
-  // Generate smooth bell/wave SVG path above baseline (y=130)
-  const buildUpperWavePath = (peakRatio: number, index: number) => {
-    const clamped = Math.max(0.2, Math.min(1, peakRatio * periodFactor));
+  const resolvedYLabels =
+    yLabels && yLabels.length === 5
+      ? yLabels
+      : [
+          String(axisTop),
+          String(Math.round(axisTop * 0.75)),
+          String(Math.round(axisTop * 0.5)),
+          String(Math.round(axisTop * 0.25)),
+          '0',
+        ];
+
+  const resolvedXLabels =
+    xLabels && xLabels.length > 0
+      ? xLabels
+      : series.length > 0
+      ? series.map((s) => s.label)
+      : ['—'];
+
+  const getSeriesRatio = (item: WaveSeriesItem, idx: number): number => {
+    const num = numericValues[idx] ?? 0;
+    if (maxVal > 0) {
+      return num > 0 ? Math.max(0.08, Math.min(1, num / axisTop)) : 0;
+    }
+    if (typeof item.peakRatio === 'number') {
+      return Math.max(0, Math.min(1, item.peakRatio));
+    }
+    return 0;
+  };
+
+  // Generate smooth bell/wave SVG path above baseline (y=130) strictly proportional to data
+  const buildUpperWavePath = (ratio: number, index: number) => {
+    const clamped = Math.max(0, Math.min(1, ratio));
     const peakY = 130 - clamped * 102;
     const shiftX = (index % 2 === 0 ? 1 : -1) * (index * 4);
     const peakX = 250 + shiftX;
     return `M 48 130 C 125 130, ${peakX - 75} ${peakY}, ${peakX} ${peakY} C ${peakX + 75} ${peakY}, 375 130, 460 130`;
   };
 
-  // Generate subtle mirrored reflection wave below baseline (y=142) matching Ember reference UI
-  const buildMirrorWavePath = (peakRatio: number, index: number) => {
-    const clamped = Math.max(0.18, Math.min(0.95, peakRatio * periodFactor));
+  // Generate subtle mirrored reflection wave below baseline (y=142) proportional to data
+  const buildMirrorWavePath = (ratio: number, index: number) => {
+    const clamped = Math.max(0, Math.min(0.95, ratio));
     const troughY = 142 + clamped * 58;
     const shiftX = 28 + index * 8;
     const troughX = 270 + shiftX;
@@ -114,7 +154,7 @@ export default function SaaSWaveChart({
           </div>
         </div>
 
-        {/* Unboxed Period Tabs (Avoids Nested Card anti-pattern) */}
+        {/* Unboxed Period Tabs (Only rendered when periodOptions are explicitly provided) */}
         {periodOptions.length > 0 && (
           <div
             className={`inline-flex items-center gap-4 border-b self-start ${
@@ -127,10 +167,15 @@ export default function SaaSWaveChart({
                 <button
                   key={opt}
                   type="button"
-                  onClick={() => setActivePeriod(opt)}
+                  onClick={() => {
+                    setActivePeriod(opt);
+                    onPeriodChange?.(opt);
+                  }}
                   className={`pb-2 text-xs font-semibold transition-all cursor-pointer border-b-2 -mb-px ${
                     active
-                      ? 'border-[#0866ff] text-[#0050cd] font-bold'
+                      ? darkTheme
+                        ? 'border-[#38bdf8] text-blue-400 font-bold'
+                        : 'border-[#0866ff] text-[#0050cd] font-bold'
                       : darkTheme
                       ? 'border-transparent text-slate-300 hover:text-white'
                       : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -153,11 +198,11 @@ export default function SaaSWaveChart({
           aria-label={title}
         >
           <defs>
-            <filter id="blueWaveGlow" x="-10%" y="-20%" width="120%" height="140%">
+            <filter id={glowFilterId} x="-10%" y="-20%" width="120%" height="140%">
               <feGaussianBlur stdDeviation="3.5" result="blur" />
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
-            <linearGradient id="primaryBlueArea" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={areaGradId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#0866ff" stopOpacity={darkTheme ? '0.26' : '0.16'} />
               <stop offset="100%" stopColor="#0866ff" stopOpacity="0.0" />
             </linearGradient>
@@ -182,7 +227,7 @@ export default function SaaSWaveChart({
                 className="font-mono text-[10px]"
                 fill={darkTheme ? '#64748b' : '#94a3b8'}
               >
-                {yLabels[idx] ?? ''}
+                {resolvedYLabels[idx] ?? ''}
               </text>
             </g>
           ))}
@@ -206,18 +251,18 @@ export default function SaaSWaveChart({
                 className="font-mono text-[9px]"
                 fill={darkTheme ? '#475569' : '#cbd5e1'}
               >
-                {idx === 0 ? '0' : yLabels[3 - idx] ?? ''}
+                {idx === 0 ? '0' : resolvedYLabels[3 - idx] ?? ''}
               </text>
             </g>
           ))}
 
           {/* X-Axis Labels */}
-          {xLabels.map((lbl, idx) => {
-            const step = 400 / Math.max(1, xLabels.length - 1);
-            const xPos = 58 + idx * step;
+          {resolvedXLabels.map((lbl, idx) => {
+            const step = 400 / Math.max(1, resolvedXLabels.length - 1);
+            const xPos = resolvedXLabels.length === 1 ? 258 : 58 + idx * step;
             return (
               <text
-                key={lbl}
+                key={`${lbl}-${idx}`}
                 x={xPos}
                 y={139}
                 textAnchor="middle"
@@ -232,14 +277,14 @@ export default function SaaSWaveChart({
           {/* Subtle Area Fill under Primary Wave */}
           {series.length > 0 && (
             <path
-              d={`${buildUpperWavePath(series[0].peakRatio ?? 0.92, 0)} L 460 130 L 48 130 Z`}
-              fill="url(#primaryBlueArea)"
+              d={`${buildUpperWavePath(getSeriesRatio(series[0], 0), 0)} L 460 130 L 48 130 Z`}
+              fill={`url(#${areaGradId})`}
             />
           )}
 
           {/* Lower Mirrored Reflection Curves */}
           {series.map((item, idx) => {
-            const ratio = item.peakRatio ?? Math.max(0.3, 0.9 - idx * 0.18);
+            const ratio = getSeriesRatio(item, idx);
             return (
               <path
                 key={`mirror-${item.label}`}
@@ -254,7 +299,7 @@ export default function SaaSWaveChart({
 
           {/* Upper Multi-Colored Glowing Bezier Waves */}
           {series.map((item, idx) => {
-            const ratio = item.peakRatio ?? Math.max(0.32, 0.92 - idx * 0.18);
+            const ratio = getSeriesRatio(item, idx);
             const isHighlighted = hoveredIdx === null || hoveredIdx === idx;
             return (
               <path
@@ -265,7 +310,7 @@ export default function SaaSWaveChart({
                 strokeWidth={hoveredIdx === idx ? '3' : '2.25'}
                 strokeOpacity={isHighlighted ? 1 : 0.35}
                 strokeLinecap="round"
-                filter={idx === 0 ? 'url(#blueWaveGlow)' : undefined}
+                filter={idx === 0 ? `url(#${glowFilterId})` : undefined}
                 className="transition-all duration-200"
               />
             );
@@ -316,5 +361,7 @@ export default function SaaSWaveChart({
       </div>
     </div>
   );
-}
+});
+
+export default SaaSWaveChart;
 

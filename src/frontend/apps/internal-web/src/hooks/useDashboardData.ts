@@ -47,10 +47,10 @@ export function useDashboardData({
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [lastUpdated, setLastUpdated] = useState<Date | undefined>(undefined);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-
   const abortRef = useRef<AbortController | null>(null);
+  const hasDataRef = useRef<boolean>(false);
 
   const fetchData = useCallback(
     async (isBackground = false) => {
@@ -59,7 +59,7 @@ export function useDashboardData({
       abortRef.current = controller;
 
       try {
-        if (!isBackground) setIsLoading(true);
+        if (!isBackground && !hasDataRef.current) setIsLoading(true);
         setIsRefreshing(true);
         setError(null);
 
@@ -68,14 +68,19 @@ export function useDashboardData({
           signal: controller.signal,
         });
 
+        if (controller.signal.aborted) return;
+
         if (res.data && res.data.success) {
+          hasDataRef.current = true;
           setData(res.data.data);
           setLastUpdated(new Date());
         } else {
           setError(res.data?.message || 'Không thể lấy dữ liệu bảng điều khiển.');
         }
       } catch (err: any) {
-        if (axios.isCancel(err) || err?.name === 'AbortError' || err?.name === 'CanceledError') return;
+        if (axios.isCancel(err) || controller.signal.aborted || err?.name === 'AbortError' || err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') {
+          return;
+        }
         setError(err.response?.data?.message || err.message || 'Lỗi kết nối máy chủ.');
       } finally {
         if (!controller.signal.aborted) {

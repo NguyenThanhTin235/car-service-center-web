@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppSelector } from '@/store';
 import AuthGuard from '@/components/auth/AuthGuard';
@@ -12,9 +12,16 @@ import SaaSDashboardShell, {
 export default function ManagerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const inventoryItemsCount = useAppSelector((state) => state.inventory.items.length);
+  const allItems = useAppSelector((state) => state.inventory.allItems);
+  const items = useAppSelector((state) => state.inventory.items);
   const partCategoriesCount = useAppSelector((state) => state.inventory.categories.length);
-  const lowStockCount = useAppSelector(
-    (state) => state.inventory.items.filter((i) => i.onHand < i.reorderLevel).length
+  const lowStockCount = useMemo(() => {
+    const src = allItems && allItems.length > 0 ? allItems : items;
+    return src.filter((i) => i.isActive !== false && i.onHand <= i.reorderLevel).length;
+  }, [allItems, items]);
+  const handleGlobalSearch = useCallback(
+    (q: string) => router.push(`/dashboard?search=${encodeURIComponent(q)}`),
+    [router]
   );
 
   const navItems: SaaSNavItem[] = useMemo(
@@ -45,7 +52,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
     () => [
       {
         label: 'Điều hành xưởng',
-        value: 'LIVE',
+        value: 'Trực tuyến',
         dotColor: '#0866ff',
         href: '/dashboard',
       },
@@ -69,7 +76,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
       },
       {
         label: 'Báo cáo doanh thu',
-        value: '24/7',
+        value: 'Theo kỳ',
         dotColor: '#10b981',
         href: '/reports',
       },
@@ -89,7 +96,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
       defaultRoleLabel="Quản lý dịch vụ"
       defaultInitials="QL"
       searchPlaceholder="Tìm phiếu RO, mã phụ tùng..."
-      onGlobalSearch={(q) => router.push(`/dashboard?search=${encodeURIComponent(q)}`)}
+      onGlobalSearch={handleGlobalSearch}
     >
       <AuthGuard>{children}</AuthGuard>
     </SaaSDashboardShell>

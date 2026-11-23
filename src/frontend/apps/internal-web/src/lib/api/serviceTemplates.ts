@@ -30,8 +30,10 @@ export interface CreateServiceTemplatePayload {
 }
 
 export const serviceTemplateApi = {
-  getAll: (params?: { search?: string; categoryId?: number; page?: number; limit?: number }) =>
-    api.get('/api/services', { params }),
+  getAll: (
+    params?: { search?: string; categoryId?: number; page?: number; limit?: number },
+    signal?: AbortSignal
+  ) => api.get('/api/services', { params, signal }),
 
   getCategories: () => api.get('/api/services/categories'),
 
