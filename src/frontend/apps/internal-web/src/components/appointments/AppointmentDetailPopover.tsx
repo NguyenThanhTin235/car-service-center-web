@@ -67,7 +67,15 @@ export default function AppointmentDetailPopover({
       <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" onClick={onClose}></div>
       
       {/* The Popover */}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] max-w-[90vw] bg-surface-container-lowest rounded-xl border border-outline-variant shadow-2xl z-50 p-5 animate-in fade-in zoom-in-95 duration-150">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Chi tiết lịch hẹn #${appointment.id}`}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose();
+        }}
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] max-w-[92vw] max-h-[90vh] overflow-y-auto bg-surface-container-lowest rounded-xl border border-outline-variant shadow-2xl z-50 p-5 animate-in fade-in zoom-in-95 duration-150"
+      >
         
         {/* Popover Header */}
         <div className="flex items-start justify-between border-b border-outline-variant/70 pb-4">
@@ -131,7 +139,7 @@ export default function AppointmentDetailPopover({
               <span className="material-symbols-outlined text-base" data-icon="play_arrow">play_arrow</span>
               <span>Bắt đầu tiếp nhận xe</span>
             </button>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
               <button 
                 onClick={() => onReschedule(appointment)}
                 className="h-8 bg-surface-container-lowest border border-outline-variant hover:bg-surface-container-low text-on-surface text-label-sm font-semibold rounded flex items-center justify-center gap-1"
@@ -148,9 +156,22 @@ export default function AppointmentDetailPopover({
                   <span className="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
                   Xác nhận
                 </button>
-              ) : (
-                <button className="h-8 bg-surface-container-lowest border border-outline-variant hover:bg-surface-container-low text-on-surface text-label-sm font-semibold rounded flex items-center justify-center gap-1">
+              ) : appointment.customer?.phone ? (
+                <a
+                  href={`tel:${appointment.customer.phone}`}
+                  className="h-8 bg-surface-container-lowest border border-outline-variant hover:bg-surface-container-low text-on-surface text-label-sm font-semibold rounded flex items-center justify-center gap-1"
+                >
                   <span className="material-symbols-outlined text-sm text-secondary" data-icon="phone_forwarded">phone_forwarded</span>
+                  Gọi khách
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  title="Khách hàng chưa có số điện thoại"
+                  className="h-8 bg-surface-container-lowest border border-outline-variant text-on-surface/40 text-label-sm font-semibold rounded flex items-center justify-center gap-1 cursor-not-allowed"
+                >
+                  <span className="material-symbols-outlined text-sm" data-icon="phone_disabled">phone_disabled</span>
                   Gọi khách
                 </button>
               )}

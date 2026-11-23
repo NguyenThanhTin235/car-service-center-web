@@ -190,7 +190,7 @@ export function DashboardActionTable<T extends Record<string, any>>({
 
       {/* Pagination Footer */}
       {processedData.length > 0 && (
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 tabular-nums">
           <span>
             Hiển thị {(page - 1) * pageSize + 1} -{' '}
             {Math.min(page * pageSize, processedData.length)} trên tổng {processedData.length}

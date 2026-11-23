@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import api from '@/lib/axios';
 
@@ -348,9 +348,13 @@ export default function OperationalReportsPage() {
   const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetchReport = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     try {
       const params: Record<string, string> = { type: reportType };
@@ -358,29 +362,36 @@ export default function OperationalReportsPage() {
         params.start = startDate;
         params.end = endDate;
       }
-      const res = await api.get('/api/reports/operational', { params });
+      const res = await api.get('/api/reports/operational', {
+        params,
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
       if (res.data?.success) {
         setReportData(res.data.data);
-        setHasLoaded(true);
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (controller.signal.aborted || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') {
+        return;
+      }
       console.error('Lỗi tải báo cáo vận hành:', err);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [reportType, startDate, endDate]);
 
   const handleTypeChange = (t: ReportType) => {
     setReportType(t);
     setReportData(null);
-    setHasLoaded(false);
-    if (t === 'inventory') {
-      setTimeout(() => fetchReport(), 0);
-    }
   };
 
   useEffect(() => {
     fetchReport();
+    return () => {
+      abortRef.current?.abort();
+    };
   }, [fetchReport]);
 
   return (
@@ -458,7 +469,7 @@ export default function OperationalReportsPage() {
           <div className="h-8 w-52 bg-slate-100 rounded-lg animate-pulse" />
           <div className="h-64 w-full bg-slate-100 rounded-xl animate-pulse" />
         </div>
-      ) : !hasLoaded ? (
+      ) : !reportData ? (
         <div className="text-center py-16 px-6 bg-white rounded-2xl border border-dashed border-slate-300">
           <span className="material-symbols-outlined text-[48px] block mb-3 text-slate-400">
             bar_chart
@@ -467,7 +478,7 @@ export default function OperationalReportsPage() {
             Chọn khoảng thời gian và nhấn <strong>Xem báo cáo</strong>
           </p>
         </div>
-      ) : reportData ? (
+      ) : (
         <>
           {reportData.type === 'revenue' && (
             <RevenueSection
@@ -488,7 +499,7 @@ export default function OperationalReportsPage() {
             />
           )}
         </>
-      ) : null}
+      )}
     </div>
   );
 }

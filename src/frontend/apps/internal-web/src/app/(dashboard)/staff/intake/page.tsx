@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import React, { useEffect, useState, useMemo, useDeferredValue, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
   fetchIntakeQueue,
@@ -10,14 +11,41 @@ import {
 } from '@/store/slices/intakeSlice';
 import { fetchAppointments } from '@/store/slices/appointmentSlice';
 import api from '@/lib/axios';
-import WalkInIntakeModal from '@/components/intake/WalkInIntakeModal';
-import TowInIntakeModal from '@/components/intake/TowInIntakeModal';
-import IntakeDetailModal from '@/components/intake/IntakeDetailModal';
-import ConfirmModal from '@/components/shared/ConfirmModal';
 import TablePagination from '@/components/shared/TablePagination';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
-import ReadOnlyROModal from '@/components/intake/ReadOnlyROModal';
+
+const WalkInIntakeModal = dynamic(() => import('@/components/intake/WalkInIntakeModal'), { ssr: false });
+const TowInIntakeModal = dynamic(() => import('@/components/intake/TowInIntakeModal'), { ssr: false });
+const IntakeDetailModal = dynamic(() => import('@/components/intake/IntakeDetailModal'), { ssr: false });
+const ConfirmModal = dynamic(() => import('@/components/shared/ConfirmModal'), { ssr: false });
+const ReadOnlyROModal = dynamic(() => import('@/components/intake/ReadOnlyROModal'), { ssr: false });
+
+const getTypeStyles = (type: string) => {
+  switch (type) {
+    case 'WALK_IN':
+      return 'bg-blue-50 text-[#0866ff] border border-blue-200/70';
+    case 'TOW_IN':
+      return 'bg-amber-50 text-amber-700 border border-amber-200/70';
+    case 'APPOINTMENT':
+      return 'bg-emerald-50 text-emerald-700 border border-emerald-200/70';
+    default:
+      return 'bg-slate-100 text-slate-600 border border-slate-200';
+  }
+};
+
+const getTypeName = (type: string) => {
+  switch (type) {
+    case 'WALK_IN':
+      return 'Khách vãng lai';
+    case 'TOW_IN':
+      return 'Xe cứu hộ';
+    case 'APPOINTMENT':
+      return 'Hẹn trước';
+    default:
+      return type;
+  }
+};
 
 export default function IntakePage() {
   const dispatch = useAppDispatch();
@@ -612,32 +640,6 @@ export default function IntakePage() {
                 </thead>
                 <tbody className="divide-y divide-slate-200/60 text-sm">
                   {paginatedRecords.map((record) => {
-                    const getTypeStyles = (type: string) => {
-                      switch (type) {
-                        case 'WALK_IN':
-                          return 'bg-blue-50 text-[#0866ff] border border-blue-200/70';
-                        case 'TOW_IN':
-                          return 'bg-amber-50 text-amber-700 border border-amber-200/70';
-                        case 'APPOINTMENT':
-                          return 'bg-emerald-50 text-emerald-700 border border-emerald-200/70';
-                        default:
-                          return 'bg-slate-100 text-slate-600 border border-slate-200';
-                      }
-                    };
-
-                    const getTypeName = (type: string) => {
-                      switch (type) {
-                        case 'WALK_IN':
-                          return 'Khách vãng lai';
-                        case 'TOW_IN':
-                          return 'Xe cứu hộ';
-                        case 'APPOINTMENT':
-                          return 'Hẹn trước';
-                        default:
-                          return type;
-                      }
-                    };
-
                     return (
                       <tr key={record.id} className="hover:bg-blue-50/25 transition-colors">
                         <td className="py-3.5 px-3.5 lg:px-5 whitespace-nowrap">
@@ -844,44 +846,50 @@ export default function IntakePage() {
       </div>
 
       {/* Modals */}
-      <WalkInIntakeModal
-        isOpen={isWalkInModalOpen}
-        onClose={() => setWalkInModalOpen(false)}
-        onSubmit={handleWalkInSubmit}
-        services={serviceTemplates}
-        customers={customers}
-        onCustomerSearch={handleCustomerSearch}
-        onVehicleAdded={(customerId, vehicle) => {
-          setCustomers((prev) =>
-            prev.map((c) =>
-              Number(c.id) === customerId ? { ...c, vehicles: [...(c.vehicles || []), vehicle] } : c
-            )
-          );
-        }}
-      />
-      <TowInIntakeModal
-        isOpen={isTowInModalOpen}
-        onClose={() => setTowInModalOpen(false)}
-        onSubmit={handleTowInSubmit}
-        services={serviceTemplates}
-        customers={customers}
-        onCustomerSearch={handleCustomerSearch}
-        onVehicleAdded={(customerId, vehicle) => {
-          setCustomers((prev) =>
-            prev.map((c) =>
-              Number(c.id) === customerId ? { ...c, vehicles: [...(c.vehicles || []), vehicle] } : c
-            )
-          );
-        }}
-      />
-      <ConfirmModal
-        isOpen={confirmAction?.isOpen || false}
-        title={confirmAction?.title || ''}
-        message={confirmAction?.message || ''}
-        isDestructive={confirmAction?.isDestructive}
-        onConfirm={confirmAction?.onConfirm || (() => {})}
-        onCancel={() => setConfirmAction(null)}
-      />
+      {isWalkInModalOpen && (
+        <WalkInIntakeModal
+          isOpen={isWalkInModalOpen}
+          onClose={() => setWalkInModalOpen(false)}
+          onSubmit={handleWalkInSubmit}
+          services={serviceTemplates}
+          customers={customers}
+          onCustomerSearch={handleCustomerSearch}
+          onVehicleAdded={(customerId, vehicle) => {
+            setCustomers((prev) =>
+              prev.map((c) =>
+                Number(c.id) === customerId ? { ...c, vehicles: [...(c.vehicles || []), vehicle] } : c
+              )
+            );
+          }}
+        />
+      )}
+      {isTowInModalOpen && (
+        <TowInIntakeModal
+          isOpen={isTowInModalOpen}
+          onClose={() => setTowInModalOpen(false)}
+          onSubmit={handleTowInSubmit}
+          services={serviceTemplates}
+          customers={customers}
+          onCustomerSearch={handleCustomerSearch}
+          onVehicleAdded={(customerId, vehicle) => {
+            setCustomers((prev) =>
+              prev.map((c) =>
+                Number(c.id) === customerId ? { ...c, vehicles: [...(c.vehicles || []), vehicle] } : c
+              )
+            );
+          }}
+        />
+      )}
+      {confirmAction?.isOpen && (
+        <ConfirmModal
+          isOpen={confirmAction.isOpen}
+          title={confirmAction.title || ''}
+          message={confirmAction.message || ''}
+          isDestructive={confirmAction.isDestructive}
+          onConfirm={confirmAction.onConfirm || (() => {})}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
       {selectedRecord && (
         <IntakeDetailModal record={selectedRecord} onClose={() => setSelectedRecord(null)} />
       )}

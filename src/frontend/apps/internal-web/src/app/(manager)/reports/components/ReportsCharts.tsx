@@ -55,15 +55,16 @@ export function ServicesBarChart({ data }: { data: ServiceChartRow[] }) {
       <BarChart
         data={data}
         layout="vertical"
-        margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+        margin={{ top: 10, right: 20, left: 8, bottom: 10 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
         <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
         <YAxis
           dataKey="serviceName"
           type="category"
-          width={180}
-          tick={{ fontSize: 12, fill: '#334155' }}
+          width={120}
+          tick={{ fontSize: 11, fill: '#334155' }}
+          tickFormatter={(v: string) => (v && v.length > 16 ? `${v.slice(0, 15)}…` : v)}
         />
         <Tooltip
           formatter={(val: any) => [`${val} lượt`, 'Số lần']}

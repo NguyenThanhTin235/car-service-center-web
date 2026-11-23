@@ -10,6 +10,7 @@ import TablePagination from '@/components/shared/TablePagination';
 import ComboBox from '@/components/shared/ComboBox';
 import toast from 'react-hot-toast';
 import { validateName, validateRequired } from '@/lib/utils/validators';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const EmployeeDetailModal = dynamic(
   () => import('@/components/admin/EmployeeDetailModal'),
@@ -67,6 +68,7 @@ export default function EmployeesPage() {
   const [availableUsers, setAvailableUsers] = useState<UserData[]>([]);
   const [pagination, setPagination] = useState({ totalRecords: 0, totalPages: 1, currentPage: 1, limit: 10 });
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [filterPos, setFilterPos] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [loading, setLoading] = useState(true);
@@ -79,26 +81,38 @@ export default function EmployeesPage() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const loadEmployees = useCallback(async (page = 1) => {
+  const loadEmployees = useCallback(async (page = 1, signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const res = await employeeApi.getAll({
-        search,
-        position: filterPos || undefined,
-        status: filterStatus || undefined,
-        page,
-        limit: 10,
-      });
-      setEmployees(res.data.data);
-      setPagination(res.data.pagination);
+      const res = await employeeApi.getAll(
+        {
+          search: debouncedSearch,
+          position: filterPos || undefined,
+          status: filterStatus || undefined,
+          page,
+          limit: 10,
+        },
+        signal
+      );
+      if (!signal?.aborted) {
+        setEmployees(res.data.data);
+        setPagination(res.data.pagination);
+      }
     } catch (e: any) {
+      if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED' || signal?.aborted) return;
       setError(e.response?.data?.message || 'Lỗi tải dữ liệu');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
-  }, [search, filterPos, filterStatus]);
+  }, [debouncedSearch, filterPos, filterStatus]);
 
-  useEffect(() => { loadEmployees(); }, [loadEmployees]);
+  useEffect(() => {
+    const controller = new AbortController();
+    loadEmployees(1, controller.signal);
+    return () => controller.abort();
+  }, [loadEmployees]);
   useEffect(() => { employeeApi.getSkills().then(res => setSkills(res.data.data)).catch(() => {}); }, []);
 
   const openCreate = () => { 
@@ -125,7 +139,8 @@ export default function EmployeesPage() {
     setShowModal(true);
   };
   
-  const loadAvailableUsers = async () => {
+  const loadAvailableUsers = async (force = false) => {
+    if (!force && availableUsers.length > 0) return;
     try {
       const res = await userApi.getAll({ limit: 100 });
       const users: UserData[] = res.data.data;
@@ -183,6 +198,7 @@ export default function EmployeesPage() {
       }
       setShowModal(false);
       loadEmployees(pagination.currentPage);
+      loadAvailableUsers(true);
     } catch (e: any) {
       const msg = e.response?.data?.message || 'Có lỗi xảy ra';
       setError(msg);
@@ -251,9 +267,11 @@ export default function EmployeesPage() {
         {/* 3 Status & Position Tiles (7 cols) */}
         <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* Card 2: Royal Blue (#0050cd) - Đang hoạt động */}
-          <div
+          <button
+            type="button"
+            aria-pressed={filterStatus === 'active'}
             onClick={() => setFilterStatus(filterStatus === 'active' ? '' : 'active')}
-            className={`rounded-[24px] p-5 flex flex-col justify-between cursor-pointer transition-all select-none shadow-md group ${
+            className={`text-left rounded-[24px] p-5 flex flex-col justify-between cursor-pointer transition-all select-none shadow-md group ${
               filterStatus === 'active'
                 ? 'bg-[#0050cd] text-white ring-2 ring-white/60 shadow-lg'
                 : 'bg-[#0050cd] text-white hover:brightness-105'
@@ -273,12 +291,14 @@ export default function EmployeesPage() {
               <span>Sẵn sàng nhận việc</span>
               <span className="font-mono font-bold">Trực ca</span>
             </div>
-          </div>
+          </button>
 
           {/* Card 3: Soft Cool Slate (#e4e7ec) - Ngừng hoạt động */}
-          <div
+          <button
+            type="button"
+            aria-pressed={filterStatus === 'inactive'}
             onClick={() => setFilterStatus(filterStatus === 'inactive' ? '' : 'inactive')}
-            className={`rounded-[24px] p-5 flex flex-col justify-between cursor-pointer transition-all select-none shadow-xs group ${
+            className={`text-left rounded-[24px] p-5 flex flex-col justify-between cursor-pointer transition-all select-none shadow-xs group ${
               filterStatus === 'inactive'
                 ? 'bg-[#e4e7ec] text-zinc-900 ring-2 ring-slate-400 shadow-md'
                 : 'bg-[#e4e7ec] text-zinc-900 hover:brightness-95'
@@ -298,7 +318,7 @@ export default function EmployeesPage() {
               <span>Tạm ngưng nhận việc</span>
               <span className="font-mono font-semibold text-rose-700">Tạm dừng</span>
             </div>
-          </div>
+          </button>
 
           {/* Card 4: Midnight Indigo (#111827) - Kỹ năng hệ thống */}
           <div className="rounded-[24px] bg-[#111827] text-white p-5 flex flex-col justify-between shadow-md hover:shadow-lg transition-all group">
@@ -520,14 +540,18 @@ export default function EmployeesPage() {
                     <td className="py-3.5 px-4 pr-5 align-middle whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          type="button"
                           onClick={() => setSelectedEmpDetail(emp)}
+                          aria-label={`Xem chi tiết ${emp.fullName}`}
                           className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-slate-600 hover:text-[#0866ff] flex items-center justify-center transition-colors cursor-pointer"
                           title="Xem chi tiết nhân viên"
                         >
                           <span className="material-symbols-outlined text-[17px]">visibility</span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => openEdit(emp)}
+                          aria-label={`Chỉnh sửa ${emp.fullName}`}
                           className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-[#0866ff] flex items-center justify-center transition-colors cursor-pointer"
                           title="Chỉnh sửa"
                         >
@@ -535,7 +559,9 @@ export default function EmployeesPage() {
                         </button>
                         {emp.isActive ? (
                           <button
+                            type="button"
                             onClick={() => handleDeactivate(emp)}
+                            aria-label={`Vô hiệu hóa ${emp.fullName}`}
                             className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-200/80 text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
                             title="Vô hiệu hóa"
                           >
@@ -545,7 +571,9 @@ export default function EmployeesPage() {
                           </button>
                         ) : (
                           <button
+                            type="button"
                             onClick={() => handleReactivate(emp)}
+                            aria-label={`Kích hoạt lại ${emp.fullName}`}
                             className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-500 hover:text-white border border-emerald-200/80 text-emerald-600 flex items-center justify-center transition-colors cursor-pointer"
                             title="Kích hoạt lại"
                           >
@@ -586,7 +614,7 @@ export default function EmployeesPage() {
                   {error}
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label className="flex flex-col gap-1.5">
                   <span className="text-xs font-semibold text-slate-600">Họ và tên *</span>
                   <input
@@ -763,16 +791,18 @@ export default function EmployeesPage() {
         onCancel={() => setConfirmEmp(null)}
       />
 
-      <EmployeeDetailModal
-        isOpen={!!selectedEmpDetail}
-        onClose={() => setSelectedEmpDetail(null)}
-        employeeId={selectedEmpDetail?.id || null}
-        fallbackData={selectedEmpDetail}
-        onEdit={(emp) => {
-          setSelectedEmpDetail(null);
-          openEdit(emp);
-        }}
-      />
+      {selectedEmpDetail && (
+        <EmployeeDetailModal
+          isOpen={!!selectedEmpDetail}
+          onClose={() => setSelectedEmpDetail(null)}
+          employeeId={selectedEmpDetail?.id || null}
+          fallbackData={selectedEmpDetail}
+          onEdit={(emp) => {
+            setSelectedEmpDetail(null);
+            openEdit(emp);
+          }}
+        />
+      )}
     </div>
   );
 }

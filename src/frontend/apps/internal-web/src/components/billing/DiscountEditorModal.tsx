@@ -84,15 +84,28 @@ export default function DiscountEditorModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-scrim/40 backdrop-blur-xs animate-fade-in">
-      <div className="bg-surface-container-lowest rounded-2xl max-w-lg w-full shadow-2xl border border-outline-variant overflow-hidden animate-scale-up">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Chỉnh sửa chiết khấu & giảm trừ"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-scrim/40 backdrop-blur-xs animate-fade-in"
+    >
+      <div className="bg-surface-container-lowest rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl border border-outline-variant overflow-hidden animate-scale-up">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
+        <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-[24px]">percent</span>
             <h2 className="text-title-md font-bold text-on-surface">Chỉnh sửa chiết khấu & giảm trừ</h2>
           </div>
           <button
+            type="button"
+            aria-label="Đóng"
             onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
           >
@@ -100,7 +113,7 @@ export default function DiscountEditorModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
           {/* Subtotal baseline */}
           <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low border border-outline-variant text-sm">
             <span className="text-on-surface-variant">Tổng tiền dịch vụ gốc (Chưa giảm trừ):</span>

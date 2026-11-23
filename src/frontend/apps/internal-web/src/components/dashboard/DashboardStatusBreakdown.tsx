@@ -190,8 +190,8 @@ export const DashboardStatusBreakdown: React.FC<DashboardStatusBreakdownProps> =
       </div>
 
       {onSelectCategory && (
-        <div className="text-[11px] text-slate-400 text-center pt-3 border-t border-slate-100 dark:border-slate-800 mt-3">
-          💡 Nhấp vào bất kỳ thanh phân loại nào để lọc chéo dữ liệu danh sách
+        <div className="text-[11px] text-slate-500 text-center pt-3 border-t border-slate-100 dark:border-slate-800 mt-3">
+          Nhấn vào thanh phân loại để lọc chéo dữ liệu danh sách
         </div>
       )}
     </div>

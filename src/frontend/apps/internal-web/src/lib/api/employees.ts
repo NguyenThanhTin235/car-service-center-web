@@ -26,11 +26,13 @@ export interface UpdateEmployeePayload {
 }
 
 export const employeeApi = {
-  getAll: (params?: { search?: string; position?: string; status?: string; page?: number; limit?: number }) =>
-    api.get('/api/employees', { params }),
+  getAll: (
+    params?: { search?: string; position?: string; status?: string; page?: number; limit?: number },
+    signal?: AbortSignal
+  ) => api.get('/api/employees', { params, signal }),
 
-  getById: (id: number) =>
-    api.get(`/api/employees/${id}`),
+  getById: (id: number, signal?: AbortSignal) =>
+    api.get(`/api/employees/${id}`, { signal }),
 
   create: (data: CreateEmployeePayload) =>
     api.post('/api/employees', data),

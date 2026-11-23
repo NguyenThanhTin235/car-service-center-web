@@ -10,7 +10,7 @@ import {
   InventoryItem,
 } from '@/store/slices/inventorySlice';
 import Modal from '@/components/shared/Modal';
-import Toast from '@/components/shared/Toast';
+import toast from 'react-hot-toast';
 
 interface GoodsReceiptModalProps {
   isOpen: boolean;
@@ -46,6 +46,11 @@ export function GoodsReceiptModal({
     [allItems, inventoryItems]
   );
 
+  const catalogMap = useMemo(
+    () => new Map(catalogItems.map((i) => [i.id.toString(), i])),
+    [catalogItems]
+  );
+
   const [formData, setFormData] = useState({
     supplierId: '',
     receiptType: 'PURCHASE' as 'PURCHASE' | 'OPENING_STOCK',
@@ -73,16 +78,14 @@ export function GoodsReceiptModal({
   });
   const [creatingSupplier, setCreatingSupplier] = useState(false);
 
-  const [toast, setToast] = useState<{
-    show: boolean;
-    type: 'success' | 'error';
-    message: string;
-  }>({ show: false, type: 'success', message: '' });
-
   useEffect(() => {
     if (isOpen) {
-      dispatch(fetchSuppliers());
-      dispatch(fetchAllInventoryItems());
+      if (suppliers.length === 0) {
+        dispatch(fetchSuppliers());
+      }
+      if (!allItems || allItems.length === 0) {
+        dispatch(fetchAllInventoryItems());
+      }
       setFormData({
         supplierId: '',
         receiptType: 'PURCHASE',
@@ -127,11 +130,7 @@ export function GoodsReceiptModal({
       (i) => i.isActive && i.onHand <= i.reorderLevel
     );
     if (source.length === 0) {
-      setToast({
-        show: true,
-        type: 'error',
-        message: 'Hiện tất cả phụ tùng trong kho đều đang trên mức an toàn!',
-      });
+      toast.error('Hiện tất cả phụ tùng trong kho đều đang trên mức an toàn!');
       return;
     }
 
@@ -146,11 +145,7 @@ export function GoodsReceiptModal({
       };
     });
     setLines(autoLines);
-    setToast({
-      show: true,
-      type: 'success',
-      message: `Đã tự động điền ${autoLines.length} mã phụ tùng chạm/dưới định mức an toàn`,
-    });
+    toast.success(`Đã tự động điền ${autoLines.length} mã phụ tùng chạm/dưới định mức an toàn`);
   };
 
   const handleQuickSelectSku = (item: InventoryItem) => {
@@ -219,7 +214,7 @@ export function GoodsReceiptModal({
 
   const handleCreateQuickSupplier = async () => {
     if (!quickSupplier.name.trim()) {
-      setToast({ show: true, type: 'error', message: 'Vui lòng nhập tên Nhà cung cấp' });
+      toast.error('Vui lòng nhập tên Nhà cung cấp');
       return;
     }
     setCreatingSupplier(true);
@@ -232,9 +227,9 @@ export function GoodsReceiptModal({
       }
       setQuickSupplier({ name: '', taxCode: '', contactPerson: '', phone: '' });
       setShowQuickSupplier(false);
-      setToast({ show: true, type: 'success', message: 'Đã thêm Nhà cung cấp mới' });
+      toast.success('Đã thêm Nhà cung cấp mới');
     } else {
-      setToast({ show: true, type: 'error', message: 'Không thể tạo Nhà cung cấp' });
+      toast.error('Không thể tạo Nhà cung cấp');
     }
   };
 
@@ -253,7 +248,7 @@ export function GoodsReceiptModal({
       subtotal += gross;
       discountAmount += lineDisc;
 
-      const selectedItem = catalogItems.find((item) => item.id.toString() === line.itemId);
+      const selectedItem = catalogMap.get(line.itemId);
       if (selectedItem && qty > 0) {
         const netUnitCost = cost * (1 - disc / 100);
         const newOnHand = selectedItem.onHand + qty;
@@ -277,21 +272,17 @@ export function GoodsReceiptModal({
     const grandTotal = Math.round(netSubtotal + taxAmount);
 
     return { subtotal, discountAmount, netSubtotal, taxRateNum, taxAmount, grandTotal, marginWarningCount };
-  }, [lines, catalogItems, formData.taxRate, formData.receiptType]);
+  }, [lines, catalogMap, formData.taxRate, formData.receiptType]);
 
   const submitReceipt = async (status: 'DRAFT' | 'POSTED') => {
     if (formData.receiptType === 'PURCHASE' && !formData.supplierId) {
-      setToast({
-        show: true,
-        type: 'error',
-        message: 'Vui lòng chọn Nhà cung cấp đối với phiếu Nhập mua hàng',
-      });
+      toast.error('Vui lòng chọn Nhà cung cấp đối với phiếu Nhập mua hàng');
       return;
     }
 
     const validLines = lines.filter((l) => l.itemId);
     if (validLines.length === 0) {
-      setToast({ show: true, type: 'error', message: 'Vui lòng chọn ít nhất 1 mặt hàng phụ tùng' });
+      toast.error('Vui lòng chọn ít nhất 1 mặt hàng phụ tùng');
       return;
     }
 
@@ -299,11 +290,7 @@ export function GoodsReceiptModal({
       const qty = parseFloat(validLines[i].quantity);
       const cost = parseFloat(validLines[i].unitCost);
       if (!validLines[i].itemId || qty <= 0 || !Number.isInteger(qty) || cost < 0) {
-        setToast({
-          show: true,
-          type: 'error',
-          message: `Dòng ${i + 1} không hợp lệ: Số lượng phải là số nguyên dương và đơn giá ≥ 0`,
-        });
+        toast.error(`Dòng ${i + 1} không hợp lệ: Số lượng phải là số nguyên dương và đơn giá ≥ 0`);
         return;
       }
     }
@@ -333,24 +320,15 @@ export function GoodsReceiptModal({
     const resultAction = await dispatch(createReceipt(payload));
 
     if (resultAction.meta.requestStatus === 'fulfilled') {
-      setToast({
-        show: true,
-        type: 'success',
-        message:
-          status === 'DRAFT'
-            ? 'Đã lưu bản nháp Phiếu nhập kho!'
-            : 'Đã ghi sổ Nhập kho & cập nhật Giá vốn bình quân thành công!',
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 900);
+      toast.success(
+        status === 'DRAFT'
+          ? 'Đã lưu bản nháp Phiếu nhập kho!'
+          : 'Đã ghi sổ Nhập kho & cập nhật Giá vốn bình quân thành công!'
+      );
+      onSuccess();
+      onClose();
     } else {
-      setToast({
-        show: true,
-        type: 'error',
-        message: (resultAction.payload as string) || actionError || 'Lỗi khi lưu phiếu nhập kho',
-      });
+      toast.error((resultAction.payload as string) || actionError || 'Lỗi khi lưu phiếu nhập kho');
     }
   };
 
@@ -707,9 +685,7 @@ export function GoodsReceiptModal({
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
                   {lines.map((line, index) => {
-                    const selectedItem = catalogItems.find(
-                      (item) => item.id.toString() === line.itemId
-                    );
+                    const selectedItem = catalogMap.get(line.itemId);
                     const qty = Math.max(0, parseInt(line.quantity || '0', 10) || 0);
                     const unitCost = Math.max(0, parseFloat(line.unitCost || '0') || 0);
                     const discountRate = Math.min(
@@ -972,7 +948,7 @@ export function GoodsReceiptModal({
               <strong>Ghi sổ nhập kho</strong>.
             </span>
 
-            <div className="flex items-center justify-end gap-2.5 shrink-0">
+            <div className="flex flex-wrap items-center justify-end gap-2.5 shrink-0">
               <button
                 type="button"
                 onClick={onClose}
@@ -1002,14 +978,6 @@ export function GoodsReceiptModal({
           </div>
         </div>
       </Modal>
-
-      {toast.show && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast({ ...toast, show: false })}
-        />
-      )}
     </>
   );
 }

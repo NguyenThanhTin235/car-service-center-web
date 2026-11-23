@@ -7,6 +7,7 @@ import Modal from '@/components/shared/Modal';
 import TablePagination from '@/components/shared/TablePagination';
 import toast from 'react-hot-toast';
 import { validateName, validateRequired, validateInteger } from '@/lib/utils/validators';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const CATALOG_TYPES: Record<string, string> = {
   UOM: 'Đơn vị đo lường',
@@ -36,6 +37,37 @@ const defaultForm: FormData = {
   sortOrder: '0',
 };
 
+const TILE_PALETTE = [
+  {
+    container: 'bg-[#0050cd] text-white shadow-md shadow-[#0050cd]/20',
+    label: 'text-blue-100',
+    icon: 'text-blue-200',
+    badge: 'bg-white/20 text-white',
+    actionText: 'text-blue-200',
+  },
+  {
+    container: 'bg-[#e4e7ec] text-zinc-900 shadow-xs border border-slate-300/80',
+    label: 'text-slate-700',
+    icon: 'text-slate-500',
+    badge: 'bg-white text-zinc-900 border border-slate-300',
+    actionText: 'text-slate-600',
+  },
+  {
+    container: 'bg-[#111827] text-white shadow-md',
+    label: 'text-slate-300',
+    icon: 'text-cyan-400',
+    badge: 'bg-white/10 text-cyan-400 border border-white/10',
+    actionText: 'text-slate-400',
+  },
+  {
+    container: 'bg-[#0c2340] text-white shadow-md',
+    label: 'text-zinc-300',
+    icon: 'text-zinc-400',
+    badge: 'bg-white/10 text-zinc-200 border border-white/10',
+    actionText: 'text-zinc-400',
+  },
+];
+
 export default function CatalogsPage() {
   const [catalogs, setCatalogs] = useState<CatalogData[]>([]);
   const [typeCounts, setTypeCounts] = useState<Record<string, number>>({
@@ -51,6 +83,7 @@ export default function CatalogsPage() {
     limit: 10,
   });
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [filterType, setFilterType] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -63,31 +96,41 @@ export default function CatalogsPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(
-    async (page = 1) => {
+    async (page = 1, signal?: AbortSignal) => {
       setLoading(true);
       try {
-        const res = await catalogApi.getAll({
-          search,
-          catalogType: filterType || undefined,
-          page,
-          limit: 10,
-        });
-        setCatalogs(res.data.data);
-        setPagination(res.data.pagination);
-        if (res.data.typeCounts) {
-          setTypeCounts(res.data.typeCounts);
+        const res = await catalogApi.getAll(
+          {
+            search: debouncedSearch,
+            catalogType: filterType || undefined,
+            page,
+            limit: 10,
+          },
+          signal
+        );
+        if (!signal?.aborted) {
+          setCatalogs(res.data.data);
+          setPagination(res.data.pagination);
+          if (res.data.typeCounts) {
+            setTypeCounts(res.data.typeCounts);
+          }
         }
       } catch (e: any) {
+        if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED' || signal?.aborted) return;
         setError(e.response?.data?.message || 'Lỗi tải dữ liệu');
       } finally {
-        setLoading(false);
+        if (!signal?.aborted) {
+          setLoading(false);
+        }
       }
     },
-    [search, filterType]
+    [debouncedSearch, filterType]
   );
 
   useEffect(() => {
-    load();
+    const controller = new AbortController();
+    load(1, controller.signal);
+    return () => controller.abort();
   }, [load]);
 
   const openCreate = () => {
@@ -200,12 +243,14 @@ export default function CatalogsPage() {
       {/* 1. Asymmetrical 12-Col Bento Summary (4 + 8 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Card 1: Navy (#0c2340) - Tổng tham số danh mục (4 cols) */}
-        <div
+        <button
+          type="button"
+          aria-pressed={filterType === ''}
           onClick={() => setFilterType('')}
-          className="lg:col-span-4 cursor-pointer rounded-[24px] bg-[#0c2340] text-white p-5 sm:p-6 relative overflow-hidden flex flex-col justify-between min-h-[170px] shadow-md hover:shadow-lg transition-all group"
+          className="text-left lg:col-span-4 cursor-pointer rounded-[24px] bg-[#0c2340] text-white p-5 sm:p-6 relative overflow-hidden flex flex-col justify-between min-h-[170px] shadow-md hover:shadow-lg transition-all group"
         >
           <div className="absolute inset-0 saas-subtle-grid pointer-events-none opacity-40" />
-          <div className="relative z-10 flex items-start justify-between">
+          <div className="relative z-10 flex items-start justify-between w-full">
             <div>
               <span className="text-xs font-semibold text-zinc-300 tracking-wide">Tổng tham số danh mục</span>
               <div className="text-3xl sm:text-4xl font-mono font-extrabold tabular-nums tracking-tight text-white mt-1.5">
@@ -217,13 +262,13 @@ export default function CatalogsPage() {
               <span className="material-symbols-outlined text-[20px]">list_alt</span>
             </div>
           </div>
-          <div className="relative z-10 mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-zinc-300">
+          <div className="relative z-10 mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-zinc-300 w-full">
             <span>Đang hoạt động</span>
             <span className="px-2.5 py-0.5 rounded-full bg-white/10 font-mono font-bold text-white">
               {activeCount} mục
             </span>
           </div>
-        </div>
+        </button>
 
         {/* 4 Interactive Type Filter Tiles (8 cols) mapped to Dashboard palette */}
         <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -235,43 +280,7 @@ export default function CatalogsPage() {
             // 0: Royal Blue (#0050cd)
             // 1: Soft Cool Slate (#e4e7ec)
             // 2: Midnight Indigo (#111827)
-            // 3: Dark Navy (#0c2340)
-            const tilePalette = [
-              // 0: Royal Blue
-              {
-                container: 'bg-[#0050cd] text-white shadow-md shadow-[#0050cd]/20',
-                label: 'text-blue-100',
-                icon: 'text-blue-200',
-                badge: 'bg-white/20 text-white',
-                actionText: 'text-blue-200',
-              },
-              // 1: Soft Cool Slate
-              {
-                container: 'bg-[#e4e7ec] text-zinc-900 shadow-xs border border-slate-300/80',
-                label: 'text-slate-700',
-                icon: 'text-slate-500',
-                badge: 'bg-white text-zinc-900 border border-slate-300',
-                actionText: 'text-slate-600',
-              },
-              // 2: Midnight Indigo
-              {
-                container: 'bg-[#111827] text-white shadow-md',
-                label: 'text-slate-300',
-                icon: 'text-cyan-400',
-                badge: 'bg-white/10 text-cyan-400 border border-white/10',
-                actionText: 'text-slate-400',
-              },
-              // 3: Dark Navy
-              {
-                container: 'bg-[#0c2340] text-white shadow-md',
-                label: 'text-zinc-300',
-                icon: 'text-zinc-400',
-                badge: 'bg-white/10 text-zinc-200 border border-white/10',
-                actionText: 'text-zinc-400',
-              },
-            ];
-
-            const theme = tilePalette[idx % tilePalette.length];
+            const theme = TILE_PALETTE[idx % TILE_PALETTE.length];
 
             return (
               <button
@@ -437,14 +446,18 @@ export default function CatalogsPage() {
                     <td className="py-3.5 px-5 pr-6">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          type="button"
                           onClick={() => openEdit(c)}
+                          aria-label={`Chỉnh sửa ${c.name}`}
                           className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-[#0866ff] flex items-center justify-center transition-colors cursor-pointer"
                           title="Chỉnh sửa"
                         >
                           <span className="material-symbols-outlined text-[17px]">edit</span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleToggle(c)}
+                          aria-label={c.isActive ? `Vô hiệu hóa ${c.name}` : `Kích hoạt ${c.name}`}
                           className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${
                             c.isActive
                               ? 'bg-rose-50 hover:bg-rose-500 hover:text-white border-rose-200/80 text-rose-600'
@@ -457,7 +470,9 @@ export default function CatalogsPage() {
                           </span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDelete(c)}
+                          aria-label={`Xóa danh mục ${c.name}`}
                           className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-rose-500 hover:text-white border border-slate-200/80 hover:border-rose-500 text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
                           title="Xóa danh mục"
                         >
@@ -493,7 +508,7 @@ export default function CatalogsPage() {
               {error}
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold text-slate-600">Loại danh mục *</span>
               <select

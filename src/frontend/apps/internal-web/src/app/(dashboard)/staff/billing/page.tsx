@@ -1,16 +1,24 @@
 ﻿'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchBillingQueue, setTab, setSearch, setPage } from '@/store/slices/billingSlice';
 import InvoiceStatusBadge from '@/components/billing/InvoiceStatusBadge';
-import CreateInvoiceDraftModal from '@/components/billing/CreateInvoiceDraftModal';
-import PaymentModal from '@/components/billing/PaymentModal';
 import { InvoiceDetail, getInvoiceById } from '@/lib/api/invoice.api';
 import TablePagination from '@/components/shared/TablePagination';
 import { formatVND } from '@/lib/utils/formatters';
 import toast from 'react-hot-toast';
+
+const CreateInvoiceDraftModal = dynamic(
+  () => import('@/components/billing/CreateInvoiceDraftModal'),
+  { ssr: false }
+);
+const PaymentModal = dynamic(
+  () => import('@/components/billing/PaymentModal'),
+  { ssr: false }
+);
 
 export default function BillingQueuePage() {
   const dispatch = useAppDispatch();
@@ -40,10 +48,13 @@ export default function BillingQueuePage() {
     dispatch(fetchBillingQueue({ tab, search, page, limit: pageSize }));
   }, [dispatch, tab, search, page, pageSize]);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    dispatch(setSearch(searchInput.trim()));
-  };
+  const handleSearchSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      dispatch(setSearch(searchInput.trim()));
+    },
+    [dispatch, searchInput]
+  );
 
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return '-';
@@ -51,7 +62,7 @@ export default function BillingQueuePage() {
     return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
-  const handleOpenPayment = async (invoiceId: number) => {
+  const handleOpenPayment = useCallback(async (invoiceId: number) => {
     try {
       const inv = await getInvoiceById(invoiceId);
       setSelectedInvoice(inv);
@@ -59,20 +70,22 @@ export default function BillingQueuePage() {
     } catch (err: any) {
       toast.error('Không thể mở thông tin thanh toán: ' + err.message);
     }
-  };
+  }, []);
 
   return (
     <div className="space-y-6">
       {/* 1. Asymmetrical 12-Col Bento Summary (5 + 7 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Hero Card: Đã thu hôm nay (5 cols) */}
-        <div
+        <button
+          type="button"
+          aria-pressed={tab === 'PAID'}
           onClick={() => dispatch(setTab('PAID'))}
-          className={`lg:col-span-5 cursor-pointer rounded-2xl saas-hero-gradient text-white p-5 flex flex-col justify-between transition-all ${
+          className={`text-left lg:col-span-5 cursor-pointer rounded-2xl saas-hero-gradient text-white p-5 flex flex-col justify-between transition-all ${
             tab === 'PAID' ? 'ring-2 ring-blue-300 ring-offset-2' : 'hover:brightness-105'
           }`}
         >
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-4 w-full">
             <div>
               <span className="text-xs font-semibold text-white">Doanh thu đã thu hôm nay</span>
               <div className="text-2xl sm:text-3xl font-mono font-extrabold tabular-nums tracking-tight mt-1 text-white">
@@ -106,7 +119,7 @@ export default function BillingQueuePage() {
             </svg>
           </div>
 
-          <div className="mt-5 pt-3.5 border-t border-white/20 flex items-center justify-between text-xs">
+          <div className="mt-5 pt-3.5 border-t border-white/20 flex items-center justify-between text-xs w-full">
             <span className="text-white flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-300" />
               <strong className="font-mono text-white">{summary.paidTodayCount}</strong> hóa đơn đã quyết toán
@@ -115,20 +128,22 @@ export default function BillingQueuePage() {
               Hoàn tất thu
             </span>
           </div>
-        </div>
+        </button>
 
         {/* 3 Status Filter Tiles (7 cols) */}
         <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* Tile 1: Chờ lập hóa đơn */}
-          <div
+          <button
+            type="button"
+            aria-pressed={tab === 'PENDING'}
             onClick={() => dispatch(setTab('PENDING'))}
-            className={`cursor-pointer rounded-2xl border p-4 transition-all flex flex-col justify-between ${
+            className={`text-left cursor-pointer rounded-2xl border p-4 transition-all flex flex-col justify-between ${
               tab === 'PENDING'
                 ? 'bg-amber-50/90 border-amber-400 shadow-xs'
                 : 'bg-white border-slate-200/80 hover:border-amber-200'
             }`}
           >
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between w-full">
               <div>
                 <span className="text-xs font-semibold text-slate-600">Chờ lập hóa đơn</span>
                 <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
@@ -139,7 +154,7 @@ export default function BillingQueuePage() {
                 assignment_turned_in
               </span>
             </div>
-            <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+            <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 w-full">
               <span>Đã xong KCS 100%</span>
               {summary.pendingCount > 0 ? (
                 <span className="text-amber-800 font-bold flex items-center gap-1">
@@ -150,18 +165,20 @@ export default function BillingQueuePage() {
                 <span className="text-slate-600 font-medium">Trống</span>
               )}
             </div>
-          </div>
+          </button>
 
           {/* Tile 2: Hóa đơn nháp */}
-          <div
+          <button
+            type="button"
+            aria-pressed={tab === 'DRAFT'}
             onClick={() => dispatch(setTab('DRAFT'))}
-            className={`cursor-pointer rounded-2xl border p-4 transition-all flex flex-col justify-between ${
+            className={`text-left cursor-pointer rounded-2xl border p-4 transition-all flex flex-col justify-between ${
               tab === 'DRAFT'
                 ? 'bg-blue-50/90 border-[#0866ff] shadow-xs'
                 : 'bg-white border-slate-200/80 hover:border-blue-200'
             }`}
           >
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between w-full">
               <div>
                 <span className="text-xs font-semibold text-slate-600">Bản nháp</span>
                 <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
@@ -172,22 +189,24 @@ export default function BillingQueuePage() {
                 edit_document
               </span>
             </div>
-            <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+            <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 w-full">
               <span>Kiểm tra chiết khấu</span>
               <span className="text-[#0050cd] font-semibold">Chờ phát hành</span>
             </div>
-          </div>
+          </button>
 
           {/* Tile 3: Chờ thanh toán */}
-          <div
+          <button
+            type="button"
+            aria-pressed={tab === 'ISSUED'}
             onClick={() => dispatch(setTab('ISSUED'))}
-            className={`cursor-pointer rounded-2xl border p-4 transition-all flex flex-col justify-between ${
+            className={`text-left cursor-pointer rounded-2xl border p-4 transition-all flex flex-col justify-between ${
               tab === 'ISSUED'
                 ? 'bg-indigo-50/90 border-indigo-400 shadow-xs'
                 : 'bg-white border-slate-200/80 hover:border-indigo-200'
             }`}
           >
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between w-full">
               <div>
                 <span className="text-xs font-semibold text-slate-600">Chờ thanh toán</span>
                 <div className="text-2xl font-mono font-extrabold tabular-nums text-slate-900 mt-1.5">
@@ -198,11 +217,11 @@ export default function BillingQueuePage() {
                 pending_actions
               </span>
             </div>
-            <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+            <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 w-full">
               <span>Đã gửi hóa đơn cho khách</span>
               <span className="text-indigo-700 font-semibold">Chờ thu tiền</span>
             </div>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -297,12 +316,13 @@ export default function BillingQueuePage() {
           {/* Search Box & Refresh Action */}
           <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto lg:justify-end">
             <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row sm:items-center gap-2 max-w-md w-full lg:w-auto flex-1">
-              <div className="flex-1 flex items-center gap-2 px-3 rounded-xl border border-slate-200/80 bg-slate-50/80 focus-within:bg-white focus-within:border-[#0866ff] h-9 transition-all min-w-[220px]">
+              <div className="flex-1 flex items-center gap-2 px-3 rounded-xl border border-slate-200/80 bg-slate-50/80 focus-within:bg-white focus-within:border-[#0866ff] h-10 sm:h-9 transition-all w-full sm:min-w-[220px]">
                 <span className="material-symbols-outlined text-[18px] text-slate-500 shrink-0">
                   search
                 </span>
                 <input
                   type="text"
+                  aria-label="Tìm biển số, mã phiếu WO, tên khách hàng"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Tìm biển số, mã phiếu WO, tên khách hàng..."
@@ -311,6 +331,7 @@ export default function BillingQueuePage() {
                 {searchInput && (
                   <button
                     type="button"
+                    aria-label="Xóa ô tìm kiếm"
                     onClick={() => {
                       setSearchInput('');
                       dispatch(setSearch(''));
@@ -324,14 +345,14 @@ export default function BillingQueuePage() {
               </div>
               <button
                 type="submit"
-                className="px-4 py-2 bg-[#0866ff] hover:bg-[#0050cd] text-white rounded-xl text-xs font-semibold transition-colors shrink-0 h-9 flex items-center justify-center cursor-pointer shadow-xs"
+                className="px-4 py-2 bg-[#0866ff] hover:bg-[#0050cd] text-white rounded-xl text-xs font-semibold transition-colors shrink-0 h-10 sm:h-9 flex items-center justify-center cursor-pointer shadow-xs"
               >
                 Tìm kiếm
               </button>
             </form>
             <button
               onClick={() => dispatch(fetchBillingQueue({ tab, search, page }))}
-              className="h-9 px-3.5 bg-white border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 hover:text-[#0866ff] rounded-xl shadow-2xs text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+              className="h-10 sm:h-9 w-full sm:w-auto justify-center px-3.5 bg-white border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 text-slate-700 hover:text-[#0866ff] rounded-xl shadow-2xs text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
               title="Làm mới bảng"
               type="button"
             >
@@ -617,24 +638,30 @@ export default function BillingQueuePage() {
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900 truncate">{custName}</p>
-                      <p className="text-slate-500 font-mono">{rec.customer?.phone || '-'}</p>
+                      <p className="text-slate-500 font-mono tabular-nums">{rec.customer?.phone || '-'}</p>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-mono font-bold text-slate-900">
+                    <div className="text-right shrink-0 space-y-0.5">
+                      <p className="font-mono tabular-nums font-bold text-slate-900">
                         {formatVND(isWorkOrder ? (rec.estimatedTotal ?? 0) : (rec.totalAmount ?? 0))}
                       </p>
+                      {!isWorkOrder && rec.amountDue !== undefined && rec.amountDue > 0 && (
+                        <p className="text-[11px] font-mono tabular-nums font-semibold text-amber-700">
+                          Còn thu: {formatVND(rec.amountDue)}
+                        </p>
+                      )}
                       {!isWorkOrder && <InvoiceStatusBadge status={rec.status as any} />}
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 pt-1">
+                  <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
                     {isWorkOrder ? (
                       <button
+                        type="button"
                         onClick={() => {
                           setSelectedWoId(rec.workOrderId!);
                           setIsCreateModalOpen(true);
                         }}
-                        className="h-8 px-3 rounded-xl bg-[#0866ff] text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                        className="min-h-10 px-3.5 rounded-xl bg-[#0866ff] text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
                       >
                         <span className="material-symbols-outlined text-[15px]">receipt</span>
                         <span>Lập hóa đơn</span>
@@ -643,8 +670,9 @@ export default function BillingQueuePage() {
                       <>
                         {rec.status === 'ISSUED' && (
                           <button
+                            type="button"
                             onClick={() => handleOpenPayment(rec.id!)}
-                            className="h-8 px-3 rounded-xl bg-emerald-600 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                            className="min-h-10 px-3.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
                           >
                             <span className="material-symbols-outlined text-[15px]">payments</span>
                             <span>Thu tiền</span>
@@ -652,7 +680,7 @@ export default function BillingQueuePage() {
                         )}
                         <Link
                           href={`/staff/billing/${rec.id}`}
-                          className="h-8 px-3 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold inline-flex items-center gap-1"
+                          className="min-h-10 px-3.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold inline-flex items-center gap-1"
                         >
                           <span>Chi tiết</span>
                           <span className="material-symbols-outlined text-[15px]">chevron_right</span>
@@ -686,7 +714,7 @@ export default function BillingQueuePage() {
       </div>
 
       {/* Modal tạo hóa đơn nháp */}
-      {selectedWoId && (
+      {isCreateModalOpen && selectedWoId && (
         <CreateInvoiceDraftModal
           isOpen={isCreateModalOpen}
           onClose={() => {
@@ -695,13 +723,13 @@ export default function BillingQueuePage() {
           }}
           workOrderId={selectedWoId}
           onSuccess={() => {
-            dispatch(fetchBillingQueue({ tab, search, page }));
+            dispatch(fetchBillingQueue({ tab, search, page, limit: pageSize }));
           }}
         />
       )}
 
       {/* Modal thanh toán */}
-      {selectedInvoice && (
+      {isPaymentModalOpen && selectedInvoice && (
         <PaymentModal
           isOpen={isPaymentModalOpen}
           onClose={() => {
@@ -710,7 +738,7 @@ export default function BillingQueuePage() {
           }}
           invoice={selectedInvoice}
           onSuccess={() => {
-            dispatch(fetchBillingQueue({ tab, search, page }));
+            dispatch(fetchBillingQueue({ tab, search, page, limit: pageSize }));
           }}
         />
       )}

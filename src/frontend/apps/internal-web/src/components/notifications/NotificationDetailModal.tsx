@@ -71,7 +71,7 @@ export default function NotificationDetailModal({
       data-testid="notification-detail-modal"
     >
       <div
-        className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
+        className="w-full max-w-lg max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

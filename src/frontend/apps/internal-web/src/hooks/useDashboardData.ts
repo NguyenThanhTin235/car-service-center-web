@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '@/lib/axios';
 
 export type DashboardPeriod = 'today' | '7days' | '30days' | 'this_month' | 'custom';
@@ -46,31 +46,46 @@ export function useDashboardData({
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [lastUpdated, setLastUpdated] = useState<Date | undefined>(undefined);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const hasDataRef = useRef<boolean>(false);
 
   const fetchData = useCallback(
     async (isBackground = false) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       try {
-        if (!isBackground) setIsLoading(true);
+        if (!isBackground && !hasDataRef.current) setIsLoading(true);
         setIsRefreshing(true);
         setError(null);
 
         const res = await api.get(`/api/dashboard/${portal}`, {
           params: { period, scope },
+          signal: controller.signal,
         });
 
+        if (controller.signal.aborted) return;
+
         if (res.data && res.data.success) {
+          hasDataRef.current = true;
           setData(res.data.data);
           setLastUpdated(new Date());
         } else {
           setError(res.data?.message || 'Không thể lấy dữ liệu bảng điều khiển.');
         }
       } catch (err: any) {
+        if (controller.signal.aborted || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') {
+          return;
+        }
         setError(err.response?.data?.message || err.message || 'Lỗi kết nối máy chủ.');
       } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
       }
     },
     [portal, period, scope]
@@ -78,6 +93,9 @@ export function useDashboardData({
 
   useEffect(() => {
     fetchData();
+    return () => {
+      abortRef.current?.abort();
+    };
   }, [fetchData]);
 
   // Polling interval (chỉ poll khi tab đang hiển thị)

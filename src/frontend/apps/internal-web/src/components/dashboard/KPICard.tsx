@@ -29,7 +29,9 @@ export interface KPICardProps {
   slaPercentage?: number;
 }
 
-export const KPICard: React.FC<KPICardProps> = ({
+const DEFAULT_WAVE_LABELS = ['Tiếp nhận', 'Kế hoạch', 'Thi công', 'KCS', 'Giao xe'];
+
+export const KPICard: React.FC<KPICardProps> = React.memo(({
   label,
   value,
   prevValue,
@@ -47,7 +49,7 @@ export const KPICard: React.FC<KPICardProps> = ({
   splitPercentage = 75,
   splitLeftLabel,
   splitRightLabel,
-  waveLabels = ['Tiếp nhận', 'Kế hoạch', 'Thi công', 'KCS', 'Giao xe'],
+  waveLabels = DEFAULT_WAVE_LABELS,
   sparklinePoints,
   heatmapHighlightCol,
   slaPercentage,
@@ -94,11 +96,19 @@ export const KPICard: React.FC<KPICardProps> = ({
         : 'south_east'
       : 'trending_up');
 
-  // Dynamic SVG curve generation from sparklinePoints or fallback
+  // Dynamic SVG curve generation from real sparklinePoints or actual prevValue -> numVal trend
+  const safeNum = !isNaN(numVal) ? numVal : 0;
+  const safePrev = typeof prevValue === 'number' && !isNaN(prevValue) ? prevValue : safeNum;
   const points =
     sparklinePoints && sparklinePoints.length >= 2
       ? sparklinePoints
-      : [22, 34, 26, 46, 32];
+      : [
+          safePrev,
+          Math.round(safePrev + (safeNum - safePrev) * 0.25),
+          Math.round(safePrev + (safeNum - safePrev) * 0.5),
+          Math.round(safePrev + (safeNum - safePrev) * 0.75),
+          safeNum,
+        ];
 
   const minP = Math.min(...points);
   const maxP = Math.max(...points);
@@ -320,28 +330,32 @@ export const KPICard: React.FC<KPICardProps> = ({
           </div>
 
           <div className="grid grid-cols-7 gap-1">
-            {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((day, colIdx) => {
-              const isPeakCol = colIdx === 4 || colIdx === 5;
-              return (
-                <div key={day} className="flex flex-col items-center gap-1">
-                  <div className="w-full grid grid-cols-2 gap-0.5">
-                    {[0, 1, 2, 3].map((cell) => (
-                      <span
-                        key={cell}
-                        className={`h-2 rounded-xs transition-colors ${
-                          isPeakCol
-                            ? 'bg-[#0c2340]'
-                            : cell < 2
-                            ? 'bg-slate-400'
-                            : 'bg-slate-300'
-                        }`}
-                      />
-                    ))}
+            {(() => {
+              const todayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+              const activeCol = typeof heatmapHighlightCol === 'number' ? heatmapHighlightCol : todayIdx;
+              return ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((day, colIdx) => {
+                const isPeakCol = colIdx === activeCol;
+                return (
+                  <div key={day} className="flex flex-col items-center gap-1">
+                    <div className="w-full grid grid-cols-2 gap-0.5">
+                      {[0, 1, 2, 3].map((cell) => (
+                        <span
+                          key={cell}
+                          className={`h-2 rounded-xs transition-colors ${
+                            isPeakCol
+                              ? 'bg-[#0c2340]'
+                              : cell < 2
+                              ? 'bg-slate-400'
+                              : 'bg-slate-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[9px] font-mono text-slate-500 font-semibold">{day}</span>
                   </div>
-                  <span className="text-[9px] font-mono text-slate-500 font-semibold">{day}</span>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </div>
       </div>
@@ -375,22 +389,35 @@ export const KPICard: React.FC<KPICardProps> = ({
       </div>
 
       {/* SLA Tier Progress Indicators */}
-      <div className="mt-3 bg-[#1e293b] rounded-2xl p-2.5 space-y-1.5">
-        <div className="flex justify-between text-[10px] text-slate-300 font-mono">
-          <span>Tiêu chuẩn dịch vụ</span>
-          <span className="text-cyan-400 font-bold">100% SLA</span>
-        </div>
-        <div className="h-2 w-full bg-slate-700 rounded-full overflow-hidden">
-          <div className="h-full bg-linear-to-r from-blue-500 to-cyan-400 rounded-full w-4/5" />
-        </div>
-        <div className="flex justify-between text-[9px] text-slate-400 font-mono pt-0.5">
-          <span>Sửa chữa lớn</span>
-          <span>Bảo dưỡng nhanh</span>
-          <span>Chăm sóc xe</span>
-        </div>
-      </div>
+      {(() => {
+        const resolvedSla =
+          typeof slaPercentage === 'number'
+            ? Math.max(0, Math.min(100, Math.round(slaPercentage)))
+            : safeNum > 0
+            ? 100
+            : 0;
+        return (
+          <div className="mt-3 bg-[#1e293b] rounded-2xl p-2.5 space-y-1.5">
+            <div className="flex justify-between text-[10px] text-slate-300 font-mono tabular-nums">
+              <span>Tỷ lệ đáp ứng quy chuẩn</span>
+              <span className="text-cyan-400 font-bold">{resolvedSla}%</span>
+            </div>
+            <div className="h-2 w-full bg-slate-700 rounded-full overflow-hidden">
+              <div
+                style={{ width: `${resolvedSla}%` }}
+                className="h-full bg-linear-to-r from-blue-500 to-cyan-400 rounded-full transition-all duration-300"
+              />
+            </div>
+            <div className="flex justify-between text-[9px] text-slate-400 font-mono pt-0.5">
+              <span>Sửa chữa lớn</span>
+              <span>Bảo dưỡng nhanh</span>
+              <span>Chăm sóc xe</span>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
-};
+});
 
 export default KPICard;

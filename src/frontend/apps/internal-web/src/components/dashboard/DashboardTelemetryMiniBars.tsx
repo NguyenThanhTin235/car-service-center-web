@@ -90,11 +90,12 @@ export const DashboardTelemetryMiniBars: React.FC<DashboardTelemetryMiniBarsProp
         style={{ gridTemplateColumns: `repeat(${items.length > 0 ? items.length : 5}, minmax(0, 1fr))` }}
       >
         {items.map((item) => {
-          const barH = Math.max(18, Math.min(95, item.pct || 30));
+          const safePct = Math.max(0, Math.min(100, Number(item.pct) || 0));
+          const barH = safePct > 0 ? Math.max(14, Math.min(95, safePct)) : 4;
           return (
             <div key={item.label} className="flex flex-col items-center h-full justify-end">
               <span className="text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 mb-1 tabular-nums">
-                {item.pct}%
+                {safePct}%
               </span>
               <div
                 style={{ height: `${barH}%` }}

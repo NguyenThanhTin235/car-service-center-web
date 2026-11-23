@@ -1,3 +1,11 @@
+const vndFormatter = new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND',
+  maximumFractionDigits: 0,
+});
+
+const numberFormatter = new Intl.NumberFormat('vi-VN');
+
 /**
  * Format tiền tệ VNĐ chuẩn hóa (hỗ trợ hiển thị rút gọn tỷ ₫, tr ₫ hoặc đầy đủ)
  */
@@ -15,11 +23,7 @@ export function formatVND(value: number, compact = false): string {
     }
   }
 
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(value);
+  return vndFormatter.format(value);
 }
 
 /**
@@ -27,7 +31,7 @@ export function formatVND(value: number, compact = false): string {
  */
 export function formatNumber(value: number): string {
   if (isNaN(value)) return '0';
-  return new Intl.NumberFormat('vi-VN').format(value);
+  return numberFormatter.format(value);
 }
 
 /**
@@ -47,6 +51,7 @@ export const ROLE_VIETNAMESE_MAP: Record<string, string> = {
   ADMIN: 'Quản trị viên',
   MANAGER: 'Quản lý xưởng',
   'DESK STAFF': 'Nhân viên lễ tân',
+  DESK_STAFF: 'Nhân viên lễ tân',
   FRONT_DESK: 'Nhân viên lễ tân',
   SA: 'Cố vấn dịch vụ (SA)',
   ADVISOR: 'Cố vấn dịch vụ',
@@ -62,6 +67,7 @@ export const ROLE_COLOR_MAP: Record<string, string> = {
   ADMIN: '#0050cd', // Blue 600
   MANAGER: '#0ea5e9', // Sky 500
   'DESK STAFF': '#10b981', // Emerald 500
+  DESK_STAFF: '#10b981',
   FRONT_DESK: '#10b981',
   SA: '#f59e0b', // Amber 500
   ADVISOR: '#f59e0b',
@@ -78,3 +84,30 @@ export function formatRoleName(role?: string): string {
   const cleanKey = role.trim().toUpperCase();
   return ROLE_VIETNAMESE_MAP[cleanKey] || role;
 }
+
+export function formatDateTime(iso?: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(
+    2,
+    '0'
+  )}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(
+    2,
+    '0'
+  )}`;
+}
+
+export function toLocalYMD(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate()
+  ).padStart(2, '0')}`;
+}
+
+export const VEHICLE_SIZE_OPTIONS = [
+  { value: 'SMALL', label: 'Nhỏ (Mini, Hatchback)' },
+  { value: 'MEDIUM', label: 'Vừa (Sedan, Crossover)' },
+  { value: 'LARGE', label: 'Lớn (CUV, MPV)' },
+  { value: 'EXTRA_LARGE', label: 'SUV / Xe 7 chỗ cỡ lớn' },
+  { value: 'TRUCK', label: 'Bán tải (Pickup, Van)' },
+] as const;

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/auth/AuthGuard';
 import SaaSDashboardShell, {
@@ -59,7 +59,7 @@ const ADMIN_TELEMETRY_ITEMS: SaaSTelemetryDotItem[] = [
   },
   {
     label: 'Bảng giá dịch vụ',
-    value: '3 cỡ xe',
+    value: '5 cỡ xe',
     dotColor: '#10b981',
     href: '/services',
   },
@@ -70,8 +70,8 @@ const ADMIN_TELEMETRY_ITEMS: SaaSTelemetryDotItem[] = [
     href: '/job-types',
   },
   {
-    label: 'Server Uptime',
-    value: '99.9%',
+    label: 'Danh mục tham số',
+    value: 'Chuẩn hóa',
     dotColor: '#818cf8',
     href: '/catalogs',
   },
@@ -79,6 +79,10 @@ const ADMIN_TELEMETRY_ITEMS: SaaSTelemetryDotItem[] = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const handleGlobalSearch = useCallback(
+    (q: string) => router.push(`/accounts?search=${encodeURIComponent(q)}`),
+    [router]
+  );
 
   return (
     <SaaSDashboardShell
@@ -92,7 +96,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       defaultRoleLabel="Quản trị viên"
       defaultInitials="QT"
       searchPlaceholder="Tìm chức năng quản trị..."
-      onGlobalSearch={(q) => router.push(`/accounts?search=${encodeURIComponent(q)}`)}
+      onGlobalSearch={handleGlobalSearch}
     >
       <AuthGuard>{children}</AuthGuard>
     </SaaSDashboardShell>

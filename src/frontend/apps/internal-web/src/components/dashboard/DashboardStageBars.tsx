@@ -45,14 +45,20 @@ export const DashboardStageBars: React.FC<DashboardStageBarsProps> = ({
   const totalCount = stages.reduce((acc, curr) => acc + curr.count, 0);
   const maxCount = Math.max(1, ...stages.map((s) => s.count));
 
-  // Tính chiều cao cột cân đối để hiển thị số lượng rõ ràng trên đỉnh mỗi cột
-  const computedBars = stages.map((s, idx) => {
+  // Tính chiều cao cột thực tế theo tỷ lệ count / maxCount và định mức targetQuota (nếu có)
+  const computedBars = stages.map((s) => {
     const totalHeightPct =
-      totalCount > 0
-        ? Math.max(22, Math.min(68, Math.round((s.count / maxCount) * 60) + 8))
-        : [35, 55, 30, 45, 60, 28][idx % 6];
-    const hatchHeightPct = 25;
-    const solidHeightPct = 75;
+      totalCount > 0 && s.count > 0
+        ? Math.max(18, Math.min(68, Math.round((s.count / maxCount) * 60) + 8))
+        : 6;
+    const quotaRatio =
+      s.targetQuota && s.targetQuota > 0
+        ? Math.max(0, Math.min(100, Math.round((s.count / s.targetQuota) * 100)))
+        : s.count > 0
+        ? 75
+        : 0;
+    const solidHeightPct = quotaRatio;
+    const hatchHeightPct = 100 - solidHeightPct;
 
     return {
       ...s,
@@ -96,10 +102,11 @@ export const DashboardStageBars: React.FC<DashboardStageBarsProps> = ({
       </div>
 
       {/* Bar Chart Area */}
-      <div
-        className="grid gap-2 sm:gap-4 items-end h-52 pt-10 sm:pt-12 px-1 sm:px-3 border-b border-slate-100 dark:border-slate-800 pb-3 relative"
-        style={{ gridTemplateColumns: `repeat(${stages.length > 0 ? stages.length : 8}, minmax(0, 1fr))` }}
-      >
+      <div className="w-full overflow-x-auto pb-1">
+        <div
+          className="grid gap-2 sm:gap-4 items-end h-52 pt-10 sm:pt-12 px-2 sm:px-3 border-b border-slate-100 dark:border-slate-800 pb-3 relative min-w-[460px] sm:min-w-0"
+          style={{ gridTemplateColumns: `repeat(${stages.length > 0 ? stages.length : 8}, minmax(0, 1fr))` }}
+        >
         {computedBars.map((bar) => {
           if (bar.highlight) {
             return (
@@ -177,6 +184,7 @@ export const DashboardStageBars: React.FC<DashboardStageBarsProps> = ({
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );

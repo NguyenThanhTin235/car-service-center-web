@@ -41,6 +41,7 @@ export default function NotificationBell({ variant = 'default' }: NotificationBe
   }, []);
 
   useEffect(() => {
+    if (!open) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
@@ -57,7 +58,7 @@ export default function NotificationBell({ variant = 'default' }: NotificationBe
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [open]);
 
   const handleToggle = () => {
     const next = !open;
@@ -126,7 +127,7 @@ export default function NotificationBell({ variant = 'default' }: NotificationBe
       {open && (
         <div
           data-testid="notification-dropdown"
-          className="absolute right-0 top-full mt-2 w-[340px] sm:w-[390px] bg-white text-slate-900 rounded-2xl shadow-xl border border-slate-200/90 z-50 overflow-hidden"
+          className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[390px] bg-white text-slate-900 rounded-2xl shadow-xl border border-slate-200/90 z-50 overflow-hidden"
         >
           {/* Header */}
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-2 bg-slate-50/70">
@@ -201,58 +202,55 @@ export default function NotificationBell({ variant = 'default' }: NotificationBe
                 return (
                   <div
                     key={item.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleItemClick(item)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleItemClick(item);
-                      }
-                    }}
-                    className={`group px-4 py-3 flex items-start gap-3 transition-colors cursor-pointer ${
+                    className={`group px-4 py-3 flex items-start gap-3 transition-colors ${
                       item.isRead
                         ? 'bg-white hover:bg-slate-50'
                         : 'bg-blue-50/45 hover:bg-blue-50/80'
                     }`}
                   >
-                    <div
-                      className={`w-9 h-9 rounded-xl ${visual.bgClass} ${visual.textClass} flex items-center justify-center shrink-0 mt-0.5`}
+                    <button
+                      type="button"
+                      onClick={() => handleItemClick(item)}
+                      className="flex-1 min-w-0 flex items-start gap-3 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0866ff] rounded-lg"
                     >
-                      <span className="material-symbols-outlined text-[18px]">
-                        {visual.icon}
-                      </span>
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <p
-                          className={`text-xs leading-snug ${
-                            item.isRead
-                              ? 'font-semibold text-slate-800'
-                              : 'font-bold text-slate-950'
-                          }`}
-                        >
-                          {item.title}
-                        </p>
-                        {!item.isRead && (
-                          <span className="w-2 h-2 rounded-full bg-[#0866ff] shrink-0 mt-1" />
-                        )}
+                      <div
+                        className={`w-9 h-9 rounded-xl ${visual.bgClass} ${visual.textClass} flex items-center justify-center shrink-0 mt-0.5`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">
+                          {visual.icon}
+                        </span>
                       </div>
-                      <p className="text-[11px] text-slate-600 line-clamp-2 mt-0.5 leading-relaxed">
-                        {item.message}
-                      </p>
-                      <p className="text-[10px] font-medium text-slate-400 mt-1">
-                        {formatRelativeTimeVi(item.createdAt)}
-                      </p>
-                    </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p
+                            className={`text-xs leading-snug ${
+                              item.isRead
+                                ? 'font-semibold text-slate-800'
+                                : 'font-bold text-slate-950'
+                            }`}
+                          >
+                            {item.title}
+                          </p>
+                          {!item.isRead && (
+                            <span className="w-2 h-2 rounded-full bg-[#0866ff] shrink-0 mt-1" />
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-600 line-clamp-2 mt-0.5 leading-relaxed">
+                          {item.message}
+                        </p>
+                        <p className="text-[10px] font-medium text-slate-500 mt-1 tabular-nums">
+                          {formatRelativeTimeVi(item.createdAt)}
+                        </p>
+                      </div>
+                    </button>
 
                     <button
                       type="button"
                       onClick={(e) => handleDelete(e, item.id)}
                       title="Xóa thông báo"
                       aria-label="Xóa thông báo"
-                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all shrink-0 cursor-pointer"
+                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-all shrink-0 cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-[16px]">close</span>
                     </button>
@@ -276,13 +274,15 @@ export default function NotificationBell({ variant = 'default' }: NotificationBe
         </div>
       )}
 
-      <NotificationDetailModal
-        item={selectedItem}
-        isOpen={selectedItem !== null}
-        onClose={() => setSelectedItem(null)}
-        onDelete={(id) => dispatch(deleteNotificationThunk(id))}
-        roles={user?.roles ?? []}
-      />
+      {selectedItem && (
+        <NotificationDetailModal
+          item={selectedItem}
+          isOpen={true}
+          onClose={() => setSelectedItem(null)}
+          onDelete={(id) => dispatch(deleteNotificationThunk(id))}
+          roles={user?.roles ?? []}
+        />
+      )}
     </div>
   );
 }

@@ -67,10 +67,10 @@ export default function AdvisorTopNav() {
         {/* Top Brand Icon Pill */}
         <Link
           href="/advisor"
-          title="AutoCare ERP — Cố vấn dịch vụ"
+          title="AutoCare Pro — Cố vấn dịch vụ"
           className="w-12 h-12 rounded-2xl bg-[#0050cd] hover:bg-[#0866ff] text-white flex items-center justify-center shadow-md shadow-[#0050cd]/25 transition-all active:scale-95 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40"
         >
-          <span className="material-symbols-outlined text-[24px]">directions_car</span>
+          <span className="material-symbols-outlined text-[24px]" aria-hidden="true">directions_car</span>
         </Link>
 
         {/* Center 5-Tab Navigation Pill */}
@@ -112,7 +112,7 @@ export default function AdvisorTopNav() {
         <div className="bg-white rounded-[24px] p-1.5 shadow-sm border border-slate-200/80 flex flex-col items-center gap-1.5">
           <button
             type="button"
-            onClick={() => toast('Trung tâm trợ giúp Cố vấn dịch vụ AutoCare v2.4', { icon: '🛠️' })}
+            onClick={() => toast('Trung tâm trợ giúp Cố vấn dịch vụ AutoCare Pro v2.4', { icon: '🛠️' })}
             title="Hỗ trợ vận hành"
             aria-label="Hỗ trợ vận hành"
             className="w-11 h-11 rounded-2xl flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40"
@@ -141,8 +141,8 @@ export default function AdvisorTopNav() {
             </Link>
 
             <div className="leading-tight min-w-0">
-              <div className="text-sm sm:text-base font-extrabold text-zinc-900 tracking-tight truncate">
-                AutoCare
+              <div className="text-base font-bold text-zinc-900 tracking-[-0.02em] truncate">
+                AutoCare Pro
               </div>
               <div className="text-xs font-medium text-slate-500 truncate">
                 Service Advisor

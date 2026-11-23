@@ -66,6 +66,7 @@ export default function SaaSDashboardShell({
   const { user } = useAppSelector((state) => state.auth);
 
   const [mounted, setMounted] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [sidebarSearch, setSidebarSearch] = useState('');
@@ -74,6 +75,12 @@ export default function SaaSDashboardShell({
 
   useEffect(() => {
     setMounted(true);
+    setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
     const savedTone = window.localStorage.getItem('autocare_sidebar_tone') as SidebarTone | null;
     if (savedTone === 'sapphire' || savedTone === 'light') {
       setSidebarTone(savedTone);
@@ -85,6 +92,10 @@ export default function SaaSDashboardShell({
       }
     });
     setOpenGroups(initialGroups);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -226,16 +237,16 @@ export default function SaaSDashboardShell({
               href={navItems[0]?.href || navItems[0]?.children?.[0]?.href || '/'}
               className="flex items-center gap-2.5 min-w-0 group"
             >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-[18px]">directions_car</span>
+              <div className="w-9 h-9 rounded-xl bg-[#0050cd] text-white flex items-center justify-center shrink-0 transition-transform duration-150 group-hover:scale-[1.03]">
+                <span className="material-symbols-outlined text-xl" aria-hidden="true">directions_car</span>
               </div>
               {!isMini && (
                 <span
-                  className={`text-[15px] font-bold tracking-tight truncate ${
+                  className={`text-base font-bold tracking-[-0.02em] whitespace-nowrap ${
                     isLight ? 'text-slate-900' : 'text-white'
                   }`}
                 >
-                  AutoCare
+                  AutoCare Pro
                 </span>
               )}
             </Link>
@@ -315,6 +326,7 @@ export default function SaaSDashboardShell({
                   id="saas-sidebar-search-input"
                   data-testid="saas-sidebar-search"
                   type="text"
+                  aria-label={searchPlaceholder}
                   value={sidebarSearch}
                   onChange={(e) => setSidebarSearch(e.target.value)}
                   placeholder={searchPlaceholder}
@@ -377,6 +389,7 @@ export default function SaaSDashboardShell({
                     <div key={item.label} className="space-y-1">
                       <button
                         type="button"
+                        aria-expanded={isOpen}
                         onClick={() => toggleGroup(item.label)}
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium transition-all cursor-pointer ${
                           hasActiveChild
@@ -419,6 +432,7 @@ export default function SaaSDashboardShell({
                               <Link
                                 key={child.href}
                                 href={child.href}
+                                aria-current={childActive ? 'page' : undefined}
                                 className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                                   childActive
                                     ? 'bg-[#0866ff] text-white font-semibold shadow-xs'
@@ -458,6 +472,8 @@ export default function SaaSDashboardShell({
                       key={item.href || item.label}
                       href={item.href || '#'}
                       title={item.label}
+                      aria-label={item.label}
+                      aria-current={active ? 'page' : undefined}
                       className={`relative w-11 h-11 mx-auto rounded-xl flex items-center justify-center transition-all ${
                         active
                           ? 'bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white shadow-xs'
@@ -480,6 +496,7 @@ export default function SaaSDashboardShell({
                   <Link
                     key={item.href || item.label}
                     href={item.href || '#'}
+                    aria-current={active ? 'page' : undefined}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] transition-all ${
                       active
                         ? 'bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white font-semibold shadow-xs border border-blue-400/30'
@@ -623,7 +640,9 @@ export default function SaaSDashboardShell({
                 <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white font-mono text-xs font-bold flex items-center justify-center shrink-0 shadow-xs">
                   {initials}
                   <span
-                    className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ${
+                    className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${
+                      isOnline ? 'bg-emerald-400' : 'bg-amber-400'
+                    } ring-2 ${
                       isLight ? 'ring-white' : 'ring-[#081529]'
                     }`}
                   />
@@ -679,7 +698,15 @@ export default function SaaSDashboardShell({
 
       {/* MOBILE & TABLET SLIDE-OVER DRAWER (< 1024px) */}
       {mobileDrawerOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Menu điều hướng ${roleTitle}`}
+          className="lg:hidden fixed inset-0 z-50 flex"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setMobileDrawerOpen(false);
+          }}
+        >
           <div
             className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs transition-opacity"
             onClick={() => setMobileDrawerOpen(false)}
@@ -747,9 +774,19 @@ export default function SaaSDashboardShell({
               </span>
             </button>
 
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 text-xs font-semibold text-[#0050cd]">
-              <span className="w-2 h-2 rounded-full bg-[#0866ff]" />
-              <span>Ca trực • Hệ thống ổn định</span>
+            <div
+              className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${
+                isOnline
+                  ? 'bg-blue-50 text-[#0050cd]'
+                  : 'bg-amber-50 text-amber-700'
+              }`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  isOnline ? 'bg-[#0866ff]' : 'bg-amber-500'
+                }`}
+              />
+              <span>{isOnline ? `${roleTitle} • Trực tuyến` : 'Mất kết nối mạng'}</span>
             </div>
 
             <NotificationBell variant="default" />
