@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { WorkOrder, downloadHandoverPdfBlob } from '@/lib/api/work-order.api';
-import VehicleReturnModal from '../modals/VehicleReturnModal';
-import StandardVehicleHandoverModal from '../modals/StandardVehicleHandoverModal';
-import CloseWorkOrderModal from '../modals/CloseWorkOrderModal';
 import { WO_STATUS_META, FUEL_LEVEL_LABELS } from '../work-order.constants';
 import toast from 'react-hot-toast';
+
+const VehicleReturnModal = dynamic(() => import('../modals/VehicleReturnModal'), { ssr: false });
+const StandardVehicleHandoverModal = dynamic(() => import('../modals/StandardVehicleHandoverModal'), { ssr: false });
+const CloseWorkOrderModal = dynamic(() => import('../modals/CloseWorkOrderModal'), { ssr: false });
 
 interface TabReleaseProps {
   workOrder: WorkOrder;
@@ -104,17 +106,6 @@ export default function TabRelease({ workOrder, refetchWO, isReadOnly = false }:
                     </>
                   )}
                 </button>
-
-                {workOrder.status === 'RELEASED' && (
-                  <button
-                    type="button"
-                    onClick={() => setIsCloseModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">lock</span>
-                    <span>Đóng hồ sơ</span>
-                  </button>
-                )}
               </div>
             </div>
 
@@ -297,6 +288,8 @@ export default function TabRelease({ workOrder, refetchWO, isReadOnly = false }:
                           <img
                             src={parsedNotes.customerSignature}
                             alt="Chữ ký khách hàng"
+                            loading="lazy"
+                            decoding="async"
                             className="h-12 max-w-[200px] object-contain"
                           />
                           <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-bold border-l pl-2 border-outline-variant/60">
@@ -412,37 +405,61 @@ export default function TabRelease({ workOrder, refetchWO, isReadOnly = false }:
             </div>
 
             {isBillingRequested && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 font-medium">
-                * Cổng bàn giao tạm khóa cho đến khi thu ngân xác nhận thanh toán (Financial Gate)
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-2 font-medium">
+                * Cổng bàn giao tạm khóa cho đến khi thu ngân xác nhận thanh toán hóa đơn.
               </p>
+            )}
+
+            {!isFinancialCleared && !isBillingRequested && (
+              <div className="max-w-lg mx-auto mt-3 pt-3 border-t border-slate-200/70 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[11px] text-slate-600">
+                <span className="font-semibold text-slate-700">Điều kiện bàn giao chuẩn:</span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#0050cd]" />
+                  Hoàn thành sửa chữa
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#0050cd]" />
+                  Nghiệm thu KCS
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                  Thu ngân xác nhận thanh toán
+                </span>
+              </div>
             )}
           </div>
         </div>
       )}
 
       {/* Modal Bàn giao xe chuẩn (Standard Handover) */}
-      <StandardVehicleHandoverModal
-        isOpen={isHandoverModalOpen}
-        onClose={() => setIsHandoverModalOpen(false)}
-        workOrder={workOrder}
-        refetchWO={refetchWO}
-      />
+      {isHandoverModalOpen && (
+        <StandardVehicleHandoverModal
+          isOpen={isHandoverModalOpen}
+          onClose={() => setIsHandoverModalOpen(false)}
+          workOrder={workOrder}
+          refetchWO={refetchWO}
+        />
+      )}
 
       {/* Modal xuất trả xe khi hủy hoặc từ chối (Return Modal) */}
-      <VehicleReturnModal
-        isOpen={isReturnModalOpen}
-        onClose={() => setIsReturnModalOpen(false)}
-        workOrder={workOrder}
-        refetchWO={refetchWO}
-      />
+      {isReturnModalOpen && (
+        <VehicleReturnModal
+          isOpen={isReturnModalOpen}
+          onClose={() => setIsReturnModalOpen(false)}
+          workOrder={workOrder}
+          refetchWO={refetchWO}
+        />
+      )}
 
       {/* Modal xác nhận đóng hồ sơ (Close Work Order Modal) */}
-      <CloseWorkOrderModal
-        isOpen={isCloseModalOpen}
-        onClose={() => setIsCloseModalOpen(false)}
-        workOrder={workOrder}
-        refetchWO={refetchWO}
-      />
+      {isCloseModalOpen && (
+        <CloseWorkOrderModal
+          isOpen={isCloseModalOpen}
+          onClose={() => setIsCloseModalOpen(false)}
+          workOrder={workOrder}
+          refetchWO={refetchWO}
+        />
+      )}
     </div>
   );
 }

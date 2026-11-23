@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import axios from 'axios';
 import api from '@/lib/axios';
 
 export type DashboardPeriod = 'today' | '7days' | '30days' | 'this_month' | 'custom';
@@ -77,7 +78,7 @@ export function useDashboardData({
           setError(res.data?.message || 'Không thể lấy dữ liệu bảng điều khiển.');
         }
       } catch (err: any) {
-        if (controller.signal.aborted || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') {
+        if (axios.isCancel(err) || controller.signal.aborted || err?.name === 'AbortError' || err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') {
           return;
         }
         setError(err.response?.data?.message || err.message || 'Lỗi kết nối máy chủ.');

@@ -85,25 +85,6 @@ export function formatRoleName(role?: string): string {
   return ROLE_VIETNAMESE_MAP[cleanKey] || role;
 }
 
-export function formatDateTime(iso?: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(
-    2,
-    '0'
-  )}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(
-    2,
-    '0'
-  )}`;
-}
-
-export function toLocalYMD(d: Date = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-    d.getDate()
-  ).padStart(2, '0')}`;
-}
-
 export const VEHICLE_SIZE_OPTIONS = [
   { value: 'SMALL', label: 'Nhỏ (Mini, Hatchback)' },
   { value: 'MEDIUM', label: 'Vừa (Sedan, Crossover)' },
@@ -111,3 +92,32 @@ export const VEHICLE_SIZE_OPTIONS = [
   { value: 'EXTRA_LARGE', label: 'SUV / Xe 7 chỗ cỡ lớn' },
   { value: 'TRUCK', label: 'Bán tải (Pickup, Van)' },
 ] as const;
+
+/**
+ * Format ngày giờ chuẩn Việt Nam (dd/mm/yyyy HH:mm)
+ */
+export function formatDateTimeVN(
+  value?: string | Date | null,
+  fallback = '—'
+): string {
+  if (!value) return fallback;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return typeof value === 'string' ? value : fallback;
+  return date.toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+/**
+ * Tính số phút chờ từ thời điểm tiếp nhận
+ */
+export function getWaitMinutes(arrivedAt?: string | null): number {
+  if (!arrivedAt) return 0;
+  const ts = new Date(arrivedAt).getTime();
+  if (Number.isNaN(ts)) return 0;
+  return Math.max(0, Math.floor((Date.now() - ts) / 60000));
+}

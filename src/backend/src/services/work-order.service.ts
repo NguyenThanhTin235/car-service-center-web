@@ -113,20 +113,18 @@ export class WorkOrderService {
 
       // 7.5. Copy dịch vụ yêu cầu từ Intake -> WoService
       if (intake.services && intake.services.length > 0) {
-        let sortOrder = 0;
-        for (const is of intake.services) {
-          if (is.service) {
-            await tx.woService.create({
-              data: {
-                work_order_id: workOrder.id,
-                service_id: is.service.id,
-                name: is.service.name,
-                pricing_type: is.service.pricing_type,
-                status: 'PENDING',
-                sort_order: ++sortOrder,
-              }
-            });
-          }
+        const servicesData = intake.services
+          .filter((is) => Boolean(is.service))
+          .map((is, idx) => ({
+            work_order_id: workOrder.id,
+            service_id: is.service!.id,
+            name: is.service!.name,
+            pricing_type: is.service!.pricing_type,
+            status: 'PENDING' as const,
+            sort_order: idx + 1,
+          }));
+        if (servicesData.length > 0) {
+          await tx.woService.createMany({ data: servicesData });
         }
       }
 

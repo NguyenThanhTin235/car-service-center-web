@@ -245,6 +245,89 @@ body {
   background-size: 16px 16px;
 }
 
+/* SA Portal Motion System (GPU-only transform & opacity, <300ms) */
+:root {
+  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-in-out-cubic: cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+@keyframes sa-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sa-tab-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sa-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes sa-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.sa-enter {
+  animation: sa-fade-up 220ms var(--ease-out-cubic) backwards;
+}
+
+.sa-tab-enter {
+  animation: sa-tab-fade 160ms var(--ease-out-cubic) backwards;
+}
+
+.sa-modal-backdrop {
+  animation: sa-backdrop-in 200ms var(--ease-out-quart) both;
+}
+
+.sa-modal-panel {
+  animation: sa-modal-in 200ms var(--ease-out-quart) backwards;
+}
+
+.sa-press {
+  transition: transform 120ms var(--ease-out-cubic);
+}
+
+.sa-press:active {
+  transform: scale(0.97);
+}
+
+.sa-card-lift {
+  transition: transform 180ms var(--ease-out-cubic), box-shadow 180ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sa-card-lift:hover {
+    transform: translateY(-2px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -253,6 +336,10 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  .sa-press:active,
+  .sa-card-lift:hover {
+    transform: none;
   }
 }
 

@@ -43,7 +43,7 @@ export const DashboardTelemetryMiniBars: React.FC<DashboardTelemetryMiniBarsProp
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[28px] p-5 shadow-xs border border-slate-200/70 dark:border-slate-800 animate-pulse space-y-4">
+      <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 shadow-xs border border-slate-200/70 dark:border-slate-800 animate-pulse space-y-4 h-full">
         <div className="h-5 w-40 bg-slate-200 dark:bg-slate-800 rounded"></div>
         <div className="h-32 w-full bg-slate-100 dark:bg-slate-800 rounded-xl"></div>
         <div className="h-9 w-full bg-slate-100 dark:bg-slate-800 rounded-xl"></div>
@@ -60,7 +60,7 @@ export const DashboardTelemetryMiniBars: React.FC<DashboardTelemetryMiniBarsProp
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[28px] p-5 shadow-xs border border-slate-200/70 dark:border-slate-800 flex flex-col justify-between">
+    <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 shadow-xs border border-slate-200/70 dark:border-slate-800 flex flex-col justify-between h-full">
       {/* Title & Action */}
       <div className="flex items-center justify-between">
         <div>
@@ -86,7 +86,7 @@ export const DashboardTelemetryMiniBars: React.FC<DashboardTelemetryMiniBarsProp
 
       {/* Vertical Mini-Bars with Top Caps */}
       <div
-        className="grid gap-2 items-end h-36 my-4 pt-4 px-1"
+        className="grid gap-2 items-end flex-1 min-h-36 my-4 pt-4 px-1"
         style={{ gridTemplateColumns: `repeat(${items.length > 0 ? items.length : 5}, minmax(0, 1fr))` }}
       >
         {items.map((item) => {

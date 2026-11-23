@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { MarkerType } from '../tabs/InteractiveCarSVG';
 import { InspectionFinding } from '@/lib/api/inspection.api';
+import ModalPortal from '@/components/advisor/common/ModalPortal';
 
 export interface InspectionToolDef {
   type: MarkerType;
@@ -34,8 +35,14 @@ export function PhotoLibraryModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col overflow-hidden">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 sa-modal-backdrop">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Thư viện ảnh kiểm tra xe"
+          className="sa-modal-panel bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90dvh] flex flex-col overflow-hidden"
+        >
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/40">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[#2563EB] text-[22px]">photo_library</span>
@@ -68,6 +75,8 @@ export function PhotoLibraryModal({
                     <img
                       src={url}
                       alt={finding.part_name}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
                     />
                     <div className="p-2 text-[11px] bg-white border-t border-outline-variant/30 flex flex-col gap-0.5">
@@ -94,7 +103,8 @@ export function PhotoLibraryModal({
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }
 
@@ -133,8 +143,14 @@ export function InspectionLogModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-surface rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden border border-outline-variant">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 sa-modal-backdrop">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Nhật ký kiểm tra xe"
+          className="sa-modal-panel bg-surface rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90dvh] flex flex-col overflow-hidden border border-outline-variant"
+        >
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-outline-variant/60 flex items-center justify-between bg-surface-container-lowest">
           <div className="flex items-center gap-2.5">
@@ -268,6 +284,8 @@ export function InspectionLogModal({
                                   key={i}
                                   src={imgUrl}
                                   alt="Minh chứng"
+                                  loading="lazy"
+                                  decoding="async"
                                   className="w-10 h-10 object-cover rounded border border-outline-variant hover:scale-105 transition-transform cursor-pointer"
                                   onClick={() => onPreviewImage(imgUrl)}
                                   title="Bấm để xem ảnh phóng to"
@@ -297,6 +315,7 @@ export function InspectionLogModal({
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }

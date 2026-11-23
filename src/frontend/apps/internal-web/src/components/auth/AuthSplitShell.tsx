@@ -22,11 +22,11 @@ export default function AuthSplitShell({ topAction, children }: AuthSplitShellPr
       <header className="w-full bg-white border-b border-slate-200/80 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <Link href="/login" className="inline-flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-[#0050cd] text-white flex items-center justify-center transition-transform duration-150 group-hover:scale-[1.03]">
+            <div className="w-9 h-9 rounded-xl bg-[#0050CD] text-white flex items-center justify-center shrink-0 transition-transform duration-150 group-hover:scale-[1.03]">
               <span className="material-symbols-outlined text-xl" aria-hidden="true">directions_car</span>
             </div>
             <div>
-              <div className="text-base font-bold text-slate-900 leading-tight tracking-[-0.02em]">
+              <div className="font-bold text-base tracking-[-0.02em] text-slate-900 leading-tight">
                 AutoCare Pro
               </div>
               <div className="text-[11px] font-medium text-slate-500">
