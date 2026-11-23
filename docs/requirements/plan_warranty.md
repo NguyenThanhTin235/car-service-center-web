@@ -178,18 +178,19 @@ flowchart TD
 
 ---
 
-## 📦 PHẦN 6: Báo cáo Thống kê & Phân tích Quản trị (UC-87)
+## 📦 PHẦN 6: Báo cáo Thống kê & Phân tích Quản trị (UC-87) [✅ ĐÃ HOÀN THÀNH]
 > **Mục tiêu:** Cung cấp số liệu tài chính mật và phân tích kỹ thuật chuyên sâu dành riêng cho Quản lý dịch vụ.
 
 ### 6.1. Xây dựng logic báo cáo trong `report.service.ts`
-* **File:** `src/backend/src/services/report.service.ts`
+* **File:** `src/backend/src/services/report.service.ts`, `src/backend/src/controllers/report.controller.ts`, `src/backend/src/routes/report.routes.ts`, `src/backend/src/dtos/report.dto.ts`
 * **Nội dung hàm `getWarrantyReport(startDate, endDate, groupBy)`:**
   1. **Chỉ số vận hành:** Tổng lượt xe tiếp nhận bảo hành, tổng xe phục vụ, tính tỷ lệ:
      $$\text{Tỷ lệ bảo hành (\%)} = \frac{\text{Số lượt bảo hành}}{\text{Tổng lượt xe}} \times 100$$
   2. **Chi phí vốn thiệt hại (MWA):** Truy vấn `StockMovement` xuất kho của các `JobPart` có `is_warranty = true`, tính tổng chi phí theo giá vốn bình quân di động.
   3. **Danh sách phụ tùng lỗi lặp lại:** Gom nhóm theo `item_id`, đếm số lượng hỏng, tỷ lệ lỗi, thông tin Nhà cung cấp (`Supplier`) để yêu cầu bồi hoàn.
   4. **Phân tích kỹ thuật:** Thống kê số vụ bảo hành theo Kỹ thuật viên thi công lệnh gốc hoặc theo Nhóm dịch vụ.
-  5. **Bảo mật phân quyền (RBAC):** Chỉ cho phép `SERVICE_MANAGER` và `SYSTEM_ADMIN`. Chặn tất cả các role khác (403 Forbidden).
+  5. **Bảo mật phân quyền (RBAC):** Chỉ cho phép `SERVICE_MANAGER`, `SYSTEM_ADMIN`, `ADMIN`, `MANAGER`. Chặn tất cả các role khác (403 Forbidden) kèm ghi log bảo mật.
+* **Kiểm thử tự động:** `tests/unit/warranty/warranty-report.spec.ts` (12/12 tests passed, typecheck 0 lỗi).
 
 ---
 
