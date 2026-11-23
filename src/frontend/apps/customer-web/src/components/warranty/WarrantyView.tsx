@@ -9,9 +9,14 @@ import warrantyApi, { VehicleWarrantyEligibility, WarrantyItem } from '@/lib/api
 interface WarrantyViewProps {
   isEmbedded?: boolean;
   initialVehicleId?: number;
+  onBookWarranty?: (params: {
+    vehicleId: number;
+    warrantyItemId?: string;
+    warrantyItemName?: string;
+  }) => void;
 }
 
-export default function WarrantyView({ isEmbedded = false, initialVehicleId }: WarrantyViewProps) {
+export default function WarrantyView({ isEmbedded = false, initialVehicleId, onBookWarranty }: WarrantyViewProps) {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { vehicles, loading: vehiclesLoading } = useAppSelector((state) => state.vehicles);
@@ -71,13 +76,26 @@ export default function WarrantyView({ isEmbedded = false, initialVehicleId }: W
     loadWarrantyData(selectedVehicleId, parsedOdo);
   };
 
-  const handleBookWarranty = (item: WarrantyItem) => {
+  const handleBookWarranty = (item?: WarrantyItem) => {
     if (!selectedVehicleId) return;
-    router.push(
-      `/customer/appointments/new?vehicle_id=${selectedVehicleId}&warranty=true&warranty_item_id=${item.id}&warranty_item_name=${encodeURIComponent(
-        item.name
-      )}`
-    );
+    if (onBookWarranty) {
+      onBookWarranty({
+        vehicleId: selectedVehicleId,
+        warrantyItemId: item?.id,
+        warrantyItemName: item?.name,
+      });
+      return;
+    }
+    const query = new URLSearchParams({
+      tab: 'appointments',
+      warranty: 'true',
+      vehicle_id: selectedVehicleId.toString(),
+    });
+    if (item) {
+      query.set('warranty_item_id', item.id);
+      query.set('warranty_item_name', item.name);
+    }
+    router.push(`/customer/profile?${query.toString()}`);
   };
 
   const filteredItems = (eligibilityData?.items || []).filter((item) => {
@@ -114,9 +132,7 @@ export default function WarrantyView({ isEmbedded = false, initialVehicleId }: W
         {/* Quick action button */}
         {selectedVehicleId && (
           <button
-            onClick={() =>
-              router.push(`/customer/appointments/new?vehicle_id=${selectedVehicleId}&warranty=true`)
-            }
+            onClick={() => handleBookWarranty()}
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 text-white font-semibold text-sm rounded-xl shadow-sm hover:bg-blue-700 transition-all active:scale-[0.98]"
           >
             <span className="material-symbols-outlined text-lg">calendar_add_on</span>

@@ -26,6 +26,7 @@ import TrackingView from '@/components/tracking/TrackingView';
 import InvoicesView from '@/components/invoices/InvoicesView';
 import HistoryView from '@/components/history/HistoryView';
 import WarrantyView from '@/components/warranty/WarrantyView';
+import warrantyApi, { WarrantyItem } from '@/lib/api/warranty.api';
 
 export type TabKey = 'profile' | 'vehicles' | 'appointments' | 'tracking' | 'invoices' | 'history' | 'warranty';
 
@@ -185,10 +186,10 @@ export default function ProfilePage() {
 
   // Active Tab State
   const initialTab = (searchParams.get('tab') as TabKey) || 'profile';
-    // Sync activeTab when searchParams changes
+  // Sync activeTab when searchParams changes
   useEffect(() => {
     const tabParam = searchParams.get('tab') as TabKey;
-    if (tabParam && ['profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history'].includes(tabParam)) {
+    if (tabParam && ['profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history', 'warranty'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
@@ -198,7 +199,7 @@ export default function ProfilePage() {
     window.history.replaceState(null, '', `/customer/profile?tab=${key}`);
   };
   const [activeTab, setActiveTab] = useState<TabKey>(
-    ['profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history'].includes(initialTab) ? initialTab : 'profile'
+    ['profile', 'vehicles', 'appointments', 'tracking', 'invoices', 'history', 'warranty'].includes(initialTab) ? initialTab : 'profile'
   );
 
   // Profile Form States
@@ -242,6 +243,59 @@ export default function ProfilePage() {
   const [bookingDate, setBookingDate] = useState<Date>(new Date());
   const [bookingTime, setBookingTime] = useState<string>('08:00');
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
+
+  // Warranty Booking State (UC-82)
+  const [isWarrantyBooking, setIsWarrantyBooking] = useState(false);
+  const [warrantyItems, setWarrantyItems] = useState<WarrantyItem[]>([]);
+  const [warrantyLoading, setWarrantyLoading] = useState(false);
+  const [selectedWarrantyItemIds, setSelectedWarrantyItemIds] = useState<string[]>([]);
+  const [symptomsDescription, setSymptomsDescription] = useState('');
+  const [evidenceUrlInput, setEvidenceUrlInput] = useState('');
+
+  const loadWarrantyItems = React.useCallback(async (vId: number) => {
+    setWarrantyLoading(true);
+    try {
+      const res = await warrantyApi.getVehicleWarrantyEligibility(vId);
+      const eligible = (res.items || []).filter(
+        (item) => item.status === 'VALID' || item.status === 'OVERDUE_LIGHT'
+      );
+      setWarrantyItems(eligible);
+    } catch (err) {
+      console.error('Lỗi khi tải thông tin bảo hành xe', err);
+      setWarrantyItems([]);
+    } finally {
+      setWarrantyLoading(false);
+    }
+  }, []);
+
+  // Sync warranty booking from URL search params (e.g. from WarrantyView navigation)
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    const warrantyParam = searchParams.get('warranty');
+    const vehicleIdParam = searchParams.get('vehicle_id');
+    const warrantyItemIdParam = searchParams.get('warranty_item_id');
+
+    if (tabParam === 'appointments' && warrantyParam === 'true') {
+      setIsWarrantyBooking(true);
+      if (vehicleIdParam) {
+        const vId = Number(vehicleIdParam);
+        setBookingVehicleId(vId);
+        loadWarrantyItems(vId);
+        setBookingStep(2);
+      }
+      if (warrantyItemIdParam) {
+        setSelectedWarrantyItemIds([warrantyItemIdParam]);
+      }
+      setBookingModalOpen(true);
+    }
+  }, [searchParams, loadWarrantyItems]);
+
+  // Load warranty items when booking vehicle changes and warranty mode is on
+  useEffect(() => {
+    if (isWarrantyBooking && bookingVehicleId) {
+      loadWarrantyItems(bookingVehicleId);
+    }
+  }, [isWarrantyBooking, bookingVehicleId, loadWarrantyItems]);
 
   // History Tab Filter States
   const [historySearch, setHistorySearch] = useState('');
@@ -501,7 +555,7 @@ export default function ProfilePage() {
     });
   };
 
-  const handleOpen3StepBooking = (initialDate?: Date) => {
+  const handleOpen3StepBooking = (initialDate?: Date, isWarranty = false) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
@@ -526,6 +580,15 @@ export default function ProfilePage() {
     }
 
     setBookingNotes('');
+    setIsWarrantyBooking(isWarranty);
+    if (isWarranty) {
+      setSelectedWarrantyItemIds([]);
+      setSymptomsDescription('');
+      setEvidenceUrlInput('');
+      if (bookingVehicleId) {
+        loadWarrantyItems(bookingVehicleId);
+      }
+    }
     setBookingStep(1);
     setBookingModalOpen(true);
   };
@@ -536,14 +599,31 @@ export default function ProfilePage() {
     );
   };
 
+  const toggleWarrantyItem = (id: string) => {
+    setSelectedWarrantyItemIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
   const handleConfirm3StepBooking = async () => {
     if (!bookingVehicleId && !customPlateInput.trim()) {
       setVehicleToast({ message: 'Vui lòng chọn hoặc nhập thông tin xe.', type: 'error' });
       return;
     }
-    if (selectedServiceIds.length === 0 && !bookingNotes.trim()) {
-      setVehicleToast({ message: 'Vui lòng chọn ít nhất 1 dịch vụ hoặc mô tả tình trạng xe.', type: 'error' });
-      return;
+    if (isWarrantyBooking) {
+      if (selectedWarrantyItemIds.length === 0) {
+        setVehicleToast({ message: 'Vui lòng chọn ít nhất 1 hạng mục linh kiện/dịch vụ bảo hành.', type: 'error' });
+        return;
+      }
+      if (!symptomsDescription.trim()) {
+        setVehicleToast({ message: 'Vui lòng nhập mô tả chi tiết hiện tượng sự cố.', type: 'error' });
+        return;
+      }
+    } else {
+      if (selectedServiceIds.length === 0 && !bookingNotes.trim()) {
+        setVehicleToast({ message: 'Vui lòng chọn ít nhất 1 dịch vụ hoặc mô tả tình trạng xe.', type: 'error' });
+        return;
+      }
     }
     if (!bookingDate || !bookingTime) {
       setVehicleToast({ message: 'Vui lòng chọn ngày và giờ hẹn.', type: 'error' });
@@ -602,20 +682,38 @@ export default function ProfilePage() {
         return;
       }
 
-      await dispatch(
-        createAppointment({
-          customer_id: data?.id,
-          vehicle_id: chosenVehicleId || vehicles[0]?.id || 1,
-          scheduled_date: formattedDate,
-          scheduled_time: bookingTime,
-          notes: bookingNotes,
-          service_ids: selectedServiceIds,
-        })
-      ).unwrap();
+      const payload: any = {
+        customer_id: data?.id,
+        vehicle_id: chosenVehicleId || vehicles[0]?.id || 1,
+        scheduled_date: formattedDate,
+        scheduled_time: bookingTime,
+        notes: isWarrantyBooking ? symptomsDescription.trim() : bookingNotes,
+        service_ids: isWarrantyBooking ? undefined : selectedServiceIds,
+        is_warranty: isWarrantyBooking,
+      };
 
-      setVehicleToast({ message: 'Đặt lịch dịch vụ thành công! Hệ thống đã ghi nhận lịch hẹn.', type: 'success' });
+      if (isWarrantyBooking) {
+        payload.warranty_item_ids = selectedWarrantyItemIds;
+        payload.symptoms_description = symptomsDescription.trim();
+        if (evidenceUrlInput.trim()) {
+          payload.evidence_urls = [evidenceUrlInput.trim()];
+        }
+      }
+
+      await dispatch(createAppointment(payload)).unwrap();
+
+      setVehicleToast({
+        message: isWarrantyBooking
+          ? 'Đặt lịch hẹn bảo hành thành công! Hồ sơ đã được chuyển tới Cố vấn dịch vụ.'
+          : 'Đặt lịch dịch vụ thành công! Hệ thống đã ghi nhận lịch hẹn.',
+        type: 'success',
+      });
       setBookingModalOpen(false);
       setBookingNotes('');
+      setIsWarrantyBooking(false);
+      setSelectedWarrantyItemIds([]);
+      setSymptomsDescription('');
+      setEvidenceUrlInput('');
       dispatch(fetchAppointments(data?.id ? { customer_id: data.id } : {}));
     } catch (err: any) {
       setVehicleToast({ message: typeof err === 'string' ? err : 'Không thể đặt lịch. Vui lòng thử lại.', type: 'error' });
@@ -1121,10 +1219,19 @@ export default function ProfilePage() {
                     </button>
                   </div>
 
+                  <button
+                    type="button"
+                    onClick={() => handleOpen3StepBooking(new Date(), true)}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">verified_user</span>
+                    Đặt lịch bảo hành
+                  </button>
+
                   {/* 3-Step Book Appointment Button */}
                   <button
                     type="button"
-                    onClick={() => handleOpen3StepBooking(new Date())}
+                    onClick={() => handleOpen3StepBooking(new Date(), false)}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-1.5"
                   >
                     <span className="material-symbols-outlined text-[18px]">add</span>
@@ -1241,7 +1348,22 @@ export default function ProfilePage() {
           {/* TAB 7: SỔ BẢO HÀNH ĐIỆN TỬ (UC-81) */}
           {activeTab === 'warranty' && (
             <div className="space-y-6">
-              <WarrantyView isEmbedded={true} />
+              <WarrantyView
+                isEmbedded={true}
+                onBookWarranty={({ vehicleId, warrantyItemId }) => {
+                  setBookingVehicleId(vehicleId);
+                  setIsWarrantyBooking(true);
+                  if (warrantyItemId) {
+                    setSelectedWarrantyItemIds([warrantyItemId]);
+                  } else {
+                    setSelectedWarrantyItemIds([]);
+                  }
+                  loadWarrantyItems(vehicleId);
+                  setBookingStep(2);
+                  setBookingModalOpen(true);
+                  handleTabChange('appointments');
+                }}
+              />
             </div>
           )}
 
@@ -1476,68 +1598,217 @@ export default function ProfilePage() {
                   <h3 className="font-bold text-slate-900 text-sm">2. Dịch vụ yêu cầu & Mô tả tình trạng</h3>
                 </div>
                 <p className="text-xs text-slate-500 -mt-3">
-                  Lựa chọn các hạng mục cần thực hiện hoặc ghi rõ triệu chứng bất thường
+                  Lựa chọn đặt lịch bảo dưỡng định kỳ, dịch vụ sửa chữa hoặc bảo hành xe chính hãng
                 </p>
 
-                {/* 6 Services Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {AVAILABLE_SERVICES.map((srv) => {
-                    const isChecked = selectedServiceIds.includes(srv.id);
-                    return (
-                      <div
-                        key={srv.id}
-                        onClick={() => handleToggleService(srv.id)}
-                        className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
-                          isChecked
-                            ? 'border-blue-600 bg-blue-50/20 shadow-xs'
-                            : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
-                      >
-                        <div
-                          className={`w-5 h-5 mt-0.5 rounded-lg border flex items-center justify-center shrink-0 ${
-                            isChecked ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
-                          }`}
-                        >
-                          {isChecked && <span className="material-symbols-outlined text-[13px]">check</span>}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="material-symbols-outlined text-blue-600 text-[16px]">
-                              {srv.icon}
-                            </span>
-                            <h4 className="font-bold text-xs text-slate-900">{srv.title}</h4>
-                            {srv.badge && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-white">
-                                {srv.badge}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-slate-500 leading-relaxed">{srv.desc}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
+                {/* Option switch: Dịch vụ thông thường vs Bảo hành */}
+                <div className="flex p-1 bg-slate-100 rounded-2xl">
+                  <button
+                    type="button"
+                    onClick={() => setIsWarrantyBooking(false)}
+                    className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+                      !isWarrantyBooking
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[17px]">build_circle</span>
+                    Dịch vụ thông thường
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsWarrantyBooking(true);
+                      if (bookingVehicleId) loadWarrantyItems(bookingVehicleId);
+                    }}
+                    className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+                      isWarrantyBooking
+                        ? 'bg-white text-emerald-700 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[17px]">verified_user</span>
+                    Bảo hành xe (0 đồng)
+                  </button>
                 </div>
 
-                {/* Detailed Symptom Notes Textarea */}
-                <div>
-                  <div className="mb-1.5">
-                    <label className="text-xs font-bold text-slate-700">
-                      Mô tả chi tiết tình trạng xe (Tiếng kêu lạ, đèn cảnh báo taplo, yêu cầu riêng...)
-                    </label>
+                {!isWarrantyBooking ? (
+                  <>
+                    {/* 6 Services Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      {AVAILABLE_SERVICES.map((srv) => {
+                        const isChecked = selectedServiceIds.includes(srv.id);
+                        return (
+                          <div
+                            key={srv.id}
+                            onClick={() => handleToggleService(srv.id)}
+                            className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                              isChecked
+                                ? 'border-blue-600 bg-blue-50/20 shadow-xs'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                          >
+                            <div
+                              className={`w-5 h-5 mt-0.5 rounded-lg border flex items-center justify-center shrink-0 ${
+                                isChecked ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
+                              }`}
+                            >
+                              {isChecked && <span className="material-symbols-outlined text-[13px]">check</span>}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="material-symbols-outlined text-blue-600 text-[16px]">
+                                  {srv.icon}
+                                </span>
+                                <h4 className="font-bold text-xs text-slate-900">{srv.title}</h4>
+                                {srv.badge && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-white">
+                                    {srv.badge}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-500 leading-relaxed">{srv.desc}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Detailed Symptom Notes Textarea */}
+                    <div>
+                      <div className="mb-1.5">
+                        <label className="text-xs font-bold text-slate-700">
+                          Mô tả chi tiết tình trạng xe (Tiếng kêu lạ, đèn cảnh báo taplo, yêu cầu riêng...)
+                        </label>
+                      </div>
+                      <textarea
+                        rows={3}
+                        value={bookingNotes}
+                        onChange={(e) => setBookingNotes(e.target.value)}
+                        className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none leading-relaxed"
+                        placeholder="Nhập mô tả tình trạng xe của bạn (nếu có)..."
+                      />
+                      <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">info</span>
+                        Quý khách có thể đính kèm ảnh hoặc video âm thanh bất thường khi mang xe đến xưởng.
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Explanatory Warranty Banner */}
+                    <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-800">
+                      <span className="material-symbols-outlined text-emerald-600 text-lg shrink-0 mt-0.5">verified_user</span>
+                      <div>
+                        <span className="font-bold text-emerald-900">Chính sách bảo hành chính hãng (0 đồng)</span>
+                        <p className="text-[11px] text-emerald-700 mt-0.5 leading-relaxed">
+                          Quý khách được kiểm tra, thay thế linh kiện hoặc sửa chữa miễn phí 100% đối với các phụ tùng, dịch vụ còn hạn bảo hành hoặc đủ điều kiện phê duyệt Thiện chí.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Warranty Items List */}
+                    {warrantyLoading ? (
+                      <div className="p-8 text-center text-slate-500">
+                        <div className="w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                        <p className="text-xs">Đang kiểm tra các hạng mục bảo hành của xe...</p>
+                      </div>
+                    ) : warrantyItems.length === 0 ? (
+                      <div className="p-6 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl space-y-2">
+                        <span className="material-symbols-outlined text-3xl text-slate-400">inventory_2</span>
+                        <p className="text-xs font-bold text-slate-700">Xe này chưa có hạng mục nào trong thời hạn bảo hành</p>
+                        <p className="text-[11px] text-slate-500">
+                          Nếu xe gặp sự cố phát sinh ngoài chính sách, quý khách có thể chuyển sang mục "Dịch vụ thông thường" bên trên để đặt hẹn kiểm tra.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        <label className="text-xs font-bold text-slate-700 block">
+                          Chọn các hạng mục cần bảo hành <span className="text-red-500">*</span>
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[260px] overflow-y-auto pr-1">
+                          {warrantyItems.map((item) => {
+                            const isChecked = selectedWarrantyItemIds.includes(item.id);
+                            const isGreen = item.badgeColor === 'green';
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => toggleWarrantyItem(item.id)}
+                                className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                                  isChecked
+                                    ? 'border-emerald-600 bg-emerald-50/30 shadow-xs'
+                                    : 'border-slate-200 bg-white hover:border-slate-300'
+                                }`}
+                              >
+                                <div
+                                  className={`w-5 h-5 mt-0.5 rounded-lg border flex items-center justify-center shrink-0 ${
+                                    isChecked ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300'
+                                  }`}
+                                >
+                                  {isChecked && <span className="material-symbols-outlined text-[13px]">check</span>}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                    <span
+                                      className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                                        item.type === 'SERVICE' ? 'bg-blue-100 text-blue-700' : 'bg-indigo-100 text-indigo-700'
+                                      }`}
+                                    >
+                                      {item.type === 'SERVICE' ? 'Dịch vụ' : 'Phụ tùng'}
+                                    </span>
+                                    <span
+                                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                        isGreen ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                      }`}
+                                    >
+                                      {item.statusLabel}
+                                    </span>
+                                  </div>
+                                  <h4 className="font-bold text-xs text-slate-900 leading-snug">{item.name}</h4>
+                                  <div className="text-[10px] text-slate-500 mt-1 space-y-0.5">
+                                    <div>Phiếu gốc: <strong className="text-slate-700">{item.parentWoNumber}</strong></div>
+                                    <div>Hạn: {new Date(item.expireDate).toLocaleDateString('vi-VN')} ({item.expireMileage.toLocaleString()} km)</div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Symptoms Description (Required) */}
+                    <div>
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-700">
+                          Mô tả chi tiết hiện tượng sự cố gặp phải <span className="text-red-500">*</span>
+                        </label>
+                        <span className="text-[10px] text-slate-400">Bắt buộc</span>
+                      </div>
+                      <textarea
+                        rows={3}
+                        value={symptomsDescription}
+                        onChange={(e) => setSymptomsDescription(e.target.value)}
+                        className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 resize-none leading-relaxed"
+                        placeholder="Ví dụ: Đĩa phanh phát tiếng kêu rít khi đạp nhẹ ở tốc độ 40km/h; điều hòa mất mát sau 30 phút chạy..."
+                      />
+                    </div>
+
+                    {/* Evidence URL (Optional) */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                        Đường dẫn hình ảnh / video minh chứng sự cố (tùy chọn)
+                      </label>
+                      <input
+                        type="text"
+                        value={evidenceUrlInput}
+                        onChange={(e) => setEvidenceUrlInput(e.target.value)}
+                        placeholder="https://... (link Google Drive, ảnh hoặc video clip âm thanh)"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      />
+                    </div>
                   </div>
-                  <textarea
-                    rows={3}
-                    value={bookingNotes}
-                    onChange={(e) => setBookingNotes(e.target.value)}
-                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none leading-relaxed"
-                    placeholder="Nhập mô tả tình trạng xe của bạn (nếu có)..."
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">info</span>
-                    Quý khách có thể đính kèm ảnh hoặc video âm thanh bất thường khi mang xe đến xưởng.
-                  </p>
-                </div>
+                )}
               </div>
             )}
 
@@ -1785,26 +2056,40 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Bottom Appointment Summary Box */}
-                <div className="p-4 bg-blue-50/60 rounded-2xl border border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+                  isWarrantyBooking
+                    ? 'bg-emerald-50/70 border-emerald-200'
+                    : 'bg-blue-50/60 border-blue-100'
+                }`}>
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-lg">task_alt</span>
+                    <div className={`w-8 h-8 rounded-xl text-white flex items-center justify-center shrink-0 ${
+                      isWarrantyBooking ? 'bg-emerald-600' : 'bg-blue-600'
+                    }`}>
+                      <span className="material-symbols-outlined text-lg">
+                        {isWarrantyBooking ? 'verified_user' : 'task_alt'}
+                      </span>
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <strong className="text-slate-900 font-bold">Tóm tắt phiếu đặt hẹn:</strong>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                          Ưu tiên phục vụ
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          isWarrantyBooking
+                            ? 'bg-emerald-200 text-emerald-900 border border-emerald-300'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {isWarrantyBooking ? 'Bảo hành chính hãng (0đ)' : 'Ưu tiên phục vụ'}
                         </span>
                       </div>
                       <p className="text-slate-700 mt-0.5">
-                        {customPlateInput || `${selectedVehicleObj?.make || 'Toyota'} ${selectedVehicleObj?.model || 'Vios'} (${selectedVehicleObj?.licensePlate || '51G-123.45'})`} • {selectedServiceIds.length} dịch vụ chọn • <strong className="text-blue-700">{bookingTime} - Ngày {bookingDate.getDate()}/{bookingDate.getMonth() + 1}/{bookingDate.getFullYear()}</strong> • Cố vấn dự kiến: <strong>KTV Trần Văn Nam</strong>
+                        {customPlateInput || `${selectedVehicleObj?.make || 'Toyota'} ${selectedVehicleObj?.model || 'Vios'} (${selectedVehicleObj?.licensePlate || '51G-123.45'})`} • {isWarrantyBooking ? `${selectedWarrantyItemIds.length} hạng mục bảo hành` : `${selectedServiceIds.length} dịch vụ chọn`} • <strong className={isWarrantyBooking ? 'text-emerald-700' : 'text-blue-700'}>{bookingTime} - Ngày {bookingDate.getDate()}/{bookingDate.getMonth() + 1}/{bookingDate.getFullYear()}</strong> • Cố vấn dự kiến: <strong>KTV Trần Văn Nam</strong>
                       </p>
                     </div>
                   </div>
                   <div className="text-right text-[11px] text-slate-500 shrink-0">
-                    <span className="block font-semibold text-emerald-700">Miễn phí rửa xe & hút bụi</span>
-                    <span>Tặng kèm gói kiểm tra an toàn</span>
+                    <span className="block font-semibold text-emerald-700">
+                      {isWarrantyBooking ? 'Miễn phí kiểm tra & thay linh kiện' : 'Miễn phí rửa xe & hút bụi'}
+                    </span>
+                    <span>{isWarrantyBooking ? 'Áp dụng bảo hành chuẩn hãng' : 'Tặng kèm gói kiểm tra an toàn'}</span>
                   </div>
                 </div>
               </div>
@@ -1839,12 +2124,31 @@ export default function ProfilePage() {
                       setVehicleToast({ message: 'Vui lòng chọn xe hoặc nhập biển số xe để tiếp tục.', type: 'error' });
                       return;
                     }
-                    if (bookingStep === 2 && selectedServiceIds.length === 0 && !bookingNotes.trim()) {
-                      setVehicleToast({
-                        message: 'Vui lòng chọn ít nhất 1 dịch vụ hoặc nhập mô tả tình trạng xe để tiếp tục.',
-                        type: 'error',
-                      });
-                      return;
+                    if (bookingStep === 2) {
+                      if (isWarrantyBooking) {
+                        if (selectedWarrantyItemIds.length === 0) {
+                          setVehicleToast({
+                            message: 'Vui lòng chọn ít nhất 1 hạng mục linh kiện/dịch vụ bảo hành.',
+                            type: 'error',
+                          });
+                          return;
+                        }
+                        if (!symptomsDescription.trim()) {
+                          setVehicleToast({
+                            message: 'Vui lòng nhập mô tả chi tiết hiện tượng sự cố.',
+                            type: 'error',
+                          });
+                          return;
+                        }
+                      } else {
+                        if (selectedServiceIds.length === 0 && !bookingNotes.trim()) {
+                          setVehicleToast({
+                            message: 'Vui lòng chọn ít nhất 1 dịch vụ hoặc nhập mô tả tình trạng xe để tiếp tục.',
+                            type: 'error',
+                          });
+                          return;
+                        }
+                      }
                     }
                     setBookingStep((bookingStep + 1) as any);
                   }}
@@ -1984,6 +2288,24 @@ export default function ProfilePage() {
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              )}
+
+              {/* Warranty Appointment Banner */}
+              {(selectedAptDetail as any).is_warranty && (
+                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-800">
+                  <span className="material-symbols-outlined text-emerald-600 text-lg shrink-0 mt-0.5">verified_user</span>
+                  <div className="space-y-1">
+                    <p className="font-bold text-emerald-900 flex items-center gap-1.5">
+                      <span>Lịch hẹn Bảo hành xe chính hãng (0 đồng)</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-900">Miễn phí 100%</span>
+                    </p>
+                    <p className="text-[11px] text-emerald-700 leading-relaxed">
+                      {(selectedAptDetail as any).symptoms_description
+                        ? `Hiện tượng sự cố: ${(selectedAptDetail as any).symptoms_description}`
+                        : selectedAptDetail.notes || 'Hạng mục kiểm tra và xử lý theo chính sách bảo hành.'}
+                    </p>
                   </div>
                 </div>
               )}

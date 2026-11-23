@@ -66,7 +66,7 @@ describe('Unit Tests - Phân hệ Bảo hành (UC-81 & UC-83)', () => {
       ).rejects.toThrow('Bạn không có quyền truy cập dữ liệu bảo hành của phương tiện này.');
     });
 
-    it('cho phép nhân viên xưởng (STAFF / ADVISOR / MANAGER) tra cứu xe của bất kỳ khách hàng nào', async () => {
+    it('cho phép nhân viên xưởng (STAFF / ADVISOR / MANAGER / DESK STAFF / SA) tra cứu xe của bất kỳ khách hàng nào', async () => {
       prismaMock.vehicle.findUnique.mockResolvedValue({
         id: 10,
         customer_id: 100,
@@ -76,14 +76,29 @@ describe('Unit Tests - Phân hệ Bảo hành (UC-81 & UC-83)', () => {
       });
       prismaMock.workOrder.findMany.mockResolvedValue([]);
 
-      const result = await warrantyService.checkVehicleWarrantyEligibility(
+      // Test với vai trò DESK STAFF (Lễ tân quầy tiếp nhận)
+      const deskStaffResult = await warrantyService.checkVehicleWarrantyEligibility(
         { vehicleId: 10 },
         undefined,
-        { userId: 5, roles: ['SERVICE_ADVISOR'] }
+        { userId: 5, roles: ['DESK STAFF'] }
       );
+      expect(deskStaffResult.hasHistory).toBe(false);
 
-      expect(result.hasHistory).toBe(false);
-      expect(result.message).toContain('Xe chưa có lịch sử dịch vụ hoặc phụ tùng bảo hành');
+      // Test với vai trò SA (Cố vấn dịch vụ)
+      const saResult = await warrantyService.checkVehicleWarrantyEligibility(
+        { vehicleId: 10 },
+        undefined,
+        { userId: 6, roles: ['SA'] }
+      );
+      expect(saResult.hasHistory).toBe(false);
+
+      // Test với vai trò MANAGER
+      const managerResult = await warrantyService.checkVehicleWarrantyEligibility(
+        { vehicleId: 10 },
+        undefined,
+        { userId: 7, roles: ['MANAGER'] }
+      );
+      expect(managerResult.hasHistory).toBe(false);
     });
 
     it('thông báo xe chưa có lịch sử dịch vụ hoặc phụ tùng khi chưa có phiếu sửa chữa nào hoàn thành (Luồng ngoại lệ)', async () => {

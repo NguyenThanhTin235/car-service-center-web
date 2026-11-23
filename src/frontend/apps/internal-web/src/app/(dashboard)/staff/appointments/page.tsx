@@ -206,6 +206,7 @@ export default function AppointmentsPage() {
   const appointmentsToDisplay = useMemo(() => {
     return appointments.filter(a => {
       if (statusFilter === 'ALL') return true;
+      if (statusFilter === 'WARRANTY') return (a as any).is_warranty === true;
       if (statusFilter === 'CONFIRMED') return a.status === 'CONFIRMED' || a.status === 'RESCHEDULED';
       return a.status === statusFilter;
     });
@@ -561,6 +562,7 @@ export default function AppointmentsPage() {
                 className="w-full sm:w-auto h-9 px-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 focus:border-[#0866ff] focus:outline-none cursor-pointer"
               >
                 <option value="ALL">Tất cả trạng thái</option>
+                <option value="WARRANTY">🛡️ Lịch hẹn bảo hành (0đ)</option>
                 <option value="REQUESTED">Chờ xác nhận</option>
                 <option value="CONFIRMED">Đã xác nhận</option>
                 <option value="ARRIVED">Đã tiếp nhận</option>

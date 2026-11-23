@@ -113,11 +113,28 @@ export class WarrantyService {
       throw new Error('Không tìm thấy phương tiện trong hệ thống.');
     }
 
-    // 2. Phân quyền: Nếu là khách hàng (CUSTOMER), chỉ được tra cứu xe của chính mình
+    // 2. Phân quyền: Nếu là khách hàng (CUSTOMER), chỉ được tra cứu xe của chính mình.
+    // Nhân viên nội bộ (DESK STAFF, SA, SERVICE_ADVISOR, MANAGER, ADMIN, TECHNICIAN, STAFF, v.v.) được phép tra cứu mọi xe.
     if (userContext) {
-      const isStaffOrAdmin = userContext.roles.some((r) =>
-        ['ADMIN', 'SYSTEM_ADMIN', 'SERVICE_ADVISOR', 'SERVICE_MANAGER', 'STAFF', 'TECHNICIAN'].includes(r.toUpperCase())
-      );
+      const staffRoleKeywords = [
+        'ADMIN',
+        'SYSTEM_ADMIN',
+        'MANAGER',
+        'SERVICE_MANAGER',
+        'SERVICE_ADVISOR',
+        'SA',
+        'STAFF',
+        'DESK_STAFF',
+        'DESK STAFF',
+        'TECHNICIAN',
+      ];
+      const isStaffOrAdmin =
+        userContext.roles.some((r) => {
+          const upper = (r || '').trim().toUpperCase();
+          const normalized = upper.replace(/\s+/g, '_');
+          return staffRoleKeywords.includes(upper) || staffRoleKeywords.includes(normalized);
+        }) || !userContext.roles.every((r) => (r || '').trim().toUpperCase() === 'CUSTOMER');
+
       if (!isStaffOrAdmin && vehicle.customer_id !== userContext.userId) {
         throw new Error('Bạn không có quyền truy cập dữ liệu bảo hành của phương tiện này.');
       }
