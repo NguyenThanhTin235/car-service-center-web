@@ -133,7 +133,7 @@ export const KPICard: React.FC<KPICardProps> = ({
   // ================= VARIANT 1: DARK NAVY (#0c2340) =================
   if (variant === 'navy') {
     return (
-      <div className="bg-[#0c2340] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md hover:shadow-lg transition-all relative overflow-hidden group">
+      <div className="sa-card-lift bg-[#0c2340] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md hover:shadow-lg relative overflow-hidden group">
         <div>
           <div className="flex items-center justify-between text-zinc-300 text-xs font-semibold tracking-wide">
             <span>{label}</span>
@@ -233,7 +233,7 @@ export const KPICard: React.FC<KPICardProps> = ({
     const splitRight = 100 - splitLeft;
 
     return (
-      <div className="bg-[#0050cd] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md shadow-[#0050cd]/20 hover:shadow-lg transition-all relative overflow-hidden group">
+      <div className="sa-card-lift bg-[#0050cd] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md shadow-[#0050cd]/20 hover:shadow-lg relative overflow-hidden group">
         <div>
           <div className="flex items-center justify-between text-blue-100 text-xs font-semibold tracking-wide">
             <span>{label}</span>
@@ -259,14 +259,14 @@ export const KPICard: React.FC<KPICardProps> = ({
 
         {/* 2-Tone Split Bar Inside Deep Navy Container */}
         <div className="mt-3">
-          <div className="bg-[#07192e] rounded-2xl p-1.5 flex items-stretch h-12 gap-1.5">
+          <div className="bg-[#07192e] rounded-xl p-1 flex items-stretch h-7 gap-1">
             <div
               style={{ width: `${splitLeft}%` }}
-              className="bg-white text-zinc-900 rounded-xl px-2.5 py-1 flex items-end font-mono font-extrabold text-xs tabular-nums transition-all"
+              className="bg-white text-zinc-900 rounded-lg px-2.5 flex items-center font-mono font-extrabold text-[11px] leading-none tabular-nums whitespace-nowrap transition-all"
             >
               {splitLeft}%
             </div>
-            <div className="flex-1 text-white px-2.5 py-1 flex items-end justify-end font-mono font-extrabold text-xs tabular-nums">
+            <div className="flex-1 text-white px-2.5 flex items-center justify-end font-mono font-extrabold text-[11px] leading-none tabular-nums whitespace-nowrap">
               {splitRight}%
             </div>
           </div>
@@ -289,7 +289,7 @@ export const KPICard: React.FC<KPICardProps> = ({
   // ================= VARIANT 3: SOFT COOL SLATE (#e4e7ec) =================
   if (variant === 'slate') {
     return (
-      <div className="bg-[#e4e7ec] text-zinc-900 rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-xs hover:shadow-md transition-all relative overflow-hidden group">
+      <div className="sa-card-lift bg-[#e4e7ec] text-zinc-900 rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-xs hover:shadow-md relative overflow-hidden group">
         <div>
           <div className="flex items-center justify-between text-slate-700 text-xs font-semibold tracking-wide">
             <span>{label}</span>
@@ -350,7 +350,7 @@ export const KPICard: React.FC<KPICardProps> = ({
 
   // ================= VARIANT 4: MIDNIGHT / DEEP INDIGO (#111827) =================
   return (
-    <div className="bg-[#111827] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md hover:shadow-lg transition-all relative overflow-hidden group">
+    <div className="sa-card-lift bg-[#111827] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md hover:shadow-lg relative overflow-hidden group">
       <div>
         <div className="flex items-center justify-between text-slate-300 text-xs font-semibold tracking-wide">
           <span>{label}</span>

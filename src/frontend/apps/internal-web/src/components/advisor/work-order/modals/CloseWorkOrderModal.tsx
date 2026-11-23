@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { WorkOrder, closeWorkOrder } from '@/lib/api/work-order.api';
+import ModalPortal from '@/components/advisor/common/ModalPortal';
 import toast from 'react-hot-toast';
 
 interface CloseWorkOrderModalProps {
@@ -38,25 +39,36 @@ export default function CloseWorkOrderModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-in">
-      <div className="bg-surface-container-lowest w-full max-w-xl rounded-2xl sm:rounded-3xl shadow-2xl border border-outline-variant flex flex-col max-h-[92vh] overflow-hidden">
+    <ModalPortal>
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-md overflow-y-auto sa-modal-backdrop"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && !closing) onClose();
+        }}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Đóng Hồ Sơ Phiếu Công Việc"
+          className="sa-modal-panel bg-surface-container-lowest w-full max-w-2xl rounded-2xl shadow-2xl border border-outline-variant flex flex-col max-h-[90dvh] overflow-hidden"
+        >
         
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-outline-variant bg-gradient-to-r from-amber-50/80 via-white to-amber-50/30 dark:from-amber-950/20 dark:via-surface-container-lowest dark:to-amber-950/10 flex items-start justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2.5 py-0.5 rounded-md font-mono font-bold bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+        <div className="p-5 sm:p-6 border-b border-slate-200/80 bg-slate-50/80 flex items-start justify-between gap-3">
+          <div className="space-y-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs px-2.5 py-0.5 rounded-md font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300 tabular-nums">
                 #{workOrder.wo_number}
               </span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+              <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-800">
                 ĐÃ XUẤT XƯỞNG
               </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-on-surface flex items-center gap-2 mt-1">
-              <span className="material-symbols-outlined text-amber-600 text-[26px]">lock</span>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2 mt-1">
+              <span className="material-symbols-outlined text-amber-600 text-[24px]">lock</span>
               Đóng Hồ Sơ Phiếu Công Việc
             </h2>
-            <p className="text-xs text-on-surface-variant">
+            <p className="text-xs text-slate-600">
               Lưu trữ hồ sơ vĩnh viễn và đồng bộ vào Lịch sử sửa chữa của khách hàng.
             </p>
           </div>
@@ -65,7 +77,8 @@ export default function CloseWorkOrderModal({
             type="button"
             onClick={onClose}
             disabled={closing}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+            aria-label="Đóng"
+            className="sa-press w-11 h-11 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors cursor-pointer shrink-0"
             title="Đóng"
           >
             <span className="material-symbols-outlined text-[22px]">close</span>
@@ -165,7 +178,8 @@ export default function CloseWorkOrderModal({
         </div>
 
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }
 

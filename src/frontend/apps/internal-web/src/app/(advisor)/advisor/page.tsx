@@ -10,6 +10,7 @@ import {
   getIntakeQueue,
 } from '@/lib/api/work-order.api';
 import { WO_STATUS_META } from '@/components/advisor/work-order/work-order.constants';
+import { DashboardStageBars } from '@/components/dashboard/DashboardStageBars';
 
 export default function SADashboardPage() {
   const router = useRouter();
@@ -43,6 +44,9 @@ export default function SADashboardPage() {
       }
       if (queueRes.success && Array.isArray(queueRes.data)) {
         setIntakeItems(queueRes.data);
+      }
+      if (!woRes.success && !queueRes.success) {
+        setError('Không thể tải dữ liệu tổng quan xưởng dịch vụ.');
       }
     } catch {
       setError('Không thể tải dữ liệu tổng quan xưởng dịch vụ.');
@@ -103,23 +107,16 @@ export default function SADashboardPage() {
       { key: 'CLOSED', label: 'Hoàn tất' },
     ];
 
-    const maxCount = Math.max(
-      1,
-      ...stages.map((s) =>
-        workOrders.filter((w) =>
-          s.key === 'CLOSED'
-            ? w.status === 'CLOSED' || w.status === 'RELEASED'
-            : w.status === s.key
-        ).length
-      )
-    );
+    const statusCounts: Record<string, number> = {};
+    for (const w of workOrders) {
+      const key = w.status === 'RELEASED' ? 'CLOSED' : w.status;
+      statusCounts[key] = (statusCounts[key] || 0) + 1;
+    }
+
+    const maxCount = Math.max(1, ...stages.map((s) => statusCounts[s.key] || 0));
 
     return stages.map((s, idx) => {
-      const count = workOrders.filter((w) =>
-        s.key === 'CLOSED'
-          ? w.status === 'CLOSED' || w.status === 'RELEASED'
-          : w.status === s.key
-      ).length;
+      const count = statusCounts[s.key] || 0;
       const solidHeightPct =
         workOrders.length > 0
           ? Math.max(22, Math.round((count / maxCount) * 75))
@@ -163,17 +160,44 @@ export default function SADashboardPage() {
     const normal = Math.max(0, filtered.length - urgent);
 
     const bars = [
-      { label: 'Vãng lai', count: walkIn, pct: filtered.length ? Math.round((walkIn / filtered.length) * 100) : 45 },
-      { label: 'Đặt hẹn', count: appointment, pct: filtered.length ? Math.round((appointment / filtered.length) * 100) : 30 },
-      { label: 'Cứu hộ', count: towIn, pct: filtered.length ? Math.round((towIn / filtered.length) * 100) : 15 },
-      { label: 'Đúng hạn', count: normal, pct: filtered.length ? Math.round((normal / filtered.length) * 100) : 80 },
-      { label: 'Ưu tiên', count: urgent, pct: filtered.length ? Math.round((urgent / filtered.length) * 100) : 20 },
+      { label: 'Vãng lai', count: walkIn, pct: filtered.length ? Math.round((walkIn / filtered.length) * 100) : 0 },
+      { label: 'Đặt hẹn', count: appointment, pct: filtered.length ? Math.round((appointment / filtered.length) * 100) : 0 },
+      { label: 'Cứu hộ', count: towIn, pct: filtered.length ? Math.round((towIn / filtered.length) * 100) : 0 },
+      { label: 'Đúng hạn', count: normal, pct: filtered.length ? Math.round((normal / filtered.length) * 100) : 0 },
+      { label: 'Ưu tiên', count: urgent, pct: filtered.length ? Math.round((urgent / filtered.length) * 100) : 0 },
     ];
     return bars;
   }, [intakeItems, queueFilter]);
 
+  const donutSlices = useMemo(() => {
+    const circumference = 2 * Math.PI * 54; // ~339.29
+    const planningCount = workOrders.filter((w) => ['DRAFT', 'IN_PLANNING'].includes(w.status)).length;
+    const inProgressCount = workOrders.filter((w) => ['APPROVED', 'IN_PROGRESS'].includes(w.status)).length;
+    const approvalCount = workOrders.filter((w) => ['PENDING_APPROVAL', 'BILLING_REQUESTED'].includes(w.status)).length;
+    const doneCount = workOrders.filter((w) => ['FINANCIAL_CLEARED', 'RELEASED', 'CLOSED'].includes(w.status)).length;
+    const total = planningCount + inProgressCount + approvalCount + doneCount;
+
+    if (total === 0) return [];
+
+    const raw = [
+      { key: 'inProgress', count: inProgressCount, color: '#0c2340', strokeWidth: 28 },
+      { key: 'planning', count: planningCount, color: '#0050cd', strokeWidth: 28 },
+      { key: 'approval', count: approvalCount, color: '#60a5fa', strokeWidth: 24 },
+      { key: 'done', count: doneCount, color: '#cbd5e1', strokeWidth: 24 },
+    ].filter((s) => s.count > 0);
+
+    let offset = 0;
+    return raw.map((s) => {
+      const length = Math.max(4, (s.count / total) * circumference - (raw.length > 1 ? 4 : 0));
+      const slice = { ...s, length, offset: -offset, circumference };
+      offset += (s.count / total) * circumference;
+      return slice;
+    });
+  }, [workOrders]);
+
   return (
     <div className="py-3 max-w-[1440px] mx-auto w-full">
+      <h1 className="sr-only">Bàn làm việc Cố vấn dịch vụ</h1>
       {error && (
         <div className="mb-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs font-semibold">
@@ -202,7 +226,7 @@ export default function SADashboardPage() {
             {/* CARD 1: DARK NAVY (#0c2340) — Total Work Orders + Wave Sparkline */}
             <div
               onClick={() => router.push('/advisor/work-orders')}
-              className="bg-[#0c2340] text-white rounded-[28px] p-5 flex flex-col justify-between min-h-[215px] shadow-md hover:shadow-lg transition-all cursor-pointer relative overflow-hidden group"
+              className="sa-enter sa-card-lift bg-[#0c2340] text-white rounded-[28px] p-5 flex flex-col justify-between min-h-[215px] shadow-md hover:shadow-lg cursor-pointer relative overflow-hidden group"
             >
               <div>
                 <div className="flex items-center justify-between text-zinc-300 text-xs font-medium">
@@ -221,7 +245,7 @@ export default function SADashboardPage() {
                     {metrics.activeWOs} đang mở
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400 mt-0.5 tabular-nums">
+                <p className="text-[11px] text-slate-300 mt-0.5 tabular-nums">
                   {metrics.waitingApprovalWOs} phiếu đang lập kế hoạch / chờ duyệt
                 </p>
               </div>
@@ -258,7 +282,7 @@ export default function SADashboardPage() {
                   <circle cx="195" cy="14" r="3.5" fill="#0050cd" stroke="#ffffff" strokeWidth="2" />
                 </svg>
 
-                <div className="flex items-center justify-between text-[11px] text-zinc-400 font-mono mt-1">
+                <div className="flex items-center justify-between text-[11px] text-slate-300 font-mono mt-1">
                   <span>Tiếp nhận</span>
                   <span>Kế hoạch</span>
                   <span>Thi công</span>
@@ -271,7 +295,7 @@ export default function SADashboardPage() {
             {/* CARD 2: VIBRANT ROYAL BLUE (#0050cd) — Intake Queue + Split Bar */}
             <div
               onClick={() => router.push('/advisor/intake-queue')}
-              className="bg-[#0050cd] text-white rounded-[28px] p-5 flex flex-col justify-between min-h-[215px] shadow-md shadow-[#0050cd]/20 hover:shadow-lg transition-all cursor-pointer group"
+              className="sa-enter sa-card-lift bg-[#0050cd] text-white rounded-[28px] p-5 flex flex-col justify-between min-h-[215px] shadow-md shadow-[#0050cd]/20 hover:shadow-lg cursor-pointer group"
             >
               <div>
                 <div className="flex items-center justify-between text-blue-100 text-xs font-medium">
@@ -325,7 +349,7 @@ export default function SADashboardPage() {
             {/* CARD 3: SOFT COOL SLATE (#e4e7ec) — Completed/Ready + Dot Matrix Grid */}
             <div
               onClick={() => router.push('/advisor/work-orders')}
-              className="bg-[#e4e7ec] text-zinc-900 rounded-[28px] p-5 flex flex-col justify-between min-h-[215px] shadow-xs hover:shadow-md transition-all cursor-pointer sm:col-span-2 xl:col-span-1 group"
+              className="sa-enter sa-card-lift bg-[#e4e7ec] text-zinc-900 rounded-[28px] p-5 flex flex-col justify-between min-h-[215px] shadow-xs hover:shadow-md cursor-pointer sm:col-span-2 xl:col-span-1 group"
             >
               <div>
                 <div className="flex items-center justify-between text-slate-600 text-xs font-medium">
@@ -385,99 +409,17 @@ export default function SADashboardPage() {
             </div>
           </div>
 
-          {/* 2. MIDDLE WIDE BENTO CARD: Stage Distribution Bar Chart (Solid + Diagonal Hatched + Blue Highlight) */}
-          <div className="bg-white rounded-[28px] p-5 sm:p-6 shadow-xs border border-slate-200/70">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-              <div>
-                <h2 className="text-base font-extrabold text-zinc-900 tracking-tight">
-                  Phân bổ phiếu công việc theo giai đoạn
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Theo dõi mật độ xe tại từng khâu trong quy trình dịch vụ
-                </p>
-              </div>
-
-              <div className="flex items-center gap-4 text-xs font-semibold text-slate-600">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full border border-slate-400 bg-diagonal-stripes inline-block" />
-                  Định mức xưởng
-                </span>
-                <span className="flex items-center gap-1.5 tabular-nums">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#0c2340] inline-block" />
-                  Thực tế ({metrics.totalWOs})
-                </span>
-                <span className="flex items-center gap-1.5 text-[#0050cd]">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#0050cd] inline-block" />
-                  Trọng tâm xử lý
-                </span>
-              </div>
-            </div>
-
-            {/* Bar Chart Area */}
-            <div className="overflow-x-auto no-scrollbar -mx-1 px-1">
-              <div className="grid grid-cols-8 gap-2 sm:gap-4 items-end h-44 pt-6 px-1 sm:px-3 border-b border-slate-100 pb-3 relative min-w-[540px] md:min-w-0">
-              {stageBars.map((bar) => {
-                if (bar.highlight) {
-                  return (
-                    <div
-                      key={bar.key}
-                      onClick={() => router.push(`/advisor/work-orders`)}
-                      className="col-span-2 flex flex-col items-center h-full justify-end relative cursor-pointer group"
-                    >
-                      {/* Floating Dark Callout Tooltip */}
-                      <div className="absolute -top-4 right-0 sm:-right-4 z-10 bg-[#0c2340] text-white rounded-2xl px-3 py-2 text-[11px] shadow-lg pointer-events-none tabular-nums">
-                        <div className="font-bold text-zinc-200">{bar.label}</div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                          <span>Đang lập: {bar.count}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#60a5fa]" />
-                          <span>Hàng chờ: {metrics.queuedCount}</span>
-                        </div>
-                      </div>
-
-                      <div className="w-full max-w-[120px] flex flex-col rounded-xl overflow-hidden border border-slate-300 shadow-xs h-[85%]">
-                        <div className="bg-white flex-1 p-2 flex items-start text-[11px] font-mono font-bold text-slate-700 tabular-nums">
-                          {bar.count} phiếu
-                        </div>
-                        <div className="bg-[#0050cd] text-white h-[42%] p-2 flex items-start text-[11px] font-mono font-bold">
-                          Ưu tiên
-                        </div>
-                      </div>
-                      <span className="text-[11px] font-bold text-[#0050cd] mt-2 truncate max-w-full">
-                        {bar.label}
-                      </span>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div
-                    key={bar.key}
-                    onClick={() => router.push('/advisor/work-orders')}
-                    className="flex flex-col items-center h-full justify-end cursor-pointer group"
-                    title={`${bar.label}: ${bar.count} phiếu`}
-                  >
-                    <div className="w-3.5 sm:w-4 flex flex-col items-center justify-end h-full gap-0.5">
-                      <div
-                        style={{ height: `${bar.hatchHeightPct}%` }}
-                        className="w-full bg-diagonal-stripes rounded-t-sm opacity-75 group-hover:opacity-100 transition-opacity"
-                      />
-                      <div
-                        style={{ height: `${bar.solidHeightPct}%` }}
-                        className="w-full bg-[#0c2340] group-hover:bg-[#0050cd] rounded-b-sm transition-colors"
-                      />
-                    </div>
-                    <span className="text-[11px] text-slate-500 font-medium mt-2 truncate max-w-full">
-                      {bar.label}
-                    </span>
-                  </div>
-                );
-              })}
-              </div>
-            </div>
-          </div>
+          {/* 2. MIDDLE WIDE BENTO CARD: Uniform 8-Stage Bar Chart */}
+          <DashboardStageBars
+            title="Phân bổ phiếu công việc theo giai đoạn"
+            subtitle="Theo dõi mật độ xe tại từng khâu trong quy trình dịch vụ"
+            stages={stageBars.map((b) => ({
+              key: b.key,
+              label: b.label,
+              count: b.count,
+            }))}
+            onSelectStage={() => router.push('/advisor/work-orders')}
+          />
 
           {/* 3. BOTTOM WIDE BENTO CARD: Clean Borderless Work Orders Table (Matches "Product sales" in Reference) */}
           <div className="bg-white rounded-[28px] p-5 sm:p-6 shadow-xs border border-slate-200/70">
@@ -635,51 +577,31 @@ export default function SADashboardPage() {
 
             {/* Exploded Multi-Tone Donut Chart SVG */}
             <div className="my-5 flex items-center justify-center relative">
-              <svg viewBox="0 0 180 180" className="w-40 h-40">
-                {/* Dark Navy Slice (35%) */}
-                <circle
-                  cx="90"
-                  cy="90"
-                  r="54"
-                  fill="transparent"
-                  stroke="#0c2340"
-                  strokeWidth="28"
-                  strokeDasharray="115 339"
-                  strokeDashoffset="0"
-                />
-                {/* Royal Blue Slice (25%) */}
-                <circle
-                  cx="90"
-                  cy="90"
-                  r="54"
-                  fill="transparent"
-                  stroke="#0050cd"
-                  strokeWidth="28"
-                  strokeDasharray="82 339"
-                  strokeDashoffset="-120"
-                />
-                {/* Soft Blue Slice (22%) */}
-                <circle
-                  cx="90"
-                  cy="90"
-                  r="54"
-                  fill="transparent"
-                  stroke="#60a5fa"
-                  strokeWidth="24"
-                  strokeDasharray="72 339"
-                  strokeDashoffset="-207"
-                />
-                {/* Cool Slate Slice (18%) */}
-                <circle
-                  cx="90"
-                  cy="90"
-                  r="54"
-                  fill="transparent"
-                  stroke="#e4e7ec"
-                  strokeWidth="24"
-                  strokeDasharray="55 339"
-                  strokeDashoffset="-284"
-                />
+              <svg viewBox="0 0 180 180" className="w-40 h-40 -rotate-90">
+                {donutSlices.length === 0 ? (
+                  <circle
+                    cx="90"
+                    cy="90"
+                    r="54"
+                    fill="transparent"
+                    stroke="#e2e8f0"
+                    strokeWidth="24"
+                  />
+                ) : (
+                  donutSlices.map((slice) => (
+                    <circle
+                      key={slice.key}
+                      cx="90"
+                      cy="90"
+                      r="54"
+                      fill="transparent"
+                      stroke={slice.color}
+                      strokeWidth={slice.strokeWidth}
+                      strokeDasharray={`${slice.length} ${slice.circumference}`}
+                      strokeDashoffset={slice.offset}
+                    />
+                  ))
+                )}
               </svg>
 
               {/* Floating Percentage Badges */}

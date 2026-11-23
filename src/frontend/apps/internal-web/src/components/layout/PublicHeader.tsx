@@ -20,11 +20,11 @@ export default function PublicHeader() {
       <div className="w-full max-w-container-max mx-auto px-gutter-desktop flex items-center justify-between h-full">
         {/* Logo & Brand identity */}
         <div className="flex items-center gap-8">
-          <Link className="flex items-center gap-2.5 text-on-surface" href="/">
-            <div className="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center text-on-primary shadow-sm">
-              <span className="material-symbols-outlined text-2xl" data-icon="directions_car">directions_car</span>
+          <Link className="flex items-center gap-2.5 text-on-surface group" href="/">
+            <div className="w-9 h-9 rounded-xl bg-[#0050CD] text-white flex items-center justify-center shrink-0 transition-transform duration-150 group-hover:scale-[1.03]">
+              <span className="material-symbols-outlined text-xl" aria-hidden="true" data-icon="directions_car">directions_car</span>
             </div>
-            <span className="font-headline-md text-headline-md text-on-surface tracking-tight font-bold">Car Service Center</span>
+            <span className="font-bold text-base tracking-[-0.02em] text-on-surface whitespace-nowrap">AutoCare Pro</span>
           </Link>
           
           {/* Desktop Navigation Links */}

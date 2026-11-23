@@ -1,17 +1,33 @@
 'use client';
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { WorkOrder, saveCheckIn, addServiceToWO, removeServiceFromWO, getServiceCatalog, ServiceTemplateOption } from '@/lib/api/work-order.api';
+import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
+import { WorkOrder, saveCheckIn, addServiceToWO, removeServiceFromWO, ServiceTemplateOption } from '@/lib/api/work-order.api';
+import { getCachedServiceCatalog } from '@/lib/cache/sa-catalogs';
 import toast from 'react-hot-toast';
 import EvidenceUploader from './EvidenceUploader';
 import VehicleInspectionPanel from './VehicleInspectionPanel';
+import ImageLightbox from '@/components/advisor/common/ImageLightbox';
+import { useClickOutside } from '@/hooks/useClickOutside';
+import { formatVND } from '@/lib/utils/formatters';
 
 interface TabCheckinProps {
   workOrder?: WorkOrder;
   refetchWO?: () => void;
   isReadOnly?: boolean;
+  setActiveTab?: (tabId: string) => void;
 }
 
-export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly: propIsReadOnly = false }: TabCheckinProps) {
+const COMMON_COMPLAINTS = [
+  'Đèn báo lỗi động cơ',
+  'Tiếng kêu lạ dưới gầm',
+  'Điều hòa không lạnh',
+  'Rò rỉ nhớt',
+  'Vô lăng rung lắc',
+  'Động cơ quá nhiệt',
+  'Phanh không ăn',
+  'Móp méo thân xe',
+];
+
+export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly: propIsReadOnly = false, setActiveTab }: TabCheckinProps) {
   const [customerReported, setCustomerReported] = useState<string[]>([]);
 
   // Danh sách dịch vụ khách hàng yêu cầu: Tổng hợp đầy đủ từ workOrder.services và intake_record.services
@@ -96,7 +112,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
     }
 
     if (hasPrice && total > 0) {
-      return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(total);
+      return formatVND(total);
     }
 
     return 'Chờ báo giá';
@@ -145,30 +161,18 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
     setCustomerReported(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
   };
 
-  const COMMON_COMPLAINTS = [
-    'Đèn báo lỗi động cơ', 
-    'Tiếng kêu lạ dưới gầm', 
-    'Điều hòa không lạnh', 
-    'Rò rỉ nhớt', 
-    'Vô lăng rung lắc', 
-    'Động cơ quá nhiệt',
-    'Phanh không ăn',
-    'Móp méo thân xe'
-  ];
   const [isAddingComplaint, setIsAddingComplaint] = useState(false);
   const [complaintSearch, setComplaintSearch] = useState('');
   const complaintDropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (complaintDropdownRef.current && !complaintDropdownRef.current.contains(e.target as Node)) {
-        setIsAddingComplaint(false);
-        setComplaintSearch('');
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  useClickOutside(
+    complaintDropdownRef,
+    () => {
+      setIsAddingComplaint(false);
+      setComplaintSearch('');
+    },
+    isAddingComplaint
+  );
 
   // Add/Remove Service state
   const [isAdding, setIsAdding] = useState(false);
@@ -186,22 +190,19 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
     }
   }, [isAdding]);
 
-  // Close dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsAdding(false);
-        setSearchTerm('');
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  useClickOutside(
+    dropdownRef,
+    () => {
+      setIsAdding(false);
+      setSearchTerm('');
+    },
+    isAdding
+  );
 
   const loadCatalog = async () => {
     try {
       setLoadingCatalog(true);
-      const data = await getServiceCatalog();
+      const data = await getCachedServiceCatalog();
       setCatalog(Array.isArray(data) ? data : []);
     } catch {
       toast.error('Không thể tải danh mục dịch vụ');
@@ -244,8 +245,17 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
     }
   };
 
-  const existingTemplateIds = workOrder?.services?.map((s) => s.service_id).filter((id): id is number => id !== null) || [];
-  const filteredCatalog = catalog.filter((t) => !existingTemplateIds.includes(t.id) && t.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const filteredCatalog = useMemo(() => {
+    if (!isAdding) return [];
+    const existingSet = new Set(
+      (workOrder?.services || [])
+        .map((s) => s.service_id)
+        .filter((id): id is number => id !== null)
+    );
+    const q = deferredSearchTerm.toLowerCase();
+    return catalog.filter((t) => !existingSet.has(t.id) && t.name.toLowerCase().includes(q));
+  }, [isAdding, catalog, workOrder?.services, deferredSearchTerm]);
 
   // Form state for Check-in
   const [mileage, setMileage] = useState<string>('');
@@ -439,7 +449,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
 
                   {/* Dropdown Catalog */}
                   {isAdding && (
-                    <div className="absolute left-0 top-full mt-2 w-72 sm:w-80 bg-surface-container-lowest rounded-xl shadow-lg border border-outline-variant z-50 overflow-hidden">
+                    <div className="sa-tab-enter absolute left-0 top-full mt-2 w-[min(18rem,calc(100vw-2rem))] sm:w-80 bg-surface-container-lowest rounded-xl shadow-lg border border-outline-variant z-50 overflow-hidden">
                       <div className="p-3 border-b border-outline-variant/40">
                         <div className="relative">
                           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-on-surface-variant">search</span>
@@ -518,7 +528,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
 
                   {/* Dropdown Catalog */}
                   {isAddingComplaint && (
-                    <div className="absolute left-0 top-full mt-2 w-72 sm:w-80 bg-surface-container-lowest rounded-xl shadow-lg border border-outline-variant z-50 overflow-hidden">
+                    <div className="sa-tab-enter absolute left-0 top-full mt-2 w-[min(18rem,calc(100vw-2rem))] sm:w-80 bg-surface-container-lowest rounded-xl shadow-lg border border-outline-variant z-50 overflow-hidden">
                       <div className="p-3 border-b border-outline-variant/40">
                         <div className="flex gap-2">
                           <input
@@ -698,6 +708,8 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
                         key={idx} 
                         src={url} 
                         alt="Evidence" 
+                        loading="lazy"
+                        decoding="async"
                         className="w-16 h-16 object-cover rounded-xl border border-outline-variant cursor-pointer hover:opacity-90 transition-opacity" 
                         onClick={() => setPreviewImage(url)}
                       />
@@ -711,7 +723,7 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
               {/* Phàn nàn / Yêu cầu (Từ Lễ tân) */}
               <div className="md:col-span-2">
                 <label className="block text-body-sm text-on-surface-variant mb-1">
-                  Phàn nàn / Yêu cầu của khách (Ghi nhận bởi Lễ tân/Staff)
+                  Yêu cầu &amp; triệu chứng khách báo (Lễ tân ghi nhận)
                 </label>
                 <div className="w-full px-3.5 py-3 bg-[#f2f4f8] rounded-xl text-body-md text-slate-600 italic">
                   {workOrder?.intake_record?.notes || complaint || 'Không có ghi chú từ bộ phận tiếp nhận.'}
@@ -782,22 +794,22 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
               </div>
 
               {!isReadOnly && (
-                <div className="md:col-span-2 flex justify-end gap-3 mt-4">
+                <div className="md:col-span-2 flex flex-wrap justify-end gap-3 mt-4">
                   <button
                     type="button"
                     onClick={handleCancelEdit}
                     disabled={isSaving}
-                    className="px-4 py-2.5 rounded-xl font-bold text-xs border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
+                    className="sa-press px-4 py-2.5 rounded-xl font-bold text-xs border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 cursor-pointer"
                   >
-                    Hủy
+                    Hủy chỉnh sửa
                   </button>
                   <button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="bg-[#0050cd] hover:bg-[#0866ff] text-white px-6 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-colors disabled:opacity-50"
+                    className="sa-press bg-[#0050cd] hover:bg-[#0866ff] text-white px-6 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     {isSaving ? <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> : <span className="material-symbols-outlined text-[18px]">save</span>}
-                    Lưu Thông Tin
+                    Lưu biên bản tiếp nhận
                   </button>
                 </div>
               )}
@@ -815,26 +827,28 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
         />
       )}
 
-      {/* Image Preview Modal */}
-      {previewImage && (
-        <div 
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm cursor-zoom-out"
-          onClick={() => setPreviewImage(null)}
-        >
-          <button 
-            className="absolute top-4 right-4 text-white hover:text-gray-300"
-            onClick={(e) => { e.stopPropagation(); setPreviewImage(null); }}
+      {/* Next-Step Lifecycle CTA */}
+      {setActiveTab && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs">
+          <div className="text-xs text-slate-600">
+            <span className="font-bold text-slate-900">Bước tiếp theo:</span> Chuyển sang lập hạng mục sửa chữa và phân công kỹ thuật viên.
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('job')}
+            className="sa-press inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0c2340] hover:bg-[#0050cd] text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
           >
-            <span className="material-symbols-outlined text-[32px]">close</span>
+            <span>Tiếp tục: Lập hạng mục sửa chữa</span>
+            <span aria-hidden="true">→</span>
           </button>
-          <img 
-            src={previewImage} 
-            alt="Preview" 
-            className="max-w-[90vw] max-h-[90vh] object-contain shadow-2xl rounded-sm"
-            onClick={(e) => e.stopPropagation()}
-          />
         </div>
       )}
+
+      {/* Image Preview Modal */}
+      <ImageLightbox
+        src={previewImage}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   AIPartSuggestionData,
 } from '@/lib/api/work-order.api';
 import { inventoryApi, AvailableInventoryItem } from '@/lib/api/inventory.api';
+import ModalPortal from '@/components/advisor/common/ModalPortal';
 import toast from 'react-hot-toast';
 
 interface AddPartModalProps {
@@ -21,6 +22,8 @@ interface AddPartModalProps {
   editingPart?: WoJobPart | null;
   onSuccess: () => void;
 }
+
+const aiPartSuggestionCache = new Map<string, AIPartSuggestionData>();
 
 export default function AddPartModal({
   isOpen,
@@ -124,13 +127,13 @@ export default function AddPartModal({
       setSearchTerm('');
       setPlannedQuantity(1);
       setUnitPrice(0);
-      loadInventoryItems('');
-
       if (initialJobId) {
-        handleFetchAiSuggestions(initialJobId, false);
+        const cached = aiPartSuggestionCache.get(`${workOrder.id}:${initialJobId}`);
+        if (cached) setAiData(cached);
       }
     }
-  }, [isOpen, editingPart, preselectedJobId, availableJobs]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, editingPart, preselectedJobId, workOrder.id]);
 
   // Load inventory items with optional search
   const loadInventoryItems = async (query: string) => {
@@ -166,11 +169,22 @@ export default function AddPartModal({
     const jId = targetId || selectedJobId;
     if (!jId) return;
 
+    const cacheKey = `${workOrder.id}:${jId}`;
+    if (!refresh) {
+      const cached = aiPartSuggestionCache.get(cacheKey);
+      if (cached) {
+        setAiData(cached);
+        setAiExpanded(true);
+        return;
+      }
+    }
+
     try {
       setLoadingAi(true);
       setAiExpanded(true);
       const res = await getAIPartSuggestions(workOrder.id, jId, refresh);
       if (res.success && res.data) {
+        aiPartSuggestionCache.set(cacheKey, res.data);
         setAiData(res.data);
       } else {
         toast.error(res.message || 'Không thể tạo gợi ý phụ tùng từ AI');
@@ -264,40 +278,53 @@ export default function AddPartModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+    <ModalPortal>
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md sa-modal-backdrop"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose();
+        }}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={editingPart ? 'Chỉnh sửa phụ tùng / vật tư' : 'Khai báo phụ tùng cho công việc'}
+          className="sa-modal-panel bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90dvh] flex flex-col overflow-hidden"
+        >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+        <div className="px-5 sm:px-6 py-4 border-b border-outline-variant flex items-center justify-between gap-3 bg-surface-container-low/50">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
               <span className="material-symbols-outlined text-[24px]">construction</span>
             </div>
-            <div>
-              <h2 className="text-title-medium font-bold text-on-surface">
+            <div className="min-w-0">
+              <h2 className="text-base font-bold text-on-surface truncate">
                 {editingPart ? 'Chỉnh sửa phụ tùng / vật tư' : 'Khai báo phụ tùng cho công việc'}
               </h2>
-              <p className="text-body-small text-on-surface-variant">
-                Phiếu công việc: <span className="font-semibold text-primary">{workOrder.wo_number}</span>
+              <p className="text-xs text-on-surface-variant truncate">
+                Phiếu công việc: <span className="font-mono font-bold text-primary tabular-nums">{workOrder.wo_number}</span>
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
+            aria-label="Đóng"
+            className="sa-press w-11 h-11 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors cursor-pointer shrink-0"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
         {/* Content Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 flex-1 styled-scrollbar">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1 styled-scrollbar">
           {/* Target Job Selection */}
           <div className="relative" ref={jobDropdownRef}>
-            <label className="block text-label-medium font-semibold text-on-surface mb-1.5">
+            <label className="block text-xs font-semibold text-on-surface mb-1.5">
               Công việc chỉ định <span className="text-error">*</span>
             </label>
             {editingPart ? (
-              <div className="px-3.5 py-2.5 rounded-xl bg-surface-container-low border border-outline-variant text-on-surface text-body-medium">
+              <div className="px-3.5 py-2.5 rounded-xl bg-surface-container-low border border-outline-variant text-on-surface text-sm">
                 {editingPart.job?.name || 'Công việc không xác định'}
               </div>
             ) : (
@@ -306,7 +333,7 @@ export default function AddPartModal({
                   type="button"
                   disabled={Boolean(preselectedJobId) || availableJobs.length === 0}
                   onClick={() => setIsJobDropdownOpen((prev) => !prev)}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border bg-surface text-left flex items-center justify-between text-body-medium transition-all ${
+                  className={`w-full px-3.5 py-2.5 rounded-xl border bg-surface text-left flex items-center justify-between text-sm transition-colors ${
                     isJobDropdownOpen
                       ? 'border-primary ring-2 ring-primary/20'
                       : 'border-outline-variant hover:border-outline'
@@ -396,8 +423,9 @@ export default function AddPartModal({
               </>
             )}
             {availableJobs.length === 0 && (
-              <p className="text-body-small text-amber-600 mt-1">
-                ⚠️ Cần tạo ít nhất một công việc trong tab &quot;Hạng mục sửa chữa&quot; trước khi thêm phụ tùng.
+              <p className="text-xs text-amber-700 mt-1.5 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[15px] text-amber-600 shrink-0">warning</span>
+                <span>Cần tạo ít nhất một công việc trong tab &quot;Hạng mục sửa chữa&quot; trước khi thêm phụ tùng.</span>
               </p>
             )}
           </div>
@@ -527,7 +555,7 @@ export default function AddPartModal({
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-3 text-body-small mt-1 text-on-surface-variant">
+                              <div className="flex items-center gap-3 text-xs mt-1 text-on-surface-variant">
                                 <span className="font-semibold text-primary">
                                   Đề xuất: {sug.suggested_quantity} {sug.uom}
                                 </span>
@@ -544,14 +572,15 @@ export default function AddPartModal({
                                 {sug.unit_price > 0 && (
                                   <>
                                     <span>•</span>
-                                    <span>{Number(sug.unit_price).toLocaleString('vi-VN')} đ</span>
+                                    <span className="font-mono tabular-nums font-semibold">{Number(sug.unit_price).toLocaleString('vi-VN')} đ</span>
                                   </>
                                 )}
                               </div>
 
                               {sug.reason && (
-                                <p className="text-[11px] text-on-surface-variant/80 mt-1 line-clamp-1 italic">
-                                  💡 {sug.reason}
+                                <p className="text-[11px] text-on-surface-variant/80 mt-1 line-clamp-1 italic flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[14px] text-amber-600 shrink-0">lightbulb</span>
+                                  <span>{sug.reason}</span>
                                 </p>
                               )}
                             </div>
@@ -559,7 +588,7 @@ export default function AddPartModal({
                             <button
                               type="button"
                               onClick={() => handleApplyAiSuggestion(sug)}
-                              className={`px-3 py-1.5 rounded-xl font-semibold text-label-medium transition-all shrink-0 flex items-center gap-1 shadow-sm ${
+                              className={`sa-press px-3 py-1.5 rounded-xl font-semibold text-xs transition-colors shrink-0 flex items-center gap-1 shadow-sm cursor-pointer ${
                                 isChosen
                                   ? 'bg-emerald-600 text-white'
                                   : 'bg-primary/10 text-primary hover:bg-primary hover:text-on-primary'
@@ -782,6 +811,7 @@ export default function AddPartModal({
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }

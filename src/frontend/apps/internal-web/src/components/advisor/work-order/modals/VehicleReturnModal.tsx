@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { WorkOrder, cancelAndReleaseWorkOrder } from '@/lib/api/work-order.api';
 import { FUEL_LEVEL_LABELS } from '../work-order.constants';
+import ModalPortal from '@/components/advisor/common/ModalPortal';
 import toast from 'react-hot-toast';
 
 interface VehicleReturnModalProps {
@@ -87,8 +88,14 @@ export default function VehicleReturnModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-in">
-      <div className="bg-surface-container-lowest w-full max-w-2xl rounded-2xl sm:rounded-3xl shadow-2xl border border-outline-variant flex flex-col max-h-[92vh] overflow-hidden">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-md overflow-y-auto sa-modal-backdrop">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Thủ tục xuất trả xe"
+          className="sa-modal-panel bg-surface-container-lowest w-full max-w-3xl rounded-2xl sm:rounded-3xl shadow-2xl border border-outline-variant flex flex-col max-h-[90dvh] overflow-hidden"
+        >
         
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-outline-variant bg-gradient-to-r from-rose-50/70 via-white to-orange-50/50 dark:from-rose-950/20 dark:via-surface-container-lowest dark:to-orange-950/10 flex items-start justify-between">
@@ -236,10 +243,10 @@ export default function VehicleReturnModal({
 
           {/* Phí kiểm tra / chẩn đoán */}
           <div className="p-4 rounded-2xl border border-outline-variant bg-surface-container-low/30 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[20px] text-primary">receipt_long</span>
-                <span className="text-xs font-bold text-on-surface">Phí kiểm tra & chẩn đoán xe (Inspection Fee)</span>
+                <span className="text-xs font-bold text-on-surface">Phí kiểm tra &amp; chẩn đoán xe</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -323,6 +330,7 @@ export default function VehicleReturnModal({
 
         </form>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }

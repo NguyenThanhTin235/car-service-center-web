@@ -78,3 +78,32 @@ export function formatRoleName(role?: string): string {
   const cleanKey = role.trim().toUpperCase();
   return ROLE_VIETNAMESE_MAP[cleanKey] || role;
 }
+
+/**
+ * Format ngày giờ chuẩn Việt Nam (dd/mm/yyyy HH:mm)
+ */
+export function formatDateTimeVN(
+  value?: string | Date | null,
+  fallback = '—'
+): string {
+  if (!value) return fallback;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return typeof value === 'string' ? value : fallback;
+  return date.toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+/**
+ * Tính số phút chờ từ thời điểm tiếp nhận
+ */
+export function getWaitMinutes(arrivedAt?: string | null): number {
+  if (!arrivedAt) return 0;
+  const ts = new Date(arrivedAt).getTime();
+  if (Number.isNaN(ts)) return 0;
+  return Math.max(0, Math.floor((Date.now() - ts) / 60000));
+}
