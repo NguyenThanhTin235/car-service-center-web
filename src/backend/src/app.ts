@@ -27,6 +27,7 @@ import paymentRoutes from './routes/payment.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import reportRoutes from './routes/report.routes';
 import quotationRoutes from './routes/quotation.routes';
+import warrantyRoutes from './routes/warranty.routes';
 import notificationRoutes from './routes/notification.routes';
 import aiChatRoutes from './routes/ai-chat.routes';
 
@@ -108,6 +109,7 @@ app.use('/api', inventoryRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/quotations', quotationRoutes);
+app.use('/api/warranty', warrantyRoutes);
 
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);

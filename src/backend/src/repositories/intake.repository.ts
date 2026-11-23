@@ -135,32 +135,49 @@ export class IntakeRepository {
    * Lấy chi tiết IntakeRecord
    */
   async findById(id: number) {
-    return prisma.intakeRecord.findUnique({
-      where: { id },
-      include: {
-        customer: { select: { id: true, full_name: true, phone: true, email: true, address: true } },
-        vehicle: { select: { id: true, license_plate: true, make: true, model: true, year: true, color: true, vehicle_size: true } },
-        created_by: { select: { id: true, full_name: true } },
-        work_order: {
-          select: {
-            id: true,
-            wo_number: true,
-            status: true,
-            services: {
-              orderBy: { sort_order: 'asc' },
-              include: {
-                service: {
-                  include: {
-                    category: true,
+    const [record, goodwillClaim] = await Promise.all([
+      prisma.intakeRecord.findUnique({
+        where: { id },
+        include: {
+          customer: { select: { id: true, full_name: true, phone: true, email: true, address: true } },
+          vehicle: { select: { id: true, license_plate: true, make: true, model: true, year: true, color: true, vehicle_size: true } },
+          created_by: { select: { id: true, full_name: true } },
+          work_order: {
+            select: {
+              id: true,
+              wo_number: true,
+              status: true,
+              services: {
+                orderBy: { sort_order: 'asc' },
+                include: {
+                  service: {
+                    include: {
+                      category: true,
+                    },
                   },
                 },
               },
             },
           },
+          services: { include: { service: { include: { category: true } } } },
         },
-        services: { include: { service: { include: { category: true } } } },
-      },
-    });
+      }),
+      (prisma as any).goodwillClaim?.findUnique
+        ? (prisma as any).goodwillClaim.findUnique({
+            where: { intake_id: id },
+            include: {
+              approved_by: { select: { id: true, full_name: true } },
+              parent_wo: { select: { id: true, wo_number: true } },
+            },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    if (!record) return null;
+    return {
+      ...record,
+      goodwill_claim: goodwillClaim || null,
+    };
   }
 
   /**

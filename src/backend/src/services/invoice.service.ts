@@ -663,17 +663,59 @@ export class InvoiceService {
       }
 
       const issuedAt = new Date();
+      const isZeroTotal = Number(invoice.total_amount) === 0;
+
+      // UC-85: Nếu hóa đơn có tổng tiền = 0 (Bảo hành 100%), tự động chuyển sang PAID và kích hoạt FINANCIAL_CLEARED
+      const nextStatus: InvoiceStatus = isZeroTotal ? 'PAID' : 'ISSUED';
+      const amountDue = isZeroTotal ? 0 : invoice.total_amount;
+      const paidAt = isZeroTotal ? issuedAt : null;
+
       const updatedInvoice = await tx.invoice.update({
         where: { id: invoiceId },
         data: {
-          status: 'ISSUED',
+          status: nextStatus,
           issued_at: issuedAt,
           issued_by_id: userId,
-          amount_due: invoice.total_amount, // Ghi nhận công nợ
+          amount_due: amountDue,
+          paid_at: paidAt,
         },
       });
 
-      // Ghi Audit Log
+      // UC-85 Bước 6: Tự động chuyển phiếu công việc sang FINANCIAL_CLEARED nếu là hóa đơn 0đ
+      if (isZeroTotal && invoice.work_order.status === 'BILLING_REQUESTED') {
+        await tx.workOrder.update({
+          where: { id: invoice.work_order_id },
+          data: {
+            status: 'FINANCIAL_CLEARED',
+          },
+        });
+
+        // Audit Log cho Work Order
+        await tx.auditLog.create({
+          data: {
+            user_id: userId,
+            action: AuditAction.STATUS_CHANGE,
+            entity_type: 'WORK_ORDER',
+            entity_id: invoice.work_order_id,
+            before_data: { status: 'BILLING_REQUESTED' },
+            after_data: { status: 'FINANCIAL_CLEARED', triggeredBy: 'WARRANTY_ZERO_INVOICE' },
+          },
+        });
+
+        // Thông báo cho Cố vấn dịch vụ xe đã sẵn sàng làm thủ tục xuất xưởng (UC-43)
+        await tx.notification.create({
+          data: {
+            user_id: invoice.work_order.advisor_id,
+            notification_type: 'VEHICLE_READY',
+            title: `Xe ${invoice.work_order.vehicle.license_plate} đã quyết toán tài chính`,
+            message: `Hóa đơn bảo hành 0 đồng (${invoice.invoice_number}) đã được quyết toán. Phương tiện đã đủ điều kiện làm thủ tục bàn giao xuất xưởng.`,
+            entity_type: 'WORK_ORDER',
+            entity_id: invoice.work_order_id,
+          },
+        });
+      }
+
+      // Ghi Audit Log cho Invoice
       await tx.auditLog.create({
         data: {
           user_id: userId,
@@ -681,7 +723,7 @@ export class InvoiceService {
           entity_type: 'INVOICE',
           entity_id: invoiceId,
           before_data: { status: 'DRAFT' },
-          after_data: { status: 'ISSUED', issuedAt, issuedById: userId },
+          after_data: { status: nextStatus, issuedAt, issuedById: userId, amountDue, isZeroTotal },
         },
       });
 
@@ -693,7 +735,7 @@ export class InvoiceService {
             licensePlate: invoice.work_order.vehicle.license_plate,
             vehicleName: `${invoice.work_order.vehicle.make} ${invoice.work_order.vehicle.model}`,
             totalAmount: Number(invoice.total_amount),
-            amountDue: Number(invoice.total_amount),
+            amountDue: Number(amountDue),
             issuedAt,
           })
         : undefined;
@@ -701,13 +743,19 @@ export class InvoiceService {
       notificationService
         .notifyAndEmail({
           userId: invoice.work_order.customer_id,
-          type: 'INVOICE_ISSUED',
-          title: `Hóa đơn xe ${invoice.work_order.vehicle.license_plate} đã được phát hành`,
-          message: `Hóa đơn ${invoice.invoice_number} với tổng số tiền ${Number(invoice.total_amount).toLocaleString('vi-VN')} đ đã sẵn sàng thanh toán.`,
+          type: isZeroTotal ? 'PAYMENT_SUCCESS' : 'INVOICE_ISSUED',
+          title: isZeroTotal
+            ? `Hóa đơn bảo hành 0đ xe ${invoice.work_order.vehicle.license_plate} đã hoàn tất quyết toán`
+            : `Hóa đơn xe ${invoice.work_order.vehicle.license_plate} đã được phát hành`,
+          message: isZeroTotal
+            ? `Hóa đơn bảo hành ${invoice.invoice_number} (0 đồng) đã được xử lý hoàn tất. Quý khách có thể đến trung tâm nhận xe.`
+            : `Hóa đơn ${invoice.invoice_number} với tổng số tiền ${Number(invoice.total_amount).toLocaleString('vi-VN')} đ đã sẵn sàng thanh toán.`,
           entityType: 'INVOICE',
           entityId: invoice.id,
           email: invoice.work_order.customer?.email || undefined,
-          subject: emailData?.subject,
+          subject: isZeroTotal
+            ? `[Car Service Center] Hóa đơn bảo hành 0đ số ${invoice.invoice_number}`
+            : emailData?.subject,
           html: emailData?.html,
         })
         .catch((err: any) => console.warn('[InvoiceIssued Notification Error]', err?.message));
@@ -719,7 +767,10 @@ export class InvoiceService {
         issuedAt: updatedInvoice.issued_at,
         totalAmount: Number(updatedInvoice.total_amount),
         amountDue: Number(updatedInvoice.amount_due),
-        message: 'Phát hành hóa đơn thành công và đã thông báo tới khách hàng.',
+        isAutoPaid: isZeroTotal,
+        message: isZeroTotal
+          ? 'Phát hành hóa đơn 0 đồng thành công, hệ thống đã tự động quyết toán tài chính và thông quan xuất xưởng cho phương tiện.'
+          : 'Phát hành hóa đơn thành công và đã thông báo tới khách hàng.',
       };
     });
   }
