@@ -3014,7 +3014,7 @@ export class WorkOrderService {
             if (part.status === 'RESERVED' || part.status === 'PLANNED') {
               await tx.jobPart.update({
                 where: { id: part.id },
-                data: { status: 'RETURNED' },
+                data: { status: 'RETURNED', issued_quantity: 0 },
               });
             } else if (part.status === 'ISSUED') {
               const qtyToReturn = Number(part.issued_quantity) || Number(part.planned_quantity) || 0;
