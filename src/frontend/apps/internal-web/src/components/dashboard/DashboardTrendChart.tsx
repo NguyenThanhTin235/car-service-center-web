@@ -135,3 +135,5 @@ export const DashboardTrendChart: React.FC<DashboardTrendChartProps> = React.mem
     </div>
   );
 });
+
+DashboardTrendChart.displayName = 'DashboardTrendChart';

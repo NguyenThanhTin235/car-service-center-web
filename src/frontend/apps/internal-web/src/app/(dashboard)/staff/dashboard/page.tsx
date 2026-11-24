@@ -222,7 +222,7 @@ export default function StaffCommandDashboardPage() {
               : 0;
 
           let sparklineCallout: string | undefined;
-          let splitPercentage = realJobSplit;
+          const splitPercentage = realJobSplit;
           let splitLeftLabel: string | undefined;
           let splitRightLabel: string | undefined;
           let subtitle: string | undefined;

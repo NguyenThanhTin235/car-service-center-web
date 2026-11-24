@@ -289,7 +289,9 @@ export default function CreateDispatchJobModal({
     }
   };
 
-  handleSaveRef.current = handleSave;
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
 
   // Xóa công việc khi chưa phân công
   const handleDelete = async () => {

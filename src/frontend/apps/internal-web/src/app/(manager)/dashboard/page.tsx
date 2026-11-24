@@ -323,7 +323,7 @@ export default function ManagerDashboardPage() {
               : 0;
 
           let sparklineCallout: string | undefined;
-          let splitPercentage = realSplitPct;
+          const splitPercentage = realSplitPct;
           let splitLeftLabel: string | undefined;
           let splitRightLabel: string | undefined;
           let subtitle: string | undefined;

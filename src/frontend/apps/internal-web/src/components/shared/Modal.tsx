@@ -15,8 +15,11 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
   const backdropProps = useBackdropClose(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen) return;

@@ -210,7 +210,7 @@ export default function AdminDashboardPage() {
               ? 100
               : 0;
 
-          let splitPercentage = realActiveSplit;
+          const splitPercentage = realActiveSplit;
           let splitLeftLabel: string | undefined;
           let splitRightLabel: string | undefined;
           let subtitle: string | undefined;

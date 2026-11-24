@@ -1,10 +1,13 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type React from 'react';
 
 export function useBackdropClose(onClose: () => void, disabled = false) {
   const mouseDownOnBackdropRef = useRef(false);
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   return {
     onMouseDown: (e: React.MouseEvent<HTMLElement>) => {

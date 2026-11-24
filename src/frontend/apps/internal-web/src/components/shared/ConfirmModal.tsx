@@ -30,10 +30,13 @@ export default function ConfirmModal({
   const descId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCancelRef = useRef(onCancel);
-  onCancelRef.current = onCancel;
   const isLoadingRef = useRef(isLoading);
-  isLoadingRef.current = isLoading;
   const backdropProps = useBackdropClose(onCancel, isLoading);
+
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+    isLoadingRef.current = isLoading;
+  }, [onCancel, isLoading]);
 
   useEffect(() => {
     if (!isOpen) return;

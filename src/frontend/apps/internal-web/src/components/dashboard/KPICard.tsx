@@ -420,4 +420,6 @@ export const KPICard: React.FC<KPICardProps> = React.memo(({
   );
 });
 
+KPICard.displayName = 'KPICard';
+
 export default KPICard;
