@@ -94,3 +94,40 @@ export function formatVnd(value?: string | number | null, suffix = ' đ'): strin
   if (!Number.isFinite(num)) return `0${suffix}`;
   return `${num.toLocaleString('vi-VN')}${suffix}`;
 }
+
+const FUEL_LEVEL_LABELS: Record<string, string> = {
+  EMPTY: 'Bình rỗng (E)',
+  QUARTER: '1/4 bình',
+  ONE_QUARTER: '1/4 bình',
+  HALF: '1/2 bình',
+  THREE_QUARTER: '3/4 bình',
+  THREE_QUARTERS: '3/4 bình',
+  FULL: 'Đầy bình (F)',
+};
+
+/**
+ * Translate raw fuel-level enum codes into Vietnamese labels.
+ */
+export function formatFuelLevel(level?: string | null, fallback = 'Theo xe'): string {
+  if (!level) return fallback;
+  const key = level.trim().toUpperCase();
+  return FUEL_LEVEL_LABELS[key] || level;
+}
+
+const VEHICLE_SIZE_LABELS: Record<string, string> = {
+  SMALL: 'Nhỏ',
+  MEDIUM: 'Trung bình',
+  LARGE: 'Lớn',
+  SUV: 'SUV / Crossover',
+  TRUCK: 'Bán tải',
+  XL: 'Cỡ lớn',
+};
+
+/**
+ * Translate raw vehicle-size enum codes into Vietnamese labels.
+ */
+export function formatVehicleSize(size?: string | null, fallback = 'Tiêu chuẩn'): string {
+  if (!size) return fallback;
+  const key = size.trim().toUpperCase();
+  return VEHICLE_SIZE_LABELS[key] || size;
+}

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import api from '@/lib/axios';
 import { formatVND } from '@/lib/utils/formatters';
 import ReadOnlyROModal from '@/components/intake/ReadOnlyROModal';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 
 interface ServiceHistoryItem {
   id: number;
@@ -74,6 +75,7 @@ interface CustomerDetailModalProps {
 }
 
 export default function CustomerDetailModal({ isOpen, onClose, customerData }: CustomerDetailModalProps) {
+  const backdropProps = useBackdropClose(onClose);
   const [records, setRecords] = useState<ServiceHistoryRecord[]>([]);
   const [summary, setSummary] = useState<ServiceHistorySummary | null>(null);
   const [loading, setLoading] = useState(false);
@@ -133,9 +135,7 @@ export default function CustomerDetailModal({ isOpen, onClose, customerData }: C
       role="dialog"
       aria-modal="true"
       aria-label="Hồ sơ chi tiết Khách hàng"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      {...backdropProps}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}

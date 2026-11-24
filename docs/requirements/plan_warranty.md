@@ -15,6 +15,9 @@ Dựa trên đặc tả chi tiết 7 Use Cases trong [UseCase V2.md (dòng 1384�
 
 # 🛡️ KẾ HOẠCH TRIỂN KHAI PHÂN HỆ BẢO HÀNH (UC-81 → UC-87)
 
+> [!NOTE]
+> **Cập nhật đồng bộ (2026-11-24):** Tài liệu kế hoạch gốc bên dưới là bản thiết kế ban đầu. Hệ thống hiện đã được refactor đồng bộ sang **bảo hành chỉ tính theo tháng (`warranty_months`)**, bỏ hoàn toàn `warranty_mileage` / ODO check, chỉ còn 2 trạng thái **`VALID` (Còn hạn)** và **`EXPIRED` (Quá hạn)**, gỡ bỏ hoàn toàn **Goodwill (Bảo hành thiện chí)**, và đánh số lại **Xem báo cáo bảo hành** thành **`UC-86`** (xem chi tiết tại `docs/requirements/UseCase V2.md` & `Requirement v3.md`).
+
 ```mermaid
 flowchart TD
     subgraph P1["PHẦN 1: Nền tảng & Snapshot"]

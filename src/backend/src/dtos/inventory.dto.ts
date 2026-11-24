@@ -27,6 +27,7 @@ export const createInventoryItemSchema = Joi.object({
   brandId: Joi.number().optional().allow(null),
   sellingPrice: Joi.number().min(0).required(),
   reorderLevel: Joi.number().integer().min(0).default(0),
+  warrantyMonths: Joi.number().integer().min(0).optional().default(0),
 });
 
 export const updateInventoryItemSchema = Joi.object({
@@ -35,6 +36,7 @@ export const updateInventoryItemSchema = Joi.object({
   brandId: Joi.number().optional().allow(null),
   sellingPrice: Joi.number().min(0).optional(),
   reorderLevel: Joi.number().integer().min(0).optional(),
+  warrantyMonths: Joi.number().integer().min(0).optional(),
   isActive: Joi.boolean().optional(),
 });
 

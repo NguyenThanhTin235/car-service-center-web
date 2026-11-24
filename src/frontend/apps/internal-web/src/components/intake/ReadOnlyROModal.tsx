@@ -5,6 +5,8 @@ import WOBadgeBar from '@/components/advisor/work-order/WOBadgeBar';
 import WOOverviewCards from '@/components/advisor/work-order/WOOverviewCards';
 import WOVehicleCustomerInfo from '@/components/advisor/work-order/WOVehicleCustomerInfo';
 import WOTabContainer from '@/components/advisor/work-order/WOTabContainer';
+import { formatVehicleSize } from '@/components/advisor/work-order/work-order.constants';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 
 type Props = {
   workOrderId: number;
@@ -12,6 +14,7 @@ type Props = {
 };
 
 export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
+  const backdropProps = useBackdropClose(onClose);
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -142,9 +145,7 @@ export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label={`Chi tiết Lệnh sửa chữa ${workOrder.wo_number}`}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      {...backdropProps}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}
@@ -175,7 +176,7 @@ export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
           <div className="flex flex-col gap-6">
             <WOBadgeBar 
               licensePlate={workOrder.vehicle?.license_plate || '...'}
-              vehicleClass={workOrder.vehicle?.vehicle_size || 'Chưa rõ'}
+              vehicleClass={formatVehicleSize(workOrder.vehicle?.vehicle_size)}
               vehicleName={`${workOrder.vehicle?.make || ''} ${workOrder.vehicle?.model || ''}`}
               customerName={workOrder.customer?.full_name || '...'}
               statusBadge={workOrder.status}
@@ -185,7 +186,7 @@ export default function ReadOnlyROModal({ workOrderId, onClose }: Props) {
 
             <WOVehicleCustomerInfo 
               isReadOnly={true}
-              vehicle={{ vin: 'Chưa ghi nhận', color: workOrder.vehicle?.color || 'Chưa rõ', class: workOrder.vehicle?.vehicle_size || 'Chưa rõ', classDesc: '' }} 
+              vehicle={{ vin: 'Chưa ghi nhận', color: workOrder.vehicle?.color || 'Chưa rõ', class: formatVehicleSize(workOrder.vehicle?.vehicle_size), classDesc: '' }} 
               customer={customerInfo} 
               workOrderInfo={{
                 type: woAny.order_type === 'WARRANTY' ? 'Bảo hành' : 'Dịch vụ & Sửa chữa',

@@ -388,7 +388,6 @@ async function main() {
         pricing_type: sd.pricingType,
         fixed_price: sd.fixedPrice || null,
         warranty_months: sd.catIdx === 0 ? 6 : (sd.catIdx === 1 || sd.catIdx === 2) ? 12 : sd.catIdx === 3 ? 6 : sd.catIdx === 4 ? 12 : 6,
-        warranty_mileage: sd.catIdx === 0 ? 10000 : (sd.catIdx === 1 || sd.catIdx === 2) ? 20000 : sd.catIdx === 3 ? 10000 : sd.catIdx === 4 ? 15000 : 10000,
       }
     });
     services.push(st);
@@ -1141,7 +1140,6 @@ async function main() {
         on_hand: d.onHand,
         reorder_level: Math.round(d.onHand * 0.2),
         warranty_months: d.type === ItemType.PART ? 12 : 6,
-        warranty_mileage: d.type === ItemType.PART ? 20000 : 10000,
       }
     }));
 
@@ -1159,7 +1157,6 @@ async function main() {
           on_hand: isLowStockSample ? 2 : Math.round(d.onHand / 2),
           reorder_level: isLowStockSample ? 8 : Math.round(d.onHand * 0.1),
           warranty_months: d.type === ItemType.PART ? 12 : 6,
-          warranty_mileage: d.type === ItemType.PART ? 20000 : 10000,
         }
       }));
     }

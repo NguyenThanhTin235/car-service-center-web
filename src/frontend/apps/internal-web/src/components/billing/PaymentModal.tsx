@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 import { InvoiceDetail } from '@/lib/api/invoice.api';
 import {
   recordManualPayment,
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Props) {
+  const backdropProps = useBackdropClose(onClose);
   const [tab, setTab] = useState<'CASH' | 'CARD' | 'SEPAY'>('CASH');
   const [tenderedAmount, setTenderedAmount] = useState<number>(invoice.amountDue);
   const [cardRef, setCardRef] = useState<string>('');
@@ -198,9 +200,7 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
       role="dialog"
       aria-modal="true"
       aria-label="Thanh toán hóa đơn"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      {...backdropProps}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}

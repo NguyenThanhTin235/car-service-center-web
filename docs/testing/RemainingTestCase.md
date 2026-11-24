@@ -10,8 +10,8 @@
 | 6 | [TC_WorkOrder_SA_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_WorkOrder_SA_Process.md) | **68 TCs** | Khởi tạo lệnh, Check-in, Khám 2D, Báo giá bổ sung (Change Order), Tạm dừng việc, Đổi thợ, KCS, Bàn giao dặn dò. | Hoàn thành chuẩn hóa |
 | 7 | [TC_Dashboard_Report_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Dashboard_Report_Process.md) | **50 TCs** | Bảng điều hành đa vai trò (Khách, Quầy, SA, Quản lý, Admin) & Báo cáo phân tích quản trị. | Hoàn thành tạo mới |
 | 8 | [TC_Billing_Invoice_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Billing_Invoice_Process.md) | **30 TCs** | Quản lý thu ngân, 4 tab hàng đợi, tạo hóa đơn nháp, chiết khấu quầy, thanh toán đa phương thức, nợ từng phần, in PDF. | Hoàn thành tạo mới |
-| 9 | [TC_Warranty_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Warranty_Process.md) | **25 TCs** | Vòng đời bảo hành E2E: Tra cứu hạn, Đặt lịch online, Tiếp nhận quầy, Duyệt thiện chí, Báo giá 0đ, Hóa đơn 0đ, Cấp bảo hành mới. | Hoàn thành tạo mới |
-| | **TỔNG CỘNG** | **407 TCs** | | |
+| 9 | [TC_Warranty_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Warranty_Process.md) | **20 TCs** | Vòng đời bảo hành E2E: Tra cứu hạn theo tháng, Đặt lịch online, Tiếp nhận quầy, Báo giá 0đ, Hóa đơn 0đ, Cấp bảo hành mới. | Hoàn thành tạo mới |
+| | **TỔNG CỘNG** | **402 TCs** | | |
 
 ---
 
@@ -27,7 +27,7 @@
 ### 2. Phân hệ Quản lý Bảo hành sau sửa chữa (`TC_Warranty_Process.md`)
 * **Trạng thái:** ✅ **ĐÃ HOÀN THÀNH XÂY DỰNG TOÀN DIỆN FULL FLOW E2E (25 TEST CASES)**
 * **File tài liệu:** [TC_Warranty_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Warranty_Process.md)
-* **Nghiệp vụ bao phủ:** Tra cứu hạn theo ODO/ngày (`UC-81`), đặt lịch bảo hành online (`UC-82`), tiếp nhận quầy đối chiếu ODO và chống lùi ODO (`UC-83`), thẩm định duyệt bảo hành thiện chí 3 phương án (`UC-86`), lập Work Order & Báo giá 0đ (`UC-84`), nghiệm thu KCS, hóa đơn 0đ tự chuyển PAID & tự cấp Financial Clearance (`UC-85`), bàn giao kích hoạt bảo hành mới và báo cáo chi phí vốn WAC (`UC-87`).
+* **Nghiệp vụ bao phủ:** Tra cứu hạn theo tháng (`UC-81`), đặt lịch bảo hành online (`UC-82`), tiếp nhận quầy kiểm tra hạn bảo hành (`UC-83`), lập Work Order & Báo giá 0đ (`UC-84`), nghiệm thu KCS, hóa đơn 0đ tự chuyển PAID & tự cấp Financial Clearance (`UC-85`), bàn giao kích hoạt bảo hành mới và báo cáo chi phí vốn WAC (`UC-86`).
 
 ---
 

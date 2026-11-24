@@ -713,7 +713,7 @@ export default function ReportsPage() {
           />
           <TypeBtn
             active={reportType === 'warranty'}
-            label="Báo cáo Bảo hành (UC-87)"
+            label="Báo cáo Bảo hành"
             icon="verified_user"
             onClick={() => handleTypeChange('warranty')}
           />

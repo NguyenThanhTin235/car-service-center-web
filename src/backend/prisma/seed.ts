@@ -139,7 +139,6 @@ async function main() {
         name: serviceNames[i],
         pricing_type: PricingType.VEHICLE_SIZE,
         warranty_months: warranty.months,
-        warranty_mileage: warranty.mileage,
       }
     });
     services.push(st);
@@ -236,7 +235,6 @@ async function main() {
         average_cost: 150000,
         on_hand: 100,
         warranty_months: warranty.months,
-        warranty_mileage: warranty.mileage,
       }
     }));
   }

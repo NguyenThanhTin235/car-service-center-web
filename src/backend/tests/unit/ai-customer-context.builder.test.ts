@@ -248,18 +248,14 @@ describe('AiCustomerContextBuilder', () => {
       expect(ctx!.warrantyRecords[0]).toMatchObject({
         itemType: 'SERVICE',
         warrantyMonths: 6,
-        warrantyMileage: 5000,
         mileageAtService: 40000,
-        maxWarrantyMileage: 45000,
         status: 'ACTIVE',
       });
       expect(ctx!.warrantyRecords[1]).toMatchObject({
         itemType: 'PART',
         itemName: 'Má phanh trước',
         warrantyMonths: 12,
-        warrantyMileage: 10000,
         mileageAtService: 40000,
-        maxWarrantyMileage: 50000,
         status: 'ACTIVE',
       });
     });

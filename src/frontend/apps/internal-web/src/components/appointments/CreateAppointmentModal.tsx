@@ -97,9 +97,7 @@ export default function CreateAppointmentModal({
     setWarrantyLoading(true);
     try {
       const res = await warrantyApi.getVehicleWarrantyEligibility(vId);
-      const eligible = (res.items || []).filter(
-        (item) => item.status === 'VALID' || item.status === 'OVERDUE_LIGHT'
-      );
+      const eligible = (res.items || []).filter((item) => item.status === 'VALID');
       setWarrantyItems(eligible);
     } catch (err: any) {
       console.warn('Không thể tải thông tin bảo hành xe:', err?.response?.data?.message || err?.message);
@@ -720,19 +718,15 @@ export default function CreateAppointmentModal({
                                     >
                                       {item.type === 'SERVICE' ? 'Dịch vụ' : 'Phụ tùng'}
                                     </span>
-                                    <span
-                                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                        isGreen ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                                      }`}
-                                    >
-                                      {isGreen ? 'Còn bảo hành' : 'Quá hạn nhẹ (Thiện chí)'}
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                      Còn hạn ({item.warrantyMonths} tháng)
                                     </span>
                                   </div>
                                   <h4 className="font-bold text-xs text-slate-900 leading-snug">{item.name}</h4>
                                   <div className="text-[10px] text-slate-500 mt-1 space-y-0.5">
                                     <div>Phiếu gốc: <strong className="text-slate-700">{item.woNumber}</strong></div>
                                     <div className="font-mono tabular-nums">
-                                      Hạn: {item.expirationDate ? new Date(item.expirationDate).toLocaleDateString('vi-VN') : 'Theo km'} ({item.expirationMileage != null ? `${item.expirationMileage.toLocaleString('vi-VN')} km` : 'Không giới hạn km'})
+                                      Hết hạn: {item.expirationDate ? new Date(item.expirationDate).toLocaleDateString('vi-VN') : '—'}
                                     </div>
                                   </div>
                                 </div>

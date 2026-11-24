@@ -97,22 +97,12 @@ export class WorkOrderService {
         appointmentId = appointment?.id ?? null;
       }
 
-      // UC-84: Kế thừa thông tin bảo hành từ IntakeRecord & GoodwillClaim
+      // UC-84: Kế thừa thông tin bảo hành từ IntakeRecord
       let parentWorkOrderId: number | null = null;
       let warrantyReason: string | null = null;
-      let claimApprovedById: number | null = null;
+      const claimApprovedById: number | null = null;
 
       if (intake.intake_type === 'WARRANTY') {
-        const goodwillClaim = await tx.goodwillClaim.findUnique({
-          where: { intake_id: intakeRecordId },
-        });
-
-        if (goodwillClaim) {
-          parentWorkOrderId = goodwillClaim.parent_wo_id;
-          claimApprovedById = goodwillClaim.approved_by_id;
-          warrantyReason = goodwillClaim.complaint;
-        }
-
         if (!parentWorkOrderId && intake.notes) {
           const matchWoNum = intake.notes.match(/Phiếu dịch vụ gốc:\s*#?([A-Za-z0-9\-_]+)/);
           if (matchWoNum) {
@@ -181,7 +171,6 @@ export class WorkOrderService {
             status: 'PENDING' as const,
             sort_order: idx + 1,
             warranty_months: is.service!.warranty_months ?? 0,
-            warranty_mileage: is.service!.warranty_mileage ?? 0,
           }));
         if (servicesData.length > 0) {
           await tx.woService.createMany({ data: servicesData });
@@ -318,7 +307,6 @@ export class WorkOrderService {
         status: 'PENDING',
         sort_order: nextSortOrder,
         warranty_months: template.warranty_months ?? 0,
-        warranty_mileage: template.warranty_mileage ?? 0,
       },
       include: {
         service: {
@@ -886,7 +874,7 @@ export class WorkOrderService {
           if (p.item_id) {
             const itemObj = await tx.inventoryItem.findUnique({
               where: { id: p.item_id },
-              select: { warranty_months: true, warranty_mileage: true },
+              select: { warranty_months: true },
             });
             await tx.jobPart.create({
               data: {
@@ -897,7 +885,6 @@ export class WorkOrderService {
                 status: 'PLANNED',
                 is_warranty: p.is_warranty ?? false,
                 warranty_months: itemObj?.warranty_months ?? 0,
-                warranty_mileage: itemObj?.warranty_mileage ?? 0,
               },
             });
           }
@@ -1937,7 +1924,6 @@ export class WorkOrderService {
         status: initialPartStatus,
         is_warranty: isPartWarranty,
         warranty_months: item.warranty_months ?? 0,
-        warranty_mileage: item.warranty_mileage ?? 0,
       },
       include: {
         job: {
@@ -3242,7 +3228,7 @@ export class WorkOrderService {
         belongingsReturned: data.belongingsReturned !== false,
         notes: data.notes?.trim() || '',
         customerSignature: data.customerSignature || null,
-        warrantyTerms: data.warrantyTerms || 'Bảo hành 06 tháng hoặc 10.000 km cho các hạng mục sửa chữa và phụ tùng chính hãng.',
+        warrantyTerms: data.warrantyTerms || 'Bảo hành 06 tháng theo chính sách từng hạng mục dịch vụ và phụ tùng chính hãng.',
         summary: `Bàn giao xe thành công sau sửa chữa. ODO: ${returnMileageVal || 'N/A'} km. Xăng: ${data.returnFuel || 'N/A'}. ${data.notes?.trim() ? `Ghi chú: ${data.notes.trim()}` : ''}`
       });
 

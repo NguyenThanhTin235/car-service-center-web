@@ -22,11 +22,9 @@ const MOCK_ELIGIBILITY_RESPONSE = {
     model: 'Camry',
     year: 2023,
   },
-  currentOdo: 25000,
   summary: {
     totalItems: 3,
-    validItems: 1,
-    overdueLightItems: 1,
+    validItems: 2,
     expiredItems: 1,
   },
   items: [
@@ -37,17 +35,11 @@ const MOCK_ELIGIBILITY_RESPONSE = {
       woNumber: 'WO-2026-011',
       workOrderId: 11,
       completedDate: '2026-09-01T08:00:00.000Z',
-      completedOdo: 20000,
       warrantyMonths: 6,
-      warrantyMileage: 10000,
       expirationDate: '2027-03-01T08:00:00.000Z',
-      expirationMileage: 30000,
       daysRemaining: 98,
-      kmRemaining: 5000,
       status: 'VALID',
       overdueDays: 0,
-      overdueKm: 0,
-      reason: 'Trong hạn bảo hành',
     },
     {
       id: 11,
@@ -55,18 +47,12 @@ const MOCK_ELIGIBILITY_RESPONSE = {
       name: 'Lọc gió điều hòa',
       woNumber: 'WO-2026-011',
       workOrderId: 11,
-      completedDate: '2026-05-01T08:00:00.000Z',
-      completedOdo: 15000,
-      warrantyMonths: 6,
-      warrantyMileage: 10000,
-      expirationDate: '2026-11-01T08:00:00.000Z',
-      expirationMileage: 24500,
-      daysRemaining: 0,
-      kmRemaining: 0,
-      status: 'OVERDUE_LIGHT',
-      overdueDays: 22,
-      overdueKm: 500,
-      reason: 'Quá hạn nhẹ trong ngưỡng thiện chí',
+      completedDate: '2026-08-01T08:00:00.000Z',
+      warrantyMonths: 12,
+      expirationDate: '2027-08-01T08:00:00.000Z',
+      daysRemaining: 250,
+      status: 'VALID',
+      overdueDays: 0,
     },
     {
       id: 22,
@@ -75,23 +61,17 @@ const MOCK_ELIGIBILITY_RESPONSE = {
       woNumber: 'WO-2025-099',
       workOrderId: 9,
       completedDate: '2025-01-10T08:00:00.000Z',
-      completedOdo: null,
       warrantyMonths: 12,
-      warrantyMileage: 0,
       expirationDate: null,
-      expirationMileage: null,
       daysRemaining: 0,
-      kmRemaining: 0,
       status: 'EXPIRED',
       overdueDays: 180,
-      overdueKm: 0,
-      reason: 'Đã hết hạn bảo hành',
     },
   ],
 };
 
-test.describe('Customer Portal E2E: Warranty Tracking & Booking (/warranty & /customer/profile?tab=warranty)', () => {
-  test('E2E-CUST-WAR-01: /warranty 4-state error + retry, eligibility cards, filter tabs & nullable fields', async ({
+test.describe('Customer Portal E2E: Warranty Tracking (Months-Only, 2 Statuses)', () => {
+  test('E2E-CUST-WAR-01: /customer/warranty 4-state error + retry, 2 statuses (Còn hạn / Quá hạn), filter tabs & no ODO input', async ({
     page,
   }) => {
     const pageErrors = attachPageErrorGuard(page);
@@ -125,24 +105,25 @@ test.describe('Customer Portal E2E: Warranty Tracking & Booking (/warranty & /cu
     await expect(retryBtn).toBeVisible();
     await retryBtn.click();
 
-    // 2. Data state renders all 3 items including overlapping id=11 SERVICE vs PART & nullable fields
+    // 2. Data state renders all 3 items & ODO input is completely gone
     await expect(page.getByText('Thay dầu động cơ 5W-30')).toBeVisible();
     await expect(page.getByText('Lọc gió điều hòa')).toBeVisible();
     await expect(page.getByText('Bình ắc quy GS')).toBeVisible();
+    await expect(page.locator('#warranty-odo-input')).toHaveCount(0);
 
-    // 3. Filter tabs work
-    await page.getByRole('button', { name: /Đủ điều kiện/i }).click();
+    // 3. Filter tabs work with 2 statuses (Còn hạn / Quá hạn)
+    await page.getByRole('button', { name: /Còn hạn/i }).click();
     await expect(page.getByText('Thay dầu động cơ 5W-30')).toBeVisible();
     await expect(page.getByText('Bình ắc quy GS')).toBeHidden();
 
-    await page.getByRole('button', { name: /^Dịch vụ$/i }).click();
-    await expect(page.getByText('Thay dầu động cơ 5W-30')).toBeVisible();
-    await expect(page.getByText('Lọc gió điều hòa')).toBeHidden();
+    await page.getByRole('button', { name: /Quá hạn/i }).click();
+    await expect(page.getByText('Bình ắc quy GS')).toBeVisible();
+    await expect(page.getByText('Thay dầu động cơ 5W-30')).toBeHidden();
 
     expect(pageErrors).toEqual([]);
   });
 
-  test('E2E-CUST-WAR-02: /customer/profile?tab=warranty embeds WarrantyView cleanly', async ({
+  test('E2E-CUST-WAR-02: /customer/profile?tab=warranty embeds WarrantyView without header title', async ({
     page,
   }) => {
     const pageErrors = attachPageErrorGuard(page);
@@ -162,7 +143,7 @@ test.describe('Customer Portal E2E: Warranty Tracking & Booking (/warranty & /cu
 
     await page.goto(`${CUSTOMER_BASE_URL}/customer/profile?tab=warranty`);
     await expect(page.getByText('Thay dầu động cơ 5W-30')).toBeVisible();
-    await expect(page.getByText('WO-2026-011').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Bảo hành & Hậu mãi' })).toHaveCount(0);
     expect(pageErrors).toEqual([]);
   });
 

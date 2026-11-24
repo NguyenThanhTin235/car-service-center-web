@@ -31,17 +31,12 @@ const STATUS_BADGE_MAP: Record<
   { label: string; badgeCls: string; dotCls: string }
 > = {
   VALID: {
-    label: 'Còn bảo hành',
+    label: 'Còn hạn',
     badgeCls: 'bg-status-success-soft text-status-success border-emerald-200/80',
     dotCls: 'bg-emerald-500',
   },
-  OVERDUE_LIGHT: {
-    label: 'Quá hạn nhẹ',
-    badgeCls: 'bg-status-warning-soft text-status-warning border-amber-200/80',
-    dotCls: 'bg-amber-500',
-  },
   EXPIRED: {
-    label: 'Hết hạn bảo hành',
+    label: 'Quá hạn',
     badgeCls: 'bg-surface-subtle text-ink-muted border-hairline',
     dotCls: 'bg-slate-400',
   },
@@ -66,11 +61,12 @@ export default function WarrantyView({
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(
     initialVehicleId || null
   );
-  const [odometerInput, setOdometerInput] = useState<string>('');
   const [eligibilityData, setEligibilityData] = useState<VehicleWarrantyEligibility | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [filterType, setFilterType] = useState<'ALL' | 'VALID' | 'SERVICE' | 'PART'>('ALL');
+  const [filterType, setFilterType] = useState<
+    'ALL' | 'VALID' | 'EXPIRED' | 'SERVICE' | 'PART'
+  >('ALL');
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -85,7 +81,7 @@ export default function WarrantyView({
     }
   }, [vehicles, selectedVehicleId, initialVehicleId]);
 
-  const loadWarrantyData = useCallback(async (vehicleId: number, odo?: number) => {
+  const loadWarrantyData = useCallback(async (vehicleId: number) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -95,14 +91,10 @@ export default function WarrantyView({
     try {
       const data = await warrantyApi.getVehicleWarrantyEligibility(
         vehicleId,
-        odo,
         controller.signal
       );
       if (controller.signal.aborted) return;
       setEligibilityData(data);
-      if (odo === undefined && data.currentOdo !== null && data.currentOdo > 0) {
-        setOdometerInput(String(data.currentOdo));
-      }
     } catch (err: any) {
       if (
         controller.signal.aborted ||
@@ -131,17 +123,6 @@ export default function WarrantyView({
     };
   }, [selectedVehicleId, loadWarrantyData]);
 
-  const handleUpdateOdometer = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedVehicleId) return;
-    const parsedOdo = odometerInput ? parseInt(odometerInput, 10) : undefined;
-    if (parsedOdo !== undefined && (Number.isNaN(parsedOdo) || parsedOdo < 0)) {
-      setErrorMsg('Số km ODO phải là số nguyên dương hợp lệ.');
-      return;
-    }
-    loadWarrantyData(selectedVehicleId, parsedOdo);
-  };
-
   const handleBookWarranty = (item?: WarrantyItem) => {
     if (!selectedVehicleId) return;
     const compositeId = item ? getWarrantyCompositeKey(item) : undefined;
@@ -167,22 +148,19 @@ export default function WarrantyView({
 
   const allItems = eligibilityData?.items || [];
   const filteredItems = allItems.filter((item) => {
-    if (filterType === 'VALID') {
-      return item.status === 'VALID' || item.status === 'OVERDUE_LIGHT';
-    }
+    if (filterType === 'VALID') return item.status === 'VALID';
+    if (filterType === 'EXPIRED') return item.status === 'EXPIRED';
     if (filterType === 'SERVICE') return item.type === 'SERVICE';
     if (filterType === 'PART') return item.type === 'PART';
     return true;
   });
 
-  const validAndLightCount =
-    (eligibilityData?.summary?.validItems ?? 0) +
-    (eligibilityData?.summary?.overdueLightItems ?? 0);
+  const validCount = eligibilityData?.summary?.validItems ?? 0;
 
   return (
     <div className={`space-y-6 min-w-0 overflow-x-hidden ${isEmbedded ? '' : 'max-w-[1320px] mx-auto'}`}>
       {/* Header Section */}
-      {!isEmbedded ? (
+      {!isEmbedded && (
         <SurfaceCard
           variant="elevated"
           padding="md"
@@ -198,42 +176,18 @@ export default function WarrantyView({
                   Bảo hành & Hậu mãi
                 </h1>
                 <p className="text-sm text-ink-secondary mt-0.5">
-                  Tra cứu thời hạn bảo hành theo thời gian & số km cho các dịch vụ, phụ tùng đã thay thế.
+                  Tra cứu thời hạn bảo hành theo thời gian (tháng) cho các dịch vụ, phụ tùng đã thay thế.
                 </p>
               </div>
             </div>
           </div>
-
-          {selectedVehicleId && validAndLightCount > 0 && (
-            <button
-              type="button"
-              onClick={() => handleBookWarranty()}
-              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 bg-accent hover:bg-accent-hover text-white font-semibold rounded-xl text-sm active:scale-[0.98] transition-all duration-150 shrink-0 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-lg">calendar_add_on</span>
-              <span>Đặt lịch bảo hành</span>
-            </button>
-          )}
         </SurfaceCard>
-      ) : (
-        selectedVehicleId && validAndLightCount > 0 && (
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => handleBookWarranty()}
-              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 bg-accent hover:bg-accent-hover text-white font-semibold rounded-xl text-sm active:scale-[0.98] transition-all duration-150 shrink-0 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-lg">calendar_add_on</span>
-              <span>Đặt lịch bảo hành</span>
-            </button>
-          </div>
-        )
       )}
 
-      {/* Vehicle Selector & Odometer Simulation */}
+      {/* Vehicle Selector & 3 Summary KPIs */}
       <SurfaceCard variant="elevated" padding="md">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
-          <div className="lg:col-span-5 min-w-0">
+          <div className="lg:col-span-6 min-w-0">
             <label
               htmlFor="warranty-vehicle-select"
               className="block text-xs font-semibold text-ink-secondary uppercase tracking-wider mb-1.5"
@@ -257,11 +211,7 @@ export default function WarrantyView({
               <select
                 id="warranty-vehicle-select"
                 value={selectedVehicleId || ''}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setSelectedVehicleId(val);
-                  setOdometerInput('');
-                }}
+                onChange={(e) => setSelectedVehicleId(Number(e.target.value))}
                 className="w-full min-h-[44px] px-3.5 py-2.5 bg-surface-subtle border border-hairline rounded-xl text-sm font-semibold text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
               >
                 {vehicles.map((v) => (
@@ -272,65 +222,25 @@ export default function WarrantyView({
               </select>
             )}
           </div>
-
-          <form onSubmit={handleUpdateOdometer} className="lg:col-span-7 min-w-0">
-            <label
-              htmlFor="warranty-odo-input"
-              className="block text-xs font-semibold text-ink-secondary uppercase tracking-wider mb-1.5"
-            >
-              Số km ODO hiện tại của xe (để tính chính xác hạn mức km)
-            </label>
-            <div className="flex flex-col sm:flex-row gap-2.5">
-              <div className="relative flex-1">
-                <input
-                  id="warranty-odo-input"
-                  type="number"
-                  min={0}
-                  placeholder="Ví dụ: 45000"
-                  value={odometerInput}
-                  onChange={(e) => setOdometerInput(e.target.value)}
-                  className="w-full min-h-[44px] pl-4 pr-12 py-2.5 bg-surface-subtle border border-hairline rounded-xl text-sm font-mono tabular-nums font-semibold text-ink-primary focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-ink-muted pointer-events-none">
-                  km
-                </span>
-              </div>
-              <button
-                type="submit"
-                disabled={loading || !selectedVehicleId}
-                className="min-h-[44px] px-5 py-2.5 bg-ink-primary hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all shrink-0 cursor-pointer"
-              >
-                {loading ? 'Đang kiểm tra...' : 'Cập nhật ODO'}
-              </button>
-            </div>
-          </form>
         </div>
 
-        {/* Summary KPI Strip */}
+        {/* Summary KPI Strip (3 cards) */}
         {eligibilityData && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5 pt-5 border-t border-hairline">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-5 border-t border-hairline">
             <div className="p-3.5 rounded-xl bg-surface-subtle border border-hairline">
-              <div className="text-xs font-medium text-ink-secondary">Tổng hạng mục từng làm</div>
+              <div className="text-xs font-medium text-ink-secondary">Tổng hạng mục bảo hành</div>
               <div className="text-xl font-bold font-mono tabular-nums text-ink-primary mt-1">
                 {eligibilityData.summary.totalItems}
               </div>
             </div>
             <div className="p-3.5 rounded-xl bg-status-success-soft border border-emerald-200/70">
-              <div className="text-xs font-semibold text-status-success">Còn bảo hành (0đ)</div>
+              <div className="text-xs font-medium text-status-success">Còn hạn (0đ)</div>
               <div className="text-xl font-bold font-mono tabular-nums text-status-success mt-1">
                 {eligibilityData.summary.validItems}
               </div>
             </div>
-            <div className="p-3.5 rounded-xl bg-status-warning-soft border border-amber-200/70">
-              <div className="text-xs font-semibold text-status-warning">
-                Quá hạn nhẹ (Thiện chí)
-              </div>
-              <div className="text-xl font-bold font-mono tabular-nums text-status-warning mt-1">
-                {eligibilityData.summary.overdueLightItems}
-              </div>
-            </div>
             <div className="p-3.5 rounded-xl bg-surface-subtle border border-hairline">
-              <div className="text-xs font-medium text-ink-muted">Đã hết hạn</div>
+              <div className="text-xs font-medium text-ink-secondary">Quá hạn</div>
               <div className="text-xl font-bold font-mono tabular-nums text-ink-secondary mt-1">
                 {eligibilityData.summary.expiredItems}
               </div>
@@ -344,7 +254,8 @@ export default function WarrantyView({
         <div className="flex flex-wrap items-center gap-2">
           {[
             { key: 'ALL', label: `Tất cả (${eligibilityData.summary.totalItems})` },
-            { key: 'VALID', label: `Đủ điều kiện (${validAndLightCount})` },
+            { key: 'VALID', label: `Còn hạn (${eligibilityData.summary.validItems})` },
+            { key: 'EXPIRED', label: `Quá hạn (${eligibilityData.summary.expiredItems})` },
             { key: 'SERVICE', label: 'Dịch vụ' },
             { key: 'PART', label: 'Phụ tùng thay thế' },
           ].map((tab) => (
@@ -393,7 +304,6 @@ export default function WarrantyView({
           {filteredItems.map((item) => {
             const badge = STATUS_BADGE_MAP[item.status] || STATUS_BADGE_MAP.EXPIRED;
             const isValid = item.status === 'VALID';
-            const isOverdueLight = item.status === 'OVERDUE_LIGHT';
 
             return (
               <SurfaceCard
@@ -435,14 +345,6 @@ export default function WarrantyView({
                           {formatDateSafe(item.completedDate)}
                         </span>
                       </span>
-                      {item.completedOdo !== null && (
-                        <>
-                          <span>•</span>
-                          <span className="font-mono tabular-nums">
-                            {item.completedOdo.toLocaleString('vi-VN')} km
-                          </span>
-                        </>
-                      )}
                     </p>
                   </div>
 
@@ -451,57 +353,39 @@ export default function WarrantyView({
                     <div>
                       <div className="text-ink-muted">Chính sách bảo hành</div>
                       <div className="font-semibold text-ink-primary mt-0.5 font-mono tabular-nums">
-                        {item.warrantyMonths > 0 ? `${item.warrantyMonths} tháng` : 'Không theo tháng'}
-                        {' / '}
-                        {item.warrantyMileage > 0
-                          ? `${item.warrantyMileage.toLocaleString('vi-VN')} km`
-                          : 'Không giới hạn km'}
+                        {item.warrantyMonths > 0 ? `${item.warrantyMonths} tháng` : 'Không áp dụng'}
                       </div>
                     </div>
                     <div>
-                      <div className="text-ink-muted">Hạn mức còn lại</div>
+                      <div className="text-ink-muted">Ngày hết hạn</div>
                       <div className="font-semibold text-ink-primary mt-0.5 font-mono tabular-nums">
                         {formatDateSafe(item.expirationDate)}
-                        {item.expirationMileage !== null && (
-                          <span className="block text-[11px] text-ink-secondary">
-                            Tối đa {item.expirationMileage.toLocaleString('vi-VN')} km
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
-
-                  {isOverdueLight && (
-                    <div className="p-3 rounded-xl bg-status-warning-soft border border-amber-200/70 text-xs text-status-warning">
-                      <strong>Ghi nhận quá hạn nhẹ:</strong> Quá hạn không quá 30 ngày hoặc 1.000 km.
-                      Quý khách vẫn có thể đặt lịch để Quản lý xem xét hỗ trợ bảo hành thiện chí.
-                    </div>
-                  )}
                 </div>
 
                 {/* Action Footer */}
-                {(isValid || isOverdueLight) && (
-                  <div className="pt-3 border-t border-hairline flex items-center justify-between gap-3">
-                    <span className="text-xs text-ink-secondary">
-                      {isValid
-                        ? item.daysRemaining !== null
-                          ? `Còn ${item.daysRemaining} ngày`
-                          : 'Đủ điều kiện bảo hành 0đ'
-                        : 'Đủ điều kiện xem xét thiện chí'}
-                    </span>
+                <div className="pt-3 border-t border-hairline flex items-center justify-between gap-3">
+                  <span className="text-xs text-ink-secondary">
+                    {isValid
+                      ? item.daysRemaining !== null
+                        ? `Còn ${item.daysRemaining} ngày`
+                        : 'Đủ điều kiện bảo hành 0đ'
+                      : item.overdueDays > 0
+                        ? `Đã quá hạn ${item.overdueDays} ngày`
+                        : 'Đã hết thời hạn bảo hành'}
+                  </span>
+                  {isValid && (
                     <button
                       type="button"
                       onClick={() => handleBookWarranty(item)}
-                      className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer shrink-0 ${
-                        isValid
-                          ? 'bg-accent hover:bg-accent-hover text-white'
-                          : 'bg-status-warning-soft hover:opacity-90 text-status-warning border border-amber-300'
-                      }`}
+                      className="min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer shrink-0 bg-accent hover:bg-accent-hover text-white"
                     >
-                      Đặt bảo hành ngay →
+                      Đặt lịch bảo hành
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </SurfaceCard>
             );
           })}

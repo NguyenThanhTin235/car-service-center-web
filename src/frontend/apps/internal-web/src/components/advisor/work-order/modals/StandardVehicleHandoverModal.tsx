@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { WorkOrder, completeVehicleHandover } from '@/lib/api/work-order.api';
-import { FUEL_LEVEL_OPTIONS } from '../work-order.constants';
+import { FUEL_LEVEL_LABELS, FUEL_LEVEL_OPTIONS } from '../work-order.constants';
 import ModalPortal from '@/components/advisor/common/ModalPortal';
 import toast from 'react-hot-toast';
 
@@ -301,7 +301,7 @@ export default function StandardVehicleHandoverModal({
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-on-surface-variant font-medium">Mức xăng lúc nhận:</span>
                   <span className="font-semibold text-on-surface">
-                    {checkIn?.fuel_level || 'Chưa ghi nhận'}
+                    {(checkIn?.fuel_level && FUEL_LEVEL_LABELS[checkIn.fuel_level]) || checkIn?.fuel_level || 'Chưa ghi nhận'}
                   </span>
                 </div>
                 <div>

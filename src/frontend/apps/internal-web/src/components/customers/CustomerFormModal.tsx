@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 import {
   validateName,
   validatePhone,
@@ -23,6 +24,7 @@ interface CustomerFormModalProps {
 }
 
 export default function CustomerFormModal({ isOpen, onClose, onSave, initialData }: CustomerFormModalProps) {
+  const backdropProps = useBackdropClose(onClose);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
@@ -154,9 +156,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSave, initialData
       role="dialog"
       aria-modal="true"
       aria-label={initialData ? 'Cập nhật hồ sơ Khách hàng & Phương tiện' : 'Thêm mới Khách hàng & Phương tiện'}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      {...backdropProps}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}

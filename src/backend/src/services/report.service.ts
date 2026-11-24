@@ -96,7 +96,7 @@ class ReportService {
   }
 
   /**
-   * UC-87: Báo cáo Thống kê & Phân tích Quản trị Bảo hành
+   * UC-86: Báo cáo Thống kê & Phân tích Quản trị Bảo hành
    * Chỉ duy nhất Quản lý dịch vụ hoặc Quản trị viên hệ thống có quyền xem.
    */
   async getWarrantyReport(

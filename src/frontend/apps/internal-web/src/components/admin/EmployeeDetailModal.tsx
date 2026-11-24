@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { employeeApi, EmployeeData } from '@/lib/api/employees';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 
 interface EmployeeDetailModalProps {
   isOpen: boolean;
@@ -66,6 +67,7 @@ export default function EmployeeDetailModal({
   fallbackData,
   onEdit,
 }: EmployeeDetailModalProps) {
+  const backdropProps = useBackdropClose(onClose);
   const [detailData, setDetailData] = useState<any | null>(fallbackData || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,9 +141,7 @@ export default function EmployeeDetailModal({
       role="dialog"
       aria-modal="true"
       aria-label="Hồ sơ Chi tiết Nhân viên"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      {...backdropProps}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}

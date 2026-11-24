@@ -21,12 +21,12 @@ export const getOperationalReport = async (req: Request, res: Response) => {
 
 /**
  * GET /api/reports/warranty
- * UC-87: Báo cáo Thống kê & Phân tích Quản trị Bảo hành
+ * UC-86: Báo cáo Thống kê & Phân tích Quản trị Bảo hành
  * Đối tượng: Chỉ duy nhất Quản lý dịch vụ hoặc Quản trị viên hệ thống.
  */
 export const getWarrantyReport = async (req: Request, res: Response) => {
   try {
-    // 1. Phân quyền chặt chẽ theo UC-87: Chỉ SERVICE_MANAGER, SYSTEM_ADMIN, ADMIN, MANAGER
+    // 1. Phân quyền chặt chẽ theo UC-86: Chỉ SERVICE_MANAGER, SYSTEM_ADMIN, ADMIN, MANAGER
     const allowedRoles = ['SERVICE_MANAGER', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER'];
     const userRoles: string[] = req.user
       ? Array.isArray((req.user as any).roles)
@@ -37,7 +37,7 @@ export const getWarrantyReport = async (req: Request, res: Response) => {
     const hasPermission = userRoles.some((r) => allowedRoles.includes(r.toUpperCase()));
     if (!hasPermission) {
       console.warn(
-        `[SECURITY WARNING - UC-87] Người dùng ID ${req.user?.id} (Roles: ${userRoles.join(
+        `[SECURITY WARNING - UC-86] Người dùng ID ${req.user?.id} (Roles: ${userRoles.join(
           ', '
         )}) cố gắng truy cập trái phép Báo cáo Quản trị Bảo hành.`
       );

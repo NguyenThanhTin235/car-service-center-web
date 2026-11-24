@@ -40,16 +40,6 @@ export const createIntakeSchema = Joi.object({
 
   notes: Joi.string().allow('', null).optional(),
 
-  odometerReading: Joi.number().integer().min(0).when('intakeType', {
-    is: 'WARRANTY',
-    then: Joi.required().messages({
-      'any.required': 'Vui lòng nhập số km ODO hiện tại của xe khi tiếp nhận bảo hành',
-      'number.base': 'Số ODO tiếp nhận phải là số nguyên',
-      'number.min': 'Số ODO tiếp nhận không được âm',
-    }),
-    otherwise: Joi.optional().allow(null),
-  }),
-
   parentWorkOrderId: Joi.number().integer().when('intakeType', {
     is: 'WARRANTY',
     then: Joi.required().messages({
@@ -57,10 +47,6 @@ export const createIntakeSchema = Joi.object({
       'number.base': 'Mã phiếu dịch vụ gốc phải là số',
     }),
     otherwise: Joi.optional().allow(null),
-  }),
-
-  goodwillClaimId: Joi.number().integer().optional().allow(null).messages({
-    'number.base': 'Mã hồ sơ bảo hành thiện chí phải là số',
   }),
 
   symptoms: Joi.string().allow('', null).optional(),

@@ -27,7 +27,6 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
   const navItems: SaaSNavItem[] = useMemo(
     () => [
       { label: 'Bảng điều hành', href: '/dashboard', icon: 'grid_view' },
-      { label: 'Duyệt bảo hành thiện chí', href: '/warranty', icon: 'volunteer_activism' },
       {
         label: 'Quản lý vật tư',
         icon: 'inventory_2',

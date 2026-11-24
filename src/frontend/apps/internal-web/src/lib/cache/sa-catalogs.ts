@@ -55,16 +55,24 @@ export function getCachedServiceCatalog(): Promise<ServiceTemplateOption[]> {
   });
 }
 
+function extractArray<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) return payload as T[];
+  if (payload && typeof payload === 'object' && Array.isArray((payload as { data?: unknown }).data)) {
+    return (payload as { data: T[] }).data;
+  }
+  return [];
+}
+
 export function getCachedActiveTechnicians(): Promise<EmployeeData[]> {
   return getCached(techniciansEntry, async () => {
     const res = await employeeApi.getAll({ limit: 100, position: 'TECHNICIAN', status: 'active' });
-    return res.data || [];
+    return extractArray<EmployeeData>(res.data);
   });
 }
 
 export function getCachedActiveJobTypes(): Promise<JobTypeData[]> {
   return getCached(jobTypesEntry, async () => {
     const res = await jobTypeApi.getAll({ limit: 100, isActive: true });
-    return res.data || [];
+    return extractArray<JobTypeData>(res.data);
   });
 }

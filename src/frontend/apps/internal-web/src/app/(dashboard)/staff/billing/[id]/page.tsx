@@ -169,11 +169,11 @@ export default function InvoiceDetailPage() {
             </div>
             <div>
               <h3 className="text-sm font-bold text-emerald-900">
-                Hóa đơn dịch vụ bảo hành 0 đồng (UC-85)
+                Hóa đơn dịch vụ bảo hành 0 đồng
               </h3>
               <p className="text-xs text-emerald-700 mt-0.5">
                 {invoice.status === 'PAID'
-                  ? 'Hóa đơn đã được quyết toán tự động. Lệnh sửa chữa đã chuyển sang trạng thái ĐÃ QUYẾT TOÁN TÀI CHÍNH (FINANCIAL_CLEARED), Cổng xuất xưởng sẵn sàng bàn giao xe.'
+                  ? 'Hóa đơn đã được quyết toán tự động. Lệnh sửa chữa đã chuyển sang trạng thái ĐÃ QUYẾT TOÁN TÀI CHÍNH, Cổng xuất xưởng sẵn sàng bàn giao xe.'
                   : 'Hóa đơn bảo hành miễn phí 100%. Khi nhấn Phát hành, hệ thống sẽ tự động quyết toán và mở khóa Cổng xuất xưởng.'}
               </p>
             </div>

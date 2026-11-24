@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { updateInvoiceDraft } from '@/lib/api/invoice.api';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 
 interface Props {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export default function DiscountEditorModal({
   currentReason,
   onSuccess,
 }: Props) {
+  const backdropProps = useBackdropClose(onClose);
   const [mode, setMode] = useState<'AMOUNT' | 'PERCENT'>('AMOUNT');
   const [discountAmount, setDiscountAmount] = useState<number>(currentDiscount || 0);
   const [discountPercent, setDiscountPercent] = useState<number>(0);
@@ -88,9 +90,7 @@ export default function DiscountEditorModal({
       role="dialog"
       aria-modal="true"
       aria-label="Chỉnh sửa chiết khấu & giảm trừ"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      {...backdropProps}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}

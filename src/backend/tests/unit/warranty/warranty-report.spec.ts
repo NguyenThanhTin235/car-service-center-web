@@ -42,7 +42,7 @@ vi.mock('../../../src/utils/prisma', () => ({
 import { reportService } from '../../../src/services/report.service';
 import { getWarrantyReport } from '../../../src/controllers/report.controller';
 
-describe('UC-87: Báo cáo Thống kê & Phân tích Quản trị Bảo hành', () => {
+describe('UC-86: Báo cáo Thống kê & Phân tích Quản trị Bảo hành', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

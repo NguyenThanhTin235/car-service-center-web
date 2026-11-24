@@ -28,7 +28,7 @@ import Toast from '@/components/shared/Toast';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import CustomerOverviewTab from '@/components/profile/CustomerOverviewTab';
 import { ErrorState, LoadingSkeleton } from '@/components/ui';
-import { ALL_BOOKING_SLOTS, isBookingSlotInPast } from '@/utils/customerHelpers';
+import { ALL_BOOKING_SLOTS, formatVehicleSize, isBookingSlotInPast } from '@/utils/customerHelpers';
 
 const TabLoadingFallback = () => (
   <div className="py-2">
@@ -60,14 +60,15 @@ interface VehicleFormData {
   model: string;
   year: string;
   color: string;
-  vehicleSize: 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL';
+  vehicleSize: 'SMALL' | 'MEDIUM' | 'LARGE' | 'SUV' | 'TRUCK' | 'XL';
 }
 
 const VEHICLE_SIZES = [
   { value: 'SMALL', label: 'Nhỏ (< 4.2m - Hatchback, Sedan B)' },
   { value: 'MEDIUM', label: 'Trung bình (4.2–4.6m - Sedan C, Crossover B)' },
-  { value: 'LARGE', label: 'Lớn (4.6–5m - Sedan D, SUV 5-7 chỗ)' },
-  { value: 'XL', label: 'Cỡ lớn (> 5m - Full-size SUV, Bán tải)' },
+  { value: 'LARGE', label: 'Lớn (4.6–5m - Sedan D)' },
+  { value: 'SUV', label: 'SUV / Crossover (5–7 chỗ)' },
+  { value: 'TRUCK', label: 'Bán tải (Pickup / Truck)' },
 ];
 
 const EMPTY_VEHICLE_FORM: VehicleFormData = {
@@ -1084,7 +1085,7 @@ export default function ProfilePage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {vehicles.map((v) => {
-                    const sizeText = VEHICLE_SIZES.find((s) => s.value === v.vehicleSize)?.label?.split(' (')[0] || v.vehicleSize;
+                    const sizeText = formatVehicleSize(v.vehicleSize);
                     const activeWO = v.activeWorkOrder;
                     return (
                       <div
@@ -1423,6 +1424,9 @@ export default function ProfilePage() {
           SMALL: 'Nhỏ',
           MEDIUM: 'Trung bình',
           LARGE: 'Lớn',
+          SUV: 'SUV / Crossover',
+          TRUCK: 'Bán tải',
+          XL: 'Cỡ lớn',
         };
 
         const statusMeta: Record<string, { label: string; badgeClass: string; stepIndex: number }> = {

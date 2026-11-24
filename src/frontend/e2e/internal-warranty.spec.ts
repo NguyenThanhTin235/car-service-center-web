@@ -23,45 +23,6 @@ const STAFF_USER = {
   roles: ['DESK_STAFF'],
 };
 
-const MOCK_CLAIM = {
-  id: 501,
-  vehicle_id: 10,
-  customer_id: 1,
-  parent_wo_id: 201,
-  intake_id: null,
-  overdue_days: 12,
-  overdue_km: 350,
-  complaint: 'Máy lạnh kém mát sau 6 tháng bảo dưỡng',
-  status: 'PENDING',
-  support_type: null,
-  support_pct: null,
-  approval_note: null,
-  created_at: '2026-11-20T09:00:00.000Z',
-  vehicle: {
-    id: 10,
-    license_plate: '51F-555.66',
-    make: 'Toyota',
-    model: 'Camry',
-    year: 2023,
-  },
-  customer: {
-    id: 1,
-    full_name: 'Nguyễn Văn Minh',
-    phone: '0908111222',
-    email: 'minh@example.com',
-  },
-  created_by: {
-    id: 4,
-    full_name: 'Lễ Tân Lan',
-  },
-  parent_wo: {
-    id: 201,
-    wo_number: 'WO-2026-201',
-    completed_at: '2026-05-01T10:00:00.000Z',
-    odometer_at_release: 40000,
-  },
-};
-
 function setupDefaultApiCatchAll(page: import('@playwright/test').Page) {
   return page.route('**/api/**', async (route) => {
     return route.fulfill({
@@ -76,91 +37,8 @@ function setupDefaultApiCatchAll(page: import('@playwright/test').Page) {
   });
 }
 
-test.describe('Internal Portal E2E: Warranty Synchronization (UC-81..UC-87)', () => {
-  test('E2E-INT-WAR-01: Manager Goodwill (/warranty) Error Retry, Detail Modal & Approve', async ({
-    page,
-  }) => {
-    await setupDefaultApiCatchAll(page);
-    await page.addInitScript((user) => {
-      localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('token', 'mock-manager-jwt');
-    }, MANAGER_USER);
-
-    let listCalls = 0;
-    await page.route('**/api/warranty/goodwill-claims?**', async (route) => {
-      listCalls += 1;
-      if (listCalls === 1) {
-        return route.fulfill({
-          status: 500,
-          contentType: 'application/json',
-          body: JSON.stringify({ success: false, message: 'Không thể tải danh sách thiện chí' }),
-        });
-      }
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          data: {
-            claims: [MOCK_CLAIM],
-            pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
-          },
-        }),
-      });
-    });
-
-    await page.route('**/api/warranty/goodwill-claims/501', async (route) => {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          data: {
-            claim: MOCK_CLAIM,
-            customerStats: {
-              totalCompletedOrders: 6,
-              isLoyalCustomer: true,
-              historyOrders: [{ id: 201, wo_number: 'WO-2026-201', status: 'RELEASED' }],
-            },
-          },
-        }),
-      });
-    });
-
-    let approvePayload: any = null;
-    await page.route('**/api/warranty/goodwill-claims/501/approve', async (route) => {
-      approvePayload = JSON.parse(route.request().postData() || '{}');
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          data: { ...MOCK_CLAIM, status: 'APPROVED', ...approvePayload },
-        }),
-      });
-    });
-
-    await page.goto(`${INTERNAL_BASE_URL}/warranty`);
-
-    // 1. Error & Retry
-    const retryBtn = page.getByRole('button', { name: /Thử lại/i });
-    await expect(retryBtn).toBeVisible();
-    await retryBtn.click();
-
-    // 2. Claim row rendered
-    await expect(page.getByText('51F-555.66')).toBeVisible();
-    await expect(page.getByText('Nguyễn Văn Minh')).toBeVisible();
-
-    // 3. Open detail modal & approve
-    await page.getByRole('button', { name: /Thẩm định/i }).click();
-    await expect(page.getByText(/\(Thân thiết\)/)).toBeVisible();
-    await page.locator('textarea[placeholder*="Nhập căn cứ phê duyệt"]').fill('Khách hàng thân thiết, đồng ý hỗ trợ');
-    await page.getByRole('button', { name: /Phê duyệt hỗ trợ/i }).click();
-
-    await expect.poll(() => approvePayload).not.toBeNull();
-  });
-
-  test('E2E-INT-WAR-02: Manager Warranty Report (/reports) renders KPIs, chart & faulty parts', async ({
+test.describe('Internal Portal E2E: Warranty Synchronization (Months-Only, UC-81..UC-86)', () => {
+  test('E2E-INT-WAR-01: Manager Warranty Report (/reports - UC-86) renders KPIs, chart & faulty parts', async ({
     page,
   }) => {
     await setupDefaultApiCatchAll(page);
@@ -214,7 +92,7 @@ test.describe('Internal Portal E2E: Warranty Synchronization (UC-81..UC-87)', ()
     await expect(page.getByText('Lốc lạnh điều hòa')).toBeVisible();
   });
 
-  test('E2E-INT-WAR-03: Staff Intake (/staff/intake) WARRANTY badge, ODO anti-tamper & Billing 0đ badge', async ({
+  test('E2E-INT-WAR-02: Staff Intake (/staff/intake) months-only WarrantyIntakeModal & Billing 0đ badge', async ({
     page,
   }) => {
     await setupDefaultApiCatchAll(page);
@@ -271,27 +149,10 @@ test.describe('Internal Portal E2E: Warranty Synchronization (UC-81..UC-87)', ()
         contentType: 'application/json',
         body: JSON.stringify({
           success: true,
-          data: [{ id: 201, woNumber: 'WO-2026-201', completedDate: '2026-08-01', releaseOdo: 55000 }],
-        }),
-      });
-    });
-
-    await page.route('**/api/warranty/validate-odo', async (route) => {
-      const body = JSON.parse(route.request().postData() || '{}');
-      const isValid = Number(body.intakeOdo) >= 55000;
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          data: {
-            valid: isValid,
-            parentWoId: 201,
-            woNumber: 'WO-2026-201',
-            lastRecordedOdo: 55000,
-            intakeOdo: Number(body.intakeOdo),
-            message: isValid ? 'ODO hợp lệ' : 'ODO nhỏ hơn lần xuất xưởng trước',
-          },
+          data: [
+            { id: 201, woNumber: 'WO-2026-201', completedDate: '2026-08-01' },
+            { id: 199, woNumber: 'WO-2025-199', completedDate: '2025-01-01' },
+          ],
         }),
       });
     });
@@ -305,8 +166,7 @@ test.describe('Internal Portal E2E: Warranty Synchronization (UC-81..UC-87)', ()
           data: {
             hasHistory: true,
             vehicle: { id: 10, licensePlate: '51F-555.66', make: 'Toyota', model: 'Camry', year: 2023 },
-            currentOdo: 56000,
-            summary: { totalItems: 1, validItems: 1, overdueLightItems: 0, expiredItems: 0 },
+            summary: { totalItems: 2, validItems: 1, expiredItems: 1 },
             items: [
               {
                 id: 1,
@@ -315,17 +175,24 @@ test.describe('Internal Portal E2E: Warranty Synchronization (UC-81..UC-87)', ()
                 woNumber: 'WO-2026-201',
                 workOrderId: 201,
                 completedDate: '2026-08-01',
-                completedOdo: 55000,
                 warrantyMonths: 6,
-                warrantyMileage: 10000,
                 expirationDate: '2027-02-01',
-                expirationMileage: 65000,
                 daysRemaining: 60,
-                kmRemaining: 9000,
                 status: 'VALID',
                 overdueDays: 0,
-                overdueKm: 0,
-                reason: 'Còn hạn',
+              },
+              {
+                id: 2,
+                type: 'PART',
+                name: 'Bình ắc quy cũ',
+                woNumber: 'WO-2025-199',
+                workOrderId: 199,
+                completedDate: '2025-01-01',
+                warrantyMonths: 12,
+                expirationDate: '2026-01-01',
+                daysRemaining: 0,
+                status: 'EXPIRED',
+                overdueDays: 300,
               },
             ],
           },
@@ -336,20 +203,21 @@ test.describe('Internal Portal E2E: Warranty Synchronization (UC-81..UC-87)', ()
     await page.goto(`${INTERNAL_BASE_URL}/staff/intake`);
     await expect(page.getByText('Bảo hành').first()).toBeVisible();
 
-    // Open WarrantyIntakeModal
+    // Open WarrantyIntakeModal (no ODO input, no Goodwill button)
     await page.getByRole('button', { name: /Tiếp nhận bảo hành/i }).click();
-    await expect(page.getByText('Tiếp nhận xe bảo hành (UC-83)')).toBeVisible();
+    await expect(page.getByText('Tiếp nhận xe bảo hành')).toBeVisible();
+    await expect(page.locator('input[placeholder="VD: 52000"]')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Đề xuất Thiện chí/i })).toHaveCount(0);
 
     const selects = page.locator('form select');
     await selects.nth(0).selectOption('1');
     await selects.nth(1).selectOption('10');
 
-    const odoInput = page.locator('input[placeholder="VD: 52000"]');
-    await odoInput.fill('50000');
-    await expect(page.getByText(/Cảnh báo nghi vấn tua lùi ODO/i)).toBeVisible();
+    await expect(page.getByText('Còn hạn bảo hành')).toBeVisible();
 
-    await odoInput.fill('56000');
-    await expect(page.getByText(/Đủ điều kiện bảo hành tiêu chuẩn/i)).toBeVisible();
+    // Switch to expired parent WO -> shows Quá hạn bảo hành
+    await selects.nth(2).selectOption('199');
+    await expect(page.getByText('Quá hạn bảo hành')).toBeVisible();
 
     // Billing 0đ badge check
     await page.route('**/api/invoices/billing-queue**', async (route) => {
@@ -386,7 +254,7 @@ test.describe('Internal Portal E2E: Warranty Synchronization (UC-81..UC-87)', ()
     await expect(page.getByText('Bảo hành 0đ').first()).toBeVisible();
   });
 
-  test('E2E-INT-WAR-04: Responsive layout check across 4 viewports (390, 768, 1024, 1440)', async ({
+  test('E2E-INT-WAR-03: Responsive layout check across 4 viewports (390, 768, 1024, 1440)', async ({
     page,
   }) => {
     await setupDefaultApiCatchAll(page);
@@ -395,24 +263,10 @@ test.describe('Internal Portal E2E: Warranty Synchronization (UC-81..UC-87)', ()
       localStorage.setItem('token', 'mock-manager-jwt');
     }, MANAGER_USER);
 
-    await page.route('**/api/warranty/goodwill-claims?**', async (route) => {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          data: {
-            claims: [MOCK_CLAIM],
-            pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
-          },
-        }),
-      });
-    });
-
     for (const vp of VIEWPORTS) {
       await page.setViewportSize({ width: vp.width, height: vp.height });
-      await page.goto(`${INTERNAL_BASE_URL}/warranty`);
-      await expect(page.getByText('51F-555.66')).toBeVisible();
+      await page.goto(`${INTERNAL_BASE_URL}/reports`);
+      await expect(page.getByRole('button', { name: /Báo cáo Bảo hành/i })).toBeVisible();
 
       const hasHorizontalOverflow = await page.evaluate(() => {
         return document.documentElement.scrollWidth > document.documentElement.clientWidth + 2;

@@ -1,7 +1,10 @@
 'use client';
 import React from 'react';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
+import { formatVehicleSize } from '@/components/advisor/work-order/work-order.constants';
 
 export default function IntakeDetailModal({ record, onClose }: { record: any, onClose: () => void }) {
+  const backdropProps = useBackdropClose(onClose);
   if (!record) return null;
 
   const getTypeName = (type: string) => {
@@ -52,9 +55,7 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
       role="dialog"
       aria-modal="true"
       aria-label="Chi tiết phiếu tiếp nhận"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      {...backdropProps}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}
@@ -140,7 +141,7 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
               <div className="flex flex-col gap-2 text-body-md text-on-surface">
                 <p><span className="text-on-surface-variant inline-block w-20">Biển số:</span> <span className="font-mono font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">{record.vehicle?.license_plate}</span></p>
                 <p><span className="text-on-surface-variant inline-block w-20">Xe:</span> <span className="font-semibold">{record.vehicle?.make} {record.vehicle?.model}</span></p>
-                <p><span className="text-on-surface-variant inline-block w-20">Phân khúc:</span> {record.vehicle?.vehicle_size}</p>
+                <p><span className="text-on-surface-variant inline-block w-20">Phân khúc:</span> {formatVehicleSize(record.vehicle?.vehicle_size)}</p>
                 <p><span className="text-on-surface-variant inline-block w-20">Màu sắc:</span> {record.vehicle?.color || '—'}</p>
               </div>
             </div>

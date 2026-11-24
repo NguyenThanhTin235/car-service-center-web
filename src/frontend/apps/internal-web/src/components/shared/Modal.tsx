@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useId, useRef } from 'react';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 
 interface ModalProps {
   isOpen: boolean;
@@ -13,6 +14,9 @@ interface ModalProps {
 export default function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const backdropProps = useBackdropClose(onClose);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -22,7 +26,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key === 'Tab' && dialogRef.current) {
@@ -49,7 +53,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
         previousFocus.focus();
       }
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -64,9 +68,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs sa-modal-backdrop"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      {...backdropProps}
     >
       <div
         ref={dialogRef}

@@ -8,7 +8,6 @@ export interface CreateServiceDto {
   pricingType: PricingType;
   fixedPrice?: number;
   warrantyMonths?: number;
-  warrantyMileage?: number;
   sizePrices?: { vehicleSize: string; price: number }[];
 }
 
@@ -19,7 +18,6 @@ export interface UpdateServiceDto {
   pricingType?: PricingType;
   fixedPrice?: number;
   warrantyMonths?: number;
-  warrantyMileage?: number;
   isActive?: boolean;
   sizePrices?: { vehicleSize: string; price: number }[];
 }
@@ -58,7 +56,6 @@ export class ServiceService {
       pricingType: t.pricing_type,
       fixedPrice: t.fixed_price,
       warrantyMonths: t.warranty_months,
-      warrantyMileage: t.warranty_mileage,
       isActive: t.is_active,
       category: { id: t.category.id, name: t.category.name },
       sizePrices: t.size_prices.map((s) => ({ vehicleSize: s.vehicle_size, price: s.price })),
@@ -138,7 +135,6 @@ export class ServiceService {
           pricing_type: data.pricingType,
           fixed_price: data.fixedPrice ?? null,
           warranty_months: data.warrantyMonths !== undefined ? Math.max(0, Number(data.warrantyMonths) || 0) : 0,
-          warranty_mileage: data.warrantyMileage !== undefined ? Math.max(0, Number(data.warrantyMileage) || 0) : 0,
         },
       });
 
@@ -215,7 +211,6 @@ export class ServiceService {
           pricing_type: data.pricingType,
           fixed_price: data.fixedPrice ?? null,
           warranty_months: data.warrantyMonths !== undefined ? Math.max(0, Number(data.warrantyMonths) || 0) : undefined,
-          warranty_mileage: data.warrantyMileage !== undefined ? Math.max(0, Number(data.warrantyMileage) || 0) : undefined,
           is_active: data.isActive,
         },
       });

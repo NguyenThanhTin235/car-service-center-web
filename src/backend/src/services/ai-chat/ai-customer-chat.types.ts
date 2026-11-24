@@ -73,7 +73,6 @@ export interface CatalogServiceItem {
     price: number;
   }>;
   warrantyMonths: number;
-  warrantyMileage: number;
 }
 
 export interface CatalogCategoryGroup {
@@ -216,11 +215,9 @@ export interface DerivedWarrantyRecord {
   itemType: 'SERVICE' | 'PART';
   itemName: string;
   warrantyMonths: number;
-  warrantyMileage: number;
   serviceDate: string;
   expiresAt: string | null;
   mileageAtService: number | null;
-  maxWarrantyMileage: number | null;
   status: 'ACTIVE';
 }
 

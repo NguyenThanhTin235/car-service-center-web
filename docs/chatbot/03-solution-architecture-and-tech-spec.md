@@ -295,7 +295,7 @@ export const optionalAuthenticate = async (
 > **Đối chiếu Tên Bảng Thực Tế trong `schema.prisma`:**
 > Trong Prisma Schema của dự án ([src/backend/prisma/schema.prisma](file:///d:/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/src/backend/prisma/schema.prisma#L434-L480)):
 > - Danh mục nhóm dịch vụ là `ServiceCategory` (`@@map("service_categories")`).
-> - Danh mục dịch vụ là `Service` (`@@map("services")`) với các trường `pricing_type` (`FIXED` | `VEHICLE_SIZE` | `LABOUR_PARTS`), `fixed_price`, `warranty_months`, `warranty_mileage`.
+> - Danh mục dịch vụ là `Service` (`@@map("services")`) với các trường `pricing_type` (`FIXED` | `VEHICLE_SIZE` | `LABOUR_PARTS`), `fixed_price`, `warranty_months`.
 > - Bảng giá chi tiết theo kích thước xe (thường gọi là `ServicePrice` trong tài liệu nghiệp vụ) được định nghĩa trong Prisma là model `VehicleSizePrice` (`@@map("vehicle_size_prices")`, quan hệ `size_prices` trên `Service`).
 
 ```typescript
@@ -395,7 +395,6 @@ async getCatalogContext(): Promise<CatalogContext> {
         price: Number(sp.price),
       })),
       warrantyMonths: s.warranty_months,
-      warrantyMileage: s.warranty_mileage,
     })),
   };
 
@@ -424,9 +423,7 @@ export interface ActiveWarrantyRecordDto {
   itemType: 'SERVICE' | 'PART' | 'GENERAL';
   releasedAt: string;
   warrantyMonths: number;
-  warrantyMileage: number;
   expiresAt: string | null;
-  maxWarrantyMileage: number | null;
   warrantyTerms: string | null;
   status: 'ACTIVE';
 }
@@ -623,7 +620,7 @@ export type AiChatIntent =
   | 'BOOKING_REQUEST'        // Muốn đặt lịch hẹn bảo dưỡng / kiểm tra xe (UC-CHAT-05)
   | 'AUTH_REQUIRED'          // Khách chưa đăng nhập nhưng hỏi dữ liệu cá nhân (Auth-Gate)
   | 'GENERAL_SUPPORT'        // Hỏi địa chỉ, giờ làm việc, quy trình 8 bước, hotline
-  | 'HUMAN_HANDOFF'          // Khiếu nại, cần thương lượng/bảo hành thiện chí, gặp Cố vấn (UC-CHAT-06)
+  | 'HUMAN_HANDOFF'          // Khiếu nại, cần thương lượng, gặp Cố vấn (UC-CHAT-06)
   | 'OUT_OF_SCOPE';          // Câu hỏi ngoài phạm vi dịch vụ ô tô / từ chối độ chế trái phép (UC-CHAT-06)
 
 export type AiChatActionType =

@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { getInvoicePreview, createInvoiceDraft, InvoicePreview } from '@/lib/api/invoice.api';
 import InvoiceLinesTable from './InvoiceLinesTable';
 import { useRouter } from 'next/navigation';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 
 interface Props {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export default function CreateInvoiceDraftModal({
   onSuccess,
 }: Props) {
   const router = useRouter();
+  const backdropProps = useBackdropClose(onClose);
   const [loading, setLoading] = useState<boolean>(true);
   const [preview, setPreview] = useState<InvoicePreview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -76,9 +78,7 @@ export default function CreateInvoiceDraftModal({
       role="dialog"
       aria-modal="true"
       aria-label="Tạo hóa đơn dịch vụ mới"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      {...backdropProps}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}

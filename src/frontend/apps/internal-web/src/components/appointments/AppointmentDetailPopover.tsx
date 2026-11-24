@@ -115,19 +115,19 @@ export default function AppointmentDetailPopover({
 
         {/* Warranty Appointment Banner */}
         {(appointment as any).is_warranty && (
-          <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-800">
-            <span className="material-symbols-outlined text-emerald-600 text-lg shrink-0 mt-0.5">verified_user</span>
-            <div className="space-y-1">
-              <div className="font-bold text-emerald-900 flex items-center gap-1.5">
+          <div className="px-3.5 py-2.5 bg-emerald-50 rounded-xl border border-emerald-200 space-y-1.5 text-xs text-emerald-800">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="font-bold text-emerald-900 flex items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-600 text-[18px] leading-none shrink-0">verified_user</span>
                 <span>Lịch hẹn Bảo hành chính hãng (0 đồng)</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-900">Miễn phí 100%</span>
               </div>
-              {(appointment as any).symptoms_description && (
-                <p className="text-[11px] text-emerald-700 leading-relaxed">
-                  <strong>Hiện tượng sự cố:</strong> {(appointment as any).symptoms_description}
-                </p>
-              )}
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200/80 text-emerald-900 shrink-0">Miễn phí 100%</span>
             </div>
+            {(appointment as any).symptoms_description && (
+              <p className="text-[11px] text-emerald-700 leading-relaxed pl-[26px]">
+                <strong>Hiện tượng sự cố:</strong> {(appointment as any).symptoms_description}
+              </p>
+            )}
           </div>
         )}
         

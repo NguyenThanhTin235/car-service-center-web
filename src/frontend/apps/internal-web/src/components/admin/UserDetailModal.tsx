@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { userApi, UserData } from '@/lib/api/users';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 
 interface UserDetailModalProps {
   isOpen: boolean;
@@ -52,6 +53,7 @@ export default function UserDetailModal({
   userId,
   fallbackData,
 }: UserDetailModalProps) {
+  const backdropProps = useBackdropClose(onClose);
   const [userData, setUserData] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,9 +110,7 @@ export default function UserDetailModal({
       role="dialog"
       aria-modal="true"
       aria-label="Chi tiết Tài khoản Người dùng"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      {...backdropProps}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}

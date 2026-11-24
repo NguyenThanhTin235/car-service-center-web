@@ -20,7 +20,7 @@ Sau vòng phân tích và phản biện đa chiều giữa **Product Manager (`@
 | **ADR-CHAT-02** | **Cơ chế Xác thực Kép (`optionalAuthenticate`)** | Hỗ trợ cả Guest (`req.user = undefined`) và Customer (`req.user.id`). **Đặc biệt:** Nếu request có gửi header `Authorization: Bearer` nhưng token hết hạn (`TokenExpiredError`), trả về HTTP `401` để `axios` interceptor tự động gọi `/api/auth/refresh` và retry ngầm. | Khách hàng đang đăng nhập không bao giờ bị rớt xuống chế độ Guest giữa cuộc trò chuyện khi Access Token hết hạn. |
 | **ADR-CHAT-03** | **Cô lập Dữ liệu Cá nhân & Chống IDOR** | `AiCustomerContextBuilder` chỉ nhận `authenticatedUserId` từ `req.user.id` (JWT), tuyệt đối không đọc `customer_id` hay `license_plate` từ payload chat để query DB. Chỉ nạp `Finding.is_visible_to_customer = true`, `Quotation.status != 'DRAFT'`, `Invoice.status IN ['ISSUED', 'PAID']`. | Triệt tiêu 100% nguy cơ lộ dữ liệu chéo giữa các khách hàng hoặc lộ giá vốn/báo giá nháp nội bộ. |
 | **ADR-CHAT-04** | **Minh bạch Giá `LABOUR_PARTS`, `0% VAT` & Tổng Cộng Dồn (`quotationSummary`)** | 1. Công bố rõ **Chính sách miễn thuế GTGT (`0% VAT`)**.<br/>2. Không bao giờ bịa số tiền cho dịch vụ `LABOUR_PARTS`.<br/>3. Backend tính sẵn bằng TypeScript trường `quotationSummary: { totalApprovedAmount, pendingApprovalAmount, projectedCombinedTotal, pendingQuotationIds }` trên mỗi `WorkOrder` (loại trừ hoàn toàn báo giá `REJECTED`). | Xóa bỏ tâm lý sợ bị "vẽ bệnh"; đảm bảo LLM không bao giờ cộng nhầm báo giá đã bị từ chối khi khách hỏi tổng chi phí. |
-| **ADR-CHAT-05** | **Bao phủ Trạng thái Phiếu Vừa Hoàn Tất & Bảo Hành Kép** | Bổ sung mảng `recentCompletedOrders` (tối đa 3 `WorkOrder` có `status IN ['RELEASED', 'CLOSED']` gần nhất) cùng `warrantyRecords` (tính hạn bảo hành kép theo cả Thời gian `warranty_months` và Số km ODO `warranty_mileage`). | Giải quyết trọn vẹn tình huống khách không còn xe đang sửa tại xưởng nhưng hỏi về xe vừa lấy hôm qua hoặc khiếu nại bảo hành. |
+| **ADR-CHAT-05** | **Bao phủ Trạng thái Phiếu Vừa Hoàn Tất & Bảo Hành Theo Tháng** | Bổ sung mảng `recentCompletedOrders` (tối đa 3 `WorkOrder` có `status IN ['RELEASED', 'CLOSED']` gần nhất) cùng `warrantyRecords` (tính hạn bảo hành theo Thời gian `warranty_months`). | Giải quyết trọn vẹn tình huống khách không còn xe đang sửa tại xưởng nhưng hỏi về xe vừa lấy hôm qua hoặc khiếu nại bảo hành. |
 | **ADR-CHAT-06** | **Quản lý Phiên `sessionStorage` & `Guest-to-Auth Promotion`** | Chuẩn hóa khóa: `csc_ai_chat_history:guest`, `csc_ai_chat_history:user_${userId}` và `csc_pending_booking_intent`. Khi Guest vừa đăng nhập, tự động **kế thừa (copy/promote)** lịch sử chat từ `guest` sang `user_${userId}` rồi nối thêm lời chào cá nhân hóa từ `GET /welcome`. Khi Logout, xóa sạch mọi khóa `user_*`. | Giữ liền mạch cuộc tư vấn triệu chứng từ trang `/home` vào cổng `/customer/profile`, đồng thời bảo mật tuyệt đối khi đăng xuất. |
 | **ADR-CHAT-07** | **Phân lớp Giao diện `z-40` & Tự động Thu gọn (`Auto-Minimize`)** | Đặt `CustomerAiChatWidget` ở lớp **`z-40`** (`PublicHeader z-30 < ChatWidget z-40 < Modals/Toast z-50`). Tự động thu gọn khung chat (`setIsOpen(false)`) khi người dùng bấm vào Action Chip mở Modal (`OPEN_BOOKING_MODAL`, `VIEW_QUOTATION`, `VIEW_INVOICE`) hoặc `NAVIGATE` trên Mobile. | Tuyệt đối không che khuất nút `[Lưu lịch hẹn]`, `[Phê duyệt báo giá]` hay mã QR SePay trên màn hình nhỏ. |
 | **ADR-CHAT-08** | **Zero-Typing UX & Hỗ trợ Tiếng Việt Không Dấu (Inclusive UX)** | Mọi nút/chip trong khung chat có chiều cao `>= 44px` (`min-h-[44px]`), chữ hội thoại `>= 14px` (`text-sm`), số tiền dùng `font-mono tabular-nums font-bold`. Cả System Prompt và `Deterministic Fallback Engine` (`normalizeViText`) đều hiểu tiếng Việt không dấu (`"xe xong chua"`, `"bao gia"`, `"thanh toan"`). | Phục vụ tối ưu nhóm khách hàng lớn tuổi (Persona 3 - Chú Hùng) dùng điện thoại màn hình nhỏ, ngại gõ phím có dấu. |
@@ -41,11 +41,11 @@ export type AiChatIntent =
   | 'WORK_ORDER_TRACKING'    // UC-CHAT-03: Tra cứu tiến độ WorkOrder, WoService, KCS
   | 'QUOTATION_EXPLANATION'  // UC-CHAT-04: Giải thích Finding, QuotationLine & Tổng lũy kế quotationSummary
   | 'INVOICE_PAYMENT'        // UC-CHAT-03/04: Tra cứu hóa đơn & hướng dẫn quét mã VietQR SePay
-  | 'WARRANTY_INQUIRY'       // UC-CHAT-05: Tra cứu chính sách & hạn bảo hành kép (thời gian + ODO)
+  | 'WARRANTY_INQUIRY'       // UC-CHAT-05: Tra cứu chính sách & hạn bảo hành (theo tháng)
   | 'BOOKING_REQUEST'        // UC-CHAT-05: Đặt lịch hẹn (Thứ 2 - Thứ 7: Sáng 08:00-10:30, Chiều 13:30-16:00)
   | 'AUTH_REQUIRED'          // Auth-Gate: Khách vãng lai hỏi dữ liệu cá nhân
   | 'GENERAL_SUPPORT'        // Thông tin xưởng, địa chỉ, quy trình 8 bước
-  | 'HUMAN_HANDOFF'          // UC-CHAT-06: Khiếu nại, bảo hành thiện chí, kết nối Cố vấn / Hotline 1900 6868
+  | 'HUMAN_HANDOFF'          // UC-CHAT-06: Khiếu nại, kết nối Cố vấn / Hotline 1900 6868
   | 'OUT_OF_SCOPE';          // UC-CHAT-06: Ngoài phạm vi ô tô / từ chối độ chế trái đăng kiểm, tua ODO
 
 // 5 Loại Smart Action Chips Chuẩn hóa (Unified AiChatActionType)
@@ -151,7 +151,7 @@ flowchart LR
 
 ### Ticket `CHAT-T02`: Xây dựng `AiCustomerContextBuilder` (Catalog Cache 5 Phút & Scoped Customer Private Context)
 
-- **User Story / Goal:** Là Trợ lý AI, tôi cần được cung cấp dữ liệu danh mục dịch vụ & bảng giá chuẩn (được cache 5 phút) cùng hồ sơ cá nhân của đúng khách hàng đang đăng nhập (kèm tổng hợp báo giá lũy kế `quotationSummary` 0% VAT, các phiếu vừa xuất xưởng `recentCompletedOrders` và hạn bảo hành kép `warrantyRecords`), để trả lời chính xác 100% mà không bao giờ bịa giá hay rò rỉ dữ liệu chéo.
+- **User Story / Goal:** Là Trợ lý AI, tôi cần được cung cấp dữ liệu danh mục dịch vụ & bảng giá chuẩn (được cache 5 phút) cùng hồ sơ cá nhân của đúng khách hàng đang đăng nhập (kèm tổng hợp báo giá lũy kế `quotationSummary` 0% VAT, các phiếu vừa xuất xưởng `recentCompletedOrders` và hạn bảo hành theo tháng `warrantyRecords`), để trả lời chính xác 100% mà không bao giờ bịa giá hay rò rỉ dữ liệu chéo.
 - **Vertical Scope:**
   - **Catalog Context:** Truy vấn `ServiceCategory`, `Service`, `VehicleSizePrice` (`is_active: true`) từ Prisma, kết hợp thông tin `garageInfo` (địa chỉ, hotline `1900 6868`, lịch làm việc Thứ 2 – Thứ 7, `bookingSlots` Sáng `08:00–10:30` / Chiều `13:30–16:00`, `vatPolicy: "0% VAT"`), lưu cache với khóa `ai_chat:catalog_context:v1` (`TTL = 300s`).
   - **Customer Private Context:** Khi có `authenticatedUserId`, truy vấn song song (`Promise.all`) với điều kiện cứng `customer_id = authenticatedUserId`:
@@ -167,7 +167,7 @@ flowchart LR
   1. [ ] Gọi `getCatalogContext()` 2 lần liên tiếp trong vòng 5 phút chỉ thực hiện truy vấn Prisma ở lần đầu tiên (Cache Hit ở lần thứ 2); dữ liệu chứa đầy đủ 3 loại `pricingType` (`FIXED`, `VEHICLE_SIZE`, `LABOUR_PARTS`), `bookingSlots` và `vatPolicy` (`0% VAT`).
   2. [ ] `getCustomerPrivateContext(userId)` chỉ truy vấn dữ liệu của đúng `customer_id: userId`; tuyệt đối không bao giờ trả về `Finding` có `is_visible_to_customer = false` hoặc `Quotation` có `status = 'DRAFT'` hoặc `Invoice` có `status = 'DRAFT'`.
   3. [ ] Đối với `WorkOrder` có 1 báo giá `PRIMARY` (`APPROVED`: `1.800.000`), 1 báo giá `SUPPLEMENTARY` v1 (`REJECTED`: `1.200.000`) và 1 báo giá `SUPPLEMENTARY` v2 (`SENT`: `950.000`), trường `quotationSummary` tính chính xác: `totalApprovedAmount = 1800000`, `pendingApprovalAmount = 950000`, `projectedCombinedTotal = 2750000` (không cộng bản `REJECTED`).
-  4. [ ] Trích xuất đúng `recentCompletedOrders` và tính đúng hạn bảo hành kép (`expiresAt` theo `warranty_months` và `maxWarrantyMileage` theo `returnMileage + warranty_mileage`).
+  4. [ ] Trích xuất đúng `recentCompletedOrders` và tính đúng hạn bảo hành theo tháng (`expiresAt` theo `warranty_months`).
 - **Verification Command:**
   ```bash
   cd src/backend && npx jest tests/unit/ai-customer-context.builder.test.ts

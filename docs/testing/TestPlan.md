@@ -38,7 +38,7 @@ Dự án **"Hệ thống Quản lý Trung tâm Dịch vụ Ô tô" (Car Service 
 
 Hệ thống được xây dựng trên nền tảng **Node.js + Express + Prisma + MySQL** (phía máy chủ) và **Next.js** (phía giao diện). Bộ kiểm thử tự động sử dụng Vitest (kiểm thử đơn vị và tích hợp) kết hợp Playwright (kiểm thử E2E) và được tích hợp trong pipeline CI/CD với GitHub Actions.
 
-**Đội ngũ kiểm thử chịu trách nhiệm đảm bảo hệ thống đáp ứng toàn bộ 87 Use Case (UC-01 đến UC-87)** trải rộng trên 7 vai trò tác nhân, bao phủ vòng đời dịch vụ hoàn chỉnh từ Đặt lịch → Tiếp nhận → Khám xe → Báo giá → Thi công → Kiểm định chất lượng (QC) → Thanh toán → Bàn giao xe.
+**Đội ngũ kiểm thử chịu trách nhiệm đảm bảo hệ thống đáp ứng toàn bộ 86 Use Case (UC-01 đến UC-86)** trải rộng trên 7 vai trò tác nhân, bao phủ vòng đời dịch vụ hoàn chỉnh từ Đặt lịch → Tiếp nhận → Khám xe → Báo giá → Thi công → Kiểm định chất lượng (QC) → Thanh toán → Bàn giao xe.
 
 **Mục tiêu quan trọng nhất** là đảm bảo các chức năng nghiệp vụ cốt lõi (must-have) hoạt động chính xác, không có lỗi hồi quy, và đáp ứng đầy đủ 7 tiêu chí nghiệm thu đề tài (AC-01 đến AC-07):
 
@@ -120,7 +120,7 @@ Phạm vi kiểm thử của đồ án bao gồm toàn bộ các yêu cầu ch�
 **Ngoài phạm vi kiểm thử:**
 - Ứng dụng di động (Mobile App).
 - Tích hợp cổng thanh toán thực tế (VNPAY/MoMo production).
-- Phân hệ Bảo hành (Warranty Management – UC-81 đến UC-87): Dự kiến bổ sung trong giai đoạn tiếp theo.
+- Phân hệ Bảo hành (Warranty Management – UC-81 đến UC-86): Dự kiến bổ sung trong giai đoạn tiếp theo.
 - Bộ kịch bản kiểm thử hóa đơn/thanh toán nội bộ chi tiết (TC_Billing_Invoice_Process.md): Dự kiến bổ sung trong giai đoạn tiếp theo.
 - Kiểm thử bảo mật URL/API riêng lẻ: Sẽ được thực hiện trong bộ kiểm thử API riêng biệt.
 
@@ -192,10 +192,10 @@ Phương pháp kiểm thử hộp đen (Black-box Testing) theo hành vi ngườ
 | [TC_Customer_Profile_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Customer_Profile_Process.md) | Hồ sơ khách hàng, Quản lý xe, Phân loại cỡ xe (vehicleSize), Sổ bảo dưỡng trọn đời | 40 | UC-06 đến UC-10, UC-22 đến UC-25, UC-80 |
 | [TC_Manager_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Manager_Process.md) | Kho phụ tùng, Thẻ kho, Cảnh báo biên WAC, Hủy phiếu nháp, Bảng điều hành xưởng | 62 | UC-44 đến UC-53 |
 | [TC_WorkOrder_SA_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_WorkOrder_SA_Process.md) | Lệnh sửa chữa, Check-in, Khám 2D, Báo giá bổ sung (Change Order), Đổi thợ, KCS, Bàn giao | 68 | UC-29 đến UC-43 |
-| [TC_Dashboard_Report_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Dashboard_Report_Process.md) | Dashboard đa vai trò & Báo cáo phân tích doanh thu, sản lượng, tồn kho, bảo hành | 50 | UC-15, UC-16, UC-44, UC-54, UC-78, UC-87 |
+| [TC_Dashboard_Report_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Dashboard_Report_Process.md) | Dashboard đa vai trò & Báo cáo phân tích doanh thu, sản lượng, tồn kho, bảo hành | 50 | UC-15, UC-16, UC-44, UC-54, UC-78, UC-86 |
 | [TC_Billing_Invoice_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Billing_Invoice_Process.md) | Thu ngân, 4 tab hàng đợi, hóa đơn nháp, chiết khấu quầy, thanh toán đa phương thức, nợ, in PDF | 30 | UC-16, UC-26 đến UC-28, FDS-B05, FDS-B06 |
-| [TC_Warranty_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Warranty_Process.md) | Vòng đời bảo hành E2E: Tra cứu hạn, Đặt lịch, Tiếp nhận, Duyệt thiện chí, Báo giá 0đ, Hóa đơn 0đ | 25 | UC-81 đến UC-87 |
-| **TỔNG CỘNG** | | **407** | **Bao phủ toàn diện UC-01 đến UC-87 (100% Use Cases)** |
+| [TC_Warranty_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Warranty_Process.md) | Vòng đời bảo hành E2E: Tra cứu hạn theo tháng, Đặt lịch, Tiếp nhận, Báo giá 0đ, Hóa đơn 0đ | 20 | UC-81 đến UC-86 |
+| **TỔNG CỘNG** | | **402** | **Bao phủ toàn diện UC-01 đến UC-86 (100% Use Cases)** |
 
 ---
 

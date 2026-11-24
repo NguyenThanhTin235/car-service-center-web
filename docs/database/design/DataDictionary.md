@@ -246,7 +246,7 @@
 
 *Định nghĩa gói dịch vụ, cơ chế định giá, cấu hình thời hạn bảo hành tiêu chuẩn theo tháng và theo số km ODO.*
 
-**services**(id, category_id, name, description, pricing_type, fixed_price, warranty_months, warranty_mileage, is_active, created_at, updated_at)
+**services**(id, category_id, name, description, pricing_type, fixed_price, warranty_months, is_active, created_at, updated_at)
 
 | STT | Thuộc tính | Kiểu | Miền giá trị | Ý nghĩa | Ghi chú |
 |:---:|:---|:---|:---|:---|:---|
@@ -257,8 +257,7 @@
 | 5 | `pricing_type` | ENUM (PricingType) | Không rỗng (NOT NULL) | Phương thức tính giá dịch vụ | FIXED: Giá cố định; VEHICLE_SIZE: Theo cỡ xe; LABOUR_PARTS: Theo công và phụ tùng |
 | 6 | `fixed_price` | DECIMAL(12,2) | Cho phép rỗng (NULL) | Đơn giá cố định | Chỉ áp dụng khi pricing_type = FIXED |
 | 7 | `warranty_months` | INT | Không rỗng (NOT NULL); Mặc định: '0' | Thời hạn bảo hành tiêu chuẩn (Số tháng) | Thời hạn bảo hành tính theo tháng; 0 nếu không bảo hành |
-| 8 | `warranty_mileage` | INT | Không rỗng (NOT NULL); Mặc định: '0' | Hạn mức ODO bảo hành tiêu chuẩn (Số km) | |
-| 9 | `is_active` | BOOLEAN | Không rỗng (NOT NULL); Mặc định: true | Trạng thái kích hoạt dịch vụ | |
+| 8 | `is_active` | BOOLEAN | Không rỗng (NOT NULL); Mặc định: true | Trạng thái kích hoạt dịch vụ | |
 | 10 | `created_at` | DATETIME | Không rỗng (NOT NULL); Mặc định: CURRENT_TIMESTAMP | Thời điểm khởi tạo dịch vụ | |
 | 11 | `updated_at` | DATETIME | Không rỗng (NOT NULL); Mặc định: CURRENT_TIMESTAMP | Thời điểm cập nhật dịch vụ | |
 
@@ -782,7 +781,7 @@
 
 *Hồ sơ từng mã phụ tùng tồn kho (SKU), theo dõi số lượng tồn vật lý on_hand, giá bán niêm yết, giá vốn bình quân MWA và hạn mức bảo hành tiêu chuẩn.*
 
-**inventory_items**(id, part_category_id, sku, brand_id, selling_price, average_cost, on_hand, reorder_level, warranty_months, warranty_mileage, is_active, created_at, updated_at)
+**inventory_items**(id, part_category_id, sku, brand_id, selling_price, average_cost, on_hand, reorder_level, warranty_months, is_active, created_at, updated_at)
 
 | STT | Thuộc tính | Kiểu | Miền giá trị | Ý nghĩa | Ghi chú |
 |:---:|:---|:---|:---|:---|:---|
@@ -795,8 +794,7 @@
 | 7 | `on_hand` | INT | Không rỗng (NOT NULL); Mặc định: '0' | Số lượng tồn kho thực tế khả dụng | |
 | 8 | `reorder_level` | INT | Không rỗng (NOT NULL); Mặc định: '0' | Ngưỡng tồn kho tối thiểu cảnh báo nhập hàng | Ngưỡng tồn kho tối thiểu cảnh báo cần nhập thêm hàng |
 | 9 | `warranty_months` | INT | Không rỗng (NOT NULL); Mặc định: '0' | Thời hạn bảo hành tiêu chuẩn của phụ tùng (Số tháng) | Thời hạn bảo hành tính theo tháng; 0 nếu không bảo hành |
-| 10 | `warranty_mileage` | INT | Không rỗng (NOT NULL); Mặc định: '0' | Hạn mức ODO bảo hành tiêu chuẩn (Số km) | Hạn mức km bảo hành tối đa (VD: 10.000 km) |
-| 11 | `is_active` | BOOLEAN | Không rỗng (NOT NULL); Mặc định: true | Trạng thái kinh doanh mặt hàng | |
+| 10 | `is_active` | BOOLEAN | Không rỗng (NOT NULL); Mặc định: true | Trạng thái kinh doanh mặt hàng | |
 | 12 | `created_at` | DATETIME | Không rỗng (NOT NULL); Mặc định: CURRENT_TIMESTAMP | Thời điểm tạo mặt hàng | |
 | 13 | `updated_at` | DATETIME | Không rỗng (NOT NULL) | Thời điểm cập nhật mặt hàng | |
 

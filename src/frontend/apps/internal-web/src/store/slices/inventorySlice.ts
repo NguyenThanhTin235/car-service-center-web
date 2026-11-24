@@ -44,7 +44,6 @@ export interface InventoryItem {
   onHand: number;
   reorderLevel: number;
   warrantyMonths?: number | null;
-  warrantyMileage?: number | null;
   isActive: boolean;
   createdAt: string;
 }
@@ -56,7 +55,6 @@ export interface InventoryItemPayload {
   sellingPrice?: number;
   reorderLevel?: number;
   warrantyMonths?: number | null;
-  warrantyMileage?: number | null;
   isActive?: boolean;
 }
 

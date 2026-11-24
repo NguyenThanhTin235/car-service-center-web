@@ -129,7 +129,6 @@ export class AiCustomerContextBuilder {
           price: Number(sp.price),
         })),
         warrantyMonths: Number(svc.warranty_months || 0),
-        warrantyMileage: Number(svc.warranty_mileage || 0),
       })),
     }));
 
@@ -294,7 +293,6 @@ export class AiCustomerContextBuilder {
                     id: true,
                     name: true,
                     warranty_months: true,
-                    warranty_mileage: true,
                   },
                 },
                 jobs: {
@@ -304,7 +302,6 @@ export class AiCustomerContextBuilder {
                         item: {
                           select: {
                             warranty_months: true,
-                            warranty_mileage: true,
                             part_category: { select: { name: true } },
                           },
                         },
@@ -426,6 +423,12 @@ export class AiCustomerContextBuilder {
 
     const now = new Date();
     const warrantyRecords: DerivedWarrantyRecord[] = [];
+    const claimedParentWoIds = new Set<number>(
+      (completedWorkOrdersRaw || [])
+        .filter((wo: any) => wo.order_type === 'WARRANTY' && wo.parent_work_order_id != null)
+        .map((wo: any) => Number(wo.parent_work_order_id))
+    );
+
     const recentCompletedOrders = (completedWorkOrdersRaw || []).map((wo: any) => {
       const baseDate = new Date(
         wo.release?.released_at || wo.closed_at || wo.updated_at || now
@@ -434,12 +437,14 @@ export class AiCustomerContextBuilder {
         wo.check_in?.mileage !== undefined && wo.check_in?.mileage !== null
           ? Number(wo.check_in.mileage)
           : null;
+      const isAlreadyClaimed = claimedParentWoIds.has(Number(wo.id));
 
       for (const woSvc of wo.services || []) {
-        const svcMonths = Number(woSvc.service?.warranty_months || 0);
-        const svcMileage = Number(woSvc.service?.warranty_mileage || 0);
-        if (svcMonths > 0 || svcMileage > 0) {
-          const expiresAt = svcMonths > 0 ? addMonthsIso(baseDate, svcMonths) : null;
+        const svcMonths = Number(
+          (woSvc.warranty_months ?? 0) > 0 ? woSvc.warranty_months : woSvc.service?.warranty_months || 0
+        );
+        if (!isAlreadyClaimed && svcMonths > 0) {
+          const expiresAt = addMonthsIso(baseDate, svcMonths);
           if (!expiresAt || new Date(expiresAt) >= now) {
             warrantyRecords.push({
               workOrderId: wo.id,
@@ -449,23 +454,29 @@ export class AiCustomerContextBuilder {
               itemType: 'SERVICE',
               itemName: woSvc.name || woSvc.service?.name || 'Dịch vụ',
               warrantyMonths: svcMonths,
-              warrantyMileage: svcMileage,
               serviceDate: formatDateOnly(baseDate),
               expiresAt: expiresAt ? expiresAt.slice(0, 10) : null,
               mileageAtService: baseMileage,
-              maxWarrantyMileage:
-                baseMileage !== null && svcMileage > 0 ? baseMileage + svcMileage : null,
               status: 'ACTIVE',
             });
           }
         }
 
+        const isPackageService = woSvc.pricing_type === 'FIXED' || woSvc.pricing_type === 'VEHICLE_SIZE';
+        if (isPackageService) {
+          continue;
+        }
+
         for (const job of woSvc.jobs || []) {
           for (const part of job.parts || []) {
-            const pMonths = Number(part.item?.warranty_months || 0);
-            const pMileage = Number(part.item?.warranty_mileage || 0);
-            if (pMonths > 0 || pMileage > 0) {
-              const expiresAt = pMonths > 0 ? addMonthsIso(baseDate, pMonths) : null;
+            if (part.status === 'RETURNED') {
+              continue;
+            }
+            const pMonths = Number(
+              (part.warranty_months ?? 0) > 0 ? part.warranty_months : part.item?.warranty_months || 0
+            );
+            if (!isAlreadyClaimed && pMonths > 0) {
+              const expiresAt = addMonthsIso(baseDate, pMonths);
               if (!expiresAt || new Date(expiresAt) >= now) {
                 warrantyRecords.push({
                   workOrderId: wo.id,
@@ -475,12 +486,9 @@ export class AiCustomerContextBuilder {
                   itemType: 'PART',
                   itemName: part.item?.part_category?.name || 'Phụ tùng chính hãng',
                   warrantyMonths: pMonths,
-                  warrantyMileage: pMileage,
                   serviceDate: formatDateOnly(baseDate),
                   expiresAt: expiresAt ? expiresAt.slice(0, 10) : null,
                   mileageAtService: baseMileage,
-                  maxWarrantyMileage:
-                    baseMileage !== null && pMileage > 0 ? baseMileage + pMileage : null,
                   status: 'ACTIVE',
                 });
               }

@@ -539,7 +539,7 @@ export class AiCustomerValidatorService {
         const topWarranty = customerContext.warrantyRecords[0];
         const recentWo = customerContext.recentCompletedOrders[0];
         const detail = topWarranty
-          ? `Hạng mục **${topWarranty.itemName}** trên xe **${topWarranty.licensePlate}** (phiếu **${topWarranty.woNumber}**) đang còn bảo hành (**${topWarranty.warrantyMonths} tháng**${topWarranty.maxWarrantyMileage ? ` hoặc đến mốc **${topWarranty.maxWarrantyMileage.toLocaleString('vi-VN')} km**` : ''}).`
+          ? `Hạng mục **${topWarranty.itemName}** trên xe **${topWarranty.licensePlate}** (phiếu **${topWarranty.woNumber}**) đang còn bảo hành (**${topWarranty.warrantyMonths} tháng**${topWarranty.expiresAt ? `, đến hết ngày **${topWarranty.expiresAt}**` : ''}).`
           : `Xe **${recentWo.vehicle.licensePlate}** vừa hoàn tất phiếu **${recentWo.woNumber}** ngày ${recentWo.completedAt}.`;
 
         return {

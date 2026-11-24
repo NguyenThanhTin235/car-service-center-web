@@ -51,7 +51,7 @@ Khi dữ liệu vận hành bị phân mảnh trên sổ sách chép tay, bảng
 - Mất khả năng truy vết trách nhiệm và lịch sử can thiệp kỹ thuật trên từng xe.
 - Thiếu sợi dây liên kết bản chất giữa hư hỏng phát hiện (Finding) → Công việc xử lý (Job) → Phụ tùng thay thế (Part).
 - Cơ chế tính giá dịch vụ không nhất quán giữa các loại hình (Sửa chữa, Bảo dưỡng, Chăm sóc xe) dẫn đến sai lệch doanh thu và thất thoát lợi nhuận.
-- Hoạt động bảo hành diễn ra thụ động, khó xác định phương tiện có còn trong thời hạn hay số km cam kết, đồng thời không đo lường được chi phí vốn phụ tùng thiệt hại do bảo hành gây ra.
+- Hoạt động bảo hành diễn ra thụ động, khó xác định phương tiện có còn trong thời hạn bảo hành (theo tháng) cam kết hay không, đồng thời không đo lường được chi phí vốn phụ tùng thiệt hại do bảo hành gây ra.
 
 Đề tài đề xuất xây dựng một nền tảng web toàn diện lấy **Phiếu công việc (Work Order)** làm **hồ sơ trung tâm (Single Source of Truth)**, tách bạch rõ ràng cấu trúc dữ liệu: Service, Inspection/Finding, Job, Part/Material, Quotation, QC, Invoice, Vehicle Release, Service History và Warranty. Trọng tâm của đề tài là thiết lập chuỗi truy vết nghiệp vụ khép kín từ Finding → Job → Part → QC → Release, đi kèm cơ chế tính giá chuẩn hóa (Zero-Tax Policy) và quy trình xử lý bảo hành minh bạch.
 
@@ -66,7 +66,7 @@ Tiểu luận chuyên ngành tập trung xây dựng một giải pháp MVP (Min
 - Thi công sửa chữa (Job Execution), xuất kho phụ tùng đúng định mức và nghiệm thu chất lượng đa tiêu chí (Quality Inspection / Rework).
 - Thanh toán & Quyết toán tài chính (Invoice & Payment) với cơ chế tự động ghi nhận Financial Clearance.
 - Bàn giao xe xuất xưởng (Vehicle Release), Đóng hồ sơ (Closure Gate) và đồng bộ Sổ bảo dưỡng điện tử (Service History).
-- Phân hệ Quản lý Bảo hành chuyên biệt (Warranty Management): Tra cứu điều kiện bảo hành, Đặt lịch bảo hành, Tiếp nhận bảo hành, Lập phiếu Work Order bảo hành 0đ, Phê duyệt bảo hành thiện chí (Goodwill Warranty), Phát hành hóa đơn 0đ và Báo cáo quản trị chi phí vốn bảo hành.
+- Phân hệ Quản lý Bảo hành chuyên biệt (Warranty Management): Tra cứu điều kiện bảo hành theo tháng (2 trạng thái Còn hạn / Quá hạn), Đặt lịch bảo hành, Tiếp nhận bảo hành, Lập phiếu Work Order bảo hành 0đ, Phát hành hóa đơn 0đ và Báo cáo quản trị chi phí vốn bảo hành.
 - Dịch vụ chạy nền tự động (Background Job): Tự động quét lịch hẹn và gửi email nhắc hẹn cho khách hàng trước 24 giờ.
 
 MVP ưu tiên happy path chuẩn hóa, tích hợp đầy đủ các cổng kiểm soát (Gates: Check-in Gate, Quotation Gate, Execution Gate, QC Gate, Financial Gate, Release Gate, Closure Gate) và các quy tắc nghiệp vụ cốt lõi. Các tính năng mở rộng chuyên sâu (như Purchase Order đa trạng thái, quản lý công nợ NCC, xung đột lịch nâng cao) được định hướng phát triển ở giai đoạn Khóa luận tốt nghiệp.
@@ -643,13 +643,12 @@ _Bảng 2-8: Use Case baseline – Phân hệ Quản lý Bảo hành (Warranty M
 
 | **UC ID** | **Tên Use Case** | **Mức ưu tiên** | **Mô tả tóm tắt** |
 | :---: | :--- | :---: | :--- |
-| **UC-81** | Tra cứu thông tin bảo hành | Must | Khách hàng hoặc nhân viên tra cứu danh sách các dịch vụ và phụ tùng đã sử dụng trên phương tiện để kiểm tra thời hạn và điều kiện bảo hành còn hiệu lực (số ngày còn lại, số km ODO còn lại). |
+| **UC-81** | Tra cứu thông tin bảo hành | Must | Khách hàng hoặc nhân viên tra cứu danh sách các dịch vụ và phụ tùng đã sử dụng trên phương tiện để kiểm tra thời hạn bảo hành còn hiệu lực (tính theo tháng, 2 trạng thái Còn hạn / Quá hạn). |
 | **UC-82** | Đặt lịch hẹn bảo hành | Must | Khách hàng chủ động tạo lịch hẹn trực tuyến mang xe đến trung tâm để kiểm tra và khắc phục sự cố bảo hành đối với các dịch vụ hoặc phụ tùng còn trong thời hạn cam kết. |
-| **UC-83** | Tiếp nhận bảo hành | Must | Nhân viên quầy dịch vụ tiếp nhận phương tiện mang đến xưởng theo diện bảo hành, ghi nhận số km ODO thực tế, đối chiếu điều kiện bảo hành với phiếu dịch vụ gốc và chuyển tiếp hồ sơ sang hàng đợi của Cố vấn dịch vụ. |
+| **UC-83** | Tiếp nhận bảo hành | Must | Nhân viên quầy dịch vụ tiếp nhận phương tiện mang đến xưởng theo diện bảo hành, đối chiếu điều kiện bảo hành theo tháng với phiếu dịch vụ gốc và chuyển tiếp hồ sơ sang hàng đợi của Cố vấn dịch vụ. |
 | **UC-84** | Tạo phiếu công việc bảo hành | Must | Cố vấn dịch vụ lập phiếu công việc chuyên biệt cho xe bảo hành; thẩm định tình trạng xe, gắn cờ bảo hành cho các hạng mục công việc và phụ tùng thay thế để áp dụng chính sách miễn phí 100% (đơn giá 0 đồng), tạo báo giá 0 đồng và chuyển sang điều phối thi công. |
 | **UC-85** | Xử lý hóa đơn bảo hành | Must | Nhân viên quầy dịch vụ hoặc thu ngân lập và phát hành hóa đơn 0 đồng cho phiếu công việc bảo hành; hệ thống tự động xác nhận hoàn tất quyết toán tài chính (Financial Clearance) để xe đủ điều kiện làm thủ tục bàn giao xuất xưởng. |
-| **UC-86** | Phê duyệt bảo hành thiện chí | Must | Quản lý dịch vụ xem xét và phê duyệt các yêu cầu bảo hành ngoại lệ (Goodwill Warranty) đối với trường hợp phương tiện hoặc phụ tùng đã hết hạn bảo hành tiêu chuẩn nhưng được hỗ trợ chi phí theo chính sách chăm sóc khách hàng đặc biệt của trung tâm. |
-| **UC-87** | Xem báo cáo bảo hành | Must | Quản lý dịch vụ (hoặc Quản trị viên) theo dõi các chỉ số thống kê tài chính và kỹ thuật mật về hoạt động bảo hành: tỷ lệ xe bảo hành trên tổng lượt phục vụ, tổng chi phí vốn phụ tùng bảo hành xuất kho (tính theo giá vốn bình quân di động), danh sách phụ tùng lỗi lặp lại và nhà cung cấp bồi hoàn. |
+| **UC-86** | Xem báo cáo bảo hành | Must | Quản lý dịch vụ (hoặc Quản trị viên) theo dõi các chỉ số thống kê tài chính và kỹ thuật mật về hoạt động bảo hành: tỷ lệ xe bảo hành trên tổng lượt phục vụ, tổng chi phí vốn phụ tùng bảo hành xuất kho (tính theo giá vốn bình quân di động), danh sách phụ tùng lỗi lặp lại và nhà cung cấp bồi hoàn. |
 
 ## 2.4. Tiêu chí hoàn thành Tiểu luận
 
@@ -663,7 +662,7 @@ _Bảng 2-9: Tiêu chí nghiệm thu hệ thống MVP_
 | **AC-04** | Tính đúng đơn giá theo 3 mô hình định giá dịch vụ (`FIXED`, `BY_VEHICLE_SIZE`, `LABOUR_AND_PARTS`), thực thi nghiêm ngặt chính sách Zero-Tax ($GrandTotal = Subtotal - Discount$), và khóa cứng snapshot đơn giá khi báo giá được duyệt. |
 | **AC-05** | Nhập kho trực tiếp cập nhật số lượng tồn thực tế (On-hand) và tự động tính lại giá vốn bình quân di động (Moving Weighted Average Cost); kiểm soát xuất/nhập trả phụ tùng theo đúng định mức Job. |
 | **AC-06** | Hoạt động chính xác của các cổng kiểm soát (Gates): Check-in Gate, Quotation Gate, Execution Gate, QC Gate, Financial Gate, Release Gate (chặn xuất xưởng nếu chưa hoàn thành Job, chưa đạt QC Pass hoặc chưa thanh toán xong), và Closure Gate. |
-| **AC-07** | Triển khai hoàn chỉnh Phân hệ Quản lý Bảo hành: Tra cứu hạn bảo hành theo ODO/ngày, Tiếp nhận bảo hành, Lập phiếu Work Order bảo hành 0đ, Phê duyệt bảo hành thiện chí (Goodwill) có giải trình bắt buộc, Phát hành hóa đơn 0đ và Báo cáo chi phí vốn bảo hành mật. |
+| **AC-07** | Triển khai hoàn chỉnh Phân hệ Quản lý Bảo hành: Tra cứu hạn bảo hành theo tháng (Còn hạn / Quá hạn), Tiếp nhận bảo hành, Lập phiếu Work Order bảo hành 0đ, Phát hành hóa đơn 0đ và Báo cáo chi phí vốn bảo hành mật. |
 | **AC-08** | Cung cấp Sổ bảo dưỡng điện tử 4 phần, tra cứu lịch sử sửa chữa và hỗ trợ trích xuất, tải xuống Biên bản bàn giao xe và Hóa đơn VAT dưới định dạng tệp PDF chuẩn. |
 | **AC-09** | Tích hợp thành công tiến trình chạy ngầm (Background Job) tự động quét và gửi email nhắc hẹn cho khách hàng trước 24 giờ. |
 | **AC-10** | Hệ thống vượt qua các bài kiểm thử tự động (Unit Test / API Test) bao phủ các logic trọng yếu: tính giá Zero-Tax, Finding–Job mapping, tồn kho không âm và cơ chế chốt chặn Release Gate. |

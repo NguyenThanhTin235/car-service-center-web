@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useId, useRef } from 'react';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -28,6 +29,11 @@ export default function ConfirmModal({
   const titleId = useId();
   const descId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
+  const isLoadingRef = useRef(isLoading);
+  isLoadingRef.current = isLoading;
+  const backdropProps = useBackdropClose(onCancel, isLoading);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,8 +42,8 @@ export default function ConfirmModal({
     document.body.style.overflow = 'hidden';
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isLoading) {
-        onCancel();
+      if (e.key === 'Escape' && !isLoadingRef.current) {
+        onCancelRef.current();
         return;
       }
       if (e.key === 'Tab' && dialogRef.current) {
@@ -64,16 +70,14 @@ export default function ConfirmModal({
         previousFocus.focus();
       }
     };
-  }, [isOpen, isLoading, onCancel]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isLoading) onCancel();
-      }}
+      {...backdropProps}
     >
       <div
         ref={dialogRef}

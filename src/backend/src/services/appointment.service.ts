@@ -221,20 +221,20 @@ export class AppointmentService {
         throw new Error('Vui lòng nhập mô tả chi tiết hiện tượng sự cố.');
       }
 
-      // Tiền điều kiện UC-82: Phương tiện phải có ít nhất 1 hạng mục dịch vụ/phụ tùng còn hạn hoặc quá hạn nhẹ
+      // Tiền điều kiện UC-82: Phương tiện phải có ít nhất 1 hạng mục dịch vụ/phụ tùng còn hạn bảo hành
       const eligibility = await warrantyService.checkVehicleWarrantyEligibility({ vehicleId: data.vehicle_id });
-      if (!eligibility.hasHistory || (eligibility.summary.validItems === 0 && eligibility.summary.overdueLightItems === 0)) {
+      if (!eligibility.hasHistory || eligibility.summary.validItems === 0) {
         throw new Error('Phương tiện không có hạng mục nào còn trong thời hạn bảo hành để đặt lịch.');
       }
       if (Array.isArray(eligibility.items) && eligibility.items.length > 0) {
         const eligibleIds = new Set(
           eligibility.items
-            .filter((i) => i.status === 'VALID' || i.status === 'OVERDUE_LIGHT')
+            .filter((i) => i.status === 'VALID')
             .map((i) => String(i.id))
         );
         const compositeEligibleIds = new Set(
           eligibility.items
-            .filter((i) => i.status === 'VALID' || i.status === 'OVERDUE_LIGHT')
+            .filter((i) => i.status === 'VALID')
             .flatMap((i) => (i.type ? [`${i.type}-${i.id}`] : [`SERVICE-${i.id}`, `PART-${i.id}`]))
         );
         const hasInvalidSelection = data.warranty_item_ids.some((rawId) => {
@@ -644,13 +644,11 @@ export class AppointmentService {
    * Chuyển Appointment → ARRIVED + Tạo IntakeRecord → QUEUED trong cùng transaction
    */
   async arriveAppointment(
-    id: number, 
-    createdById?: number, 
-    arrivalData?: { 
-      odometerReading?: number; 
-      parentWorkOrderId?: number; 
-      goodwillClaimId?: number; 
-      symptoms?: string; 
+    id: number,
+    createdById?: number,
+    arrivalData?: {
+      parentWorkOrderId?: number;
+      symptoms?: string;
       evidenceUrls?: string[];
     }
   ) {
@@ -677,33 +675,6 @@ export class AppointmentService {
 
     const isWarrantyApt = Boolean(appointment.is_warranty);
     const intakeType = isWarrantyApt ? 'WARRANTY' : 'APPOINTMENT';
-    const odo = arrivalData?.odometerReading !== undefined ? arrivalData.odometerReading : null;
-
-    if (isWarrantyApt) {
-      if (odo === null || odo === undefined || isNaN(odo) || odo < 0) {
-        throw new Error('Vui lòng nhập số km ODO hiện tại của xe khi tiếp nhận bảo hành.');
-      }
-      if (arrivalData?.parentWorkOrderId) {
-        await warrantyService.validateOdoIntake(arrivalData.parentWorkOrderId, odo);
-      }
-      if (arrivalData?.goodwillClaimId) {
-        const claim = await prisma.goodwillClaim.findUnique({
-          where: { id: Number(arrivalData.goodwillClaimId) },
-        });
-        if (!claim) {
-          throw new Error('Không tìm thấy hồ sơ bảo hành thiện chí.');
-        }
-        if (claim.vehicle_id !== appointment.vehicle_id) {
-          throw new Error('Hồ sơ bảo hành thiện chí không thuộc về phương tiện này.');
-        }
-        if (claim.status !== 'APPROVED') {
-          throw new Error('Hồ sơ bảo hành thiện chí chưa được Quản lý phê duyệt.');
-        }
-        if (claim.intake_id) {
-          throw new Error('Hồ sơ bảo hành thiện chí này đã được sử dụng cho phiếu tiếp nhận khác.');
-        }
-      }
-    }
 
     const result = await prisma.$transaction(async (tx) => {
       // Cập nhật trạng thái lịch hẹn → ARRIVED
@@ -721,10 +692,8 @@ export class AppointmentService {
       if (isWarrantyApt) {
         const extraWarrantyLines = [
           `[TIẾP NHẬN BẢO HÀNH TỪ LỊCH HẸN #${appointment.id}]`,
-          `ODO tiếp nhận: ${odo?.toLocaleString('vi-VN')} km`,
           arrivalData?.parentWorkOrderId ? `Phiếu dịch vụ gốc: #${arrivalData.parentWorkOrderId}` : null,
           arrivalData?.symptoms ? `Hiện tượng sự cố thực tế: ${arrivalData.symptoms.trim()}` : null,
-          arrivalData?.goodwillClaimId ? `Bảo hành thiện chí Claim #${arrivalData.goodwillClaimId}` : null,
         ].filter(Boolean).join('\n');
         intakeNotes = intakeNotes ? `${intakeNotes}\n\n${extraWarrantyLines}` : extraWarrantyLines;
       }
@@ -738,7 +707,6 @@ export class AppointmentService {
           status: 'QUEUED',
           arrived_at: new Date(),
           notes: intakeNotes || null,
-          odometer_reading: odo,
           created_by_id: createdById || appointment.customer_id,
         },
         include: {
@@ -748,13 +716,6 @@ export class AppointmentService {
           services: { include: { service: true } },
         },
       });
-
-      if (arrivalData?.goodwillClaimId) {
-        await tx.goodwillClaim.update({
-          where: { id: arrivalData.goodwillClaimId },
-          data: { intake_id: intakeRecord.id },
-        });
-      }
 
       // Copy services từ Appointment sang IntakeRecord
       if (updatedAppointment.services && updatedAppointment.services.length > 0) {
@@ -781,8 +742,8 @@ export class AppointmentService {
       return { appointment: updatedAppointment, intakeRecord };
     });
 
-    const plate = result.intakeRecord?.vehicle?.license_plate || appointment.vehicle?.license_plate || '';
-    const customerName = result.intakeRecord?.customer?.full_name || appointment.customer?.full_name || '';
+    const plate = appointment.vehicle?.license_plate || '';
+    const customerName = appointment.customer?.full_name || '';
     notificationService
       .sendInAppToRoles(['SA'], {
         type: 'CHECKIN_READY',

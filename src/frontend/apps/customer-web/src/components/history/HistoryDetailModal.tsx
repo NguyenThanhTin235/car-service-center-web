@@ -3,7 +3,7 @@
 import React from 'react';
 import { RootState } from '@/store';
 import { RepairHistoryItem } from '@/store/slices/historySlice';
-import { formatVnd, parseComplaintText, parseSafeText } from '@/utils/customerHelpers';
+import { formatFuelLevel, formatVnd, parseComplaintText, parseSafeText } from '@/utils/customerHelpers';
 
 const DEFAULT_COMPLAINT_FALLBACK = 'Kiểm tra bảo dưỡng định kỳ tổng quát phương tiện';
 
@@ -209,7 +209,7 @@ export default function HistoryDetailModal({
                         <div className="p-2.5 rounded-xl bg-slate-50">
                           <span className="text-slate-400 block">Mức nhiên liệu vào:</span>
                           <span className="font-bold text-slate-800">
-                            {detail.checkIn?.fuelLevel || 'Theo xe'}
+                            {formatFuelLevel(detail.checkIn?.fuelLevel)}
                           </span>
                         </div>
                         <div className="p-2.5 rounded-xl bg-slate-50 col-span-2 sm:col-span-1">

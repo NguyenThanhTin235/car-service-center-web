@@ -199,7 +199,6 @@ describe('Warranty Work Order, Quotation 0đ & Invoice 0đ (UC-84 & UC-85)', () 
           data: expect.objectContaining({
             is_warranty: true,
             warranty_months: 12,
-            warranty_mileage: 10000,
           }),
         })
       );
@@ -266,6 +265,67 @@ describe('Warranty Work Order, Quotation 0đ & Invoice 0đ (UC-84 & UC-85)', () 
       expect(Number(quote.lines[1].snapshotUnitPrice)).toBe(0);
       expect(quote.lines[0].description).toContain('[Bảo hành]');
       expect(quote.lines[1].description).toContain('[Bảo hành]');
+    });
+
+    it('WAR-QTO-01B: Tách biệt bảo hành tiền công và phụ tùng (job.is_warranty=true, part.is_warranty=false => công 0đ, phụ tùng tính phí)', async () => {
+      prismaMock.workOrder.findUnique.mockResolvedValue({
+        id: 205,
+        wo_number: 'WO-205',
+        order_type: 'WARRANTY',
+        status: 'IN_PLANNING',
+        customer: { id: 10, full_name: 'Nguyễn Văn A' },
+        vehicle: { id: 20, license_plate: '51G-123.45', vehicle_size: 'MEDIUM' },
+        services: [
+          {
+            id: 1,
+            name: 'Thay bugi',
+            pricing_type: 'LABOUR_PARTS',
+            jobs: [
+              {
+                id: 505,
+                name: 'Thay bugi đánh lửa',
+                is_warranty: true,
+                labours: [
+                  { id: 15, description: 'Công thay bugi', price: 200000 },
+                ],
+                parts: [
+                  {
+                    id: 805,
+                    is_warranty: false,
+                    planned_quantity: 4,
+                    unit_price: 150000,
+                    item: {
+                      sku: 'SPARK-01',
+                      part_category: { name: 'Bugi' },
+                      brand: { name: 'NGK' },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      prismaMock.quotation.findMany.mockResolvedValue([]);
+      prismaMock.quotation.create.mockImplementation(({ data }: any) =>
+        Promise.resolve({
+          id: 305,
+          quotation_number: 'QTO-2026-00305',
+          ...data,
+          lines: data.lines.create,
+        })
+      );
+
+      const quote = await quotationService.createQuotation(205, 99);
+      const labourLine = quote.lines.find((l: any) => l.lineType === 'LABOUR');
+      const partLine = quote.lines.find((l: any) => l.lineType === 'PART');
+
+      expect(Number(labourLine.snapshotUnitPrice)).toBe(0);
+      expect(labourLine.description).toContain('[Bảo hành]');
+      expect(Number(partLine.snapshotUnitPrice)).toBe(150000);
+      expect(partLine.description).not.toContain('[Bảo hành]');
+      expect(Number(quote.grandTotal)).toBe(600000);
     });
 
     it('WAR-QTO-02: Báo giá cho phiếu hỗn hợp (MIXED) giữ nguyên 0đ cho bảo hành và tính tiền cho dịch vụ thông thường', async () => {

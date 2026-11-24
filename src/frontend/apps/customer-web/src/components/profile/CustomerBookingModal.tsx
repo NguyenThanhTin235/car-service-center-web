@@ -110,6 +110,7 @@ export default function CustomerBookingModal({
     initialWarrantyItemIds || []
   );
   const [symptomsDescription, setSymptomsDescription] = useState<string>('');
+  const [warrantyDescError, setWarrantyDescError] = useState<string>('');
 
   useEffect(() => {
     if (!isWarranty || !bookingVehicleId) {
@@ -119,12 +120,10 @@ export default function CustomerBookingModal({
     const controller = new AbortController();
     setWarrantyLoading(true);
     warrantyApi
-      .getVehicleWarrantyEligibility(bookingVehicleId, undefined, controller.signal)
+      .getVehicleWarrantyEligibility(bookingVehicleId, controller.signal)
       .then((res) => {
         if (controller.signal.aborted) return;
-        const eligible = (res.items || []).filter(
-          (i) => i.status === 'VALID' || i.status === 'OVERDUE_LIGHT'
-        );
+        const eligible = (res.items || []).filter((i) => i.status === 'VALID');
         setWarrantyItems(eligible);
       })
       .catch((err) => {
@@ -517,7 +516,7 @@ export default function CustomerBookingModal({
               <div className="flex items-center gap-2.5">
                 <span className="material-symbols-outlined text-accent text-xl">verified_user</span>
                 <div>
-                  <div className="text-xs font-bold text-slate-900">Đặt lịch bảo hành (0đ / Thiện chí)</div>
+                  <div className="text-xs font-bold text-slate-900">Đặt lịch bảo hành (0đ)</div>
                   <div className="text-[11px] text-slate-500">Chọn hạng mục đã thực hiện còn hạn bảo hành trên xe</div>
                 </div>
               </div>
@@ -574,7 +573,7 @@ export default function CustomerBookingModal({
                           <div className="min-w-0 flex-1">
                             <div className="font-bold text-xs text-slate-900">{item.name}</div>
                             <div className="text-[11px] text-slate-500 mt-0.5 font-mono">
-                              {item.woNumber} • {item.status === 'VALID' ? 'Còn bảo hành' : 'Quá hạn nhẹ'}
+                              {item.woNumber} • Còn hạn ({item.warrantyMonths} tháng)
                             </div>
                           </div>
                         </button>
@@ -590,10 +589,23 @@ export default function CustomerBookingModal({
                   <textarea
                     rows={3}
                     value={symptomsDescription}
-                    onChange={(e) => setSymptomsDescription(e.target.value)}
-                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none leading-relaxed"
+                    onChange={(e) => {
+                      setSymptomsDescription(e.target.value);
+                      if (warrantyDescError) setWarrantyDescError('');
+                    }}
+                    className={`w-full p-3.5 rounded-2xl text-xs focus:outline-none resize-none leading-relaxed transition-colors ${
+                      warrantyDescError
+                        ? 'bg-rose-50/30 border-2 border-rose-400 text-rose-900 focus:border-rose-500 ring-2 ring-rose-400/20'
+                        : 'bg-slate-50 border border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
                     placeholder="Ví dụ: Tiếng kêu cọt kẹt khi phanh gấp, đèn báo lỗi động cơ..."
                   />
+                  {warrantyDescError && (
+                    <p className="mt-1.5 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">error</span>
+                      <span>{warrantyDescError}</span>
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -932,12 +944,25 @@ export default function CustomerBookingModal({
                   onToast({ message: 'Vui lòng chọn xe hoặc nhập biển số xe để tiếp tục.', type: 'error' });
                   return;
                 }
-                if (bookingStep === 2 && selectedServiceIds.length === 0 && !bookingNotes.trim()) {
-                  onToast({
-                    message: 'Vui lòng chọn ít nhất 1 dịch vụ hoặc nhập mô tả tình trạng xe để tiếp tục.',
-                    type: 'error',
-                  });
-                  return;
+                if (bookingStep === 2) {
+                  if (isWarranty) {
+                    if (selectedWarrantyItemIds.length === 0) {
+                      onToast({ message: 'Vui lòng chọn ít nhất 1 hạng mục bảo hành.', type: 'error' });
+                      return;
+                    }
+                    if (!symptomsDescription.trim()) {
+                      const msg = 'Vui lòng mô tả hiện tượng sự cố cần bảo hành.';
+                      setWarrantyDescError(msg);
+                      onToast({ message: msg, type: 'error' });
+                      return;
+                    }
+                  } else if (selectedServiceIds.length === 0 && !bookingNotes.trim()) {
+                    onToast({
+                      message: 'Vui lòng chọn ít nhất 1 dịch vụ hoặc nhập mô tả tình trạng xe để tiếp tục.',
+                      type: 'error',
+                    });
+                    return;
+                  }
                 }
                 setBookingStep((bookingStep + 1) as any);
               }}
