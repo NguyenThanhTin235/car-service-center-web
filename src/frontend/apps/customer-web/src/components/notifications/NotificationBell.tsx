@@ -45,6 +45,17 @@ export default function NotificationBell() {
     return () => clearTimeout(timer);
   }, [dispatch, latestRealtime]);
 
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open]);
+
   const handleToggle = () => {
     const nextOpen = !open;
     setOpen(nextOpen);
@@ -80,22 +91,23 @@ export default function NotificationBell() {
         type="button"
         onClick={handleToggle}
         aria-label="Thông báo"
+        aria-expanded={open}
         title="Thông báo"
-        className="relative p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
+        className="relative min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer"
       >
         <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>
           notifications
         </span>
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-error text-on-error text-[10px] font-bold flex items-center justify-center leading-none ring-2 ring-surface-container-lowest">
+          <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-error text-on-error text-[10px] font-bold flex items-center justify-center leading-none ring-2 ring-surface-container-lowest">
             {badgeText}
           </span>
         )}
       </button>
 
-      {/* Subtle Real-time Toast Banner */}
+      {/* Subtle Real-time Toast Banner (offset above AI Chat FAB) */}
       {latestRealtime && !open && (
-        <div className="fixed bottom-4 right-4 z-50 w-80 max-w-[calc(100vw-2rem)] bg-surface-container-lowest border border-primary/30 rounded-xl shadow-lg p-3.5 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-20 sm:bottom-24 right-4 sm:right-6 z-50 w-80 max-w-[calc(100vw-2rem)] bg-surface-container-lowest border border-primary/30 rounded-xl shadow-lg p-3.5 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
           <div className="w-8 h-8 rounded-full bg-primary-fixed text-primary flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
               notifications_active

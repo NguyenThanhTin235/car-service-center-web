@@ -45,16 +45,16 @@ export default function TablePagination({
       className={`px-5 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200/80 bg-slate-50/40 ${className}`}
     >
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-slate-600 tabular-nums">
           {currentCount !== undefined ? (
             <>
-              Hiển thị <span className="font-mono font-bold text-slate-700">{currentCount}</span>{' '}
-              trong <span className="font-mono font-bold text-slate-700">{totalRecords}</span>{' '}
+              Hiển thị <span className="font-mono tabular-nums font-bold text-slate-700">{currentCount}</span>{' '}
+              trong <span className="font-mono tabular-nums font-bold text-slate-700">{totalRecords}</span>{' '}
               {recordLabel}
             </>
           ) : (
             <>
-              Tổng <span className="font-mono font-bold text-slate-700">{totalRecords}</span>{' '}
+              Tổng <span className="font-mono tabular-nums font-bold text-slate-700">{totalRecords}</span>{' '}
               {recordLabel}
             </>
           )}
@@ -80,7 +80,7 @@ export default function TablePagination({
       </div>
 
       {totalPages > 1 && (
-        <nav aria-label="Phân trang" className="flex items-center gap-1">
+        <nav aria-label="Phân trang" className="flex flex-wrap items-center justify-center gap-1">
           <button
             type="button"
             aria-label="Trang trước"

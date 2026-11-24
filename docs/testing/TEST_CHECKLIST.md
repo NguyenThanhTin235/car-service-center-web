@@ -18,13 +18,16 @@
 2. [Checklist Chuẩn bị Môi trường & Tiền điều kiện Kiểm thử](#2-checklist-chuẩn-bị-môi-trường--tiền-điều-kiện-kiểm-thử)
 3. [Checklist Định hướng Kiểm thử Tự động (Automated Testing Strategy)](#3-checklist-định-hướng-kiểm-thử-tự-động-automated-testing-strategy)
 4. [Checklist Định hướng Kiểm thử Hộp trắng (White-box Testing Scope - 10 Hàm Cốt lõi)](#4-checklist-định-hướng-kiểm-thử-hộp-trắng-white-box-testing-scope---10-hàm-cốt-lõi)
-5. [Checklist Bao phủ Nghiệp vụ Chức năng theo Tác nhân & Use Case](#5-checklist-bao-phủ-nghiệp-vụ-chức-năng-theo-tác-nhân--use-case)
+5. [Checklist Bao phủ Nghiệp vụ Chức năng theo Tác nhân & Use Case (9 Phân hệ)](#5-checklist-bao-phủ-nghiệp-vụ-chức-năng-theo-tác-nhân--use-case)
    - [5.1 Phân hệ Xác thực, Phân quyền & Quản lý Phiên (UC-01 → UC-05, UC-54 → UC-61)](#51-phân-hệ-xác-thực-phân-quyền--quản-lý-phiên-uc-01--uc-05-uc-54--uc-61)
-   - [5.2 Phân hệ Cổng Khách hàng Trực tuyến & Phương tiện (UC-06 → UC-16, UC-80)](#52-phân-hệ-cổng-khách-hàng-trực-tuyến--phương-tiện-uc-06--uc-16-uc-80)
+   - [5.2 Phân hệ Cổng Khách hàng Trực tuyến & Phương tiện (UC-06 → UC-10, UC-80)](#52-phân-hệ-cổng-khách-hàng-trực-tuyến--phương-tiện-uc-06--uc-16-uc-80)
    - [5.3 Phân hệ Quản lý Lịch hẹn & Tiếp nhận xe tại Quầy (UC-11 → UC-25, UC-79)](#53-phân-hệ-quản-lý-lịch-hẹn--tiếp-nhận-xe-tại-quầy-uc-11--uc-25-uc-79)
    - [5.4 Phân hệ Phiếu công việc, Sơ đồ 2D & Cố vấn Dịch vụ (UC-26, UC-29 → UC-43)](#54-phân-hệ-phiếu-công-việc-sơ-đồ-2d--cố-vấn-dịch-vụ-uc-26-uc-29--uc-43)
-   - [5.5 Phân hệ Quản lý Kho, Vật tư & Vận hành Xưởng (UC-44 → UC-53, UC-86, UC-87)](#55-phân-hệ-quản-lý-kho-vật-tư--vận-hành-xưởng-uc-44--uc-53-uc-86-uc-87)
+   - [5.5 Phân hệ Quản lý Kho, Vật tư & Vận hành Xưởng (UC-44 → UC-53)](#55-phân-hệ-quản-lý-kho-vật-tư--vận-hành-xưởng-uc-44--uc-53-uc-86-uc-87)
    - [5.6 Phân hệ Quản trị Dữ liệu chủ & Cấu hình Hệ thống (UC-54 → UC-78)](#56-phân-hệ-quản-trị-dữ-liệu-chủ--cấu-hình-hệ-thống-uc-54--uc-78)
+   - [5.7 Phân hệ Kế toán / Thu ngân, Hóa đơn & Thanh toán (UC-16, UC-26 → UC-28, FDS-B05, FDS-B06)](#57-phân-hệ-kế-toán--thu-ngân-hóa-đơn--thanh-toán-uc-16-uc-26--uc-28-fds-b05-fds-b06-qđ-fds05-qđ-fds06)
+   - [5.8 Phân hệ Quản lý Bảo hành sau Sửa chữa E2E (UC-81 → UC-86)](#58-phân-hệ-quản-lý-bảo-hành-sau-sửa-chữa-e2e-uc-81--uc-86-cus-b11-cus-b12-fds-b07-fds-b08-mgr-b12)
+   - [5.9 Phân hệ Bảng điều hành (Dashboard) đa vai trò & Báo cáo Phân tích Quản trị (UC-15, UC-16, UC-44, UC-54, UC-78, UC-86)](#59-phân-hệ-bảng-điều-hành-dashboard-đa-vai-trò--báo-cáo-phân-tích-quản-trị-uc-15-uc-16-uc-44-uc-54-uc-78-uc-86)
 6. [Checklist Các Chốt chặn Nghiệp vụ Cốt lõi (Critical Business Gates)](#6-checklist-các-chốt-chặn-nghiệp-vụ-cốt-lõi-critical-business-gates)
 7. [Checklist Tiêu chuẩn Nghiệm thu Đề tài (Acceptance Criteria AC-01 → AC-07)](#7-checklist-tiêu-chuẩn-nghiệm-thu-đề-tài-acceptance-criteria-ac-01--ac-07)
 8. [Checklist Quy trình Theo dõi & Bàn giao Sản phẩm Kiểm thử](#8-checklist-quy-trình-theo-dõi--bàn-giao-sản-phẩm-kiểm-thử)
@@ -333,7 +336,7 @@ Tài liệu này được lập ở giai đoạn **Test Planning & Design** (nga
   - [ ] Cho phép bàn giao xe khi thỏa mãn đồng thời 3 điều kiện: Việc xong + Pass QC + Đã thanh toán.
   - [ ] Kiểm tra đối chiếu ODO xuất xưởng $\ge$ ODO tiếp nhận; thu thập chữ ký bàn giao điện tử.
 
-### 5.5 Phân hệ Quản lý Kho, Vật tư & Vận hành Xưởng (UC-44 → UC-53, UC-86, UC-87)
+### 5.5 Phân hệ Quản lý Kho, Vật tư & Vận hành Xưởng (UC-44 → UC-53, UC-86)
 - [ ] **Quản lý Danh mục & Mã Phụ tùng SKU (UC-45 → UC-52):**
   - [ ] Khởi tạo nhóm danh mục phụ tùng; chặn trùng mã danh mục.
   - [ ] Chặn xóa danh mục phụ tùng đang chứa các mặt hàng phụ tùng con.
@@ -355,7 +358,7 @@ Tài liệu này được lập ở giai đoạn **Test Planning & Design** (nga
   - [ ] Lập phiếu kiểm kê điều chỉnh kho tăng/giảm bắt buộc có lý do giải trình và duyệt bởi Quản lý.
   - [ ] Bảng điều hành xưởng theo thời gian thực: Giám sát 4 chỉ số KPI cốt lõi và danh sách xe đang sửa.
   - [ ] Cảnh báo các công việc chậm tiến độ thi công quá 8 giờ làm việc.
-- [ ] **Closure Gate, Báo cáo & Bảo hành Thiện chí (MGR-B10, UC-54, UC-86, UC-87):**
+- [ ] **Closure Gate & Báo cáo Bảo hành (MGR-B10, UC-54, UC-86):**
   - [ ] Closure Gate: Chỉ đóng hồ sơ vĩnh viễn khi xe đã giao + không nợ tiền + 0 việc mở.
   - [ ] Báo cáo vận hành: Doanh thu theo thời gian, Cơ cấu dịch vụ phổ biến, Cảnh báo thiếu hụt kho.
   - [ ] Phê duyệt bảo hành thiện chí (Goodwill Warranty) 0đ cho khách hàng và hạch toán chi phí vốn.
@@ -383,6 +386,85 @@ Tài liệu này được lập ở giai đoạn **Test Planning & Design** (nga
   - [ ] Báo cáo tổng hợp số lượng tài khoản, tổng doanh thu và biểu đồ tăng trưởng trung tâm.
 
 ---
+
+
+### 5.7 Phân hệ Kế toán / Thu ngân, Hóa đơn & Thanh toán (UC-16, UC-26 → UC-28, FDS-B05, FDS-B06, QĐ-FDS05, QĐ-FDS06)
+- [ ] **Hàng đợi Thanh toán & 4 Tab Trạng thái (FDS-B05, UC-26):**
+  - [ ] Giám sát 4 chỉ số tổng quan: Doanh thu đã thu hôm nay, Hóa đơn chờ lập, Hóa đơn nháp, Hóa đơn chờ thanh toán.
+  - [ ] Chuyển đổi giữa 4 Tab nghiệp vụ: Chờ lập hóa đơn (PENDING), Hóa đơn nháp (DRAFT), Đã phát hành (ISSUED), Đã thanh toán (PAID).
+  - [ ] Tìm kiếm tức thời theo Biển số xe, Tên khách hàng hoặc Mã hóa đơn; hỗ trợ phân trang bảng dữ liệu.
+- [ ] **Khởi tạo Hóa đơn Nháp từ Phiếu công việc KCS Đạt (QĐ-FDS05, UC-27):**
+  - [ ] Tạo hóa đơn nháp từ phiếu công việc hoàn thành và đạt kiểm định KCS 100%.
+  - [ ] Chặn tuyệt đối việc tạo hóa đơn khi phiếu chưa hoàn thành hoặc chưa đạt KCS.
+  - [ ] Chặn tạo trùng lặp 2 hóa đơn cho cùng một phiếu công việc đang xử lý.
+  - [ ] Tự động đối soát phụ tùng thực dùng (Số lượng xuất kho - Số lượng hoàn trả kho) và đơn giá đóng băng từ báo giá.
+- [ ] **Điều chỉnh Chiết khấu Quầy & Phát hành Hóa đơn (Discount Editor & Freeze upon Issue):**
+  - [ ] Áp dụng chiết khấu quầy theo tiền mặt (VNĐ) hoặc tỷ lệ phần trăm (%) kèm bắt buộc nhập lý do giải trình $\ge 3$ ký tự.
+  - [ ] Ràng buộc: Số tiền chiết khấu không được vượt quá tổng tiền dịch vụ (tiền phải thu không âm); tỷ lệ trong khoảng 0% – 100%.
+  - [ ] Xác nhận phát hành hóa đơn (DRAFT $\to$ ISSUED): Đóng băng vĩnh viễn toàn bộ dòng chi phí, phụ tùng, nhân công và thuế VAT ở chế độ chỉ đọc.
+  - [ ] Tự động đồng bộ hóa đơn đã phát hành sang Cổng thông tin khách hàng.
+- [ ] **Thanh toán Đa phương thức & Quyết toán Từng phần (UC-28, FDS-B06):**
+  - [ ] Thu tiền mặt: Tự động tính tiền thối; chặn xác nhận khi số tiền khách đưa nhỏ hơn số tiền cần thu.
+  - [ ] Quẹt thẻ ngân hàng qua máy POS: Nhập mã giao dịch đối soát hợp lệ.
+  - [ ] Chuyển khoản VietQR động (SePay): Tạo mã QR động kèm mã tham chiếu và nhận xác nhận tự động.
+  - [ ] Thanh toán từng phần (Partial Payment): Ghi nhận số dư còn nợ (`amountDue`), hỗ trợ thu nhiều đợt đến khi đủ 100%.
+- [ ] **Financial Clearance & Mở Release Gate (QĐ-FDS06):**
+  - [ ] Khi hóa đơn thanh toán đủ 100% (PAID), tự động cấp quyền Financial Clearance chuyển phiếu việc sang "Đủ điều kiện xuất xưởng".
+  - [ ] Mở khóa hộp thoại Bàn giao xe xuất xưởng cho Cố vấn dịch vụ.
+- [ ] **Hủy Hóa đơn & Xuất bản Chứng từ PDF:**
+  - [ ] Hủy hóa đơn nháp hoặc chưa thanh toán kèm lý do hủy bắt buộc $\ge 3$ ký tự; đưa phiếu việc trở lại hàng đợi chờ lập.
+  - [ ] Khóa tuyệt đối nút hủy đối với hóa đơn đã thanh toán hoàn tất (PAID) nhằm chống thất thoát tài chính.
+  - [ ] In ấn hóa đơn / Xuất chứng từ biên lai điện tử định dạng PDF chuẩn văn phòng.
+
+### 5.8 Phân hệ Quản lý Bảo hành sau Sửa chữa E2E (UC-81 → UC-86, CUS-B11, CUS-B12, FDS-B07, FDS-B08, MGR-B12)
+- [ ] **Tra cứu Điều kiện & Thời hạn Bảo hành (UC-81, CUS-B11, QĐ-CUS11):**
+  - [ ] Tự động đối chiếu ngày hiện tại với chính sách bảo hành theo tháng (`warranty_months`).
+  - [ ] Hiển thị nhãn xanh *"Còn hạn"* (kèm ngày hết hạn, số ngày còn lại) hoặc nhãn xám *"Quá hạn"*.
+  - [ ] Tra cứu nhanh theo Biển số xe hoặc danh sách xe; xử lý trạng thái rỗng khi xe chưa có lịch sử dịch vụ.
+- [ ] **Đặt Lịch hẹn Bảo hành Trực tuyến (UC-82, CUS-B12, QĐ-CUS12):**
+  - [ ] Khách hàng tích chọn linh kiện còn hạn bảo hành để đặt lịch hẹn phân loại `WARRANTY`.
+  - [ ] Bắt buộc nhập mô tả triệu chứng hư hỏng và đính kèm hình ảnh minh chứng.
+  - [ ] Chặn tuyệt đối đặt lịch hẹn bảo hành khi chọn các hạng mục đã quá hạn cam kết.
+- [ ] **Tiếp nhận Xe Bảo hành tại Quầy Dịch vụ (UC-83, FDS-B07, QĐ-FDS07):**
+  - [ ] Tiếp nhận theo lịch hẹn bảo hành hoặc tiếp nhận đột xuất Walk-in, liên kết với phiếu dịch vụ gốc (`Parent Work Order`).
+  - [ ] Kiểm tra thời hạn bảo hành theo tháng của phiếu gốc; chặn tiếp nhận nếu toàn bộ hạng mục đã quá hạn.
+- [ ] **Lập Phiếu Công việc & Báo giá 0 đồng (UC-84, SA-B02):**
+  - [ ] Khởi tạo phiếu công việc loại `WARRANTY`, liên kết phiếu cha; gắn cờ bảo hành (`is_warranty = true`) cho công việc và phụ tùng.
+  - [ ] Tự động áp dụng đơn giá 0 đồng (`0 VNĐ`) cho toàn bộ hạng mục bảo hành (Zero-Price Policy).
+  - [ ] Hỗ trợ phiếu công việc kết hợp: Hạng mục bảo hành tính 0đ, dịch vụ phát sinh ngoài tính theo giá niêm yết chuẩn.
+  - [ ] Cảnh báo thiếu kho khi phụ tùng bảo hành cần thay thế có tồn khả dụng bằng 0.
+- [ ] **Thi công, Nghiệm thu KCS & Quyết toán Hóa đơn 0đ (UC-85, FDS-B08, QĐ-FDS08):**
+  - [ ] Kỹ thuật viên thi công và kiểm định KCS đạt chuẩn 100%.
+  - [ ] Phát hành hóa đơn bảo hành 0 đồng: Hệ thống tự động chuyển PAID và tự cấp Financial Clearance mở Release Gate mà không cần thu tiền.
+- [ ] **Bàn giao Xe, Cấp Bảo hành Mới & Báo cáo Quản trị (UC-43, UC-81, UC-86, MGR-B12):**
+  - [ ] Hoàn tất bàn giao xe; tự động kích hoạt chu kỳ bảo hành độc lập mới (theo tháng) cho linh kiện thay thế trong Sổ bảo dưỡng điện tử.
+  - [ ] Báo cáo phân tích chi phí vốn bảo hành nội bộ theo Moving WAC và xếp hạng linh kiện lỗi lặp lại.
+  - [ ] Bảo mật phân quyền: Chặn nhân viên kỹ thuật hoặc khách hàng truy cập báo cáo chi phí bảo hành.
+
+### 5.9 Phân hệ Bảng điều hành (Dashboard) đa vai trò & Báo cáo Phân tích Quản trị (UC-15, UC-16, UC-44, UC-54, UC-78, UC-86)
+- [ ] **Dashboard Tổng quan Khách hàng (UC-15, UC-16):**
+  - [ ] Thẻ theo dõi xe đang phục vụ, tiến độ sửa chữa trực quan theo %, thẻ tóm tắt nhanh (Bento Cards).
+  - [ ] Lối tắt điều hướng nhanh đến lịch hẹn, hóa đơn và lịch sử xe; xử lý trạng thái bình thường khi không có xe làm dịch vụ.
+- [ ] **Dashboard Bảng điều hành Quầy Dịch vụ (Front Desk Shift):**
+  - [ ] Giám sát 4 chỉ số KPI ca trực: Lịch hẹn hôm nay, Xe chờ tiếp nhận, Xe sửa xong, Doanh thu tạm tính ca.
+  - [ ] Cảnh báo xe chờ tiếp nhận quá thời gian quy định (< 15 phút); thao tác làm mới số liệu tức thì.
+- [ ] **Dashboard Bảng điều phối Cố vấn Dịch vụ (SA Dispatch):**
+  - [ ] Theo dõi toàn bộ lệnh sửa chữa đang phụ trách phân theo từng giai đoạn; cảnh báo trễ tiến độ cam kết giao xe.
+  - [ ] Mở nhanh chi tiết tiếp nhận hoặc phiếu sửa chữa bằng 1 chạm từ thẻ bảng điều phối.
+- [ ] **Bảng Giám sát Xưởng Thời gian thực của Quản lý (UC-44, QĐ-MGR01):**
+  - [ ] Giám sát 4 chỉ số KPI cốt lõi: Tổng số xe đang xử lý, Xe chờ duyệt báo giá, Xe chờ thanh toán, Việc chậm tiến độ > 8 giờ.
+  - [ ] Bảng tiến độ chi tiết từng công việc con (Jobs); lọc xe theo từng trạng thái cụ thể; hiển thị thân thiện khi xưởng trống.
+- [ ] **Bảng điều khiển Tổng quan Doanh nghiệp (Executive Admin Dashboard - UC-78):**
+  - [ ] Biểu đồ tăng trưởng doanh số theo tháng; cơ cấu nhân sự theo vai trò; nhật ký hoạt động hệ thống gần đây.
+- [ ] **Hệ thống Báo cáo Quản trị Vận hành & Phân tích (UC-54, MGR-B08, MGR-B11, UC-86):**
+  - [ ] Báo cáo Doanh thu Dịch vụ: Biểu đồ cột theo ngày/tháng, lọc mốc nhanh (7 ngày, 30 ngày, tháng này), xử lý khoảng ngày không có số liệu.
+  - [ ] Báo cáo Cơ cấu Dịch vụ Phổ biến: Biểu đồ thanh ngang xếp hạng tần suất và tỷ trọng doanh số đóng góp.
+  - [ ] Báo cáo Cảnh báo Thiếu hụt Kho & Tồn an toàn: Danh sách phụ tùng dưới mức an toàn, số lượng thiếu hụt cần đặt hàng gấp.
+  - [ ] Báo cáo Đối soát Thẻ kho chi tiết (Stock Movement & Ledger Audit): Lịch sử biến động và bảo toàn tính liên tục số dư.
+  - [ ] Báo cáo Định giá Tài sản Tồn kho theo giá vốn bình quân di động (Moving WAC).
+  - [ ] Báo cáo Năng suất & Giờ công Kỹ thuật viên; Báo cáo Tỷ lệ công việc phải sửa lại do KCS trượt.
+  - [ ] Báo cáo Tỷ lệ chốt Báo giá của Cố vấn; Báo cáo Khảo sát Hài lòng Khách hàng (CSAT).
+  - [ ] Tính năng Xuất dữ liệu báo cáo ra tệp bảng tính (Excel/CSV) và In ấn / Xuất bản báo cáo chuẩn văn phòng (PDF).
 
 ## 6. CHECKLIST CÁC CHỐT CHẶN NGHIỆP VỤ CỐT LÕI (CRITICAL BUSINESS GATES)
 
@@ -431,7 +513,7 @@ Tài liệu này được lập ở giai đoạn **Test Planning & Design** (nga
 ### 8.2 Danh mục Tài liệu Bàn giao Nghiệm thu (Test Deliverables)
 - [ ] Kế hoạch kiểm thử tổng thể (Test Plan) hoàn thiện theo chuẩn môn học.
 - [ ] Bảng Checklist thiết kế & bao phủ kiểm thử (tài liệu này) được cập nhật trạng thái thực thi.
-- [ ] Bộ 6 tài liệu kịch bản kiểm thử thủ công chi tiết (Manual Test Cases Suites).
+- [ ] Bộ 9 tài liệu kịch bản kiểm thử thủ công chi tiết (Manual Test Cases Suites – 407 kịch bản).
 - [ ] Tài liệu phân tích kiểm thử hộp trắng (White-box Testing Analysis) cho 10 hàm nghiệp vụ cốt lõi.
 - [ ] Bộ mã nguồn kiểm thử tự động (Unit, Integration, E2E Playwright) và tài liệu hướng dẫn vận hành.
 - [ ] Báo cáo tổng kết kết quả kiểm thử (Test Summary & Defect Report) phục vụ bảo vệ đồ án.

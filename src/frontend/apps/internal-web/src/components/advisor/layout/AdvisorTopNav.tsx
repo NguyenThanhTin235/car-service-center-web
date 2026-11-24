@@ -6,21 +6,18 @@ import Link from 'next/link';
 import LogoutButton from '@/components/shared/LogoutButton';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import UserAvatarMenu from '@/components/layout/UserAvatarMenu';
-import toast from 'react-hot-toast';
 
 export interface NavItemConfig {
   name: string;
   shortName: string;
   href: string;
   icon: string;
-  comingSoon?: boolean;
 }
 
 export const SA_NAV_ITEMS: NavItemConfig[] = [
   { name: 'Trang chủ', shortName: 'Trang chủ', href: '/advisor', icon: 'space_dashboard' },
   { name: 'Danh sách xe đang chờ', shortName: 'Hàng chờ', href: '/advisor/intake-queue', icon: 'directions_car' },
   { name: 'Phiếu công việc', shortName: 'Phiếu CV', href: '/advisor/work-orders', icon: 'assignment' },
-  { name: 'Khách hàng', shortName: 'Khách hàng', href: '/advisor/customers', icon: 'group', comingSoon: true },
   { name: 'Phân tích & KPI', shortName: 'Phân tích', href: '/advisor/dashboard', icon: 'monitoring' },
 ];
 
@@ -36,15 +33,6 @@ export default function AdvisorTopNav() {
       return pathname.startsWith('/advisor/work-order');
     }
     return pathname.startsWith(item.href);
-  };
-
-  const handleNavClick = (e: React.MouseEvent, item: NavItemConfig) => {
-    if (item.comingSoon) {
-      e.preventDefault();
-      toast(`Phân hệ "${item.name}" đang được hoàn thiện cho kỳ phát hành tiếp theo.`, {
-        icon: 'ℹ️',
-      });
-    }
   };
 
   const handleQuickSearchSubmit = (e: React.FormEvent) => {
@@ -67,24 +55,23 @@ export default function AdvisorTopNav() {
         {/* Top Brand Icon Pill */}
         <Link
           href="/advisor"
-          title="AutoCare ERP — Cố vấn dịch vụ"
-          className="w-12 h-12 rounded-2xl bg-[#0050cd] hover:bg-[#0866ff] text-white flex items-center justify-center shadow-md shadow-[#0050cd]/25 transition-all active:scale-95 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40"
+          title="AutoCare Pro — Cố vấn dịch vụ"
+          className="w-9 h-9 rounded-xl bg-[#0050CD] hover:bg-[#0043AD] text-white flex items-center justify-center transition-transform duration-150 hover:scale-[1.03] active:scale-95 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40"
         >
-          <span className="material-symbols-outlined text-[24px]">directions_car</span>
+          <span className="material-symbols-outlined text-xl" aria-hidden="true">directions_car</span>
         </Link>
 
-        {/* Center 5-Tab Navigation Pill */}
-        <nav className="bg-white rounded-[26px] p-1.5 shadow-sm border border-slate-200/80 flex flex-col items-center gap-2">
+        {/* Center 4-Tab Navigation Pill */}
+        <nav className="bg-white rounded-full p-1.5 shadow-sm border border-slate-200/80 flex flex-col items-center gap-2">
           {SA_NAV_ITEMS.map((item) => {
             const active = isItemActive(item);
             return (
               <Link
                 key={item.href}
-                href={item.comingSoon ? '#' : item.href}
-                onClick={(e) => handleNavClick(e, item)}
-                title={item.comingSoon ? `${item.name} (Sắp ra mắt)` : item.name}
+                href={item.href}
+                title={item.name}
                 aria-label={item.name}
-                className={`group relative w-11 h-11 rounded-2xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40 ${
+                className={`sa-press group relative w-11 h-11 rounded-full flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40 ${
                   active
                     ? 'bg-[#0c2340] text-white shadow-md'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
@@ -93,33 +80,19 @@ export default function AdvisorTopNav() {
                 {active && (
                   <span className="absolute -left-1.5 w-1 h-5 rounded-r-full bg-[#0050cd]" />
                 )}
-                <span className="material-symbols-outlined text-[21px]">{item.icon}</span>
-                {item.comingSoon && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300 absolute top-2 right-2" />
-                )}
+                <span className="material-symbols-outlined text-[22px] leading-none">{item.icon}</span>
 
                 {/* Floating Tooltip on Hover */}
-                <span className="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute left-full ml-3 px-3 py-1.5 rounded-xl bg-[#0c2340] text-white text-xs font-semibold whitespace-nowrap shadow-lg z-50">
+                <span className="pointer-events-none opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-150 ease-out absolute left-full ml-3 px-3 py-1.5 rounded-xl bg-[#0c2340] text-white text-xs font-semibold whitespace-nowrap shadow-lg z-50">
                   {item.name}
-                  {item.comingSoon ? ' • Sắp mở' : ''}
                 </span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Bottom Utility & Logout Pill */}
-        <div className="bg-white rounded-[24px] p-1.5 shadow-sm border border-slate-200/80 flex flex-col items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => toast('Trung tâm trợ giúp Cố vấn dịch vụ AutoCare v2.4', { icon: '🛠️' })}
-            title="Hỗ trợ vận hành"
-            aria-label="Hỗ trợ vận hành"
-            className="w-11 h-11 rounded-2xl flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40"
-          >
-            <span className="material-symbols-outlined text-[20px]">tune</span>
-          </button>
-
+        {/* Bottom Logout Pill */}
+        <div className="bg-white rounded-[24px] p-1.5 shadow-sm border border-slate-200/80 flex flex-col items-center">
           <LogoutButton
             iconOnly={true}
             className="w-11 h-11 rounded-2xl justify-center text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40"
@@ -129,47 +102,41 @@ export default function AdvisorTopNav() {
 
       {/* 2. TOP MINIMALIST HEADER — Matches Uploaded Reference UI */}
       <header className="sticky top-0 z-30 md:ml-[76px] px-3 sm:px-5 lg:px-6 pt-4 pb-2 bg-[#f2f4f8]/90 backdrop-blur-md">
-        <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-3">
+        <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-3 relative">
           {/* Left: Brand Title & Active Section */}
           <div className="flex items-center gap-3 min-w-0">
             {/* Mobile Brand Icon (<768px) */}
             <Link
               href="/advisor"
-              className="md:hidden w-11 h-11 rounded-2xl bg-[#0050cd] text-white flex items-center justify-center shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40"
+              className="md:hidden w-9 h-9 rounded-xl bg-[#0050CD] text-white flex items-center justify-center shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40"
             >
-              <span className="material-symbols-outlined text-[22px]">directions_car</span>
+              <span className="material-symbols-outlined text-xl" aria-hidden="true">directions_car</span>
             </Link>
 
             <div className="leading-tight min-w-0">
-              <div className="text-sm sm:text-base font-extrabold text-zinc-900 tracking-tight truncate">
-                AutoCare
+              <div className="font-bold text-base tracking-[-0.02em] text-zinc-900 truncate">
+                AutoCare Pro
               </div>
               <div className="text-xs font-medium text-slate-500 truncate">
-                Service Advisor
+                Cố vấn dịch vụ
               </div>
             </div>
           </div>
 
-          {/* Right: Pill Controls (Shift Badge, Search, Notification with Dark Counter, User Avatar) */}
+          {/* Right: Pill Controls (Search, Notification with Dark Counter, User Avatar) */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            {/* Shift Status Pill (like the currency/region pill in reference image) */}
-            <div className="hidden sm:flex items-center gap-2 bg-white border border-slate-200/80 rounded-full px-3.5 py-2 shadow-2xs text-xs font-bold text-zinc-800">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>VN • Ca trực</span>
-            </div>
-
             {/* Expandable Quick Search Pill */}
-            <form onSubmit={handleQuickSearchSubmit} className="relative flex items-center">
+            <form onSubmit={handleQuickSearchSubmit} className="flex items-center">
               {searchOpen ? (
-                <div className="flex items-center bg-white border border-[#0050cd] rounded-full pl-3.5 pr-1.5 py-1 shadow-xs transition-all">
-                  <span className="material-symbols-outlined text-[18px] text-[#0050cd] mr-1.5">search</span>
+                <div className="sa-tab-enter absolute inset-x-0 top-1/2 -translate-y-1/2 z-20 sm:static sm:translate-y-0 flex items-center bg-white border border-[#0050cd] rounded-full pl-3.5 pr-1 py-0.5 shadow-sm">
+                  <span className="material-symbols-outlined text-[18px] text-[#0050cd] mr-1.5 shrink-0">search</span>
                   <input
                     type="text"
                     value={quickSearch}
                     onChange={(e) => setQuickSearch(e.target.value)}
-                    placeholder="Biển số, mã WO, khách..."
+                    placeholder="Biển số, mã phiếu, khách..."
                     autoFocus
-                    className="w-44 sm:w-56 md:w-64 text-xs font-medium text-zinc-900 placeholder:text-slate-400 focus:outline-none bg-transparent"
+                    className="flex-1 min-w-0 sm:w-56 md:w-64 text-xs font-medium text-zinc-900 placeholder:text-slate-400 focus:outline-none bg-transparent"
                   />
                   <button
                     type="button"
@@ -177,10 +144,11 @@ export default function AdvisorTopNav() {
                       setSearchOpen(false);
                       setQuickSearch('');
                     }}
-                    className="w-9 h-9 min-w-[40px] min-h-[40px] rounded-full flex items-center justify-center text-slate-400 hover:text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40"
+                    className="sa-press w-11 h-11 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-slate-500 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40 shrink-0 cursor-pointer"
                     title="Đóng tìm kiếm"
+                    aria-label="Đóng tìm kiếm"
                   >
-                    <span className="material-symbols-outlined text-[16px]">close</span>
+                    <span className="material-symbols-outlined text-[18px]">close</span>
                   </button>
                 </div>
               ) : (
@@ -189,7 +157,7 @@ export default function AdvisorTopNav() {
                   onClick={() => setSearchOpen(true)}
                   title="Tìm nhanh biển số hoặc phiếu công việc"
                   aria-label="Tìm nhanh"
-                  className="w-11 h-11 rounded-full bg-white hover:bg-slate-50 border border-slate-200/80 flex items-center justify-center text-zinc-700 shadow-2xs transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40"
+                  className="sa-press w-11 h-11 rounded-full bg-white hover:bg-slate-50 border border-slate-200/80 flex items-center justify-center text-zinc-700 shadow-2xs transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40"
                 >
                   <span className="material-symbols-outlined text-[20px]">search</span>
                 </button>
@@ -223,9 +191,8 @@ export default function AdvisorTopNav() {
           return (
             <Link
               key={item.href}
-              href={item.comingSoon ? '#' : item.href}
-              onClick={(e) => handleNavClick(e, item)}
-              className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] px-2 py-1 rounded-2xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40 ${
+              href={item.href}
+              className={`sa-press flex flex-col items-center justify-center min-w-[56px] min-h-[44px] px-2 py-1 rounded-2xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40 ${
                 active ? 'text-[#0050cd] font-bold' : 'text-slate-500 hover:text-zinc-900 font-medium'
               }`}
             >

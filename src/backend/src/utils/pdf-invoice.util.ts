@@ -136,13 +136,13 @@ export function generateInvoicePdfBuffer(data: InvoicePdfData): Promise<Buffer> 
     let statusText = 'CHƯA THANH TOÁN';
     let statusColor = '#d97706';
     if (data.status === 'PAID') {
-      statusText = 'ĐÃ THANH TOÁN (PAID)';
+      statusText = 'ĐÃ THANH TOÁN';
       statusColor = '#16a34a';
     } else if (data.status === 'DRAFT') {
-      statusText = 'BẢN NHÁP (DRAFT)';
+      statusText = 'BẢN NHÁP';
       statusColor = '#64748b';
     } else if (data.status === 'CANCELLED') {
-      statusText = 'ĐÃ HỦY (CANCELLED)';
+      statusText = 'ĐÃ HỦY';
       statusColor = '#dc2626';
     }
 

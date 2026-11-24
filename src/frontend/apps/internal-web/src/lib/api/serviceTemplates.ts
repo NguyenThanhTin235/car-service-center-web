@@ -6,6 +6,7 @@ export interface ServiceTemplateData {
   description?: string;
   pricingType: 'FIXED' | 'VEHICLE_SIZE' | 'LABOUR_PARTS';
   fixedPrice?: number | null;
+  warrantyMonths?: number | null;
   isActive: boolean;
   category: { id: number; name: string };
   sizePrices: { vehicleSize: string; price: number }[];
@@ -27,11 +28,14 @@ export interface CreateServiceTemplatePayload {
   pricingType: string;
   fixedPrice?: number;
   sizePrices?: { vehicleSize: string; price: number }[];
+  warrantyMonths?: number | null;
 }
 
 export const serviceTemplateApi = {
-  getAll: (params?: { search?: string; categoryId?: number; page?: number; limit?: number }) =>
-    api.get('/api/services', { params }),
+  getAll: (
+    params?: { search?: string; categoryId?: number; page?: number; limit?: number },
+    signal?: AbortSignal
+  ) => api.get('/api/services', { params, signal }),
 
   getCategories: () => api.get('/api/services/categories'),
 

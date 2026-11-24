@@ -8,8 +8,10 @@ export interface JobTypeData {
 }
 
 export const jobTypeApi = {
-  getAll: (params?: { search?: string; page?: number; limit?: number | string; all?: boolean; isActive?: boolean }) =>
-    api.get('/api/job-types', { params }),
+  getAll: (
+    params?: { search?: string; page?: number; limit?: number | string; all?: boolean; isActive?: boolean },
+    signal?: AbortSignal
+  ) => api.get('/api/job-types', { params, signal }),
 
   create: (data: { name: string; description?: string }) =>
     api.post('/api/job-types', data),

@@ -4,6 +4,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch } from '@/store';
 import { createVehicle, fetchVehicles, Vehicle } from '@/store/slices/vehicleSlice';
 import { Appointment, createAppointment, fetchAppointments } from '@/store/slices/appointmentSlice';
+import warrantyApi, { WarrantyItem, getWarrantyCompositeKey } from '@/lib/api/warranty.api';
+import {
+  MORNING_BOOKING_SLOTS,
+  AFTERNOON_BOOKING_SLOTS,
+  ALL_BOOKING_SLOTS,
+  isBookingSlotInPast,
+} from '@/utils/customerHelpers';
 
 const AVAILABLE_SERVICES = [
   {
@@ -50,19 +57,14 @@ const AVAILABLE_SERVICES = [
   },
 ];
 
-const MORNING_BOOKING_SLOTS = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30'];
-const AFTERNOON_BOOKING_SLOTS = ['13:30', '14:00', '14:30', '15:00', '16:00'];
-const ALL_BOOKING_SLOTS = [...MORNING_BOOKING_SLOTS, ...AFTERNOON_BOOKING_SLOTS];
-
-const isBookingSlotInPast = (dateObj: Date, slot: string) => {
-  const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-  return new Date(`${dateStr}T${slot}:00`) < new Date();
-};
-
 interface CustomerBookingModalProps {
   initialDate: Date;
   initialTime: string;
   initialVehicleId?: number | null;
+  initialServiceIds?: number[];
+  initialNotes?: string;
+  initialIsWarranty?: boolean;
+  initialWarrantyItemIds?: string[];
   customerId?: number;
   vehicles: Vehicle[];
   activeVehicles: Vehicle[];
@@ -76,6 +78,10 @@ export default function CustomerBookingModal({
   initialDate,
   initialTime,
   initialVehicleId,
+  initialServiceIds,
+  initialNotes,
+  initialIsWarranty = false,
+  initialWarrantyItemIds,
   customerId,
   vehicles,
   activeVehicles,
@@ -87,14 +93,50 @@ export default function CustomerBookingModal({
   const dispatch = useAppDispatch();
   const [bookingStep, setBookingStep] = useState<1 | 2 | 3>(1);
   const [bookingVehicleId, setBookingVehicleId] = useState<number | null>(
-    activeVehicles[0]?.id ?? vehicles[0]?.id ?? null
+    initialVehicleId ?? activeVehicles[0]?.id ?? vehicles[0]?.id ?? null
   );
   const [customPlateInput, setCustomPlateInput] = useState('');
-  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([1, 2]);
-  const [bookingNotes, setBookingNotes] = useState('');
+  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>(
+    initialServiceIds && initialServiceIds.length > 0 ? initialServiceIds : [1, 2]
+  );
+  const [bookingNotes, setBookingNotes] = useState(initialNotes || '');
   const [bookingDate, setBookingDate] = useState<Date>(initialDate);
   const [bookingTime, setBookingTime] = useState<string>(initialTime);
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
+  const [isWarranty, setIsWarranty] = useState<boolean>(initialIsWarranty);
+  const [warrantyItems, setWarrantyItems] = useState<WarrantyItem[]>([]);
+  const [warrantyLoading, setWarrantyLoading] = useState<boolean>(false);
+  const [selectedWarrantyItemIds, setSelectedWarrantyItemIds] = useState<string[]>(
+    initialWarrantyItemIds || []
+  );
+  const [symptomsDescription, setSymptomsDescription] = useState<string>('');
+  const [warrantyDescError, setWarrantyDescError] = useState<string>('');
+
+  useEffect(() => {
+    if (!isWarranty || !bookingVehicleId) {
+      setWarrantyItems([]);
+      return;
+    }
+    const controller = new AbortController();
+    setWarrantyLoading(true);
+    warrantyApi
+      .getVehicleWarrantyEligibility(bookingVehicleId, controller.signal)
+      .then((res) => {
+        if (controller.signal.aborted) return;
+        const eligible = (res.items || []).filter((i) => i.status === 'VALID');
+        setWarrantyItems(eligible);
+      })
+      .catch((err) => {
+        if (controller.signal.aborted || err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') {
+          return;
+        }
+        setWarrantyItems([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setWarrantyLoading(false);
+      });
+    return () => controller.abort();
+  }, [isWarranty, bookingVehicleId]);
 
   useEffect(() => {
     if (initialVehicleId) {
@@ -102,6 +144,30 @@ export default function CustomerBookingModal({
       setCustomPlateInput('');
     }
   }, [initialVehicleId]);
+
+  useEffect(() => {
+    if (initialServiceIds && initialServiceIds.length > 0) {
+      setSelectedServiceIds(initialServiceIds);
+    }
+  }, [initialServiceIds]);
+
+  useEffect(() => {
+    if (typeof initialNotes === 'string' && initialNotes.trim().length > 0) {
+      setBookingNotes(initialNotes);
+    }
+  }, [initialNotes]);
+
+  useEffect(() => {
+    if (initialDate) {
+      setBookingDate(initialDate);
+    }
+  }, [initialDate]);
+
+  useEffect(() => {
+    if (initialTime) {
+      setBookingTime(initialTime);
+    }
+  }, [initialTime]);
 
   useEffect(() => {
     if (vehicles.length > 0 && bookingVehicleId === null) {
@@ -204,6 +270,19 @@ export default function CustomerBookingModal({
         return;
       }
 
+      if (isWarranty) {
+        if (selectedWarrantyItemIds.length === 0) {
+          onToast({ message: 'Vui lòng chọn ít nhất một hạng mục còn bảo hành.', type: 'error' });
+          setBookingSubmitting(false);
+          return;
+        }
+        if (!symptomsDescription.trim()) {
+          onToast({ message: 'Vui lòng mô tả hiện tượng sự cố cần bảo hành.', type: 'error' });
+          setBookingSubmitting(false);
+          return;
+        }
+      }
+
       await dispatch(
         createAppointment({
           customer_id: customerId,
@@ -211,7 +290,14 @@ export default function CustomerBookingModal({
           scheduled_date: formattedDate,
           scheduled_time: bookingTime,
           notes: bookingNotes,
-          service_ids: selectedServiceIds,
+          service_ids: isWarranty ? [] : selectedServiceIds,
+          ...(isWarranty
+            ? {
+                is_warranty: true,
+                warranty_item_ids: selectedWarrantyItemIds,
+                symptoms_description: symptomsDescription.trim(),
+              }
+            : {}),
         })
       ).unwrap();
 
@@ -426,6 +512,103 @@ export default function CustomerBookingModal({
               Lựa chọn các hạng mục cần thực hiện hoặc ghi rõ triệu chứng bất thường
             </p>
 
+            <div className="p-3.5 rounded-2xl border border-hairline bg-surface-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-accent text-xl">verified_user</span>
+                <div>
+                  <div className="text-xs font-bold text-slate-900">Đặt lịch bảo hành (0đ)</div>
+                  <div className="text-[11px] text-slate-500">Chọn hạng mục đã thực hiện còn hạn bảo hành trên xe</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isWarranty}
+                onClick={() => setIsWarranty((v) => !v)}
+                className={`min-h-[44px] px-4 rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0 ${
+                  isWarranty
+                    ? 'bg-accent text-white'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {isWarranty ? 'Đang chọn: Bảo hành' : 'Chuyển sang Bảo hành'}
+              </button>
+            </div>
+
+            {isWarranty ? (
+              <div className="space-y-4">
+                {warrantyLoading ? (
+                  <div className="h-28 rounded-2xl bg-slate-100 animate-pulse" />
+                ) : warrantyItems.length === 0 ? (
+                  <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                    Xe này hiện không có hạng mục dịch vụ hoặc phụ tùng nào còn trong hạn bảo hành. Vui lòng tắt chế độ bảo hành để đặt dịch vụ thông thường.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {warrantyItems.map((item) => {
+                      const key = getWarrantyCompositeKey(item);
+                      const checked = selectedWarrantyItemIds.includes(key);
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() =>
+                            setSelectedWarrantyItemIds((prev) =>
+                              prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key]
+                            )
+                          }
+                          className={`text-left p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                            checked
+                              ? 'border-blue-600 bg-blue-50/20 shadow-xs'
+                              : 'border-slate-200 bg-white hover:border-slate-300'
+                          }`}
+                        >
+                          <div
+                            className={`w-5 h-5 mt-0.5 rounded-lg border flex items-center justify-center shrink-0 ${
+                              checked ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
+                            }`}
+                          >
+                            {checked && <span className="material-symbols-outlined text-[13px]">check</span>}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-bold text-xs text-slate-900">{item.name}</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5 font-mono">
+                              {item.woNumber} • Còn hạn ({item.warrantyMonths} tháng)
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Mô tả hiện tượng sự cố cần bảo hành *
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={symptomsDescription}
+                    onChange={(e) => {
+                      setSymptomsDescription(e.target.value);
+                      if (warrantyDescError) setWarrantyDescError('');
+                    }}
+                    className={`w-full p-3.5 rounded-2xl text-xs focus:outline-none resize-none leading-relaxed transition-colors ${
+                      warrantyDescError
+                        ? 'bg-rose-50/30 border-2 border-rose-400 text-rose-900 focus:border-rose-500 ring-2 ring-rose-400/20'
+                        : 'bg-slate-50 border border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
+                    placeholder="Ví dụ: Tiếng kêu cọt kẹt khi phanh gấp, đèn báo lỗi động cơ..."
+                  />
+                  {warrantyDescError && (
+                    <p className="mt-1.5 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">error</span>
+                      <span>{warrantyDescError}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {AVAILABLE_SERVICES.map((srv) => {
                 const isChecked = selectedServiceIds.includes(srv.id);
@@ -464,6 +647,7 @@ export default function CustomerBookingModal({
                 );
               })}
             </div>
+            )}
 
             <div>
               <div className="mb-1.5">
@@ -760,12 +944,25 @@ export default function CustomerBookingModal({
                   onToast({ message: 'Vui lòng chọn xe hoặc nhập biển số xe để tiếp tục.', type: 'error' });
                   return;
                 }
-                if (bookingStep === 2 && selectedServiceIds.length === 0 && !bookingNotes.trim()) {
-                  onToast({
-                    message: 'Vui lòng chọn ít nhất 1 dịch vụ hoặc nhập mô tả tình trạng xe để tiếp tục.',
-                    type: 'error',
-                  });
-                  return;
+                if (bookingStep === 2) {
+                  if (isWarranty) {
+                    if (selectedWarrantyItemIds.length === 0) {
+                      onToast({ message: 'Vui lòng chọn ít nhất 1 hạng mục bảo hành.', type: 'error' });
+                      return;
+                    }
+                    if (!symptomsDescription.trim()) {
+                      const msg = 'Vui lòng mô tả hiện tượng sự cố cần bảo hành.';
+                      setWarrantyDescError(msg);
+                      onToast({ message: msg, type: 'error' });
+                      return;
+                    }
+                  } else if (selectedServiceIds.length === 0 && !bookingNotes.trim()) {
+                    onToast({
+                      message: 'Vui lòng chọn ít nhất 1 dịch vụ hoặc nhập mô tả tình trạng xe để tiếp tục.',
+                      type: 'error',
+                    });
+                    return;
+                  }
                 }
                 setBookingStep((bookingStep + 1) as any);
               }}

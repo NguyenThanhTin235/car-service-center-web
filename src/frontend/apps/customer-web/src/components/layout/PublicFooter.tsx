@@ -1,7 +1,24 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function PublicFooter() {
+  const pathname = usePathname();
+
+  const handlePortalTabClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    tabKey: string
+  ) => {
+    if (pathname === '/customer/profile' && typeof window !== 'undefined') {
+      e.preventDefault();
+      window.history.replaceState(null, '', `/customer/profile?tab=${tabKey}`);
+      window.dispatchEvent(new CustomEvent('csc:switch-tab', { detail: tabKey }));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <footer className="w-full hero-banner-surface text-white no-print">
       <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -84,7 +101,8 @@ export default function PublicFooter() {
             <ul className="space-y-0.5 text-sm">
               <li>
                 <Link
-                  href="/customer"
+                  href="/customer/profile?tab=overview"
+                  onClick={(e) => handlePortalTabClick(e, 'overview')}
                   className="inline-flex items-center min-h-[36px] text-white/85 hover:text-white transition-colors"
                 >
                   Tổng quan tài khoản
@@ -92,7 +110,8 @@ export default function PublicFooter() {
               </li>
               <li>
                 <Link
-                  href="/customer/appointments"
+                  href="/customer/profile?tab=appointments"
+                  onClick={(e) => handlePortalTabClick(e, 'appointments')}
                   className="inline-flex items-center min-h-[36px] text-white/85 hover:text-white transition-colors"
                 >
                   Đặt lịch bảo dưỡng
@@ -100,7 +119,8 @@ export default function PublicFooter() {
               </li>
               <li>
                 <Link
-                  href="/customer/tracking"
+                  href="/customer/profile?tab=tracking"
+                  onClick={(e) => handlePortalTabClick(e, 'tracking')}
                   className="inline-flex items-center min-h-[36px] text-white/85 hover:text-white transition-colors"
                 >
                   Theo dõi tiến độ
@@ -108,7 +128,8 @@ export default function PublicFooter() {
               </li>
               <li>
                 <Link
-                  href="/customer/invoices"
+                  href="/customer/profile?tab=invoices"
+                  onClick={(e) => handlePortalTabClick(e, 'invoices')}
                   className="inline-flex items-center min-h-[36px] text-white/85 hover:text-white transition-colors"
                 >
                   Hóa đơn &amp; SePay
@@ -116,10 +137,20 @@ export default function PublicFooter() {
               </li>
               <li>
                 <Link
-                  href="/customer/history"
+                  href="/customer/profile?tab=history"
+                  onClick={(e) => handlePortalTabClick(e, 'history')}
                   className="inline-flex items-center min-h-[36px] text-white/85 hover:text-white transition-colors"
                 >
                   Lịch sử bảo dưỡng
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/customer/profile?tab=warranty"
+                  onClick={(e) => handlePortalTabClick(e, 'warranty')}
+                  className="inline-flex items-center min-h-[36px] text-white/85 hover:text-white transition-colors"
+                >
+                  Tra cứu bảo hành
                 </Link>
               </li>
             </ul>

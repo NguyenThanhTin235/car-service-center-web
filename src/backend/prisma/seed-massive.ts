@@ -387,6 +387,7 @@ async function main() {
         name: sd.name,
         pricing_type: sd.pricingType,
         fixed_price: sd.fixedPrice || null,
+        warranty_months: sd.catIdx === 0 ? 6 : (sd.catIdx === 1 || sd.catIdx === 2) ? 12 : sd.catIdx === 3 ? 6 : sd.catIdx === 4 ? 12 : 6,
       }
     });
     services.push(st);
@@ -1138,6 +1139,7 @@ async function main() {
         average_cost: d.cost,
         on_hand: d.onHand,
         reorder_level: Math.round(d.onHand * 0.2),
+        warranty_months: d.type === ItemType.PART ? 12 : 6,
       }
     }));
 
@@ -1154,6 +1156,7 @@ async function main() {
           average_cost: Math.round(d.cost * 1.15),
           on_hand: isLowStockSample ? 2 : Math.round(d.onHand / 2),
           reorder_level: isLowStockSample ? 8 : Math.round(d.onHand * 0.1),
+          warranty_months: d.type === ItemType.PART ? 12 : 6,
         }
       }));
     }

@@ -1,5 +1,6 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import InteractiveCarSVG, { Finding as SvgFinding, MarkerType } from './InteractiveCarSVG';
 import { WorkOrder, deleteJob } from '@/lib/api/work-order.api';
 import {
@@ -10,10 +11,20 @@ import {
   uploadFindingPhoto,
   InspectionFinding,
 } from '@/lib/api/inspection.api';
-import CreateDispatchJobModal from '../modals/CreateDispatchJobModal';
-import { PhotoLibraryModal, InspectionLogModal } from '../modals/InspectionSubModals';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import ImageLightbox from '@/components/advisor/common/ImageLightbox';
+import InspectionFindingList from './InspectionFindingList';
 import toast from 'react-hot-toast';
+
+const CreateDispatchJobModal = dynamic(() => import('../modals/CreateDispatchJobModal'), { ssr: false });
+const PhotoLibraryModal = dynamic(
+  () => import('../modals/InspectionSubModals').then((m) => m.PhotoLibraryModal),
+  { ssr: false }
+);
+const InspectionLogModal = dynamic(
+  () => import('../modals/InspectionSubModals').then((m) => m.InspectionLogModal),
+  { ssr: false }
+);
 
 interface VehicleInspectionPanelProps {
   workOrder: WorkOrder;
@@ -77,6 +88,7 @@ export default function VehicleInspectionPanel({
     () => (workOrder?.inspections?.[0]?.findings as unknown as InspectionFinding[]) || []
   );
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [highlightedFindingId, setHighlightedFindingId] = useState<number | null>(null);
 
   // Quy định rõ điều kiện kiểm định xe (chỉ có thể đánh dấu vết lỗi lúc Tiếp nhận / Lập kế hoạch)
@@ -137,14 +149,21 @@ export default function VehicleInspectionPanel({
     };
   }, []);
 
-  // Fetch inspection data on mount or when workOrder.id changes
+  // Sync from workOrder.inspections[0] when present; only fetch if missing
   useEffect(() => {
     if (!workOrder?.id) return;
+    const embedded = workOrder.inspections?.[0];
+    if (embedded) {
+      setInspection(embedded as any);
+      setFindings((embedded.findings || []) as InspectionFinding[]);
+      return;
+    }
     loadInspection();
-  }, [workOrder?.id]);
+  }, [workOrder?.id, workOrder?.inspections]);
 
   const loadInspection = async () => {
     try {
+      setError(null);
       if (findings.length === 0) {
         setLoading(true);
       }
@@ -154,13 +173,13 @@ export default function VehicleInspectionPanel({
         setFindings(res.data.findings || []);
       }
     } catch (err: any) {
-      console.error('Lỗi tải thông tin kiểm tra xe:', err);
+      setError(err.response?.data?.message || 'Không thể tải thông tin kiểm tra xe.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddFinding = async (findingData: Omit<SvgFinding, 'id'>) => {
+  const handleAddFinding = useCallback(async (findingData: Omit<SvgFinding, 'id'>) => {
     if (isReadOnly) return;
     try {
       const payload = {
@@ -186,10 +205,17 @@ export default function VehicleInspectionPanel({
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Lỗi khi lưu đánh dấu kiểm tra xe');
-    } finally {
-      setSelectedTool(null);
     }
-  };
+  }, [isReadOnly, workOrder.id, refetchWO]);
+
+  const handleSelectFinding = useCallback((id: string | number | null | undefined) => {
+    if (id === '' || id === null || id === undefined) {
+      setHighlightedFindingId(null);
+      return;
+    }
+    const numericId = Number(id);
+    setHighlightedFindingId((prev) => (prev === numericId ? null : numericId));
+  }, []);
 
 
   const handleRemoveFinding = async (id: number) => {
@@ -222,13 +248,13 @@ export default function VehicleInspectionPanel({
     }
   };
 
-  const promptDeleteJob = (jobId: number, jobName: string) => {
+  const promptDeleteJob = useCallback((jobId: number, jobName: string) => {
     if (isReadOnly || isApprovedOrBeyond) {
       toast.error('Không thể xóa công việc khi báo giá đã được khách hàng phê duyệt.');
       return;
     }
     setDeleteJobConfirm({ jobId, jobName });
-  };
+  }, [isReadOnly, isApprovedOrBeyond]);
 
   const handleExecuteDeleteJob = async () => {
     if (!workOrder?.id || !deleteJobConfirm) return;
@@ -251,20 +277,17 @@ export default function VehicleInspectionPanel({
     }
   };
 
-  const updateFindingNote = (id: number, note: string) => {
+  const updateFindingNote = useCallback((id: number, note: string) => {
     if (isReadOnly) return;
 
-    // Cập nhật UI ngay lập tức
     setFindings((prev) =>
       prev.map((f) => (f.id === id ? { ...f, description: note } : f))
     );
 
-    // Xóa timer cũ nếu còn
     if (debounceTimers.current[id]) {
       clearTimeout(debounceTimers.current[id]);
     }
 
-    // Auto-save sau 600ms không gõ
     debounceTimers.current[id] = setTimeout(async () => {
       try {
         await updateFinding(workOrder.id, id, { description: note });
@@ -272,17 +295,23 @@ export default function VehicleInspectionPanel({
         toast.error('Không thể tự động lưu ghi chú');
       }
     }, 600);
-  };
+  }, [isReadOnly, workOrder.id]);
 
   // Kích hoạt upload ảnh
-  const triggerUploadPhoto = (findingId: number) => {
+  const triggerUploadPhoto = useCallback((findingId: number) => {
     if (isReadOnly) return;
     targetFindingIdRef.current = findingId;
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
       fileInputRef.current.click();
     }
-  };
+  }, [isReadOnly]);
+
+  const handleOpenJobModal = useCallback((finding: InspectionFinding, job: any | null) => {
+    setSelectedFindingForJobModal(finding);
+    setSelectedJobForModal(job);
+    setIsJobModalOpen(true);
+  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFile = e.target.files?.[0];
@@ -346,7 +375,7 @@ export default function VehicleInspectionPanel({
   ];
 
   // Map backend findings sang SVG finding format
-  const svgFindings: SvgFinding[] = findings.map((f) => {
+  const svgFindings: SvgFinding[] = useMemo(() => findings.map((f) => {
     const jobNames: string[] = [];
     f.job_findings?.forEach((jf) => {
       if (jf.job?.name && !jobNames.includes(jf.job.name)) {
@@ -373,7 +402,7 @@ export default function VehicleInspectionPanel({
       jobName: jobNames.join(', ') || undefined,
       jobNames: jobNames.length > 0 ? jobNames : undefined,
     };
-  });
+  }), [findings, workOrder?.services]);
 
   // Tổng số ảnh đã chụp
   const totalPhotos = findings.reduce(
@@ -500,11 +529,12 @@ export default function VehicleInspectionPanel({
               return (
                 <button
                   key={tool.type}
+                  type="button"
                   onClick={() => setSelectedTool(isSelected ? null : tool.type)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded border text-[11px] font-bold transition-all shadow-sm cursor-pointer ${
+                  className={`sa-press flex items-center gap-1.5 min-h-[40px] sm:min-h-[44px] px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
                     isSelected
-                      ? 'border-[#2563EB] text-[#000080] bg-white ring-2 ring-[#2563EB]/30'
-                      : 'border-outline-variant text-on-surface-variant bg-white hover:bg-surface-container-low'
+                      ? 'border-[#0050cd] text-[#0050cd] bg-blue-50/70 ring-2 ring-[#0050cd]/25'
+                      : 'border-slate-200 text-slate-700 bg-slate-50/80 hover:bg-slate-100'
                   }`}
                 >
                   <span className={`min-w-[18px] h-[18px] px-0.5 rounded-full flex items-center justify-center text-[11px] leading-none text-white ${tool.bgColor}`}>
@@ -517,25 +547,27 @@ export default function VehicleInspectionPanel({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
+            type="button"
             onClick={() => setShowLogModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-outline-variant bg-white text-on-surface-variant text-[11px] font-bold hover:bg-[#F8F9FA] transition-colors shadow-sm cursor-pointer"
+            className="sa-press flex items-center gap-1.5 min-h-[40px] sm:min-h-[44px] px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50/80 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[15px] text-[#4682B4]">history</span>
+            <span className="material-symbols-outlined text-[16px] text-[#0050cd]">history</span>
             Nhật ký kiểm tra
-            <span className="bg-surface-variant text-on-surface px-1.5 py-0.5 rounded text-[11px] font-bold">
+            <span className="bg-slate-200/80 text-slate-800 px-1.5 py-0.5 rounded-md text-[11px] font-mono font-bold tabular-nums">
               {findings.length}
             </span>
           </button>
 
           <button
+            type="button"
             onClick={() => setShowPhotoLibrary(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded border border-[#2563EB] bg-white text-[#2563EB] text-[11px] font-bold hover:bg-[#F8F9FA] transition-colors shadow-sm cursor-pointer"
+            className="sa-press flex items-center gap-2 min-h-[40px] sm:min-h-[44px] px-3 py-1.5 rounded-xl border border-[#0050cd]/40 bg-blue-50/50 text-[#0050cd] text-xs font-bold hover:bg-blue-50 transition-colors cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[15px]">photo_library</span>
+            <span className="material-symbols-outlined text-[16px]">photo_library</span>
             Thư viện ảnh
-            <span className="bg-[#2563EB] text-white px-1.5 py-0.5 rounded text-[11px] font-bold">
+            <span className="bg-[#0050cd] text-white px-1.5 py-0.5 rounded-md text-[11px] font-mono font-bold tabular-nums">
               {totalPhotos}
             </span>
           </button>
@@ -551,323 +583,64 @@ export default function VehicleInspectionPanel({
             selectedTool={isReadOnly ? null : selectedTool}
             onAddFinding={handleAddFinding}
             highlightedFindingId={highlightedFindingId}
-            onSelectFinding={(id) => {
-              if (id === '' || id === null || id === undefined) {
-                setHighlightedFindingId(null);
-                return;
-              }
-              const numericId = Number(id);
-              setHighlightedFindingId((prev) => (prev === numericId ? null : numericId));
-            }}
+            onSelectFinding={handleSelectFinding}
             isReadOnly={isReadOnly}
           />
         </div>
 
-        {/* Right: Findings List */}
-        <div className="w-full xl:w-1/2 bg-white flex flex-col pt-1 border border-outline-variant/40 rounded-lg p-3">
-          <div className="flex items-center justify-between pb-2 mb-1.5 border-b border-outline-variant/30">
-            <span className="text-[12px] font-bold text-on-surface flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-primary text-[16px]">format_list_bulleted</span>
-              Danh sách ghi nhận kiểm tra ({findings.length})
-            </span>
-          </div>
-
-          <div className="md:overflow-x-auto styled-scrollbar pb-1">
-            <div className="md:min-w-[920px]">
-              <div className={`hidden md:grid ${isReadOnly ? 'md:grid-cols-[32px_100px_145px_minmax(200px,1fr)_minmax(240px,1.2fr)_44px]' : 'md:grid-cols-[32px_100px_145px_minmax(200px,1fr)_minmax(240px,1.2fr)_44px_40px]'} gap-2 pb-2.5 border-b border-slate-200 text-xs text-slate-500 font-bold items-center`}>
-                <div className="text-center font-mono">#</div>
-                <div className="whitespace-nowrap">Loại dấu vết</div>
-                <div className="whitespace-nowrap">Vị trí bộ phận</div>
-                <div className="whitespace-nowrap">Ghi chú</div>
-                <div className="text-center whitespace-nowrap">Công việc</div>
-                <div className="text-center whitespace-nowrap">Ảnh</div>
-                {!isReadOnly && <div></div>}
-              </div>
-
-              <div className="flex-1 overflow-y-auto max-h-[460px] pr-1 styled-scrollbar flex flex-col">
-            {loading && findings.length === 0 ? (
-              <div className="flex items-center justify-center py-12 text-on-surface-variant text-[11px] gap-2">
-                <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-                Đang tải dữ liệu kiểm tra xe...
-              </div>
-            ) : findings.length === 0 ? (
-              <div className="text-center text-on-surface-variant text-[11px] italic py-12">
-                Chưa có ghi nhận hư hại nào. Chọn loại dấu vết và nhấp vào sơ đồ xe bên trái để thêm.
-              </div>
-            ) : (
-              findings.map((finding, index) => {
-                const toolDef = tools.find((t) => t.type === finding.marker_type);
-                const isHighlighted = highlightedFindingId === finding.id;
-                
-                // Thu thập TẤT CẢ các công việc liên kết với finding này (từ job_findings và từ workOrder.services)
-                const linkedJobsMap = new Map<number, { id: number; name: string; status?: string; serviceName?: string; fullJob?: any }>();
-
-                finding.job_findings?.forEach((jf) => {
-                  if (jf.job) {
-                    linkedJobsMap.set(jf.job.id, {
-                      id: jf.job.id,
-                      name: jf.job.name,
-                      status: (jf.job as any).status,
-                      fullJob: jf.job,
-                    });
-                  }
-                });
-
-                workOrder?.services?.forEach((srv) => {
-                  srv.jobs?.forEach((job) => {
-                    const isMatched = job.findings?.some(
-                      (f: any) => f.finding_id === finding.id || f.finding?.id === finding.id
-                    );
-                    if (isMatched) {
-                      linkedJobsMap.set(job.id, {
-                        id: job.id,
-                        name: job.name,
-                        status: job.status,
-                        serviceName: srv.name,
-                        fullJob: job,
-                      });
-                    }
-                  });
-                });
-
-                const allLinkedJobs = Array.from(linkedJobsMap.values());
-                const isLinkedToJob = allLinkedJobs.length > 0;
-                const photoCount = finding.evidence_urls?.length || 0;
-
-                return (
-                  <div
-                    key={finding.id}
-                    onMouseEnter={() => setHighlightedFindingId(finding.id)}
-                    onMouseLeave={() => setHighlightedFindingId(null)}
-                    className={`flex flex-col gap-2.5 p-3 mb-2 rounded-xl border border-slate-200/80 bg-slate-50/40 md:mb-0 md:p-0 md:rounded md:border-0 md:border-b md:border-slate-100 md:bg-transparent md:grid ${isReadOnly ? 'md:grid-cols-[32px_100px_145px_minmax(200px,1fr)_minmax(240px,1.2fr)_44px]' : 'md:grid-cols-[32px_100px_145px_minmax(200px,1fr)_minmax(240px,1.2fr)_44px_40px]'} md:gap-2 md:items-center md:py-2.5 group transition-colors ${
-                      isHighlighted ? 'bg-primary/5 md:bg-primary/5' : 'md:hover:bg-slate-50/60'
-                    }`}
-                  >
-                    {/* Tier 1 on <md: # + Badge + Part Name (left), Photo + Delete (right) */}
-                    <div className="flex items-center justify-between gap-2 md:contents">
-                      <div className="flex items-center gap-2 min-w-0 md:contents">
-                        <div className="text-slate-500 font-mono font-bold text-xs md:text-center shrink-0 md:order-1">
-                          {index + 1}
-                        </div>
-
-                        <div className="shrink-0 md:order-2">
-                          <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${toolDef?.lightBg}`}>
-                            <span className={`min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[11px] leading-none text-white font-bold ${toolDef?.bgColor}`}>
-                              {toolDef?.icon}
-                            </span>
-                            <span className={`text-xs font-bold ${toolDef?.color}`}>{toolDef?.label}</span>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col min-w-0 md:order-3">
-                          <span className="text-xs font-bold text-zinc-900 leading-snug truncate md:whitespace-normal">
-                            {finding.part_name}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 shrink-0 md:contents">
-                        {/* Photo upload */}
-                        <div className="flex items-center justify-center md:order-6">
-                          <button
-                            onClick={() => triggerUploadPhoto(finding.id)}
-                            disabled={isReadOnly || uploadingFindingId === finding.id}
-                            title={photoCount > 0 ? `${photoCount} ảnh minh chứng` : 'Tải ảnh minh chứng'}
-                            className={`relative p-1.5 rounded hover:bg-surface-container transition-colors ${
-                              photoCount > 0 ? 'text-[#2563EB]' : 'text-on-surface-variant'
-                            } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}
-                          >
-                            {uploadingFindingId === finding.id ? (
-                              <span className="material-symbols-outlined text-[16px] animate-spin">
-                                progress_activity
-                              </span>
-                            ) : (
-                              <span className="material-symbols-outlined text-[16px]">
-                                {photoCount > 0 ? 'image' : 'add_a_photo'}
-                              </span>
-                            )}
-                            {photoCount > 0 && (
-                              <span className="absolute -top-1.5 -right-1.5 bg-[#2563EB] text-white text-[11px] leading-none font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
-                                {photoCount}
-                              </span>
-                            )}
-                          </button>
-                        </div>
-
-                        {/* Remove / Lock button */}
-                        {!isReadOnly && (
-                          <div className="flex items-center justify-center md:order-7">
-                            <button
-                              onClick={() => handleRemoveFinding(finding.id)}
-                              title={
-                                isLinkedToJob
-                                  ? 'Không thể xóa vì đã liên kết với công việc'
-                                  : 'Xóa đánh dấu'
-                              }
-                              className={`p-1.5 transition-all ${
-                                isLinkedToJob
-                                  ? 'text-outline/40 hover:text-outline cursor-not-allowed'
-                                  : 'opacity-100 xl:opacity-0 xl:group-hover:opacity-100 text-outline hover:text-error cursor-pointer'
-                              }`}
-                            >
-                              <span className="material-symbols-outlined text-[16px]">
-                                {isLinkedToJob ? 'lock' : 'close'}
-                              </span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Tier 2 on <md: Notes input + Linked jobs */}
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:contents">
-                      <div className="flex-1 min-w-0 md:order-4">
-                        {!isReadOnly ? (
-                          <input
-                            type="text"
-                            placeholder="Thêm ghi chú..."
-                            value={finding.description || ''}
-                            onChange={(e) => updateFindingNote(finding.id, e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none placeholder:text-outline bg-white"
-                          />
-                        ) : (
-                          <p className="text-xs text-slate-600 italic">
-                            {finding.description || '—'}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Job linking - Hiển thị toàn bộ công việc lên bảng & Nút thêm job trực tiếp */}
-                      <div className="flex flex-col items-center justify-center text-center w-full sm:w-40 md:w-full shrink-0 md:order-5">
-                        {allLinkedJobs.length > 0 ? (
-                          <div className="flex flex-col gap-1 w-full items-stretch">
-                            {allLinkedJobs.map((job) => (
-                              <div
-                                key={job.id}
-                                onClick={() => {
-                                  setSelectedJobForModal(job.fullJob || job);
-                                  setSelectedFindingForJobModal(finding);
-                                  setIsJobModalOpen(true);
-                                }}
-                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 text-xs font-semibold max-w-full text-left transition-colors cursor-pointer active:scale-98"
-                                title={`Nhấn để xem thông tin chi tiết công việc: ${job.name}`}
-                              >
-                                <span className="material-symbols-outlined text-[12px] text-emerald-600 shrink-0">
-                                  build_circle
-                                </span>
-                                <span className="truncate flex-1 font-semibold">{job.name}</span>
-                                {job.status && (
-                                  <span className="text-[11px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold shrink-0">
-                                    {job.status === 'PLANNED' ? 'Mới' : job.status === 'IN_PROGRESS' ? 'Đang làm' : job.status === 'PASSED' ? 'Đạt KCS' : job.status}
-                                  </span>
-                                )}
-                                {!isReadOnly && !isApprovedOrBeyond && (job.status === 'PLANNED' || !job.status) && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      promptDeleteJob(job.id, job.name);
-                                    }}
-                                    className="p-0.5 rounded hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors shrink-0"
-                                    title={`Xóa công việc "${job.name}"`}
-                                  >
-                                    <span className="material-symbols-outlined text-[12px]">close</span>
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                            {!isReadOnly && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedFindingForJobModal(finding);
-                                  setSelectedJobForModal(null);
-                                  setIsJobModalOpen(true);
-                                }}
-                                className="inline-flex items-center justify-center gap-1 px-2 py-1 mt-1 rounded-md border border-dashed border-emerald-400 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 hover:border-emerald-600 text-xs font-bold transition-all cursor-pointer active:scale-95 whitespace-nowrap w-full"
-                                title="Thêm công việc khác trực tiếp cho dấu vết này"
-                              >
-                                <span className="material-symbols-outlined text-[12px] text-emerald-600">add_circle</span>
-                                + Thêm job
-                              </button>
-                            )}
-                          </div>
-                        ) : !isReadOnly ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedFindingForJobModal(finding);
-                              setSelectedJobForModal(null);
-                              setIsJobModalOpen(true);
-                            }}
-                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 hover:border-emerald-500 text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer whitespace-nowrap w-full"
-                            title="Tạo và liên kết công việc trực tiếp cho dấu vết này"
-                          >
-                            <span className="material-symbols-outlined text-[13px] text-emerald-600">add_circle</span>
-                            + Thêm job
-                          </button>
-                        ) : (
-                          <span className="text-xs text-slate-500 italic font-medium">
-                            Chưa gắn
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-            </div>
-            </div>
-          </div>
-        </div>
+        {/* Right: Findings List (Responsive, Zero Horizontal Scroll) */}
+        <InspectionFindingList
+          findings={findings}
+          tools={tools}
+          highlightedFindingId={highlightedFindingId}
+          isReadOnly={isReadOnly}
+          isApprovedOrBeyond={isApprovedOrBeyond}
+          uploadingFindingId={uploadingFindingId}
+          loading={loading}
+          error={error}
+          workOrderServices={workOrder?.services}
+          onRetry={loadInspection}
+          onHover={setHighlightedFindingId}
+          onTriggerUpload={triggerUploadPhoto}
+          onRemoveFinding={handleRemoveFinding}
+          onNoteChange={updateFindingNote}
+          onOpenJobModal={handleOpenJobModal}
+          onPromptDeleteJob={promptDeleteJob}
+        />
       </div>
 
       {/* Photo Library Modal */}
-      <PhotoLibraryModal
-        isOpen={showPhotoLibrary}
-        onClose={() => setShowPhotoLibrary(false)}
-        findings={findings}
-        totalPhotos={totalPhotos}
-        tools={tools}
-        onPreviewImage={setPreviewImage}
-      />
+      {showPhotoLibrary && (
+        <PhotoLibraryModal
+          isOpen={showPhotoLibrary}
+          onClose={() => setShowPhotoLibrary(false)}
+          findings={findings}
+          totalPhotos={totalPhotos}
+          tools={tools}
+          onPreviewImage={setPreviewImage}
+        />
+      )}
 
       {/* Log Modal (Nhật ký kiểm tra xe chi tiết) */}
-      <InspectionLogModal
-        isOpen={showLogModal}
-        onClose={() => setShowLogModal(false)}
-        findings={findings}
-        inspectors={inspectors}
-        totalPhotos={totalPhotos}
-        tools={tools}
-        advisorName={workOrder?.advisor?.full_name}
-        onPreviewImage={setPreviewImage}
-      />
+      {showLogModal && (
+        <InspectionLogModal
+          isOpen={showLogModal}
+          onClose={() => setShowLogModal(false)}
+          findings={findings}
+          inspectors={inspectors}
+          totalPhotos={totalPhotos}
+          tools={tools}
+          advisorName={workOrder?.advisor?.full_name}
+          onPreviewImage={setPreviewImage}
+        />
+      )}
 
       {/* Image Preview Modal */}
-      {previewImage && (
-        <div
-          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 backdrop-blur-sm cursor-zoom-out p-4"
-          onClick={() => setPreviewImage(null)}
-        >
-          <button
-            className="absolute top-4 right-4 text-white hover:text-gray-300"
-            onClick={(e) => {
-              e.stopPropagation();
-              setPreviewImage(null);
-            }}
-          >
-            <span className="material-symbols-outlined text-[32px]">close</span>
-          </button>
-          <img
-            src={previewImage}
-            alt="Xem ảnh phóng to"
-            className="max-w-[90vw] max-h-[90vh] object-contain shadow-2xl rounded"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+      <ImageLightbox
+        src={previewImage}
+        ariaLabel="Xem phóng to hình ảnh kiểm tra"
+        onClose={() => setPreviewImage(null)}
+      />
 
       {/* Modal Tạo / Xem chi tiết công việc điều phối */}
       {isJobModalOpen && (

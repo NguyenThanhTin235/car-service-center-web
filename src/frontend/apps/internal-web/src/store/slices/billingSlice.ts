@@ -90,7 +90,6 @@ export const billingSlice = createSlice({
     setTab: (state, action: PayloadAction<'PENDING' | 'DRAFT' | 'ISSUED' | 'PAID' | 'ALL'>) => {
       state.tab = action.payload;
       state.page = 1;
-      state.records = [];
     },
     setSearch: (state, action: PayloadAction<string>) => {
       state.search = action.payload;

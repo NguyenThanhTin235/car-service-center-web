@@ -18,6 +18,70 @@ const JOB_STATUS_MAP: Record<string, { label: string; badgeCls: string; dotColor
   CANCELLED: { label: 'Đã hủy', badgeCls: 'bg-rose-50 text-rose-700', dotColor: '#ef4444' },
 };
 
+const STAFF_DASHBOARD_COLUMNS: TableColumn<any>[] = [
+  {
+    key: 'name',
+    label: 'Hạng mục công việc',
+    sortable: true,
+    render: (row) => (
+      <span className="font-semibold text-slate-900 dark:text-white">{row.name}</span>
+    ),
+  },
+  {
+    key: 'woNumber',
+    label: 'Mã lệnh (WO)',
+    sortable: true,
+    render: (row) => (
+      <span className="font-mono font-semibold text-[#0050cd] tabular-nums">
+        {row.woNumber || '—'}
+      </span>
+    ),
+  },
+  {
+    key: 'vehiclePlate',
+    label: 'Biển số xe',
+    sortable: true,
+    render: (row) => (
+      <span className="font-mono font-bold text-slate-800 dark:text-slate-200 tabular-nums">
+        {row.vehiclePlate || '—'}
+      </span>
+    ),
+  },
+  {
+    key: 'status',
+    label: 'Trạng thái',
+    sortable: true,
+    render: (row) => {
+      const conf = JOB_STATUS_MAP[row.status] || {
+        label: row.status,
+        badgeCls: 'bg-slate-100 text-slate-700',
+        dotColor: '#94a3b8',
+      };
+      return (
+        <span
+          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${conf.badgeCls}`}
+        >
+          <span
+            className="w-1.5 h-1.5 rounded-full shrink-0"
+            style={{ backgroundColor: conf.dotColor }}
+          ></span>
+          {conf.label}
+        </span>
+      );
+    },
+  },
+  {
+    key: 'estimatedHours',
+    label: 'Định mức SLA',
+    sortable: true,
+    render: (row) => (
+      <span className="font-mono text-slate-600 dark:text-slate-400">
+        {row.estimatedHours ? `${row.estimatedHours} giờ` : '—'}
+      </span>
+    ),
+  },
+];
+
 export default function StaffCommandDashboardPage() {
   const {
     period,
@@ -25,6 +89,7 @@ export default function StaffCommandDashboardPage() {
     data,
     isLoading,
     isRefreshing,
+    error,
     lastUpdated,
     refetch,
   } = useDashboardData({
@@ -41,100 +106,47 @@ export default function StaffCommandDashboardPage() {
     return list.filter((j: any) => j.status === selectedStatus);
   }, [data?.actionableList, selectedStatus]);
 
-  const columns: TableColumn<any>[] = [
-    {
-      key: 'name',
-      label: 'Hạng mục công việc',
-      sortable: true,
-      render: (row) => (
-        <span className="font-semibold text-slate-900 dark:text-white">{row.name}</span>
-      ),
-    },
-    {
-      key: 'woNumber',
-      label: 'Mã lệnh (WO)',
-      sortable: true,
-      render: (row) => (
-        <span className="font-mono font-semibold text-[#0050cd] tabular-nums">
-          {row.woNumber || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'vehiclePlate',
-      label: 'Biển số xe',
-      sortable: true,
-      render: (row) => (
-        <span className="font-mono font-bold text-slate-800 dark:text-slate-200 tabular-nums">
-          {row.vehiclePlate || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      label: 'Trạng thái',
-      sortable: true,
-      render: (row) => {
-        const conf = JOB_STATUS_MAP[row.status] || {
-          label: row.status,
-          badgeCls: 'bg-slate-100 text-slate-700',
-          dotColor: '#94a3b8',
-        };
-        return (
-          <span
-            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${conf.badgeCls}`}
-          >
-            <span
-              className="w-1.5 h-1.5 rounded-full shrink-0"
-              style={{ backgroundColor: conf.dotColor }}
-            ></span>
-            {conf.label}
-          </span>
-        );
-      },
-    },
-    {
-      key: 'estimatedHours',
-      label: 'Định mức SLA',
-      sortable: true,
-      render: (row) => (
-        <span className="font-mono text-slate-600 dark:text-slate-400">
-          {row.estimatedHours ? `${row.estimatedHours} giờ` : '—'}
-        </span>
-      ),
-    },
-  ];
+  const donutData = useMemo(
+    () =>
+      (data?.charts?.jobStatus || []).map((item: any) => ({
+        category: item.category,
+        count: item.count,
+        color: item.category.includes('Hoàn thành') ? '#10b981' : '#0050cd',
+      })),
+    [data?.charts?.jobStatus]
+  );
 
-  const donutData = (data?.charts?.jobStatus || []).map((item: any) => ({
-    category: item.category,
-    count: item.count,
-    color: item.category.includes('Hoàn thành') ? '#10b981' : '#0050cd',
-  }));
-
-  // 5 giai đoạn nhiệm vụ kỹ thuật (Stage Bars)
+  // 5 giai đoạn nhiệm vụ kỹ thuật từ dữ liệu API thực tế (không nhân tỷ lệ giả)
   const staffStageBars = useMemo(() => {
-    const active = Number(data?.kpis?.find((k) => k.key === 'activeJobsCount')?.value || 5);
-    const completed = Number(data?.kpis?.find((k) => k.key === 'completedTodayCount')?.value || 12);
+    const active = Number(data?.kpis?.find((k) => k.key === 'activeJobsCount')?.value ?? 0);
+    const completed = Number(data?.kpis?.find((k) => k.key === 'completedTodayCount')?.value ?? 0);
+    const appointments = Number(data?.kpis?.find((k) => k.key === 'appointmentsToday')?.value ?? 0);
+    const intakeQueue = Number(
+      data?.kpis?.find((k) => k.key === 'intakeQueueCount' || k.key === 'lowStockCount')?.value ?? 0
+    );
+    const plannedFromList = (data?.actionableList || []).filter(
+      (j: any) => j.status === 'PLANNED' || j.status === 'PENDING'
+    ).length;
 
     return [
-      { key: 'ASSIGNED', label: 'Phân công', count: Math.max(1, Math.round(active * 0.4)) },
-      { key: 'PARTS', label: 'Lấy phụ tùng', count: Math.max(1, Math.round(active * 0.3)) },
+      { key: 'APPOINTMENTS', label: 'Lịch hẹn', count: appointments },
+      { key: 'INTAKE', label: 'Tiếp nhận', count: intakeQueue },
+      { key: 'ASSIGNED', label: 'Chờ làm', count: plannedFromList },
       { key: 'IN_PROGRESS', label: 'Đang sửa', count: active, highlight: true },
-      { key: 'QC', label: 'KCS kiểm tra', count: Math.max(1, Math.round(completed * 0.3)) },
       { key: 'COMPLETED', label: 'Hoàn thành', count: completed },
     ];
-  }, [data?.kpis]);
+  }, [data?.kpis, data?.actionableList]);
 
-  // Telemetry khung giờ ca trực
+  // Tỷ trọng khối lượng công việc trong ca trực từ dữ liệu thực tế (không chia khung giờ giả)
   const shiftTelemetry = useMemo(() => {
-    const totalAppt = Number(data?.kpis?.find((k) => k.key === 'appointmentsToday')?.value || 8);
-    return [
-      { label: '8h-10h', count: Math.round(totalAppt * 0.35), pct: 35 },
-      { label: '10h-12h', count: Math.round(totalAppt * 0.25), pct: 25 },
-      { label: '13h-15h', count: Math.round(totalAppt * 0.25), pct: 25 },
-      { label: '15h-17h', count: Math.max(1, Math.round(totalAppt * 0.15)), pct: 15 },
-    ];
-  }, [data?.kpis]);
+    const totalStage = staffStageBars.reduce((acc, s) => acc + s.count, 0);
+    const denom = Math.max(1, totalStage);
+    return staffStageBars.slice(0, 4).map((s) => ({
+      label: s.label,
+      count: s.count,
+      pct: totalStage > 0 ? Math.round((s.count / denom) * 100) : 0,
+    }));
+  }, [staffStageBars]);
 
   return (
     <div className="flex flex-col min-w-0 w-full space-y-6">
@@ -174,25 +186,53 @@ export default function StaffCommandDashboardPage() {
         lastUpdated={lastUpdated}
       />
 
+      {error && (
+        <div
+          role="alert"
+          className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex flex-wrap items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-2.5 text-xs font-semibold text-rose-800">
+            <span className="material-symbols-outlined text-[20px] text-rose-600">error</span>
+            <span>Không thể tải dữ liệu điều phối kỹ thuật: {error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={refetch}
+            className="h-9 px-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer"
+          >
+            Thử lại
+          </button>
+        </div>
+      )}
+
       {/* 4 KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {(data?.kpis || []).map((kpi, index) => {
           const variants: KPICardVariant[] = ['navy', 'royal', 'slate', 'midnight'];
           const cardVariant = variants[index % variants.length];
 
+          const activeJobsVal = Number(data?.kpis?.find((k) => k.key === 'activeJobsCount')?.value ?? 0);
+          const completedJobsVal = Number(data?.kpis?.find((k) => k.key === 'completedTodayCount')?.value ?? 0);
+          const totalJobsVal = activeJobsVal + completedJobsVal;
+          const realJobSplit =
+            totalJobsVal > 0
+              ? Math.round((completedJobsVal / totalJobsVal) * 100)
+              : completedJobsVal > 0
+              ? 100
+              : 0;
+
           let sparklineCallout: string | undefined;
-          let splitPercentage = 80;
+          let splitPercentage = realJobSplit;
           let splitLeftLabel: string | undefined;
           let splitRightLabel: string | undefined;
           let subtitle: string | undefined;
-          const waveLabels = ['Phân công', 'Nhận vật tư', 'Thi công', 'Kiểm tra', 'Hoàn tất'];
+          const waveLabels = ['Lịch hẹn', 'Tiếp nhận', 'Chờ làm', 'Thi công', 'Hoàn tất'];
 
           if (index === 0) {
             sparklineCallout = `${kpi.value} hạng mục`;
             subtitle = 'Công việc đang thao tác trên khoang sửa chữa';
           } else if (index === 1) {
-            splitPercentage = 85;
-            splitLeftLabel = 'Đạt chuẩn';
+            splitLeftLabel = 'Hoàn thành';
             splitRightLabel = 'Đang làm';
             subtitle = 'Hạng mục bảo dưỡng đã hoàn thành trong ca';
           } else if (index === 2) {
@@ -286,8 +326,10 @@ export default function StaffCommandDashboardPage() {
         <div className="lg:col-span-4">
           <DashboardTelemetryMiniBars
             title="Mật độ xe theo khung giờ ca trực"
-            subtitle="Tần suất phân bổ lịch hẹn và tiếp nhận trong ngày"
+            subtitle="Tần suất phân bổ lịch hẹn và tiếp nhận theo kỳ đang chọn"
             items={shiftTelemetry}
+            activeTab={period === 'today' ? 'TODAY' : 'WEEK'}
+            onTabChange={(tabId) => setPeriod(tabId === 'TODAY' ? 'today' : '7days')}
             tabs={[
               { id: 'TODAY', label: 'Hôm nay' },
               { id: 'WEEK', label: 'Tuần này' },
@@ -313,7 +355,7 @@ export default function StaffCommandDashboardPage() {
         <DashboardActionTable
           title="Hàng Đợi Công Việc (Toàn xưởng)"
           subtitle="Danh sách các công việc cần tiến hành sửa chữa, bảo dưỡng hoặc thay thế phụ tùng"
-          columns={columns}
+          columns={STAFF_DASHBOARD_COLUMNS}
           data={filteredJobs}
           searchPlaceholder="Tìm theo tên công việc, biển số hoặc mã phiếu..."
           searchFilterKey="name"

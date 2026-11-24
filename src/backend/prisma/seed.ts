@@ -117,10 +117,29 @@ async function main() {
     'Dịch vụ khác 2'
   ];
 
+  const serviceWarrantyConfig = [
+    { months: 6, mileage: 10000 },  // Bảo dưỡng định kỳ: 6 tháng / 10.000 km
+    { months: 12, mileage: 20000 }, // Sửa chữa động cơ và hộp số: 12 tháng / 20.000 km
+    { months: 3, mileage: 5000 },   // Chăm sóc nội thất: 3 tháng / 5.000 km
+    { months: 6, mileage: 10000 },  // Hệ thống phanh: 6 tháng / 10.000 km
+    { months: 6, mileage: 10000 },  // Sửa chữa lốp xe: 6 tháng / 10.000 km
+    { months: 12, mileage: 15000 }, // Sửa chữa hệ thống điện: 12 tháng / 15.000 km
+    { months: 6, mileage: 10000 },  // Sửa chữa hệ thống chiếu sáng: 6 tháng / 10.000 km
+    { months: 6, mileage: 10000 },  // Sửa chữa điều hòa: 6 tháng / 10.000 km
+    { months: 3, mileage: 5000 },   // Dịch vụ khác 1: 3 tháng / 5.000 km
+    { months: 3, mileage: 5000 }    // Dịch vụ khác 2: 3 tháng / 5.000 km
+  ];
+
   const services = [];
   for (let i = 0; i < 10; i++) {
+    const warranty = serviceWarrantyConfig[i] || { months: 6, mileage: 10000 };
     const st = await prisma.service.create({
-      data: { category_id: serviceCategories[i % 5].id, name: serviceNames[i], pricing_type: PricingType.VEHICLE_SIZE }
+      data: {
+        category_id: serviceCategories[i % 5].id,
+        name: serviceNames[i],
+        pricing_type: PricingType.VEHICLE_SIZE,
+        warranty_months: warranty.months,
+      }
     });
     services.push(st);
     
@@ -188,13 +207,35 @@ async function main() {
   const suppliers = [];
   for (let i = 1; i <= 5; i++) suppliers.push(await prisma.supplier.create({ data: { name: `Nhà cung cấp ${i}`, phone: `0283333330${i}` } }));
 
+  const itemWarrantyConfig = [
+    { months: 6, mileage: 10000 },  // Vật tư 1 (Lọc dầu): 6 tháng / 10.000 km
+    { months: 12, mileage: 20000 }, // Vật tư 2 (Má phanh trước): 12 tháng / 20.000 km
+    { months: 12, mileage: 20000 }, // Vật tư 3 (Đĩa phanh): 12 tháng / 20.000 km
+    { months: 24, mileage: 30000 }, // Vật tư 4 (Bình ắc quy): 24 tháng / 30.000 km
+    { months: 12, mileage: 20000 }, // Vật tư 5 (Bugi đánh lửa): 12 tháng / 20.000 km
+    { months: 12, mileage: 20000 }, // Vật tư 6 (Giảm xóc trước): 12 tháng / 20.000 km
+    { months: 6, mileage: 10000 },  // Vật tư 7: 6 tháng / 10.000 km
+    { months: 6, mileage: 10000 },  // Vật tư 8: 6 tháng / 10.000 km
+    { months: 6, mileage: 10000 },  // Vật tư 9: 6 tháng / 10.000 km
+    { months: 6, mileage: 10000 },  // Vật tư 10: 6 tháng / 10.000 km
+  ];
+
   const inventoryItems = [];
   for (let i = 1; i <= 10; i++) {
     const category = await prisma.partCategory.create({
       data: { code: `PC-${i}`, name: `Vật tư ${i}`, item_type: ItemType.PART, uom_id: uomCatalog.id }
     });
+    const warranty = itemWarrantyConfig[i - 1] || { months: 6, mileage: 10000 };
     inventoryItems.push(await prisma.inventoryItem.create({
-      data: { part_category_id: category.id, sku: `ITEM-${i}`, brand_id: brandCatalogs[i % 3].id, selling_price: 200000, average_cost: 150000, on_hand: 100 }
+      data: {
+        part_category_id: category.id,
+        sku: `ITEM-${i}`,
+        brand_id: brandCatalogs[i % 3].id,
+        selling_price: 200000,
+        average_cost: 150000,
+        on_hand: 100,
+        warranty_months: warranty.months,
+      }
     }));
   }
 

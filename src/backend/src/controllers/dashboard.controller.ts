@@ -14,7 +14,7 @@ export const getWorkshopDashboard = async (_req: Request, res: Response) => {
 const PORTAL_ROLES_MAP: Record<string, string[]> = {
   admin: ['ADMIN'],
   manager: ['MANAGER', 'ADMIN'],
-  sa: ['SERVICE ADVISOR', 'MANAGER', 'ADMIN'],
+  sa: ['SERVICE ADVISOR', 'SERVICE_ADVISOR', 'SA', 'ADVISOR', 'MANAGER', 'ADMIN'],
   staff: ['TECHNICIAN', 'DESK STAFF', 'PARTS COORDINATOR', 'MANAGER', 'ADMIN'],
 };
 
@@ -48,6 +48,13 @@ export const getMultiPortalDashboard = async (req: Request, res: Response) => {
     const endDate = req.query.end_date as string | undefined;
     const userId = req.user?.id || 0;
 
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Không xác định được người dùng.',
+      });
+    }
+
     let result;
     switch (portal) {
       case 'admin':
@@ -57,7 +64,8 @@ export const getMultiPortalDashboard = async (req: Request, res: Response) => {
         result = await multiDashboardService.getManagerDashboard(period, startDate, endDate);
         break;
       case 'sa':
-        result = await multiDashboardService.getSaDashboard(userId, scope, period, startDate, endDate);
+        // Zero-trust isolation: SA portal always scopes strictly to req.user.id
+        result = await multiDashboardService.getSaDashboard(userId, period, startDate, endDate);
         break;
       case 'staff':
         result = await multiDashboardService.getStaffDashboard(userId, scope, period, startDate, endDate);

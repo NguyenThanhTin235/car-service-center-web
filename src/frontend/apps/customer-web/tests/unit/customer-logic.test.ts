@@ -10,6 +10,14 @@ import {
   formatExactDateTimeVi,
   formatRelativeTimeVi,
 } from '../../src/components/notifications/notificationUtils.ts';
+import {
+  ALL_BOOKING_SLOTS,
+  formatVnd,
+  isBookingSlotInPast,
+  parseComplaintData,
+  parseComplaintText,
+  parseSafeText,
+} from '../../src/utils/customerHelpers.ts';
 
 function makeNotification(overrides: {
   id?: number;
@@ -142,6 +150,49 @@ describe('Customer Portal Pure Seams — Unit Tests', () => {
       assert.equal(formatRelativeTimeVi(new Date(now - 3 * 3600_000).toISOString()), '3 giờ trước');
       assert.equal(formatRelativeTimeVi(new Date(now - 2 * 86400_000).toISOString()), '2 ngày trước');
       assert.equal(formatRelativeTimeVi('invalid-date'), '');
+    });
+  });
+
+  describe('customerHelpers — pure formatters, parsers & booking slots', () => {
+    it('parses complaint JSON tags + notes and plain text safely', () => {
+      assert.deepEqual(
+        parseComplaintData(JSON.stringify({ tags: ['Phanh kêu', ''], notes: 'Kiểm tra gấp' })),
+        { tags: ['Phanh kêu'], notes: 'Kiểm tra gấp' }
+      );
+      assert.deepEqual(parseComplaintData('Xe bị rung nhẹ'), { tags: [], notes: 'Xe bị rung nhẹ' });
+      assert.deepEqual(parseComplaintData('{}'), { tags: [], notes: '' });
+      assert.deepEqual(parseComplaintData(null), { tags: [], notes: '' });
+
+      assert.equal(
+        parseComplaintText(JSON.stringify({ tags: ['Bảo dưỡng', 'Thay nhớt'], notes: '40.000km' })),
+        'Bảo dưỡng, Thay nhớt - 40.000km'
+      );
+      assert.equal(parseComplaintText('{}', 'Mặc định'), 'Mặc định');
+    });
+
+    it('extracts safe text from JSON strings, objects, arrays, and plain text', () => {
+      assert.equal(parseSafeText('"Không trầy xước"'), 'Không trầy xước');
+      assert.equal(parseSafeText(JSON.stringify({ notes: 'Đủ phụ kiện' })), 'Đủ phụ kiện');
+      assert.equal(parseSafeText(JSON.stringify(['Camera hành trình', 'Bơm lốp'])), 'Camera hành trình, Bơm lốp');
+      assert.equal(parseSafeText('', 'Bàn giao đầy đủ'), 'Bàn giao đầy đủ');
+    });
+
+    it('formats VND amounts with safe numeric fallbacks', () => {
+      assert.equal(formatVnd(1500000), `${(1500000).toLocaleString('vi-VN')} đ`);
+      assert.equal(formatVnd('250000', ' ₫'), `${(250000).toLocaleString('vi-VN')} ₫`);
+      assert.equal(formatVnd(null), '0 đ');
+      assert.equal(formatVnd('invalid'), '0 đ');
+    });
+
+    it('evaluates booking slots deterministically against reference timestamp', () => {
+      assert.equal(ALL_BOOKING_SLOTS.length, 11);
+      const targetDay = new Date(2026, 10, 22);
+      const midMorning = new Date(2026, 10, 22, 9, 15, 0);
+      assert.equal(isBookingSlotInPast(targetDay, '08:30', midMorning), true);
+      assert.equal(isBookingSlotInPast(targetDay, '09:30', midMorning), false);
+
+      const futureDay = new Date(2026, 10, 23);
+      assert.equal(isBookingSlotInPast(futureDay, '08:00', midMorning), false);
     });
   });
 });

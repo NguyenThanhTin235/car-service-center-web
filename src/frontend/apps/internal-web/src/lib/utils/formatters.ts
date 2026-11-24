@@ -1,3 +1,11 @@
+const vndFormatter = new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND',
+  maximumFractionDigits: 0,
+});
+
+const numberFormatter = new Intl.NumberFormat('vi-VN');
+
 /**
  * Format tiền tệ VNĐ chuẩn hóa (hỗ trợ hiển thị rút gọn tỷ ₫, tr ₫ hoặc đầy đủ)
  */
@@ -15,11 +23,7 @@ export function formatVND(value: number, compact = false): string {
     }
   }
 
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(value);
+  return vndFormatter.format(value);
 }
 
 /**
@@ -27,7 +31,7 @@ export function formatVND(value: number, compact = false): string {
  */
 export function formatNumber(value: number): string {
   if (isNaN(value)) return '0';
-  return new Intl.NumberFormat('vi-VN').format(value);
+  return numberFormatter.format(value);
 }
 
 /**
@@ -47,6 +51,7 @@ export const ROLE_VIETNAMESE_MAP: Record<string, string> = {
   ADMIN: 'Quản trị viên',
   MANAGER: 'Quản lý xưởng',
   'DESK STAFF': 'Nhân viên lễ tân',
+  DESK_STAFF: 'Nhân viên lễ tân',
   FRONT_DESK: 'Nhân viên lễ tân',
   SA: 'Cố vấn dịch vụ (SA)',
   ADVISOR: 'Cố vấn dịch vụ',
@@ -62,6 +67,7 @@ export const ROLE_COLOR_MAP: Record<string, string> = {
   ADMIN: '#0050cd', // Blue 600
   MANAGER: '#0ea5e9', // Sky 500
   'DESK STAFF': '#10b981', // Emerald 500
+  DESK_STAFF: '#10b981',
   FRONT_DESK: '#10b981',
   SA: '#f59e0b', // Amber 500
   ADVISOR: '#f59e0b',
@@ -77,4 +83,41 @@ export function formatRoleName(role?: string): string {
   if (!role) return 'Chưa phân quyền';
   const cleanKey = role.trim().toUpperCase();
   return ROLE_VIETNAMESE_MAP[cleanKey] || role;
+}
+
+export const VEHICLE_SIZE_OPTIONS = [
+  { value: 'SMALL', label: 'Nhỏ (Mini, Hatchback)' },
+  { value: 'MEDIUM', label: 'Vừa (Sedan, Crossover)' },
+  { value: 'LARGE', label: 'Lớn (CUV, MPV)' },
+  { value: 'EXTRA_LARGE', label: 'SUV / Xe 7 chỗ cỡ lớn' },
+  { value: 'TRUCK', label: 'Bán tải (Pickup, Van)' },
+] as const;
+
+/**
+ * Format ngày giờ chuẩn Việt Nam (dd/mm/yyyy HH:mm)
+ */
+export function formatDateTimeVN(
+  value?: string | Date | null,
+  fallback = '—'
+): string {
+  if (!value) return fallback;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return typeof value === 'string' ? value : fallback;
+  return date.toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+/**
+ * Tính số phút chờ từ thời điểm tiếp nhận
+ */
+export function getWaitMinutes(arrivedAt?: string | null): number {
+  if (!arrivedAt) return 0;
+  const ts = new Date(arrivedAt).getTime();
+  if (Number.isNaN(ts)) return 0;
+  return Math.max(0, Math.floor((Date.now() - ts) / 60000));
 }

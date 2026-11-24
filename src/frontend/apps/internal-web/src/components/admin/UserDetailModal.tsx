@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { userApi, UserData } from '@/lib/api/users';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 
 interface UserDetailModalProps {
   isOpen: boolean;
@@ -52,6 +53,7 @@ export default function UserDetailModal({
   userId,
   fallbackData,
 }: UserDetailModalProps) {
+  const backdropProps = useBackdropClose(onClose);
   const [userData, setUserData] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,27 +65,26 @@ export default function UserDetailModal({
       return;
     }
 
-    let isMounted = true;
+    const controller = new AbortController();
     const fetchDetail = async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await userApi.getById(userId);
-        if (isMounted) {
+        const res = await userApi.getById(userId, controller.signal);
+        if (!controller.signal.aborted) {
           setUserData(res.data?.data || res.data);
         }
       } catch (err: any) {
-        if (isMounted) {
-          setError(err.response?.data?.message || 'Không thể tải thông tin chi tiết người dùng.');
-        }
+        if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED' || controller.signal.aborted) return;
+        setError(err.response?.data?.message || 'Không thể tải thông tin chi tiết người dùng.');
       } finally {
-        if (isMounted) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     fetchDetail();
     return () => {
-      isMounted = false;
+      controller.abort();
     };
   }, [isOpen, userId]);
 
@@ -105,7 +106,16 @@ export default function UserDetailModal({
     .toUpperCase() || 'U';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Chi tiết Tài khoản Người dùng"
+      {...backdropProps}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+    >
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-slate-200/80 bg-slate-50/70 flex items-center justify-between">
@@ -117,7 +127,7 @@ export default function UserDetailModal({
               <h2 className="text-base font-bold text-slate-900 tracking-tight">
                 Chi tiết Tài khoản Người dùng
               </h2>
-              <p className="text-xs text-slate-500 font-mono">
+              <p className="text-xs text-slate-500 font-mono tabular-nums">
                 Mã định danh IAM: USR-{String(userId || fallbackData?.id || 0).padStart(4, '0')}
               </p>
             </div>
@@ -125,7 +135,8 @@ export default function UserDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors cursor-pointer"
+            aria-label="Đóng"
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200/70 transition-colors cursor-pointer"
             title="Đóng"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
@@ -290,7 +301,7 @@ export default function UserDetailModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-slate-200/80 bg-slate-50/60 flex items-center justify-between gap-3">
+        <div className="px-4 sm:px-6 py-4 border-t border-slate-200/80 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3">
           <Link
             href={`/accounts?search=${encodeURIComponent(email)}`}
             onClick={onClose}

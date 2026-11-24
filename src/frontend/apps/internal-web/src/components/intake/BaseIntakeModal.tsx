@@ -16,6 +16,7 @@ export interface IntakeModalProps {
   loading?: boolean;
   services?: Array<{ id: number; name: string }>;
   customers?: any[];
+  onCustomerSearch?: (query: string) => void;
   onVehicleAdded?: (customerId: number, vehicle: QuickVehicleCreated) => void;
 }
 
@@ -45,6 +46,7 @@ export default function BaseIntakeModal({
   loading,
   services = [],
   customers = [],
+  onCustomerSearch,
   onVehicleAdded,
 }: BaseIntakeModalProps) {
   const isTowIn = mode === 'TOW_IN';
@@ -516,6 +518,7 @@ export default function BaseIntakeModal({
                         <ComboBox
                           options={customerOptions}
                           value={formData.customerId}
+                          onSearchChange={onCustomerSearch}
                           onChange={(val) => {
                             setFormData((prev) => ({ ...prev, customerId: val.toString(), vehicleId: '' }));
                             setFieldErrors((prev) => ({ ...prev, customerId: '', vehicleId: '' }));

@@ -1,14 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   const router = useRouter();
-  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -18,9 +17,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (mounted && !isAuthenticated) {
       // Safe client-side redirect with setTimeout to prevent back-navigation ignore bug in Next.js
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         router.replace('/login');
       }, 50);
+      return () => clearTimeout(timer);
     }
   }, [isAuthenticated, mounted, router]);
 

@@ -73,15 +73,29 @@ export default function PublicHeader() {
     };
   }, [mobileMenuOpen]);
 
-  const bookingHref = mounted && isAuthenticated ? '/customer/appointments' : '/login';
-  const profileHref =
-    user?.roles?.includes('CUSTOMER')
-      ? '/customer/profile'
-      : getDashboardPathByRole(user?.roles || []);
+  const isCustomer = Boolean(user?.roles?.includes('CUSTOMER'));
+  const bookingHref = mounted && isAuthenticated ? '/customer/profile?tab=appointments' : '/login';
+  const profileHref = isCustomer
+    ? '/customer/profile?tab=profile'
+    : getDashboardPathByRole(user?.roles || []);
   const userInitial = user?.fullName ? user.fullName.charAt(0).toUpperCase() : 'K';
 
+  const handleCustomerTabClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    tabKey: string
+  ) => {
+    setProfileOpen(false);
+    setMobileMenuOpen(false);
+    if (pathname === '/customer/profile' && typeof window !== 'undefined') {
+      e.preventDefault();
+      window.history.replaceState(null, '', `/customer/profile?tab=${tabKey}`);
+      window.dispatchEvent(new CustomEvent('csc:switch-tab', { detail: tabKey }));
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-30 h-16 w-full bg-surface-elevated border-b border-hairline no-print">
+    <>
+      <header className="sticky top-0 z-30 h-16 w-full bg-surface-elevated border-b border-hairline no-print">
       <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between gap-4">
         {/* Brand & Desktop Navigation */}
         <div className="flex items-center gap-6 xl:gap-8 shrink-0">
@@ -114,6 +128,11 @@ export default function PublicHeader() {
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <Link
             href={bookingHref}
+            onClick={(e) => {
+              if (mounted && isAuthenticated) {
+                handleCustomerTabClick(e, 'appointments');
+              }
+            }}
             className="hidden sm:inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 rounded-xl bg-accent hover:bg-accent-hover text-white text-sm font-semibold active:scale-[0.98] transition-all duration-150 whitespace-nowrap"
           >
             <span className="material-symbols-outlined text-lg" aria-hidden="true">
@@ -173,9 +192,9 @@ export default function PublicHeader() {
 
                         <div className="py-1">
                           <Link
-                            href="/customer"
+                            href="/customer/profile?tab=overview"
                             role="menuitem"
-                            onClick={() => setProfileOpen(false)}
+                            onClick={(e) => handleCustomerTabClick(e, 'overview')}
                             className="flex items-center gap-2.5 px-4 min-h-[44px] text-sm font-semibold text-accent hover:bg-accent-soft/60 transition-colors"
                           >
                             <span className="material-symbols-outlined text-lg" aria-hidden="true">
@@ -184,9 +203,9 @@ export default function PublicHeader() {
                             <span>Tổng quan</span>
                           </Link>
                           <Link
-                            href="/customer/tracking"
+                            href="/customer/profile?tab=tracking"
                             role="menuitem"
-                            onClick={() => setProfileOpen(false)}
+                            onClick={(e) => handleCustomerTabClick(e, 'tracking')}
                             className="flex items-center gap-2.5 px-4 min-h-[44px] text-sm text-ink-primary hover:bg-surface-subtle transition-colors"
                           >
                             <span
@@ -198,9 +217,9 @@ export default function PublicHeader() {
                             <span>Tiến độ sửa chữa</span>
                           </Link>
                           <Link
-                            href="/customer/appointments"
+                            href="/customer/profile?tab=appointments"
                             role="menuitem"
-                            onClick={() => setProfileOpen(false)}
+                            onClick={(e) => handleCustomerTabClick(e, 'appointments')}
                             className="flex items-center gap-2.5 px-4 min-h-[44px] text-sm text-ink-primary hover:bg-surface-subtle transition-colors"
                           >
                             <span
@@ -212,9 +231,23 @@ export default function PublicHeader() {
                             <span>Lịch hẹn dịch vụ</span>
                           </Link>
                           <Link
-                            href="/customer/invoices"
+                            href="/customer/profile?tab=warranty"
                             role="menuitem"
-                            onClick={() => setProfileOpen(false)}
+                            onClick={(e) => handleCustomerTabClick(e, 'warranty')}
+                            className="flex items-center gap-2.5 px-4 min-h-[44px] text-sm text-ink-primary hover:bg-surface-subtle transition-colors"
+                          >
+                            <span
+                              className="material-symbols-outlined text-lg text-ink-secondary"
+                              aria-hidden="true"
+                            >
+                              verified_user
+                            </span>
+                            <span>Bảo hành &amp; Hậu mãi</span>
+                          </Link>
+                          <Link
+                            href="/customer/profile?tab=invoices"
+                            role="menuitem"
+                            onClick={(e) => handleCustomerTabClick(e, 'invoices')}
                             className="flex items-center gap-2.5 px-4 min-h-[44px] text-sm text-ink-primary hover:bg-surface-subtle transition-colors"
                           >
                             <span
@@ -228,7 +261,13 @@ export default function PublicHeader() {
                           <Link
                             href={profileHref}
                             role="menuitem"
-                            onClick={() => setProfileOpen(false)}
+                            onClick={(e) => {
+                              if (isCustomer) {
+                                handleCustomerTabClick(e, 'profile');
+                              } else {
+                                setProfileOpen(false);
+                              }
+                            }}
                             className="flex items-center gap-2.5 px-4 min-h-[44px] text-sm text-ink-primary hover:bg-surface-subtle transition-colors"
                           >
                             <span
@@ -284,8 +323,9 @@ export default function PublicHeader() {
           </div>
         </div>
       </div>
+      </header>
 
-      {/* Mobile & Tablet Slide-Over Drawer */}
+      {/* Mobile & Tablet Slide-Over Drawer (Root z-50 above z-40 Chat Widget) */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu điều hướng">
           <div
@@ -339,7 +379,13 @@ export default function PublicHeader() {
             <div className="pt-5 border-t border-hairline space-y-2.5 mt-6">
               <Link
                 href={bookingHref}
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={(e) => {
+                  if (mounted && isAuthenticated) {
+                    handleCustomerTabClick(e, 'appointments');
+                  } else {
+                    setMobileMenuOpen(false);
+                  }
+                }}
                 className="w-full min-h-[44px] px-4 rounded-xl bg-accent hover:bg-accent-hover text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
               >
                 <span className="material-symbols-outlined text-lg" aria-hidden="true">
@@ -377,6 +423,6 @@ export default function PublicHeader() {
           </div>
         </div>
       )}
-    </header>
+    </>
   );
 }

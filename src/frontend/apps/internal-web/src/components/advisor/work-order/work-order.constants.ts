@@ -152,3 +152,90 @@ export function formatVehicleSize(size?: string | null): string {
   if (!size) return 'N/A';
   return VEHICLE_SIZE_LABELS[size.toUpperCase().trim()] || size;
 }
+
+export const STATUS_PIPELINE = [
+  'Tiếp nhận',
+  'Lập kế hoạch',
+  'Chờ duyệt',
+  'Đã duyệt',
+  'Đang sửa',
+  'Chờ thanh toán',
+  'Chờ giao xe',
+  'Đóng',
+] as const;
+
+export const CLOSED_WO_STATUSES = new Set(['CLOSED', 'CANCELLED', 'RELEASED']);
+export const POST_QC_WO_STATUSES = new Set([
+  'BILLING_REQUESTED',
+  'FINANCIAL_CLEARED',
+  'RELEASED',
+  'CLOSED',
+]);
+
+export type InspectionMarkerType = 'DAMAGE' | 'RUST' | 'MISSING' | 'DENT' | 'SCRATCH';
+
+export interface InspectionMarkerMeta {
+  type: InspectionMarkerType;
+  label: string;
+  icon: string;
+  hex: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  lightBg: string;
+}
+
+export const INSPECTION_MARKER_META: Record<InspectionMarkerType, InspectionMarkerMeta> = {
+  DAMAGE: {
+    type: 'DAMAGE',
+    label: 'Hư hỏng / Vỡ',
+    icon: 'X',
+    hex: '#dc2626',
+    color: 'text-red-600',
+    bgColor: 'bg-red-600',
+    borderColor: 'border-red-600',
+    lightBg: 'bg-red-50',
+  },
+  RUST: {
+    type: 'RUST',
+    label: 'Gỉ sét / Ăn mòn',
+    icon: 'R',
+    hex: '#d97706',
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-600',
+    borderColor: 'border-amber-600',
+    lightBg: 'bg-amber-50',
+  },
+  MISSING: {
+    type: 'MISSING',
+    label: 'Thiếu phụ tùng',
+    icon: 'M',
+    hex: '#7c3aed',
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-600',
+    borderColor: 'border-violet-600',
+    lightBg: 'bg-violet-50',
+  },
+  DENT: {
+    type: 'DENT',
+    label: 'Móp méo',
+    icon: 'D',
+    hex: '#0284c7',
+    color: 'text-sky-600',
+    bgColor: 'bg-sky-600',
+    borderColor: 'border-sky-600',
+    lightBg: 'bg-sky-50',
+  },
+  SCRATCH: {
+    type: 'SCRATCH',
+    label: 'Trầy xước',
+    icon: 'S',
+    hex: '#475569',
+    color: 'text-slate-600',
+    bgColor: 'bg-slate-600',
+    borderColor: 'border-slate-600',
+    lightBg: 'bg-slate-100',
+  },
+};
+
+export const INSPECTION_TOOLS = Object.values(INSPECTION_MARKER_META);

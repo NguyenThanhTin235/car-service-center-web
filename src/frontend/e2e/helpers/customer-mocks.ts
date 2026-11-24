@@ -795,5 +795,67 @@ export async function setupCustomerApiMocks(
     return jsonOk(route, { paymentId: 301, status: state.isPaid ? 'SUCCESS' : 'PENDING', isCleared: state.isPaid });
   });
 
+  // AI Customer Support Chat dispatcher
+  await page.route('**/api/v1/ai-chat/**', async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const authHeader = route.request().headers()['authorization'] || '';
+    const isAuth = Boolean(authHeader.startsWith('Bearer '));
+
+    if (pathname.endsWith('/welcome')) {
+      return jsonOk(route, {
+        auth_mode: isAuth ? 'CUSTOMER' : 'GUEST',
+        greeting: isAuth
+          ? `Chào **${state.user.fullName}**! Xe **51A-999.99** đang có báo giá chờ duyệt (**0% VAT**).`
+          : 'Chào Anh/Chị! Em là **Trợ lý Cố vấn Dịch vụ AI của AutoCare Pro** (**0% VAT**).',
+        suggested_questions: isAuth
+          ? ['Giải thích báo giá của tôi', 'Thanh toán hóa đơn ở đâu?']
+          : ['Xe phanh kêu két két là bị sao?', 'Bảng giá bảo dưỡng định kỳ 40.000 km'],
+        actions: isAuth
+          ? [
+              {
+                type: 'VIEW_QUOTATION',
+                label: 'Mở báo giá để phê duyệt',
+                icon: 'receipt_long',
+                target: 'modal:quotation',
+                payload: { workOrderId: 500, quotationId: 302 },
+              },
+            ]
+          : [
+              {
+                type: 'OPEN_BOOKING_MODAL',
+                label: 'Đặt lịch dịch vụ ngay',
+                icon: 'calendar_month',
+                target: 'modal:booking',
+              },
+            ],
+      });
+    }
+
+    if (pathname.endsWith('/message')) {
+      const body = JSON.parse(route.request().postData() || '{}');
+      return jsonOk(route, {
+        auth_mode: isAuth ? 'CUSTOMER' : 'GUEST',
+        is_fallback: false,
+        reply: `Em đã nhận câu hỏi: **${body.message || ''}**. Mọi dịch vụ tại xưởng áp dụng chính sách **0% VAT** ạ.`,
+        intent: 'SYMPTOM_DIAGNOSIS',
+        suggested_questions: ['Đặt lịch kiểm tra xe'],
+        actions: [
+          {
+            type: 'OPEN_BOOKING_MODAL',
+            label: 'Đặt lịch kiểm tra phanh',
+            icon: 'calendar_month',
+            target: 'modal:booking',
+            payload: {
+              preselectedServiceIds: [2],
+              notes: body.message || 'Kiểm tra hệ thống phanh',
+            },
+          },
+        ],
+      });
+    }
+
+    return jsonOk(route, {});
+  });
+
   return state;
 }

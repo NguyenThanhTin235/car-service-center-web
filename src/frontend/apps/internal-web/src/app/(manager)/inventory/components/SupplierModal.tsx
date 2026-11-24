@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { createSupplier, updateSupplier, Supplier } from '@/store/slices/inventorySlice';
 import Modal from '@/components/shared/Modal';
-import Toast from '@/components/shared/Toast';
+import toast from 'react-hot-toast';
 
 interface SupplierModalProps {
   isOpen: boolean;
@@ -26,11 +26,6 @@ export function SupplierModal({ isOpen, onClose, supplier, onSuccess }: Supplier
     email: '',
     address: '',
   });
-  const [toast, setToast] = useState<{
-    show: boolean;
-    type: 'success' | 'error';
-    message: string;
-  }>({ show: false, type: 'success', message: '' });
 
   useEffect(() => {
     if (isOpen) {
@@ -61,7 +56,7 @@ export function SupplierModal({ isOpen, onClose, supplier, onSuccess }: Supplier
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      setToast({ show: true, type: 'error', message: 'Vui lòng nhập tên Nhà cung cấp' });
+      toast.error('Vui lòng nhập tên Nhà cung cấp');
       return;
     }
 
@@ -70,21 +65,11 @@ export function SupplierModal({ isOpen, onClose, supplier, onSuccess }: Supplier
       : await dispatch(createSupplier(formData));
 
     if (res.meta.requestStatus === 'fulfilled') {
-      setToast({
-        show: true,
-        type: 'success',
-        message: supplier ? 'Cập nhật Nhà cung cấp thành công!' : 'Thêm Nhà cung cấp thành công!',
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 700);
+      toast.success(supplier ? 'Cập nhật Nhà cung cấp thành công!' : 'Thêm Nhà cung cấp thành công!');
+      onSuccess();
+      onClose();
     } else {
-      setToast({
-        show: true,
-        type: 'error',
-        message: (res.payload as string) || 'Lỗi khi lưu thông tin Nhà cung cấp',
-      });
+      toast.error((res.payload as string) || 'Lỗi khi lưu thông tin Nhà cung cấp');
     }
   };
 
@@ -199,14 +184,6 @@ export function SupplierModal({ isOpen, onClose, supplier, onSuccess }: Supplier
           </div>
         </form>
       </Modal>
-
-      {toast.show && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast({ ...toast, show: false })}
-        />
-      )}
     </>
   );
 }

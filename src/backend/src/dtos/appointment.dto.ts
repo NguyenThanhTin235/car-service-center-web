@@ -22,6 +22,28 @@ export const createAppointmentSchema = Joi.object({
     'array.base': 'Danh sách dịch vụ không hợp lệ',
     'number.base': 'Mã dịch vụ phải là số',
   }),
+  is_warranty: Joi.boolean().optional().default(false),
+  warranty_item_ids: Joi.array()
+    .items(Joi.alternatives().try(Joi.number(), Joi.string()))
+    .when('is_warranty', {
+      is: true,
+      then: Joi.array().items(Joi.alternatives().try(Joi.number(), Joi.string())).min(1).required().messages({
+        'any.required': 'Vui lòng chọn ít nhất một hạng mục dịch vụ hoặc phụ tùng còn bảo hành',
+        'array.min': 'Vui lòng chọn ít nhất một hạng mục dịch vụ hoặc phụ tùng còn bảo hành',
+        'array.base': 'Danh sách hạng mục bảo hành không hợp lệ',
+      }),
+      otherwise: Joi.optional().allow(null),
+    }),
+  symptoms_description: Joi.string()
+    .when('is_warranty', {
+      is: true,
+      then: Joi.string().trim().min(1).required().messages({
+        'any.required': 'Vui lòng nhập mô tả chi tiết hiện tượng sự cố',
+        'string.empty': 'Vui lòng nhập mô tả chi tiết hiện tượng sự cố',
+      }),
+      otherwise: Joi.optional().allow('', null),
+    }),
+  evidence_urls: Joi.array().items(Joi.string().allow('')).optional(),
 });
 
 export const updateAppointmentSchema = Joi.object({

@@ -6,6 +6,10 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { userApi, UserData } from '@/lib/api/users';
 import SaaSWaveChart from '@/components/shared/SaaSWaveChart';
+import Modal from '@/components/shared/Modal';
+import ConfirmModal from '@/components/shared/ConfirmModal';
+import TablePagination from '@/components/shared/TablePagination';
+import { useDebounce } from '@/hooks/useDebounce';
 import toast from 'react-hot-toast';
 import {
   EMAIL_REGEX,
@@ -17,6 +21,7 @@ import {
 } from '@/lib/utils/validators';
 
 const ROLES = ['ADMIN', 'MANAGER', 'ADVISOR', 'FRONT_DESK', 'TECHNICIAN', 'CUSTOMER'];
+const WAVE_X_LABELS = ['Đang hoạt động', 'Nhân sự nội bộ', 'Hiển thị trên trang', 'Đã khóa'];
 
 const normalizeRoleKey = (role: string): string => {
   const r = (role || '')
@@ -144,6 +149,7 @@ function AccountsContent() {
     limit: 10,
   });
   const [search, setSearch] = useState(initialSearch);
+  const debouncedSearch = useDebounce(search, 300);
 
   useEffect(() => {
     if (initialSearch) {
@@ -180,32 +186,42 @@ function AccountsContent() {
   );
 
   const loadUsers = useCallback(
-    async (page = 1) => {
+    async (page = 1, signal?: AbortSignal) => {
       setLoading(true);
       setPageError(null);
       try {
-        const res = await userApi.getAll({
-          search,
-          role: filterRole || undefined,
-          status: filterStatus || undefined,
-          page,
-          limit: 10,
-        });
-        setUsers(res.data?.data || []);
-        if (res.data?.pagination) {
-          setPagination(res.data.pagination);
+        const res = await userApi.getAll(
+          {
+            search: debouncedSearch,
+            role: filterRole || undefined,
+            status: filterStatus || undefined,
+            page,
+            limit: 10,
+          },
+          signal
+        );
+        if (!signal?.aborted) {
+          setUsers(res.data?.data || []);
+          if (res.data?.pagination) {
+            setPagination(res.data.pagination);
+          }
         }
       } catch (e: any) {
+        if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED' || signal?.aborted) return;
         setPageError(e.response?.data?.message || 'Không thể tải danh sách tài khoản.');
       } finally {
-        setLoading(false);
+        if (!signal?.aborted) {
+          setLoading(false);
+        }
       }
     },
-    [search, filterRole, filterStatus]
+    [debouncedSearch, filterRole, filterStatus]
   );
 
   useEffect(() => {
-    loadUsers();
+    const controller = new AbortController();
+    loadUsers(1, controller.signal);
+    return () => controller.abort();
   }, [loadUsers]);
 
   const openCreate = () => {
@@ -388,6 +404,15 @@ function AccountsContent() {
     () => users.filter((u) => !u.roles.includes('CUSTOMER')).length,
     [users]
   );
+  const waveSeries = useMemo(
+    () => [
+      { label: 'Đang hoạt động', value: activeCount, color: '#0866ff' },
+      { label: 'Nhân sự nội bộ', value: staffCount, color: '#38bdf8' },
+      { label: 'Hiển thị trên trang', value: users.length, color: '#10b981' },
+      { label: 'Đã khóa', value: inactiveCount, color: '#818cf8' },
+    ],
+    [activeCount, staffCount, users.length, inactiveCount]
+  );
 
   return (
     <div className="space-y-6">
@@ -432,7 +457,7 @@ function AccountsContent() {
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-mono">
                 <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
-                  {activeCount} đang hoạt động
+                  {activeCount}/{users.length} hoạt động (trang này)
                 </span>
                 <span className="text-zinc-300">• {staffCount} nhân sự nội bộ</span>
               </div>
@@ -476,9 +501,9 @@ function AccountsContent() {
 
             <div className="grid grid-cols-3 divide-x divide-white/20 pt-4 mt-4 border-t border-white/15">
               <div className="pr-3">
-                <div className="text-xs font-medium text-blue-100">Tổng số</div>
+                <div className="text-xs font-medium text-blue-100">Trên trang</div>
                 <div className="font-mono tabular-nums text-2xl font-extrabold text-white mt-1">
-                  {pagination.totalRecords}
+                  {users.length}
                 </div>
               </div>
               <div className="px-3">
@@ -501,39 +526,13 @@ function AccountsContent() {
           <div className="lg:col-span-7 flex flex-col">
             <SaaSWaveChart
               testId="admin-wave-chart"
-              title="Phân bổ Vai trò Hệ thống & Tần suất Xác thực Phiên (IAM)"
-              primaryMetric={`${activeCount}/${pagination.totalRecords || users.length} định danh kích hoạt`}
-              deltaText="99.9%"
-              deltaPositive={true}
-              comparisonText="độ sẵn sàng dịch vụ xác thực"
-              xLabels={['Admin', 'Manager', 'Advisor', 'Front Desk', 'Customer']}
-              yLabels={['100', '75', '50', '25', '0']}
-              series={[
-                {
-                  label: 'Đang hoạt động',
-                  value: activeCount,
-                  color: '#0866ff',
-                  peakRatio: 0.9,
-                },
-                {
-                  label: 'Nhân sự nội bộ',
-                  value: staffCount,
-                  color: '#38bdf8',
-                  peakRatio: 0.72,
-                },
-                {
-                  label: 'Tổng định danh',
-                  value: pagination.totalRecords || users.length,
-                  color: '#10b981',
-                  peakRatio: 0.56,
-                },
-                {
-                  label: 'Đã khóa',
-                  value: inactiveCount,
-                  color: '#818cf8',
-                  peakRatio: 0.3,
-                },
-              ]}
+              title="Phân bổ Trạng thái & Nhóm Định danh trên Trang (IAM)"
+              primaryMetric={`${activeCount}/${users.length} định danh kích hoạt`}
+              deltaText={users.length > 0 ? `${Math.round((activeCount / users.length) * 100)}%` : '0%'}
+              deltaPositive={activeCount >= inactiveCount}
+              comparisonText="tỷ lệ tài khoản hoạt động trên trang hiện tại"
+              xLabels={WAVE_X_LABELS}
+              series={waveSeries}
             />
           </div>
         </div>
@@ -729,7 +728,7 @@ function AccountsContent() {
                                   : user.isActive
                                   ? 'bg-[#0866ff] cursor-pointer'
                                   : 'bg-slate-300 cursor-pointer'
-                              } focus:outline-none`}
+                              } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0866ff] focus-visible:ring-offset-2`}
                               role="switch"
                               aria-checked={user.isActive}
                               title={
@@ -793,53 +792,23 @@ function AccountsContent() {
           </div>
 
           {/* Pagination */}
-          <div className="p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200/80">
-            <span className="text-xs text-slate-700">
-              Hiển thị <span className="font-mono font-bold text-slate-900">{users.length}</span>{' '}
-              trong tổng số{' '}
-              <span className="font-mono font-bold text-slate-900">
-                {pagination.totalRecords}
-              </span>{' '}
-              tài khoản
-            </span>
-            {pagination.totalPages > 1 && (
-              <div className="flex items-center gap-1">
-                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
-                  <button
-                    key={page}
-                    type="button"
-                    onClick={() => loadUsers(page)}
-                    className={`w-8 h-8 rounded-lg font-mono text-xs font-bold transition-colors cursor-pointer ${
-                      page === pagination.currentPage
-                        ? 'bg-[#0866ff] text-white shadow-2xs'
-                        : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-800'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <TablePagination
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            totalRecords={pagination.totalRecords}
+            pageSize={pagination.limit}
+            onPageChange={(page) => loadUsers(page)}
+          />
         </div>
 
         {/* Create/Edit Modal */}
-        {showModal && (
-          <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
-              <div className="flex items-center justify-between p-5 border-b border-slate-100">
-                <h2 className="text-base font-bold text-slate-900">
-                  {editingUser ? 'Cập nhật tài khoản' : 'Thêm tài khoản mới'}
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-base">close</span>
-                </button>
-              </div>
-              <form onSubmit={handleSubmit} noValidate className="p-5 space-y-4">
+        <Modal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          title={editingUser ? 'Cập nhật tài khoản' : 'Thêm tài khoản mới'}
+          size="md"
+        >
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
                 {error && (
                   <div className="p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-semibold border border-rose-200">
                     {error}
@@ -993,41 +962,23 @@ function AccountsContent() {
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        )}
+        </Modal>
 
         {/* Reset password modal */}
-        {showResetModal && (
-          <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-slate-200 overflow-hidden">
-              <div className="flex items-center justify-between p-5 border-b border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#0050cd] flex items-center justify-center">
-                    <span className="material-symbols-outlined text-lg">key</span>
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-slate-900">Đặt lại mật khẩu</h2>
-                    <p className="text-[11px] text-slate-500">Cấp lại mật khẩu đăng nhập tài khoản</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowResetModal(false)}
-                  className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-base">close</span>
-                </button>
-              </div>
-
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleResetPassword();
-                }} noValidate
-                autoComplete="off"
-                className="p-5 space-y-4"
-              >
+        <Modal
+          isOpen={showResetModal}
+          onClose={() => setShowResetModal(false)}
+          title="Đặt lại mật khẩu"
+          size="sm"
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleResetPassword();
+            }} noValidate
+            autoComplete="off"
+            className="space-y-4"
+          >
                 {/* User info summary badge */}
                 {selectedUser && (
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
@@ -1098,114 +1049,29 @@ function AccountsContent() {
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        )}
+        </Modal>
 
         {/* Toggle Status Confirmation Modal */}
-        {showToggleConfirmModal && toggleTargetUser && (
-          <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden">
-              <div className="p-6">
-                <div className="flex items-start gap-4">
-                  <div
-                    className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
-                      toggleTargetUser.isActive
-                        ? 'bg-rose-50 text-rose-600 border border-rose-200/80'
-                        : 'bg-emerald-50 text-emerald-600 border border-emerald-200/80'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-2xl">
-                      {toggleTargetUser.isActive ? 'lock' : 'lock_open'}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-bold text-slate-900">
-                      {toggleTargetUser.isActive
-                        ? 'Khóa tài khoản'
-                        : 'Mở khóa tài khoản'}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {toggleTargetUser.isActive
-                        ? 'Hành động này sẽ ngắt phiên làm việc của người dùng'
-                        : 'Cho phép người dùng tiếp tục đăng nhập hệ thống'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Target User Info Card */}
-                <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0866ff] to-[#0050cd] text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
-                    {toggleTargetUser.fullName?.charAt(0) || 'U'}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-slate-900 truncate">
-                      {toggleTargetUser.fullName}
-                    </p>
-                    <p className="text-[11px] text-slate-500 font-mono truncate">
-                      {toggleTargetUser.email}
-                    </p>
-                  </div>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-[#0050cd] border border-blue-200/60 shrink-0">
-                    {toggleTargetUser.roles?.[0]
-                      ? getRoleLabel(toggleTargetUser.roles[0])
-                      : 'Tài khoản'}
-                  </span>
-                </div>
-
-                {/* Warning message block */}
-                {toggleTargetUser.isActive ? (
-                  <div className="mt-4 p-3 rounded-xl bg-rose-50/70 border border-rose-200/70 flex items-start gap-2.5">
-                    <span className="material-symbols-outlined text-rose-600 text-base shrink-0 mt-0.5">
-                      warning
-                    </span>
-                    <p className="text-xs text-rose-800 leading-relaxed">
-                      <strong>Lưu ý:</strong> Khi tạm khóa, toàn bộ token đăng nhập hiện tại sẽ bị{' '}
-                      <strong>thu hồi ngay lập tức</strong>. Người dùng sẽ bị đăng xuất khỏi hệ thống
-                      và không thể thao tác tiếp cho đến khi được mở khóa.
-                    </p>
-                  </div>
-                ) : (
-                  <p className="mt-4 text-xs text-slate-600 leading-relaxed">
-                    Sau khi kích hoạt lại, tài khoản sẽ có thể đăng nhập bình thường vào hệ thống với
-                    đầy đủ quyền hạn đã được phân bổ.
-                  </p>
-                )}
-
-                {/* Action Buttons */}
-                <div className="mt-6 flex items-center justify-end gap-2.5">
-                  <button
-                    type="button"
-                    disabled={togglingStatus}
-                    onClick={() => {
-                      setShowToggleConfirmModal(false);
-                      setToggleTargetUser(null);
-                    }}
-                    className="h-10 px-4 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    Hủy bỏ
-                  </button>
-                  <button
-                    type="button"
-                    disabled={togglingStatus}
-                    onClick={confirmToggleStatus}
-                    className={`h-10 px-5 rounded-xl text-white text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-60 ${
-                      toggleTargetUser.isActive
-                        ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
-                        : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
-                    }`}
-                  >
-                    {togglingStatus
-                      ? 'Đang xử lý...'
-                      : toggleTargetUser.isActive
-                      ? 'Xác nhận khóa'
-                      : 'Xác nhận mở khóa'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <ConfirmModal
+          isOpen={showToggleConfirmModal && !!toggleTargetUser}
+          title={toggleTargetUser?.isActive ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+          message={
+            toggleTargetUser
+              ? toggleTargetUser.isActive
+                ? `Tạm khóa tài khoản "${toggleTargetUser.fullName}" (${toggleTargetUser.email})? Toàn bộ phiên đăng nhập hiện tại sẽ bị thu hồi ngay lập tức.`
+                : `Kích hoạt lại tài khoản "${toggleTargetUser.fullName}" (${toggleTargetUser.email}) để người dùng có thể đăng nhập bình thường?`
+              : ''
+          }
+          confirmText={toggleTargetUser?.isActive ? 'Xác nhận khóa' : 'Xác nhận mở khóa'}
+          cancelText="Hủy bỏ"
+          isDestructive={!!toggleTargetUser?.isActive}
+          isLoading={togglingStatus}
+          onConfirm={confirmToggleStatus}
+          onCancel={() => {
+            setShowToggleConfirmModal(false);
+            setToggleTargetUser(null);
+          }}
+        />
 
       </div>
   );

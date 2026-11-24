@@ -143,9 +143,6 @@ const invoiceSlice = createSlice({
     setSelectedInvoice: (state, action: PayloadAction<InvoiceDetailDto | null>) => {
       state.selectedInvoice = action.payload;
     },
-    clearInvoiceError: (state) => {
-      state.error = null;
-    },
   },
   extraReducers: (builder) => {
     builder
@@ -179,5 +176,5 @@ const invoiceSlice = createSlice({
   },
 });
 
-export const { setSelectedInvoice, clearInvoiceError } = invoiceSlice.actions;
+export const { setSelectedInvoice } = invoiceSlice.actions;
 export default invoiceSlice.reducer;

@@ -6,7 +6,7 @@ interface AppointmentCardProps {
   onClick?: (appointment: Appointment) => void;
 }
 
-export default function AppointmentCard({ appointment, onClick }: AppointmentCardProps) {
+const AppointmentCard = React.memo(function AppointmentCard({ appointment, onClick }: AppointmentCardProps) {
   // Determine styles based on status (Tone-on-tone surface without border-l-4 or nested card borders)
   let bgClass = '';
   let dotClass = '';
@@ -82,6 +82,13 @@ export default function AppointmentCard({ appointment, onClick }: AppointmentCar
       <div className="font-mono text-xs text-slate-800 mt-0.5 font-semibold">
         {appointment.vehicle?.license_plate || 'Chưa có biển số'}
       </div>
+
+      {(appointment as any).is_warranty && (
+        <div className="mt-1 flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-300 w-fit">
+          <span className="material-symbols-outlined text-[12px]">verified_user</span>
+          Bảo hành (0đ)
+        </div>
+      )}
       
       <div className="mt-1.5 flex flex-col gap-0.5">
         {hasServices ? (
@@ -96,4 +103,6 @@ export default function AppointmentCard({ appointment, onClick }: AppointmentCar
       </div>
     </div>
   );
-}
+});
+
+export default AppointmentCard;

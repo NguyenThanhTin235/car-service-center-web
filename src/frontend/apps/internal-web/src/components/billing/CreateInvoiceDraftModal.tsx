@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { getInvoicePreview, createInvoiceDraft, InvoicePreview } from '@/lib/api/invoice.api';
 import InvoiceLinesTable from './InvoiceLinesTable';
 import { useRouter } from 'next/navigation';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 
 interface Props {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export default function CreateInvoiceDraftModal({
   onSuccess,
 }: Props) {
   const router = useRouter();
+  const backdropProps = useBackdropClose(onClose);
   const [loading, setLoading] = useState<boolean>(true);
   const [preview, setPreview] = useState<InvoicePreview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +74,16 @@ export default function CreateInvoiceDraftModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-scrim/40 backdrop-blur-xs animate-fade-in">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Tạo hóa đơn dịch vụ mới"
+      {...backdropProps}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-scrim/40 backdrop-blur-xs animate-fade-in"
+    >
       <div className="bg-surface-container-lowest rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-outline-variant overflow-hidden animate-scale-up">
         {/* Header */}
         <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0">
@@ -88,6 +99,8 @@ export default function CreateInvoiceDraftModal({
             </div>
           </div>
           <button
+            type="button"
+            aria-label="Đóng"
             onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
           >

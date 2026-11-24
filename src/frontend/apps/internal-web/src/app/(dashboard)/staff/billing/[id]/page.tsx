@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import {
@@ -13,11 +14,24 @@ import {
 } from '@/lib/api/invoice.api';
 import InvoiceStatusBadge from '@/components/billing/InvoiceStatusBadge';
 import InvoiceLinesTable from '@/components/billing/InvoiceLinesTable';
-import DiscountEditorModal from '@/components/billing/DiscountEditorModal';
-import PaymentModal from '@/components/billing/PaymentModal';
-import CancelInvoiceModal from '@/components/billing/CancelInvoiceModal';
-import ConfirmModal from '@/components/shared/ConfirmModal';
 import { formatVND } from '@/lib/utils/formatters';
+
+const DiscountEditorModal = dynamic(
+  () => import('@/components/billing/DiscountEditorModal'),
+  { ssr: false }
+);
+const PaymentModal = dynamic(
+  () => import('@/components/billing/PaymentModal'),
+  { ssr: false }
+);
+const CancelInvoiceModal = dynamic(
+  () => import('@/components/billing/CancelInvoiceModal'),
+  { ssr: false }
+);
+const ConfirmModal = dynamic(
+  () => import('@/components/shared/ConfirmModal'),
+  { ssr: false }
+);
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -93,6 +107,7 @@ export default function InvoiceDetailPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
       toast.success('Đã tải hóa đơn PDF thành công', { id: 'pdf-toast' });
     } catch (err: any) {
       toast.error('Không thể xuất file PDF: ' + err.message, { id: 'pdf-toast' });
@@ -122,13 +137,23 @@ export default function InvoiceDetailPage() {
         </div>
         <h2 className="text-lg font-bold text-slate-900">Không tìm thấy hóa đơn</h2>
         <p className="text-xs text-slate-500">{error || 'Hóa đơn không tồn tại hoặc đã bị xóa.'}</p>
-        <Link
-          href="/staff/billing"
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white rounded-xl text-xs font-bold hover:brightness-110 transition-all shadow-xs"
-        >
-          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-          <span>Quay lại hàng chờ</span>
-        </Link>
+        <div className="flex flex-wrap items-center justify-center gap-2.5">
+          <button
+            type="button"
+            onClick={loadInvoice}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-bold transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[16px]">refresh</span>
+            <span>Thử lại</span>
+          </button>
+          <Link
+            href="/staff/billing"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#0866ff] to-[#0050cd] text-white rounded-xl text-xs font-bold hover:brightness-110 transition-all shadow-xs"
+          >
+            <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+            <span>Quay lại hàng chờ</span>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -136,27 +161,53 @@ export default function InvoiceDetailPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       {/* 1. Header Toolbar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs">
-        <div className="space-y-1.5">
+      {invoice.totalAmount === 0 && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <span className="material-symbols-outlined text-2xl">verified</span>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-emerald-900">
+                Hóa đơn dịch vụ bảo hành 0 đồng
+              </h3>
+              <p className="text-xs text-emerald-700 mt-0.5">
+                {invoice.status === 'PAID'
+                  ? 'Hóa đơn đã được quyết toán tự động. Lệnh sửa chữa đã chuyển sang trạng thái ĐÃ QUYẾT TOÁN TÀI CHÍNH, Cổng xuất xưởng sẵn sàng bàn giao xe.'
+                  : 'Hóa đơn bảo hành miễn phí 100%. Khi nhấn Phát hành, hệ thống sẽ tự động quyết toán và mở khóa Cổng xuất xưởng.'}
+              </p>
+            </div>
+          </div>
+          {invoice.status === 'PAID' && (
+            <span className="px-3 py-1 rounded-xl bg-emerald-200/80 text-emerald-900 font-bold text-xs shrink-0">
+              Đã thông quan xuất xưởng
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="space-y-1.5 min-w-0">
+          <div className="flex items-start sm:items-center gap-3">
             <Link
               href="/staff/billing"
-              className="w-10 h-10 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-600 hover:text-slate-900 transition-colors"
+              aria-label="Quay lại danh sách"
+              className="w-10 h-10 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-600 hover:text-slate-900 transition-colors shrink-0"
               title="Quay lại danh sách"
             >
               <span className="material-symbols-outlined text-[20px]">arrow_back</span>
             </Link>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-xl font-extrabold text-slate-900 font-mono tracking-wider">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 font-mono tabular-nums tracking-wider">
                   {invoice.invoiceNumber}
                 </h1>
                 <InvoiceStatusBadge status={invoice.status} />
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
                 Lệnh sửa chữa (RO):{' '}
-                <span className="font-mono font-bold text-[#0050cd]">{invoice.woNumber}</span> | Phương tiện:{' '}
-                <strong className="font-mono text-slate-800">{invoice.vehicle.licensePlate}</strong> ({invoice.vehicle.make}{' '}
+                <span className="font-mono tabular-nums font-bold text-[#0050cd]">{invoice.woNumber}</span> | Phương tiện:{' '}
+                <strong className="font-mono tabular-nums text-slate-800">{invoice.vehicle.licensePlate}</strong> ({invoice.vehicle.make}{' '}
                 {invoice.vehicle.model})
               </p>
             </div>
@@ -184,7 +235,7 @@ export default function InvoiceDetailPage() {
                 className="h-9 px-4 rounded-xl bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined text-[18px]">send</span>
-                <span>Phát hành hóa đơn</span>
+                <span>{invoice.totalAmount === 0 ? 'Phát hành & Quyết toán 0đ' : 'Phát hành hóa đơn'}</span>
               </button>
 
               <button
@@ -295,8 +346,8 @@ export default function InvoiceDetailPage() {
       </div>
 
       {/* 3. Lines Breakdown Table */}
-      <div className="space-y-3 bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs">
-        <div className="flex items-center justify-between">
+      <div className="space-y-3 bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
             <span>Danh mục chi phí thanh toán ({invoice.lines.length})</span>
           </h3>
@@ -309,36 +360,36 @@ export default function InvoiceDetailPage() {
 
         {/* 4. Cost Totals Summary Box */}
         <div className="flex flex-col items-end pt-4 space-y-2 text-xs">
-          <div className="w-80 flex justify-between text-slate-600">
+          <div className="w-full sm:w-80 flex justify-between text-slate-600">
             <span>Tổng tiền dịch vụ (Chưa giảm trừ):</span>
             <span className="font-bold text-slate-900 font-mono tabular-nums">{formatVND(invoice.subtotal)}</span>
           </div>
 
           {invoice.discountAmount > 0 && (
-            <div className="w-80 space-y-0.5">
+            <div className="w-full sm:w-80 space-y-0.5">
               <div className="flex justify-between text-rose-600 font-bold">
                 <span>Chiết khấu / Giảm trừ:</span>
                 <span className="font-mono tabular-nums">- {formatVND(invoice.discountAmount)}</span>
               </div>
               {invoice.discountReason && (
-                <div className="text-right text-[11px] text-slate-400 italic">
+                <div className="text-right text-[11px] text-slate-500 italic">
                   (Lý do: {invoice.discountReason})
                 </div>
               )}
             </div>
           )}
 
-          <div className="w-80 flex justify-between text-slate-500 text-[11px]">
+          <div className="w-full sm:w-80 flex justify-between text-slate-500 text-[11px]">
             <span>Thuế GTGT (0% Miễn thuế):</span>
             <span className="font-mono tabular-nums">{formatVND(0)}</span>
           </div>
 
-          <div className="w-80 flex justify-between text-base font-extrabold text-slate-900 pt-3 border-t border-slate-200">
+          <div className="w-full sm:w-80 flex justify-between text-base font-extrabold text-slate-900 pt-3 border-t border-slate-200">
             <span>TỔNG THANH TOÁN:</span>
             <span className="text-[#0050cd] font-mono tabular-nums">{formatVND(invoice.totalAmount)}</span>
           </div>
 
-          <div className="w-80 flex justify-between text-xs font-bold pt-1">
+          <div className="w-full sm:w-80 flex justify-between text-xs font-bold pt-1">
             <span>Số tiền còn phải trả:</span>
             {invoice.amountDue > 0 ? (
               <span className="text-amber-700 text-sm font-mono tabular-nums">{formatVND(invoice.amountDue)}</span>
@@ -357,8 +408,8 @@ export default function InvoiceDetailPage() {
       </div>
 
       {/* 5. Payment Transaction History */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
             <span className="material-symbols-outlined text-[20px] text-[#0050cd]">history</span>
             <span>Lịch sử thanh toán &amp; Đối soát ({invoice.payments.length})</span>
@@ -377,7 +428,7 @@ export default function InvoiceDetailPage() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[620px]">
               <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                 <tr>
                   <th className="py-2.5 px-3">Thời gian</th>
@@ -446,39 +497,51 @@ export default function InvoiceDetailPage() {
       {/* Modals */}
       {invoice && (
         <>
-          <DiscountEditorModal
-            isOpen={isDiscountModalOpen}
-            onClose={() => setIsDiscountModalOpen(false)}
-            invoiceId={invoice.id}
-            subtotal={invoice.subtotal}
-            currentDiscount={invoice.discountAmount}
-            currentReason={invoice.discountReason}
-            onSuccess={loadInvoice}
-          />
+          {isDiscountModalOpen && (
+            <DiscountEditorModal
+              isOpen={isDiscountModalOpen}
+              onClose={() => setIsDiscountModalOpen(false)}
+              invoiceId={invoice.id}
+              subtotal={invoice.subtotal}
+              currentDiscount={invoice.discountAmount}
+              currentReason={invoice.discountReason}
+              onSuccess={loadInvoice}
+            />
+          )}
 
-          <PaymentModal
-            isOpen={isPaymentModalOpen}
-            onClose={() => setIsPaymentModalOpen(false)}
-            invoice={invoice}
-            onSuccess={loadInvoice}
-          />
+          {isPaymentModalOpen && (
+            <PaymentModal
+              isOpen={isPaymentModalOpen}
+              onClose={() => setIsPaymentModalOpen(false)}
+              invoice={invoice}
+              onSuccess={loadInvoice}
+            />
+          )}
 
-          <CancelInvoiceModal
-            isOpen={isCancelModalOpen}
-            onClose={() => setIsCancelModalOpen(false)}
-            onConfirm={handleConfirmCancel}
-            invoiceNumber={invoice.invoiceNumber}
-          />
+          {isCancelModalOpen && (
+            <CancelInvoiceModal
+              isOpen={isCancelModalOpen}
+              onClose={() => setIsCancelModalOpen(false)}
+              onConfirm={handleConfirmCancel}
+              invoiceNumber={invoice.invoiceNumber}
+            />
+          )}
 
-          <ConfirmModal
-            isOpen={isIssueConfirmOpen}
-            title="Xác nhận phát hành hóa đơn"
-            message={`Bạn có chắc muốn phát hành chính thức hóa đơn ${invoice.invoiceNumber}? Sau khi phát hành, khách hàng có thể thanh toán và hóa đơn không thể hoàn trả trạng thái nháp.`}
-            confirmText="Phát hành ngay"
-            cancelText="Kiểm tra lại"
-            onConfirm={handleConfirmIssue}
-            onCancel={() => setIsIssueConfirmOpen(false)}
-          />
+          {isIssueConfirmOpen && (
+            <ConfirmModal
+              isOpen={isIssueConfirmOpen}
+              title={invoice.totalAmount === 0 ? "Xác nhận phát hành hóa đơn 0đ (Quyết toán bảo hành)" : "Xác nhận phát hành hóa đơn"}
+              message={
+                invoice.totalAmount === 0
+                  ? `Hóa đơn ${invoice.invoiceNumber} có tổng tiền bằng 0 đồng. Khi phát hành, hệ thống sẽ tự động chuyển hóa đơn sang ĐÃ THANH TOÁN (PAID) và cập nhật Lệnh sửa chữa sang ĐÃ QUYẾT TOÁN TÀI CHÍNH (FINANCIAL_CLEARED) để mở khóa xuất xưởng xe.`
+                  : `Bạn có chắc muốn phát hành chính thức hóa đơn ${invoice.invoiceNumber}? Sau khi phát hành, khách hàng có thể thanh toán và hóa đơn không thể hoàn trả trạng thái nháp.`
+              }
+              confirmText={invoice.totalAmount === 0 ? "Quyết toán ngay" : "Phát hành ngay"}
+              cancelText="Kiểm tra lại"
+              onConfirm={handleConfirmIssue}
+              onCancel={() => setIsIssueConfirmOpen(false)}
+            />
+          )}
         </>
       )}
     </div>

@@ -30,11 +30,13 @@ export interface UpdateUserPayload {
 }
 
 export const userApi = {
-  getAll: (params?: { search?: string; role?: string; status?: string; page?: number; limit?: number }) =>
-    api.get('/api/users', { params }),
+  getAll: (
+    params?: { search?: string; role?: string; status?: string; page?: number; limit?: number },
+    signal?: AbortSignal
+  ) => api.get('/api/users', { params, signal }),
 
-  getById: (id: number) =>
-    api.get(`/api/users/${id}`),
+  getById: (id: number, signal?: AbortSignal) =>
+    api.get(`/api/users/${id}`, { signal }),
 
   create: (data: CreateUserPayload) =>
     api.post('/api/users', data),

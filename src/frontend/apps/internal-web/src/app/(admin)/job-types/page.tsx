@@ -7,6 +7,7 @@ import Modal from '@/components/shared/Modal';
 import TablePagination from '@/components/shared/TablePagination';
 import toast from 'react-hot-toast';
 import { validateName } from '@/lib/utils/validators';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface FormData {
   name: string;
@@ -21,6 +22,7 @@ export default function JobTypesPage() {
   const [jobTypes, setJobTypes] = useState<JobTypeData[]>([]);
   const [pagination, setPagination] = useState({ totalRecords: 0, totalPages: 1, currentPage: 1, limit: 10 });
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [loading, setLoading] = useState(true);
 
   // Form modal
@@ -43,20 +45,29 @@ export default function JobTypesPage() {
     }
   };
 
-  const load = useCallback(async (page = 1) => {
+  const load = useCallback(async (page = 1, signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const res = await jobTypeApi.getAll({ search, page, limit: 10 });
-      setJobTypes(res.data.data);
-      setPagination(res.data.pagination);
+      const res = await jobTypeApi.getAll({ search: debouncedSearch, page, limit: 10 }, signal);
+      if (!signal?.aborted) {
+        setJobTypes(res.data.data);
+        setPagination(res.data.pagination);
+      }
     } catch (e: any) {
+      if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED' || signal?.aborted) return;
       showToast(e.response?.data?.message || 'Lỗi tải dữ liệu', 'error');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
-  }, [search]);
+  }, [debouncedSearch]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const controller = new AbortController();
+    load(1, controller.signal);
+    return () => controller.abort();
+  }, [load]);
 
   // ── Form handlers ────────────────────────────────────────────
   const openCreate = () => {
@@ -245,7 +256,7 @@ export default function JobTypesPage() {
       {/* 3. Table card */}
       <div className="w-full saas-card overflow-hidden">
         {/* Search bar */}
-        <div className="p-4 flex items-center justify-between gap-3 border-b border-slate-200/80">
+        <div className="p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-200/80">
           <div className="relative flex-1 max-w-md">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
               search
@@ -347,8 +358,10 @@ export default function JobTypesPage() {
                       <div className="flex items-center justify-end gap-2">
                         {/* Edit */}
                         <button
+                          type="button"
                           id={`btn-edit-jt-${j.id}`}
                           onClick={() => openEdit(j)}
+                          aria-label={`Chỉnh sửa ${j.name}`}
                           className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-[#0866ff] flex items-center justify-center transition-colors cursor-pointer"
                           title="Chỉnh sửa"
                         >
@@ -357,8 +370,10 @@ export default function JobTypesPage() {
 
                         {/* Toggle active/inactive */}
                         <button
+                          type="button"
                           id={`btn-toggle-jt-${j.id}`}
                           onClick={() => requestToggle(j)}
+                          aria-label={j.isActive ? `Ngừng hoạt động ${j.name}` : `Kích hoạt ${j.name}`}
                           className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${
                             j.isActive
                               ? 'bg-rose-50 hover:bg-rose-500 hover:text-white border-rose-200/80 text-rose-600'
@@ -373,8 +388,10 @@ export default function JobTypesPage() {
 
                         {/* Delete */}
                         <button
+                          type="button"
                           id={`btn-delete-jt-${j.id}`}
                           onClick={() => requestDelete(j)}
+                          aria-label={`Xóa loại công việc ${j.name}`}
                           className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-200/80 text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
                           title="Xóa loại công việc"
                         >

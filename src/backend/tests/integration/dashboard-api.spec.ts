@@ -54,6 +54,7 @@ vi.mock('../../src/utils/prisma', () => {
       },
       quotation: {
         count: vi.fn(),
+        groupBy: vi.fn(),
       },
       appointment: {
         count: vi.fn(),
@@ -297,26 +298,104 @@ describe('Integration API - Multi-Portal Dashboard Engine (/api/dashboard/:porta
   });
 
   describe('GET /api/dashboard/sa', () => {
-    it('DASH-03: Service Advisor lấy dữ liệu theo scope cá nhân (my) và toàn xưởng (workshop)', async () => {
+    it('DASH-03: Service Advisor lấy dữ liệu KPI cá nhân hóa từ DB (không dùng số liệu giả)', async () => {
       (prisma.user.findUnique as any).mockResolvedValue({
         id: 3,
         is_active: true,
         roles: [{ role: { name: 'SERVICE ADVISOR' } }],
       });
 
-      (prisma.quotation.count as any).mockResolvedValue(5);
-      (prisma.workOrder.count as any).mockResolvedValue(12);
-      (prisma.appointment.count as any).mockResolvedValue(4);
+      (prisma.invoice.aggregate as any)
+        .mockResolvedValueOnce({ _sum: { total_amount: 15000000 } })
+        .mockResolvedValueOnce({ _sum: { total_amount: 10000000 } });
+      (prisma.quotation.groupBy as any)
+        .mockResolvedValueOnce([
+          { status: 'APPROVED', _count: { id: 3 } },
+          { status: 'SENT', _count: { id: 1 } },
+        ])
+        .mockResolvedValueOnce([
+          { status: 'APPROVED', _count: { id: 1 } },
+          { status: 'REJECTED', _count: { id: 1 } },
+        ]);
+      (prisma.workOrder.count as any)
+        .mockResolvedValueOnce(4)
+        .mockResolvedValueOnce(2);
+      (prisma.workOrder.groupBy as any)
+        .mockResolvedValueOnce([
+          { status: 'IN_PLANNING', _count: { id: 2 } },
+          { status: 'PENDING_APPROVAL', _count: { id: 1 } },
+          { status: 'CLOSED', _count: { id: 4 } },
+        ])
+        .mockResolvedValueOnce([
+          { source_type: 'APPOINTMENT', _count: { id: 3 } },
+          { source_type: 'WALK_IN', _count: { id: 1 } },
+        ]);
+      (prisma.invoice.findMany as any).mockResolvedValue([
+        { issued_at: new Date('2026-11-20T10:00:00Z'), total_amount: 5000000 },
+        { issued_at: new Date('2026-11-21T10:00:00Z'), total_amount: 10000000 },
+      ]);
       (prisma.workOrder.findMany as any).mockResolvedValue([]);
 
       const res = await request(app)
-        .get('/api/dashboard/sa?scope=my')
+        .get('/api/dashboard/sa?period=7days')
         .set('Authorization', `Bearer ${saToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data.portal).toBe('sa');
-      expect(res.body.data.kpis).toBeDefined();
+      expect(res.body.data.kpis).toEqual([
+        expect.objectContaining({ key: 'personalRevenue', value: 15000000, prevValue: 10000000 }),
+        expect.objectContaining({ key: 'quotationApprovalRate', value: 75, prevValue: 50 }),
+        expect.objectContaining({ key: 'completedWos', value: 4, prevValue: 2 }),
+        expect.objectContaining({ key: 'activeWosCount', value: 3 }),
+      ]);
+      expect(res.body.data.charts.stagePipeline).toHaveLength(8);
+      expect(res.body.data.charts.sourceBreakdown).toEqual([
+        { sourceType: 'APPOINTMENT', count: 3, pct: 75 },
+        { sourceType: 'WALK_IN', count: 1, pct: 25 },
+        { sourceType: 'TOW_IN', count: 0, pct: 0 },
+      ]);
+      expect(res.body.data.charts.revenueTrend).toHaveLength(2);
+    });
+
+    it('DASH-03-ISOLATION: Chặn xem dữ liệu SA khác kể cả khi truyền ?scope=workshop', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue({
+        id: 3,
+        is_active: true,
+        roles: [{ role: { name: 'SERVICE ADVISOR' } }],
+      });
+
+      (prisma.invoice.aggregate as any).mockResolvedValue({ _sum: { total_amount: 0 } });
+      (prisma.quotation.groupBy as any).mockResolvedValue([]);
+      (prisma.workOrder.count as any).mockResolvedValue(0);
+      (prisma.workOrder.groupBy as any).mockResolvedValue([]);
+      (prisma.invoice.findMany as any).mockResolvedValue([]);
+      (prisma.workOrder.findMany as any).mockResolvedValue([]);
+
+      const res = await request(app)
+        .get('/api/dashboard/sa?scope=workshop&period=7days')
+        .set('Authorization', `Bearer ${saToken}`);
+
+      expect(res.status).toBe(200);
+
+      for (const call of (prisma.invoice.aggregate as any).mock.calls) {
+        expect(call[0].where.work_order).toEqual({ advisor_id: 3 });
+      }
+      for (const call of (prisma.invoice.findMany as any).mock.calls) {
+        expect(call[0].where.work_order).toEqual({ advisor_id: 3 });
+      }
+      for (const call of (prisma.quotation.groupBy as any).mock.calls) {
+        expect(call[0].where.work_order).toEqual({ advisor_id: 3 });
+      }
+      for (const call of (prisma.workOrder.count as any).mock.calls) {
+        expect(call[0].where.advisor_id).toBe(3);
+      }
+      for (const call of (prisma.workOrder.groupBy as any).mock.calls) {
+        expect(call[0].where.advisor_id).toBe(3);
+      }
+      for (const call of (prisma.workOrder.findMany as any).mock.calls) {
+        expect(call[0].where.advisor_id).toBe(3);
+      }
     });
   });
 

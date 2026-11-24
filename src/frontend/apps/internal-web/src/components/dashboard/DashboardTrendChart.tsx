@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useId } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -28,7 +28,28 @@ export interface DashboardTrendChartProps {
   isLoading?: boolean;
 }
 
-export const DashboardTrendChart: React.FC<DashboardTrendChartProps> = ({
+const TrendTooltip = ({ active, payload, label, format }: any) => {
+  if (active && payload && payload.length) {
+    const val = payload[0].value;
+    const pt = payload[0].payload as TrendDataPoint;
+    return (
+      <div className="bg-slate-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-lg backdrop-blur border border-slate-700">
+        <div className="font-semibold text-slate-300 mb-1">Ngày {label}</div>
+        <div className="text-emerald-400 font-mono tabular-nums font-bold">
+          {format === 'currency' ? formatVND(val) : formatNumber(val)}
+        </div>
+        {pt.count !== undefined && (
+          <div className="text-[11px] text-slate-400 font-mono tabular-nums mt-0.5">
+            Số giao dịch: {pt.count}
+          </div>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
+
+export const DashboardTrendChart: React.FC<DashboardTrendChartProps> = React.memo(({
   title,
   subtitle,
   data,
@@ -37,6 +58,8 @@ export const DashboardTrendChart: React.FC<DashboardTrendChartProps> = ({
   height = 280,
   isLoading = false,
 }) => {
+  const uid = useId().replace(/:/g, '');
+  const gradId = `trendGradient-${uid}`;
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm animate-pulse">
@@ -60,25 +83,6 @@ export const DashboardTrendChart: React.FC<DashboardTrendChartProps> = ({
     );
   }
 
-  const customTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const val = payload[0].value;
-      const pt = payload[0].payload as TrendDataPoint;
-      return (
-        <div className="bg-slate-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-lg backdrop-blur border border-slate-700">
-          <div className="font-semibold text-slate-300 mb-1">Ngày {label}</div>
-          <div className="text-emerald-400 font-mono font-bold">
-            {format === 'currency' ? formatVND(val) : formatNumber(val)}
-          </div>
-          {pt.count !== undefined && (
-            <div className="text-[11px] text-slate-400 mt-0.5">Số giao dịch: {pt.count}</div>
-          )}
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
@@ -96,7 +100,7 @@ export const DashboardTrendChart: React.FC<DashboardTrendChartProps> = ({
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
-              <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={color} stopOpacity={0.25} />
                 <stop offset="95%" stopColor={color} stopOpacity={0.0} />
               </linearGradient>
@@ -104,30 +108,30 @@ export const DashboardTrendChart: React.FC<DashboardTrendChartProps> = ({
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
             <XAxis
               dataKey="label"
-              stroke="#94a3b8"
+              stroke="#64748b"
               fontSize={11}
               tickLine={false}
               axisLine={{ stroke: '#e2e8f0' }}
             />
             <YAxis
-              stroke="#94a3b8"
+              stroke="#64748b"
               fontSize={11}
               tickLine={false}
               axisLine={false}
               tickFormatter={(val) => (format === 'currency' ? formatVND(val, true) : formatNumber(val))}
             />
-            <Tooltip content={customTooltip} />
+            <Tooltip content={<TrendTooltip format={format} />} />
             <Area
               type="monotone"
               dataKey="value"
               stroke={color}
               strokeWidth={2.5}
               fillOpacity={1}
-              fill="url(#trendGradient)"
+              fill={`url(#${gradId})`}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>
   );
-};
+});

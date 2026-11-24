@@ -16,6 +16,8 @@ export interface Appointment {
   status: 'REQUESTED' | 'CONFIRMED' | 'RESCHEDULED' | 'ARRIVED' | 'CANCELLED';
   cancel_reason: string | null;
   notes: string | null;
+  is_warranty?: boolean;
+  symptoms_description?: string | null;
   customer?: { id: number; full_name: string; phone: string };
   vehicle?: { id: number; license_plate: string; make: string; model: string };
   services?: {

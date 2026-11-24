@@ -16,14 +16,18 @@ import {
 import { WorkOrder } from '@/lib/api/work-order.api';
 import { formatVND } from '@/lib/utils/formatters';
 import toast from 'react-hot-toast';
-import QuotationHistoryModal from '../modals/QuotationHistoryModal';
-import VehicleReturnModal from '../modals/VehicleReturnModal';
+import dynamic from 'next/dynamic';
+
+const QuotationHistoryModal = dynamic(() => import('../modals/QuotationHistoryModal'), { ssr: false });
+const VehicleReturnModal = dynamic(() => import('../modals/VehicleReturnModal'), { ssr: false });
+const QuotationActionModals = dynamic(() => import('../modals/QuotationActionModals'), { ssr: false });
 
 interface TabQuotationProps {
   workOrder: WorkOrder;
   refetchWO: () => void;
   isReadOnly?: boolean;
   setActiveTab?: (tabId: string) => void;
+  quotations?: Quotation[];
 }
 
 const STATUS_BADGES: Record<string, { label: string; bg: string; text: string; icon: string }> = {
@@ -33,10 +37,21 @@ const STATUS_BADGES: Record<string, { label: string; bg: string; text: string; i
   REJECTED: { label: 'Khách từ chối', bg: 'bg-rose-50 dark:bg-rose-950/50', text: 'text-rose-700 dark:text-rose-400', icon: 'cancel' },
 };
 
-export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false, setActiveTab }: TabQuotationProps) {
-  const [quotations, setQuotations] = useState<Quotation[]>([]);
-  const [activeQuotationId, setActiveQuotationId] = useState<number | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+export default function TabQuotation({
+  workOrder,
+  refetchWO,
+  isReadOnly = false,
+  setActiveTab,
+  quotations: propQuotations,
+}: TabQuotationProps) {
+  const [quotations, setQuotations] = useState<Quotation[]>(propQuotations || []);
+  const [activeQuotationId, setActiveQuotationId] = useState<number | null>(() => {
+    if (!propQuotations || propQuotations.length === 0) return null;
+    const mainQ = propQuotations.find((q) => q.isLatestSent) || propQuotations[0];
+    return mainQ.id;
+  });
+  const [loading, setLoading] = useState<boolean>(!propQuotations);
+  const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
@@ -59,6 +74,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
       if (!silent) {
         setLoading(true);
       }
+      setError(null);
       const res = await getWOQuotations(workOrder.id);
       if (res.success && res.data) {
         setQuotations(res.data);
@@ -75,15 +91,31 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
       }
     } catch (err: any) {
       console.error('Lỗi tải báo giá:', err);
-      toast.error('Không thể tải danh sách báo giá');
+      const msg = err?.response?.data?.message || err?.message || 'Không thể tải danh sách báo giá';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   }, [workOrder?.id]);
 
   useEffect(() => {
+    if (propQuotations !== undefined) {
+      setQuotations(propQuotations);
+      setLoading(false);
+      if (propQuotations.length > 0) {
+        const mainQ = propQuotations.find((q) => q.isLatestSent) || propQuotations[0];
+        setActiveQuotationId((prev) => {
+          const exists = propQuotations.some((q) => q.id === prev);
+          return exists ? prev : mainQ.id;
+        });
+      } else {
+        setActiveQuotationId(null);
+      }
+      return;
+    }
     fetchQuotations();
-  }, [fetchQuotations]);
+  }, [propQuotations, fetchQuotations]);
 
   // Báo giá chính (báo giá gửi cuối cùng hoặc báo giá đầu tiên)
   const mainQuotation = useMemo(() => {
@@ -135,7 +167,6 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
         } else {
           toast.success(`Đã tạo ${type === 'PRIMARY' ? 'báo giá chính' : 'báo giá bổ sung'} thành công`);
         }
-        await fetchQuotations(true);
         setActiveQuotationId(res.data.id);
         refetchWO();
       } else {
@@ -156,7 +187,6 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
       const res = await sendQuotation(activeQuotation.id);
       if (res.success) {
         toast.success('Đã gửi báo giá đến khách hàng thành công');
-        await fetchQuotations(true);
         refetchWO();
       } else {
         toast.error(res.message || 'Lỗi khi gửi báo giá');
@@ -176,7 +206,6 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
       const res = await approveQuotation(activeQuotation.id);
       if (res.success) {
         toast.success('Báo giá đã được phê duyệt thành công! Phụ tùng đã chuyển sang trạng thái Giữ hàng.');
-        await fetchQuotations(true);
         refetchWO();
       } else {
         toast.error(res.message || 'Lỗi khi duyệt báo giá');
@@ -202,7 +231,6 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
         toast.success('Đã ghi nhận từ chối báo giá. Phiếu công việc chuyển về Lập kế hoạch.');
         setIsRejectModalOpen(false);
         setRejectReason('');
-        await fetchQuotations(true);
         refetchWO();
       } else {
         toast.error(res.message || 'Lỗi khi từ chối báo giá');
@@ -223,7 +251,6 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
       if (res.success) {
         toast.success('Đã hủy báo giá nháp thành công');
         setIsConfirmCancelOpen(false);
-        await fetchQuotations(true);
         refetchWO();
       } else {
         toast.error(res.message || 'Lỗi khi hủy báo giá');
@@ -306,6 +333,26 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
     return (
       <div className="flex h-64 items-center justify-center">
         <span className="material-symbols-outlined animate-spin text-[36px] text-primary">progress_activity</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-10 text-center border border-rose-200 rounded-2xl bg-rose-50/70 space-y-3">
+        <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center">
+          <span className="material-symbols-outlined text-[26px]">error</span>
+        </div>
+        <h3 className="text-sm font-bold text-rose-900">Không thể tải danh sách báo giá</h3>
+        <p className="text-xs text-rose-700 max-w-md">{error}</p>
+        <button
+          type="button"
+          onClick={() => fetchQuotations(false)}
+          className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+        >
+          <span className="material-symbols-outlined text-[16px]">refresh</span>
+          <span>Thử lại</span>
+        </button>
       </div>
     );
   }
@@ -475,11 +522,11 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+            <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
               {workOrder.customer?.phone && (
                 <a
                   href={`tel:${workOrder.customer.phone}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-rose-900/40 hover:bg-rose-100 text-rose-900 dark:text-rose-100 rounded-xl text-xs font-semibold border border-rose-300 transition-colors shadow-2xs"
+                  className="sa-press inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-rose-900/40 hover:bg-rose-100 text-rose-900 dark:text-rose-100 rounded-xl text-xs font-semibold border border-rose-300 transition-colors shadow-2xs"
                   title="Gọi cho khách hàng"
                 >
                   <span className="material-symbols-outlined text-[18px]">call</span>
@@ -490,7 +537,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
               <button
                 type="button"
                 onClick={() => setIsVehicleReturnModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+                className="sa-press inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors shadow-md cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">key</span>
                 <span>Xuất trả xe cho khách</span>
@@ -528,15 +575,15 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                     className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-amber-900/40 hover:bg-amber-100 text-amber-900 dark:text-amber-100 rounded-xl text-xs font-semibold border border-amber-300 transition-colors shadow-2xs cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-[18px]">handyman</span>
-                    <span>Sửa dịch vụ (Tab 2)</span>
+                    <span>Điều chỉnh dịch vụ</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveTab('parts')}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-amber-900/40 hover:bg-amber-100 text-amber-900 dark:text-amber-100 rounded-xl text-xs font-semibold border border-amber-300 transition-colors shadow-2xs cursor-pointer"
+                    className="sa-press inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-amber-900/40 hover:bg-amber-100 text-amber-900 dark:text-amber-100 rounded-xl text-xs font-semibold border border-amber-300 transition-colors shadow-2xs cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-[18px]">build_circle</span>
-                    <span>Sửa phụ tùng (Tab 3)</span>
+                    <span>Điều chỉnh phụ tùng</span>
                   </button>
                 </>
               )}
@@ -545,7 +592,7 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
                 type="button"
                 onClick={() => handleCreateQuotation('PRIMARY')}
                 disabled={actionLoading}
-                className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="sa-press inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-colors shadow-md disabled:opacity-50 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">add_circle</span>
                 <span>Tạo báo giá mới</span>
@@ -557,13 +604,13 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
 
       {/* 2. Bảng bóc tách chi tiết (Itemized Table) */}
       <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-outline-variant bg-surface-container-low/40 flex items-center justify-between">
-          <div className="font-extrabold text-sm text-zinc-900 flex items-center gap-2">
+        <div className="px-5 py-3.5 border-b border-outline-variant bg-surface-container-low/40 flex flex-wrap items-center justify-between gap-2">
+          <div className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
             <span className="material-symbols-outlined text-[18px] text-primary">list_alt</span>
-            Bảng chi tiết hạng mục dịch vụ & phụ tùng
+            Bảng chi tiết hạng mục dịch vụ &amp; phụ tùng
           </div>
           <div className="text-xs text-on-surface-variant font-medium">
-            Áp dụng quy chế: <b>Zero-Tax (Không phụ thu thuế)</b>
+            Chính sách thuế: <b>Không thu thuế GTGT</b>
           </div>
         </div>
 
@@ -690,22 +737,23 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
 
           <div className="w-full sm:w-80 space-y-2.5 bg-slate-50/80 p-4.5 rounded-2xl border border-slate-200/80">
             <div className="flex justify-between text-xs text-on-surface-variant">
-              <span>Tổng tiền hạng mục (Subtotal):</span>
+              <span>Tạm tính hạng mục:</span>
               <span className="font-mono tabular-nums font-bold text-on-surface">{formatVND(activeQuotation?.subtotal || 0)}</span>
             </div>
 
             <div className="flex justify-between text-xs items-center">
-              <span className="text-on-surface-variant flex items-center gap-1">
+              <span className="text-on-surface-variant flex items-center gap-1.5">
                 Chiết khấu / Giảm giá:
                 {!isReadOnly && activeQuotation?.status !== 'APPROVED' && (
                   <button
+                    type="button"
                     onClick={() => {
                       setDiscountValue(activeQuotation?.discountAmount || 0);
                       setIsDiscountModalOpen(true);
                     }}
-                    className="text-primary hover:underline text-[11px] font-semibold"
+                    className="sa-press px-2 py-0.5 rounded-md bg-blue-50 text-[#0050cd] hover:bg-blue-100 text-[11px] font-bold transition-colors cursor-pointer"
                   >
-                    (Sửa)
+                    Điều chỉnh
                   </button>
                 )}
               </span>
@@ -812,238 +860,32 @@ export default function TabQuotation({ workOrder, refetchWO, isReadOnly = false,
         </div>
       )}
 
-      {/* MODAL 1: Điều chỉnh chiết khấu */}
-      {isDiscountModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-surface-container-lowest w-full max-w-md rounded-2xl border border-outline-variant shadow-xl p-6 space-y-4">
-            <h3 className="text-title-md font-bold text-on-surface">Điều chỉnh chiết khấu báo giá</h3>
-            <p className="text-xs text-on-surface-variant">
-              Khoản giảm trừ sẽ được khấu trừ trực tiếp vào tổng thanh toán của khách hàng.
-            </p>
-
-            <div className="flex rounded-lg bg-surface-container-low p-1 border border-outline-variant">
-              <button
-                type="button"
-                onClick={() => setDiscountType('amount')}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                  discountType === 'amount' ? 'bg-primary text-white shadow-2xs' : 'text-on-surface-variant'
-                }`}
-              >
-                Số tiền mặt (VND)
-              </button>
-              <button
-                type="button"
-                onClick={() => setDiscountType('percent')}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                  discountType === 'percent' ? 'bg-primary text-white shadow-2xs' : 'text-on-surface-variant'
-                }`}
-              >
-                Phần trăm (%)
-              </button>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-bold text-on-surface-variant">
-                  {discountType === 'amount' ? 'Số tiền giảm (VND)' : 'Tỷ lệ chiết khấu (%)'}
-                </label>
-                {activeQuotation && (
-                  <span className="text-[11px] font-mono text-on-surface-variant">
-                    Tổng ban đầu: {formatVND(activeQuotation.subtotal)}
-                  </span>
-                )}
-              </div>
-              <input
-                type="number"
-                min={0}
-                max={discountType === 'percent' ? 100 : activeQuotation?.subtotal}
-                value={discountValue}
-                onChange={(e) => setDiscountValue(e.target.value === '' ? 0 : Number(e.target.value))}
-                className={`w-full px-3 py-2 bg-surface-container-lowest border rounded-lg text-sm font-mono text-on-surface focus:outline-none ${
-                  discountValidationError
-                    ? 'border-rose-500 focus:border-rose-500'
-                    : 'border-outline-variant focus:border-primary'
-                }`}
-              />
-              {discountValidationError && (
-                <p className="mt-1.5 text-xs font-medium text-rose-600">{discountValidationError}</p>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsDiscountModalOpen(false)}
-                className="px-4 py-2 border border-outline-variant text-on-surface-variant rounded-lg text-xs font-semibold"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveDiscount}
-                disabled={actionLoading}
-                className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-semibold"
-              >
-                Lưu chiết khấu
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 2: Khách từ chối báo giá */}
-      {isRejectModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-surface-container-lowest w-full max-w-md rounded-2xl border border-outline-variant shadow-xl p-6 space-y-4">
-            <h3 className="text-title-md font-bold text-rose-600 flex items-center gap-2">
-              <span className="material-symbols-outlined text-[20px]">cancel</span>
-              Ghi nhận khách từ chối báo giá
-            </h3>
-            <p className="text-xs text-on-surface-variant">
-              Khi từ chối, Phiếu công việc sẽ được chuyển ngược lại trạng thái <b>Lập kế hoạch (IN_PLANNING)</b> để Cố vấn thảo luận lại và điều chỉnh dịch vụ cho khách.
-            </p>
-
-            <div>
-              <label className="text-xs font-bold text-on-surface-variant mb-1 block">
-                Lý do khách hàng không đồng ý <span className="text-rose-500">*</span>
-              </label>
-              <textarea
-                rows={3}
-                placeholder="Ví dụ: Khách muốn bỏ bớt hạng mục thay má phanh, chi phí vượt ngân sách..."
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                className="w-full p-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-rose-500 resize-none"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsRejectModalOpen(false)}
-                className="px-4 py-2 border border-outline-variant text-on-surface-variant rounded-lg text-xs font-semibold"
-              >
-                Đóng
-              </button>
-              <button
-                type="button"
-                onClick={handleRejectQuotation}
-                disabled={actionLoading}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold"
-              >
-                Xác nhận từ chối
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 3: Xác nhận hủy báo giá nháp */}
-      {isConfirmCancelOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-surface-container-lowest w-full max-w-sm rounded-2xl border border-outline-variant shadow-xl p-6 space-y-4">
-            <h3 className="text-title-md font-bold text-on-surface">Xác nhận hủy báo giá nháp?</h3>
-            <p className="text-xs text-on-surface-variant">
-              Bản ghi báo giá này sẽ bị xóa khỏi hệ thống. Bạn có thể tạo lại báo giá mới bất cứ lúc nào.
-            </p>
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsConfirmCancelOpen(false)}
-                className="px-4 py-2 border border-outline-variant text-on-surface-variant rounded-lg text-xs font-semibold"
-              >
-                Quay lại
-              </button>
-              <button
-                type="button"
-                onClick={handleCancelQuotation}
-                disabled={actionLoading}
-                className="px-4 py-2 bg-rose-600 text-white rounded-lg text-xs font-semibold"
-              >
-                Xác nhận xóa
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 4: Xác nhận gửi báo giá cho khách hàng */}
-      {isSendModalOpen && activeQuotation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-surface-container-lowest w-full max-w-lg rounded-2xl border border-outline-variant shadow-xl p-6 space-y-5">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[26px]">send</span>
-              </div>
-              <div>
-                <h3 className="text-title-md font-bold text-on-surface">Gửi Báo Giá Cho Khách Hàng</h3>
-                <p className="text-xs text-on-surface-variant">
-                  Hệ thống sẽ gửi email kèm liên kết trực tiếp để khách hàng phê duyệt trực tuyến.
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-surface-container-low rounded-xl p-4 space-y-2.5 text-xs border border-outline-variant/60">
-              <div className="flex justify-between">
-                <span className="text-on-surface-variant font-medium">Khách hàng:</span>
-                <span className="font-bold text-on-surface">{workOrder.customer?.full_name || 'Khách hàng'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-on-surface-variant font-medium">Email nhận thông báo:</span>
-                <span className="font-bold text-primary">{workOrder.customer?.email || 'Chưa cập nhật email'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-on-surface-variant font-medium">Số điện thoại:</span>
-                <span className="font-bold text-on-surface">{workOrder.customer?.phone || 'Chưa cập nhật'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-on-surface-variant font-medium">Phương tiện:</span>
-                <span className="font-bold text-on-surface">
-                  {workOrder.vehicle?.license_plate} - {workOrder.vehicle?.make} {workOrder.vehicle?.model}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-on-surface-variant font-medium">Mã số báo giá:</span>
-                <span className="font-mono font-bold text-on-surface">{activeQuotation.quotationNumber}</span>
-              </div>
-              <div className="border-t border-outline-variant/60 pt-2 flex justify-between items-center">
-                <span className="text-on-surface font-bold">Tổng thanh toán (0% VAT):</span>
-                <span className="text-base font-extrabold text-primary font-mono">
-                  {activeQuotation.grandTotal.toLocaleString('vi-VN')} đ
-                </span>
-              </div>
-            </div>
-
-            {!workOrder.customer?.email && (
-              <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 rounded-xl text-xs flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0">warning</span>
-                <span>Khách hàng chưa có email. Khách có thể xem và duyệt trực tiếp trên cổng thông tin Khách hàng (Tracking).</span>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsSendModalOpen(false)}
-                disabled={actionLoading}
-                className="px-4 py-2 min-h-[44px] border border-outline-variant text-on-surface-variant hover:bg-surface-container rounded-xl text-sm font-semibold transition-colors cursor-pointer"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  setIsSendModalOpen(false);
-                  await handleSendQuotation();
-                }}
-                disabled={actionLoading}
-                className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[18px]">mark_email_read</span>
-                {actionLoading ? 'Đang gửi...' : 'Xác nhận gửi báo giá'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ACTION MODALS (Discount / Reject / Cancel / Send) */}
+      {(isDiscountModalOpen || isRejectModalOpen || isConfirmCancelOpen || isSendModalOpen) && (
+        <QuotationActionModals
+          workOrder={workOrder}
+          activeQuotation={activeQuotation}
+          actionLoading={actionLoading}
+          isDiscountModalOpen={isDiscountModalOpen}
+          discountType={discountType}
+          discountValue={discountValue}
+          discountValidationError={discountValidationError}
+          setDiscountType={setDiscountType}
+          setDiscountValue={setDiscountValue}
+          onCloseDiscount={() => setIsDiscountModalOpen(false)}
+          onSaveDiscount={handleSaveDiscount}
+          isRejectModalOpen={isRejectModalOpen}
+          rejectReason={rejectReason}
+          setRejectReason={setRejectReason}
+          onCloseReject={() => setIsRejectModalOpen(false)}
+          onRejectQuotation={handleRejectQuotation}
+          isConfirmCancelOpen={isConfirmCancelOpen}
+          onCloseConfirmCancel={() => setIsConfirmCancelOpen(false)}
+          onCancelQuotation={handleCancelQuotation}
+          isSendModalOpen={isSendModalOpen}
+          onCloseSend={() => setIsSendModalOpen(false)}
+          onSendQuotation={handleSendQuotation}
+        />
       )}
 
       {/* MODAL LỊCH SỬ BÁO GIÁ */}

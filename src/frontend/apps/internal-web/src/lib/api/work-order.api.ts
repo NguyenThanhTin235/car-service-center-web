@@ -61,6 +61,9 @@ export interface WorkOrder {
   wo_number: string;
   status: string;
   source_type: string;
+  order_type?: 'REGULAR' | 'WARRANTY' | 'MIXED';
+  parent_work_order_id?: number | null;
+  parent_work_order?: { id: number; wo_number: string } | null;
   customer: {
     id: number;
     full_name: string;
@@ -292,6 +295,7 @@ export interface WoJobPart {
   issued_quantity: number | string;
   returned_quantity: number | string;
   unit_price: number | string;
+  is_warranty?: boolean;
   job?: {
     id: number;
     name: string;
@@ -311,6 +315,7 @@ export interface WoService {
   name: string;
   pricing_type: string;
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+  is_warranty?: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;

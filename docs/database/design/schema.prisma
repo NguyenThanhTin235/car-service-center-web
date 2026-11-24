@@ -261,14 +261,24 @@ enum CatalogType {
 enum NotificationType {
   APPOINTMENT_CONFIRMED
   APPOINTMENT_CANCELLED
+  APPOINTMENT_REMINDER
+  APPOINTMENT_RESCHEDULED
   CHECKIN_READY
   QUOTATION_SENT
   QUOTATION_APPROVED
   QUOTATION_REJECTED
+  WORK_ORDER_STARTED
+  SERVICE_ITEM_STARTED
   INVOICE_ISSUED
   PAYMENT_SUCCESS
   VEHICLE_READY
+  VEHICLE_HANDOVER
+  QC_PASSED
+  QC_FAILED
+  LOW_STOCK_ALERT
   BILLING_REQUEST
+  SYSTEM_ALERT
+  TASK_ASSIGNED
   GENERAL
 }
 
@@ -441,7 +451,6 @@ model Service {
   pricing_type PricingType
   fixed_price  Decimal?    @db.Decimal(12, 2)
   warranty_months  Int         @default(0)
-  warranty_mileage Int         @default(0)
   is_active    Boolean     @default(true)
   created_at   DateTime    @default(now())
   updated_at   DateTime    @default(now()) @updatedAt
@@ -695,6 +704,7 @@ model WoService {
   sort_order    Int           @default(0)
   created_at    DateTime      @default(now())
   updated_at    DateTime      @default(now()) @updatedAt
+  warranty_months  Int @default(0) // Snapshot tu Service.warranty_months luc tao WO
 
   work_order      WorkOrder       @relation(fields: [work_order_id], references: [id])
   service         Service?        @relation(fields: [service_id], references: [id])
@@ -847,6 +857,7 @@ model JobPart {
   unit_price        Decimal              @db.Decimal(12, 2)
   created_at        DateTime             @default(now())
   updated_at        DateTime             @default(now()) @updatedAt
+  warranty_months  Int @default(0) // Snapshot tu InventoryItem.warranty_months luc tao Job
 
   job             Job             @relation(fields: [job_id], references: [id])
   item            InventoryItem   @relation(fields: [item_id], references: [id])
@@ -1004,7 +1015,6 @@ model InventoryItem {
   on_hand       Int     @default(0)
   reorder_level Int     @default(0)
   warranty_months  Int     @default(0)
-  warranty_mileage Int     @default(0)
 
   is_active  Boolean  @default(true)
   created_at DateTime @default(now())
@@ -1196,6 +1206,7 @@ model VehicleRelease {
   release_notes            String?   @db.Text
   released_by_id           Int
   released_at              DateTime
+  odometer_at_release Int?         // ODO khi ban giao xe xuat xuong (luu lich su van hanh xe)
   confirmed_by_customer_id Int?
   confirmed_at             DateTime?
 
@@ -1239,6 +1250,8 @@ model Notification {
 
   user User @relation(fields: [user_id], references: [id])
 
+  @@index([user_id, is_read, created_at(sort: Desc)])
+  @@index([user_id, created_at(sort: Desc)])
   @@map("notifications")
 }
 

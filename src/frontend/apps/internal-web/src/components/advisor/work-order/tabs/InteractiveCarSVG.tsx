@@ -1,5 +1,6 @@
 'use client';
 import React, { MouseEvent, useRef } from 'react';
+import { INSPECTION_MARKER_META, InspectionMarkerType } from '../work-order.constants';
 
 export type MarkerType = 'DAMAGE' | 'RUST' | 'MISSING' | 'DENT' | 'SCRATCH' | 'OTHER';
 
@@ -21,21 +22,14 @@ interface InteractiveCarSVGProps {
   findings: Finding[];
   selectedTool: MarkerType | null;
   onAddFinding: (finding: Omit<Finding, 'id'>) => void;
-  onRemoveFinding?: (id: string | number) => void;
   highlightedFindingId?: string | number | null;
   onSelectFinding?: (id: string | number) => void;
   isReadOnly?: boolean;
 }
 
 export const getMarkerTypeName = (type: MarkerType): string => {
-  switch (type) {
-    case 'DAMAGE': return 'Hư hỏng';
-    case 'RUST': return 'Rỉ sét';
-    case 'MISSING': return 'Thiếu';
-    case 'DENT': return 'Móp méo';
-    case 'SCRATCH': return 'Trầy xước';
-    default: return 'Khác';
-  }
+  const meta = INSPECTION_MARKER_META[type as InspectionMarkerType];
+  return meta ? meta.label.split(' / ')[0] : 'Khác';
 };
 
 const CarDiagramStaticPaths = React.memo(function CarDiagramStaticPaths({
@@ -70,9 +64,9 @@ const CarDiagramStaticPaths = React.memo(function CarDiagramStaticPaths({
       <rect x="740" y="280" width="260" height="240" className="grid-border" />
       <rect x="0" y="520" width="1000" height="280" className="grid-border" />
 
-      {/* ==================== 1. BÊN LÁI ==================== */}
+      {/* ==================== 1. BÊN PHỤ (PHẢI) ==================== */}
       <g transform="translate(0, 0)">
-        <text x="15" y="25" className="view-title">1. BÊN LÁI (PHẢI)</text>
+        <text x="15" y="25" className="view-title">1. BÊN PHỤ (PHẢI)</text>
         <text x="140" y="45" className="sub-label">ĐUÔI XE</text>
         <text x="830" y="45" className="sub-label">ĐẦU XE</text>
         <line x1="80" y1="245" x2="920" y2="245" className="ground-line" />
@@ -205,10 +199,10 @@ const CarDiagramStaticPaths = React.memo(function CarDiagramStaticPaths({
         <text x="250" y="125" className="sub-label" textAnchor="middle">MUI XE</text>
         <text x="405" y="125" className="sub-label" textAnchor="middle">NẮP CA-PÔ</text>
         
-        <text x="140" y="60" className="sub-label">Sau-Phải</text>
-        <text x="140" y="190" className="sub-label">Sau-Trái</text>
-        <text x="320" y="60" className="sub-label">Trước-Phải</text>
-        <text x="320" y="190" className="sub-label">Trước-Trái</text>
+        <text x="140" y="60" className="sub-label">Sau-Trái</text>
+        <text x="140" y="190" className="sub-label">Sau-Phải</text>
+        <text x="320" y="60" className="sub-label">Trước-Trái</text>
+        <text x="320" y="190" className="sub-label">Trước-Phải</text>
       </g>
 
       {/* ==================== 4. ĐẦU XE ==================== */}
@@ -244,9 +238,9 @@ const CarDiagramStaticPaths = React.memo(function CarDiagramStaticPaths({
         <rect x="90" y="155" width="80" height="15" className="car-part" />
       </g>
 
-      {/* ==================== 5. BÊN PHỤ ==================== */}
+      {/* ==================== 5. BÊN LÁI (TRÁI) ==================== */}
       <g transform="translate(0, 520)">
-        <text x="15" y="25" className="view-title">5. BÊN PHỤ (TRÁI)</text>
+        <text x="15" y="25" className="view-title">5. BÊN LÁI (TRÁI)</text>
         <text x="140" y="45" className="sub-label">ĐẦU XE</text>
         <text x="830" y="45" className="sub-label">ĐUÔI XE</text>
         <line x1="80" y1="245" x2="920" y2="245" className="ground-line" />
@@ -323,7 +317,6 @@ const InteractiveCarSVG = React.memo(function InteractiveCarSVG({
   findings,
   selectedTool,
   onAddFinding,
-  onRemoveFinding,
   highlightedFindingId,
   onSelectFinding,
   isReadOnly = false,
@@ -366,43 +359,24 @@ const InteractiveCarSVG = React.memo(function InteractiveCarSVG({
     });
   };
 
-  const renderMarkerIcon = (type: MarkerType) => {
-    switch (type) {
-      case 'DAMAGE': return 'X';
-      case 'RUST': return 'R';
-      case 'MISSING': return 'M';
-      case 'DENT': return 'D';
-      case 'SCRATCH': return 'S';
-      default: return 'X';
-    }
-  };
+  const getMarkerMeta = (type: MarkerType) =>
+    INSPECTION_MARKER_META[type as InspectionMarkerType];
 
-  const getMarkerColor = (type: MarkerType) => {
-    switch (type) {
-      case 'DAMAGE': return 'bg-[#B22222]'; // Dark red
-      case 'RUST': return 'bg-[#B8860B]'; // Dark goldenrod
-      case 'MISSING': return 'bg-[#1E40AF]'; // Royal blue
-      case 'DENT': return 'bg-[#0284c7]'; // Steel blue
-      case 'SCRATCH': return 'bg-[#475569]'; // Slate gray
-      default: return 'bg-gray-500';
-    }
-  };
+  const renderMarkerIcon = (type: MarkerType) => getMarkerMeta(type)?.icon || 'X';
+
+  const getMarkerColor = (type: MarkerType) => getMarkerMeta(type)?.bgColor || 'bg-gray-500';
 
   const getMarkerBadgeStyle = (type: MarkerType) => {
-    switch (type) {
-      case 'DAMAGE':
-        return { color: 'text-[#B22222]', bgColor: 'bg-[#B22222]', lightBg: 'bg-[#FCE8E8]', border: 'border-[#B22222]/20' };
-      case 'RUST':
-        return { color: 'text-[#B8860B]', bgColor: 'bg-[#B8860B]', lightBg: 'bg-[#FDF6E3]', border: 'border-[#B8860B]/20' };
-      case 'MISSING':
-        return { color: 'text-[#1E40AF]', bgColor: 'bg-[#1E40AF]', lightBg: 'bg-[#EFF6FF]', border: 'border-[#1E40AF]/20' };
-      case 'DENT':
-        return { color: 'text-[#0369a1]', bgColor: 'bg-[#0284c7]', lightBg: 'bg-[#E0F2FE]', border: 'border-[#0284c7]/20' };
-      case 'SCRATCH':
-        return { color: 'text-[#708090]', bgColor: 'bg-[#708090]', lightBg: 'bg-[#F1F5F9]', border: 'border-[#708090]/20' };
-      default:
-        return { color: 'text-gray-700', bgColor: 'bg-gray-600', lightBg: 'bg-gray-100', border: 'border-gray-200' };
+    const meta = getMarkerMeta(type);
+    if (!meta) {
+      return { color: 'text-gray-700', bgColor: 'bg-gray-600', lightBg: 'bg-gray-100', border: 'border-gray-200' };
     }
+    return {
+      color: meta.color,
+      bgColor: meta.bgColor,
+      lightBg: meta.lightBg,
+      border: `${meta.borderColor}/20`,
+    };
   };
 
   return (
@@ -465,7 +439,7 @@ const InteractiveCarSVG = React.memo(function InteractiveCarSVG({
                     </div>
 
                     {finding.photos && finding.photos.length > 0 && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#2563EB] bg-[#EFF6FF] px-1.5 py-0.5 rounded">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-blue-50 px-1.5 py-0.5 rounded">
                         <span className="material-symbols-outlined text-[12px]">image</span>
                         {finding.photos.length} ảnh
                       </span>

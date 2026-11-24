@@ -82,7 +82,18 @@ export class IntakeRepository {
           customer: { select: { id: true, full_name: true, phone: true, email: true } },
           vehicle: { select: { id: true, license_plate: true, make: true, model: true, color: true, vehicle_size: true } },
           created_by: { select: { id: true, full_name: true } },
-          services: { include: { service: { include: { category: true } } } },
+          services: {
+            select: {
+              id: true,
+              service: {
+                select: {
+                  id: true,
+                  name: true,
+                  category: { select: { id: true, name: true } },
+                },
+              },
+            },
+          },
           work_order: {
             select: {
               id: true,
@@ -90,10 +101,14 @@ export class IntakeRepository {
               status: true,
               services: {
                 orderBy: { sort_order: 'asc' },
-                include: {
+                select: {
+                  id: true,
+                  name: true,
                   service: {
-                    include: {
-                      category: true,
+                    select: {
+                      id: true,
+                      name: true,
+                      category: { select: { id: true, name: true } },
                     },
                   },
                 },
