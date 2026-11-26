@@ -189,6 +189,7 @@ export class InventoryService {
         brand_id: data.brandId ?? null,
         selling_price: data.sellingPrice,
         reorder_level: data.reorderLevel || 0,
+        warranty_months: data.warrantyMonths !== undefined ? Math.max(0, Number(data.warrantyMonths) || 0) : 0,
       },
       include: ITEM_INCLUDE,
     });
@@ -214,6 +215,7 @@ export class InventoryService {
         brand_id: data.brandId,
         selling_price: data.sellingPrice,
         reorder_level: data.reorderLevel,
+        warranty_months: data.warrantyMonths !== undefined ? Math.max(0, Number(data.warrantyMonths) || 0) : undefined,
         is_active: data.isActive,
       },
       include: ITEM_INCLUDE,
@@ -1033,6 +1035,7 @@ export class InventoryService {
       averageCost: Number(item.average_cost),
       onHand: item.on_hand,
       reorderLevel: item.reorder_level,
+      warrantyMonths: item.warranty_months ?? 0,
       isActive: item.is_active,
       createdAt: item.created_at,
     };

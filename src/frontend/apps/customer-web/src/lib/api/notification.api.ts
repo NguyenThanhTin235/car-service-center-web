@@ -76,11 +76,6 @@ export async function getNotifications(
   };
 }
 
-export async function getNotificationById(id: number): Promise<NotificationItem> {
-  const { data } = await api.get(`/api/notifications/${id}`);
-  return data.data;
-}
-
 export async function getUnreadCount(): Promise<number> {
   const { data } = await api.get('/api/notifications/unread-count');
   return data.data?.count ?? 0;

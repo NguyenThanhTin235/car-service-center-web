@@ -303,62 +303,59 @@ export default function NotificationCenterView({
               return (
                 <div
                   key={item.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handleItemClick(item)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleItemClick(item);
-                    }
-                  }}
-                  className={`px-4 sm:px-5 py-4 flex items-start gap-3.5 sm:gap-4 transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0050cd]/40 ${
+                  className={`px-4 sm:px-5 py-4 flex items-start gap-3.5 sm:gap-4 transition-all duration-150 ${
                     item.isRead
                       ? 'bg-white hover:bg-slate-50/80'
                       : 'bg-[#f4f8ff] hover:bg-[#eaf2ff]/80'
                   }`}
                 >
-                  <div
-                    className={`w-10 h-10 rounded-xl ${visual.bgClass} ${visual.textClass} flex items-center justify-center shrink-0 mt-0.5`}
+                  <button
+                    type="button"
+                    onClick={() => handleItemClick(item)}
+                    className="flex-1 min-w-0 flex items-start gap-3.5 sm:gap-4 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0050cd]/40 rounded-xl"
                   >
-                    <span className="material-symbols-outlined text-[20px]">
-                      {visual.icon}
-                    </span>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {!item.isRead && (
-                        <span
-                          className="w-2 h-2 rounded-full bg-[#0866ff] shrink-0"
-                          aria-hidden="true"
-                        />
-                      )}
-                      <h3
-                        className={`text-sm tracking-tight ${
-                          item.isRead
-                            ? 'font-semibold text-zinc-800'
-                            : 'font-bold text-zinc-950'
-                        }`}
-                      >
-                        {item.title}
-                      </h3>
-                      <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold">
-                        {typeLabel}
+                    <div
+                      className={`w-10 h-10 rounded-xl ${visual.bgClass} ${visual.textClass} flex items-center justify-center shrink-0 mt-0.5`}
+                    >
+                      <span className="material-symbols-outlined text-[20px]">
+                        {visual.icon}
                       </span>
-                      {!item.isRead && (
-                        <span className="px-2 py-0.5 rounded-full bg-blue-100/90 text-[#0050cd] text-[10px] font-bold">
-                          Mới
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {!item.isRead && (
+                          <span
+                            className="w-2 h-2 rounded-full bg-[#0866ff] shrink-0"
+                            aria-hidden="true"
+                          />
+                        )}
+                        <h3
+                          className={`text-sm tracking-tight ${
+                            item.isRead
+                              ? 'font-semibold text-zinc-800'
+                              : 'font-bold text-zinc-950'
+                          }`}
+                        >
+                          {item.title}
+                        </h3>
+                        <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold">
+                          {typeLabel}
                         </span>
-                      )}
+                        {!item.isRead && (
+                          <span className="px-2 py-0.5 rounded-full bg-blue-100/90 text-[#0050cd] text-[10px] font-bold">
+                            Mới
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-600 mt-1.5 line-clamp-2 leading-relaxed max-w-[70ch]">
+                        {item.message}
+                      </p>
+                      <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-500 font-medium tabular-nums">
+                        <span>{formatRelativeTimeVi(item.createdAt)}</span>
+                      </div>
                     </div>
-                    <p className="text-xs text-slate-600 mt-1.5 line-clamp-2 leading-relaxed max-w-[70ch]">
-                      {item.message}
-                    </p>
-                    <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400 font-medium tabular-nums">
-                      <span>{formatRelativeTimeVi(item.createdAt)}</span>
-                    </div>
-                  </div>
+                  </button>
 
                   <div className="flex items-center gap-1 shrink-0">
                     {!item.isRead && (

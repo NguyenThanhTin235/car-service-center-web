@@ -7,6 +7,10 @@ import api from '@/lib/axios';
 import { setCredentials } from '@/store/slices/authSlice';
 import { RootState } from '@/store';
 import { getDashboardPathByRole } from '@/utils/roleRedirect';
+import {
+  isSafeRedirectPath,
+  PENDING_BOOKING_INTENT_KEY,
+} from '@/components/chat/aiChatUtils';
 import AuthSplitShell from '@/components/auth/AuthSplitShell';
 import {
   AuthAlert,
@@ -44,9 +48,24 @@ export default function LoginPage() {
     return () => clearTimeout(timer);
   }, [lockSeconds]);
 
+  const resolvePostLoginDestination = (roles: string[]) => {
+    const isCustomer = roles.some((r) => r.toUpperCase() === 'CUSTOMER');
+    if (isCustomer && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const redirectParam = params.get('redirect');
+      if (isSafeRedirectPath(redirectParam)) {
+        return redirectParam!;
+      }
+      if (window.sessionStorage.getItem(PENDING_BOOKING_INTENT_KEY)) {
+        return '/customer/profile?tab=appointments&openBooking=1';
+      }
+    }
+    return getDashboardPathByRole(roles);
+  };
+
   useEffect(() => {
     if (mounted && isAuthenticated && user) {
-      window.location.href = getDashboardPathByRole(user.roles);
+      window.location.href = resolvePostLoginDestination(user.roles);
     }
   }, [mounted, isAuthenticated, user]);
 
@@ -71,7 +90,7 @@ export default function LoginPage() {
       const res = await api.post('/api/auth/login', { email, password });
       const { user: loggedInUser, token, refreshToken } = res.data.data;
       dispatch(setCredentials({ user: loggedInUser, token, refreshToken }));
-      window.location.href = getDashboardPathByRole(loggedInUser.roles);
+      window.location.href = resolvePostLoginDestination(loggedInUser.roles);
     } catch (err: any) {
       if (err.response?.status === 429) {
         setLockSeconds(Number(err.response.data?.retryAfter) || 900);
@@ -161,15 +180,7 @@ export default function LoginPage() {
           }
         />
 
-        <div className="flex items-center justify-between gap-2 pt-0.5">
-          <label className="inline-flex items-center gap-2 cursor-pointer select-none min-h-[44px]">
-            <input
-              suppressHydrationWarning
-              type="checkbox"
-              className="h-4 w-4 rounded border-hairline-strong accent-accent focus:ring-accent/30 cursor-pointer"
-            />
-            <span className="text-xs font-medium text-ink-secondary">Ghi nhớ đăng nhập</span>
-          </label>
+        <div className="flex items-center justify-end pt-0.5">
           <Link
             href="/forgot-password"
             className="inline-flex items-center min-h-[44px] text-xs font-semibold text-accent hover:text-accent-hover hover:underline"

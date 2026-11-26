@@ -22,6 +22,14 @@ const { prismaMock } = vi.hoisted(() => {
     intakeService: {
       createMany: vi.fn(),
     },
+    workOrder: {
+      findUnique: vi.fn(),
+    },
+    goodwillClaim: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      update: vi.fn(),
+    },
   };
   mock.$transaction = vi.fn(async (cb: (tx: any) => Promise<any>) => cb(mock));
 

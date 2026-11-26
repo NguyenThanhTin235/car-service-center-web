@@ -8,7 +8,7 @@ import {
   cancelReceipt,
 } from '@/store/slices/inventorySlice';
 import Modal from '@/components/shared/Modal';
-import Toast from '@/components/shared/Toast';
+import toast from 'react-hot-toast';
 
 interface GoodsReceiptDetailModalProps {
   isOpen: boolean;
@@ -43,11 +43,6 @@ export function GoodsReceiptDetailModal({
 
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-  const [toast, setToast] = useState<{
-    show: boolean;
-    type: 'success' | 'error';
-    message: string;
-  }>({ show: false, type: 'success', message: '' });
 
   if (!receipt) return null;
 
@@ -56,54 +51,30 @@ export function GoodsReceiptDetailModal({
   const handlePostDraft = async () => {
     const res = await dispatch(postDraftReceipt(receipt.id));
     if (res.meta.requestStatus === 'fulfilled') {
-      setToast({
-        show: true,
-        type: 'success',
-        message: `Đã ghi sổ phiếu nhập ${receipt.receiptNumber} và cập nhật tồn kho!`,
-      });
-      setTimeout(() => {
-        onUpdated();
-        onClose();
-      }, 900);
+      toast.success(`Đã ghi sổ phiếu nhập ${receipt.receiptNumber} và cập nhật tồn kho!`);
+      onUpdated();
+      onClose();
     } else {
-      setToast({
-        show: true,
-        type: 'error',
-        message: (res.payload as string) || 'Không thể ghi sổ phiếu nhập',
-      });
+      toast.error((res.payload as string) || 'Không thể ghi sổ phiếu nhập');
     }
   };
 
   const handleConfirmCancel = async () => {
     if (cancelReason.trim().length < 3) {
-      setToast({
-        show: true,
-        type: 'error',
-        message: 'Vui lòng nhập lý do hủy phiếu nhập (tối thiểu 3 ký tự)',
-      });
+      toast.error('Vui lòng nhập lý do hủy phiếu nhập (tối thiểu 3 ký tự)');
       return;
     }
     const res = await dispatch(
       cancelReceipt({ id: receipt.id, cancelReason: cancelReason.trim() })
     );
     if (res.meta.requestStatus === 'fulfilled') {
-      setToast({
-        show: true,
-        type: 'success',
-        message: `Đã hủy phiếu nhập ${receipt.receiptNumber} và hoàn tác tồn kho!`,
-      });
+      toast.success(`Đã hủy phiếu nhập ${receipt.receiptNumber} và hoàn tác tồn kho!`);
       setShowCancelForm(false);
       setCancelReason('');
-      setTimeout(() => {
-        onUpdated();
-        onClose();
-      }, 900);
+      onUpdated();
+      onClose();
     } else {
-      setToast({
-        show: true,
-        type: 'error',
-        message: (res.payload as string) || 'Lỗi khi hủy phiếu nhập kho',
-      });
+      toast.error((res.payload as string) || 'Lỗi khi hủy phiếu nhập kho');
     }
   };
 
@@ -498,14 +469,6 @@ export function GoodsReceiptDetailModal({
           </div>
         </div>
       </Modal>
-
-      {toast.show && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast({ ...toast, show: false })}
-        />
-      )}
     </>
   );
 }

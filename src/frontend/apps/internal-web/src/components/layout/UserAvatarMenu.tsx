@@ -40,6 +40,7 @@ export default function UserAvatarMenu({
   }, []);
 
   useEffect(() => {
+    if (!open) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
@@ -54,7 +55,7 @@ export default function UserAvatarMenu({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [open]);
 
   const displayName = mounted ? user?.fullName || defaultRoleLabel : defaultRoleLabel;
   const displayEmail = mounted ? user?.email || '' : '';

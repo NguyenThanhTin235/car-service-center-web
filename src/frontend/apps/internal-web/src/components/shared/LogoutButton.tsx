@@ -41,11 +41,13 @@ export default function LogoutButton({ className = '', iconOnly = false }: Logou
 
   return (
     <button
-      id="btn-logout"
+      type="button"
+      data-testid="btn-logout"
       onClick={handleLogout}
       disabled={loading}
+      aria-label="Đăng xuất"
       title="Đăng xuất"
-      className={`flex items-center gap-2 text-sm font-medium transition-colors cursor-pointer disabled:opacity-60 ${className}`}
+      className={`flex items-center gap-2 text-sm font-medium transition-colors cursor-pointer disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0866ff] ${className}`}
     >
       {loading ? (
         <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />

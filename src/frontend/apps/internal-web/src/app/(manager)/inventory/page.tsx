@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+import toast from 'react-hot-toast';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
   fetchInventoryItems,
@@ -8,7 +10,6 @@ import {
   toggleInventoryItem,
   fetchPartCategories,
   fetchBrands,
-  fetchUoms,
   fetchReceipts,
   fetchSuppliers,
   postDraftReceipt,
@@ -16,13 +17,28 @@ import {
   GoodsReceipt,
   Supplier,
 } from '@/store/slices/inventorySlice';
-import { PartItemModal } from './components/PartItemModal';
-import { GoodsReceiptModal } from './components/GoodsReceiptModal';
-import { GoodsReceiptDetailModal } from './components/GoodsReceiptDetailModal';
-import { StockCardModal } from './components/StockCardModal';
-import { SupplierModal } from './components/SupplierModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
-import Toast from '@/components/shared/Toast';
+
+const PartItemModal = dynamic(
+  () => import('./components/PartItemModal').then((m) => m.PartItemModal),
+  { ssr: false }
+);
+const GoodsReceiptModal = dynamic(
+  () => import('./components/GoodsReceiptModal').then((m) => m.GoodsReceiptModal),
+  { ssr: false }
+);
+const GoodsReceiptDetailModal = dynamic(
+  () => import('./components/GoodsReceiptDetailModal').then((m) => m.GoodsReceiptDetailModal),
+  { ssr: false }
+);
+const StockCardModal = dynamic(
+  () => import('./components/StockCardModal').then((m) => m.StockCardModal),
+  { ssr: false }
+);
+const SupplierModal = dynamic(
+  () => import('./components/SupplierModal').then((m) => m.SupplierModal),
+  { ssr: false }
+);
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
   PART: 'Phụ tùng',
@@ -60,6 +76,7 @@ export default function InventoryPage() {
     allItems,
     pagination,
     loading,
+    error,
     categories,
     brands,
     receipts,
@@ -109,22 +126,29 @@ export default function InventoryPage() {
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [itemToToggle, setItemToToggle] = useState<InventoryItem | null>(null);
-
-  const [toast, setToast] = useState<{
-    show: boolean;
-    type: 'success' | 'error';
-    message: string;
-  }>({ show: false, type: 'success', message: '' });
+  const receiptsLoadedRef = useRef(false);
+  const suppliersLoadedRef = useRef(false);
 
   useEffect(() => {
     loadData(1);
     dispatch(fetchAllInventoryItems());
     dispatch(fetchPartCategories());
     dispatch(fetchBrands());
-    dispatch(fetchUoms());
-    loadReceipts(1);
-    dispatch(fetchSuppliers());
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'receipts' && !receiptsLoadedRef.current) {
+      receiptsLoadedRef.current = true;
+      loadReceipts(1);
+      if (!suppliersLoadedRef.current) {
+        suppliersLoadedRef.current = true;
+        dispatch(fetchSuppliers());
+      }
+    } else if (activeTab === 'suppliers' && !suppliersLoadedRef.current) {
+      suppliersLoadedRef.current = true;
+      dispatch(fetchSuppliers());
+    }
+  }, [activeTab]);
 
   const loadData = (page = currentPage) => {
     setCurrentPage(page);
@@ -153,12 +177,16 @@ export default function InventoryPage() {
     );
   };
 
-  const refreshAllInventoryData = () => {
+  const refreshAllInventoryData = useCallback(() => {
     loadData(currentPage);
     dispatch(fetchAllInventoryItems());
-    loadReceipts(receiptPage);
-    dispatch(fetchSuppliers());
-  };
+    if (receiptsLoadedRef.current || activeTab === 'receipts') {
+      loadReceipts(receiptPage);
+    }
+    if (suppliersLoadedRef.current || activeTab === 'suppliers') {
+      dispatch(fetchSuppliers());
+    }
+  }, [activeTab, currentPage, receiptPage]);
 
   const handleFilterReset = () => {
     setSearch('');
@@ -245,18 +273,10 @@ export default function InventoryPage() {
   const handleQuickPostDraft = async (receipt: GoodsReceipt) => {
     const res = await dispatch(postDraftReceipt(receipt.id));
     if (res.meta.requestStatus === 'fulfilled') {
-      setToast({
-        show: true,
-        type: 'success',
-        message: `Đã ghi sổ phiếu ${receipt.receiptNumber} và cộng tồn kho thành công!`,
-      });
+      toast.success(`Đã ghi sổ phiếu ${receipt.receiptNumber} và cộng tồn kho thành công!`);
       refreshAllInventoryData();
     } else {
-      setToast({
-        show: true,
-        type: 'error',
-        message: (res.payload as string) || 'Lỗi khi ghi sổ phiếu nhập',
-      });
+      toast.error((res.payload as string) || 'Lỗi khi ghi sổ phiếu nhập');
     }
   };
 
@@ -269,10 +289,11 @@ export default function InventoryPage() {
     if (!itemToToggle) return;
     const res = await dispatch(toggleInventoryItem(itemToToggle.id));
     if (res.meta.requestStatus === 'fulfilled') {
-      setToast({ show: true, type: 'success', message: 'Cập nhật trạng thái thành công' });
-      refreshAllInventoryData();
+      toast.success('Cập nhật trạng thái thành công');
+      loadData(currentPage);
+      dispatch(fetchAllInventoryItems());
     } else {
-      setToast({ show: true, type: 'error', message: 'Lỗi khi cập nhật trạng thái' });
+      toast.error('Lỗi khi cập nhật trạng thái');
     }
     setIsConfirmOpen(false);
   };
@@ -419,9 +440,11 @@ export default function InventoryPage() {
 
       {/* 3. Enterprise 3-Tab Navigation Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/90 pb-1">
-        <div className="flex items-center gap-1.5">
+        <div role="tablist" aria-label="Phân hệ kho phụ tùng" className="flex flex-wrap items-center gap-1.5 overflow-x-auto max-w-full">
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'items'}
             onClick={() => setActiveTab('items')}
             className={`h-10 px-4 rounded-t-xl text-xs font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
               activeTab === 'items'
@@ -435,6 +458,8 @@ export default function InventoryPage() {
 
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'receipts'}
             onClick={() => setActiveTab('receipts')}
             className={`h-10 px-4 rounded-t-xl text-xs font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
               activeTab === 'receipts'
@@ -453,6 +478,8 @@ export default function InventoryPage() {
 
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'suppliers'}
             onClick={() => setActiveTab('suppliers')}
             className={`h-10 px-4 rounded-t-xl text-xs font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
               activeTab === 'suppliers'
@@ -474,7 +501,7 @@ export default function InventoryPage() {
           <div className="saas-card p-4">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2.5 flex-1">
-                <div className="flex items-center gap-2 min-w-[260px] flex-1 sm:flex-initial h-9 px-3 rounded-xl bg-slate-50/80 border border-slate-200/80 focus-within:bg-white focus-within:border-[#0866ff] transition-all">
+                <div className="flex items-center gap-2 w-full sm:w-auto sm:min-w-[260px] flex-1 sm:flex-initial h-9 px-3 rounded-xl bg-slate-50/80 border border-slate-200/80 focus-within:bg-white focus-within:border-[#0866ff] transition-all">
                   <span className="material-symbols-outlined text-slate-500 text-[18px] shrink-0">
                     search
                   </span>
@@ -543,10 +570,10 @@ export default function InventoryPage() {
           </div>
 
           <div className="saas-card overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
               <table className="w-full text-left border-collapse min-w-[940px]">
-                <thead>
-                  <tr className="h-11 bg-slate-50/90 border-b border-slate-200/80 text-xs text-slate-600 font-bold uppercase tracking-wider">
+                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
+                  <tr className="h-11 border-b border-slate-200/80 text-xs text-slate-600 font-bold uppercase tracking-wider">
                     <th className="py-3 px-5 font-mono">Mã SKU</th>
                     <th className="py-3 px-5 min-w-[240px]">Danh mục / Vật tư</th>
                     <th className="py-3 px-5">Thương hiệu</th>
@@ -559,9 +586,33 @@ export default function InventoryPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-200/60 text-sm">
                   {loading ? (
+                    Array.from({ length: 6 }).map((_, idx) => (
+                      <tr key={`skeleton-${idx}`} className="animate-pulse">
+                        <td className="py-3.5 px-5"><div className="h-4 w-20 bg-slate-200 rounded" /></td>
+                        <td className="py-3.5 px-5"><div className="h-4 w-44 bg-slate-200 rounded" /></td>
+                        <td className="py-3.5 px-5"><div className="h-5 w-20 bg-slate-100 rounded-lg" /></td>
+                        <td className="py-3.5 px-5"><div className="h-5 w-24 bg-slate-100 rounded-lg" /></td>
+                        <td className="py-3.5 px-5 text-right"><div className="h-4 w-16 bg-slate-200 rounded ml-auto" /></td>
+                        <td className="py-3.5 px-5 text-right"><div className="h-4 w-16 bg-slate-200 rounded ml-auto" /></td>
+                        <td className="py-3.5 px-5 text-center"><div className="h-5 w-10 bg-slate-200 rounded-full mx-auto" /></td>
+                        <td className="py-3.5 px-5 text-center"><div className="h-8 w-32 bg-slate-100 rounded-xl mx-auto" /></td>
+                      </tr>
+                    ))
+                  ) : error ? (
                     <tr>
-                      <td colSpan={8} className="text-center py-12 text-slate-500 text-xs">
-                        Đang tải dữ liệu tồn kho...
+                      <td colSpan={8} className="py-10 px-4 text-center">
+                        <div className="inline-flex flex-col items-center gap-2.5 text-rose-700 bg-rose-50/70 border border-rose-200 rounded-2xl px-6 py-5">
+                          <span className="material-symbols-outlined text-[28px] text-rose-600">error</span>
+                          <span className="text-xs font-semibold">Không thể tải dữ liệu tồn kho: {error}</span>
+                          <button
+                            type="button"
+                            onClick={() => loadData(currentPage)}
+                            className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">refresh</span>
+                            <span>Thử lại</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ) : displayedItems.length === 0 ? (
@@ -638,6 +689,7 @@ export default function InventoryPage() {
                           <td className="py-3.5 px-5 text-center">
                             <div className="flex items-center justify-center gap-1.5">
                               <button
+                                type="button"
                                 onClick={() => handleOpenStockCard(item)}
                                 className="h-8 px-2.5 rounded-xl bg-slate-50 hover:bg-indigo-50 border border-slate-200/80 text-slate-700 hover:text-indigo-700 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                                 title="Xem Thẻ kho (Lịch sử biến động)"
@@ -648,14 +700,18 @@ export default function InventoryPage() {
                                 <span>Thẻ kho</span>
                               </button>
                               <button
+                                type="button"
                                 onClick={() => handleEditPart(item)}
+                                aria-label={`Chỉnh sửa ${item.name}`}
                                 className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-[#0866ff] flex items-center justify-center transition-colors cursor-pointer"
                                 title="Chỉnh sửa"
                               >
                                 <span className="material-symbols-outlined text-[17px]">edit</span>
                               </button>
                               <button
+                                type="button"
                                 onClick={() => handleToggleClick(item)}
+                                aria-label={item.isActive ? `Tạm ngưng ${item.name}` : `Kích hoạt lại ${item.name}`}
                                 className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-rose-50 border border-slate-200/80 text-slate-500 hover:text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
                                 title={item.isActive ? 'Tạm ngưng' : 'Kích hoạt lại'}
                               >
@@ -729,7 +785,7 @@ export default function InventoryPage() {
         <>
           <div className="saas-card p-4">
             <div className="flex flex-wrap items-center gap-2.5">
-              <div className="flex items-center gap-2 min-w-[260px] flex-1 sm:flex-initial h-9 px-3 rounded-xl bg-slate-50/80 border border-slate-200/80 focus-within:bg-white focus-within:border-[#0866ff]">
+              <div className="flex items-center gap-2 w-full sm:w-auto sm:min-w-[260px] flex-1 sm:flex-initial h-9 px-3 rounded-xl bg-slate-50/80 border border-slate-200/80 focus-within:bg-white focus-within:border-[#0866ff]">
                 <span className="material-symbols-outlined text-slate-500 text-[18px]">
                   search
                 </span>
@@ -788,10 +844,10 @@ export default function InventoryPage() {
           </div>
 
           <div className="saas-card overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
               <table className="w-full text-left border-collapse min-w-[940px]">
-                <thead>
-                  <tr className="h-11 bg-slate-50/90 border-b border-slate-200/80 text-xs text-slate-600 font-bold uppercase tracking-wider">
+                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
+                  <tr className="h-11 border-b border-slate-200/80 text-xs text-slate-600 font-bold uppercase tracking-wider">
                     <th className="py-3 px-5 font-mono">Số Phiếu Nhập</th>
                     <th className="py-3 px-5">Ngày nhập</th>
                     <th className="py-3 px-5">Nhà cung cấp / Loại</th>
@@ -947,7 +1003,7 @@ export default function InventoryPage() {
       {activeTab === 'suppliers' && (
         <>
           <div className="saas-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 min-w-[280px] h-9 px-3 rounded-xl bg-slate-50/80 border border-slate-200/80 focus-within:bg-white focus-within:border-[#0866ff]">
+            <div className="flex items-center gap-2 w-full sm:w-auto sm:min-w-[280px] h-9 px-3 rounded-xl bg-slate-50/80 border border-slate-200/80 focus-within:bg-white focus-within:border-[#0866ff]">
               <span className="material-symbols-outlined text-slate-500 text-[18px]">search</span>
               <input
                 type="text"
@@ -1026,6 +1082,7 @@ export default function InventoryPage() {
                         <td className="py-3.5 px-5 text-center">
                           <button
                             type="button"
+                            aria-label={`Chỉnh sửa nhà cung cấp ${s.name}`}
                             onClick={() => {
                               setSelectedSupplier(s);
                               setIsSupplierModalOpen(true);
@@ -1046,64 +1103,68 @@ export default function InventoryPage() {
         </>
       )}
 
-      {/* Modals */}
-      <PartItemModal
-        isOpen={isPartModalOpen}
-        onClose={() => setIsPartModalOpen(false)}
-        item={selectedPart}
-        onSuccess={refreshAllInventoryData}
-        categoryOptions={categories}
-        brandOptions={brands}
-      />
+      {/* Modals (lazy-loaded & conditionally mounted) */}
+      {isPartModalOpen && (
+        <PartItemModal
+          isOpen={isPartModalOpen}
+          onClose={() => setIsPartModalOpen(false)}
+          item={selectedPart}
+          onSuccess={refreshAllInventoryData}
+          categoryOptions={categories}
+          brandOptions={brands}
+        />
+      )}
 
-      <GoodsReceiptModal
-        isOpen={isReceiptModalOpen}
-        onClose={() => {
-          setIsReceiptModalOpen(false);
-          setPreselectLowStock(false);
-        }}
-        onSuccess={refreshAllInventoryData}
-        inventoryItems={kpiSourceItems}
-        preselectedLowStock={preselectLowStock}
-      />
+      {isReceiptModalOpen && (
+        <GoodsReceiptModal
+          isOpen={isReceiptModalOpen}
+          onClose={() => {
+            setIsReceiptModalOpen(false);
+            setPreselectLowStock(false);
+          }}
+          onSuccess={refreshAllInventoryData}
+          inventoryItems={kpiSourceItems}
+          preselectedLowStock={preselectLowStock}
+        />
+      )}
 
-      <GoodsReceiptDetailModal
-        isOpen={isReceiptDetailOpen}
-        onClose={() => setIsReceiptDetailOpen(false)}
-        receipt={selectedReceipt}
-        onUpdated={refreshAllInventoryData}
-      />
+      {isReceiptDetailOpen && (
+        <GoodsReceiptDetailModal
+          isOpen={isReceiptDetailOpen}
+          onClose={() => setIsReceiptDetailOpen(false)}
+          receipt={selectedReceipt}
+          onUpdated={refreshAllInventoryData}
+        />
+      )}
 
-      <StockCardModal
-        isOpen={isStockCardOpen}
-        onClose={() => setIsStockCardOpen(false)}
-        item={stockCardItem}
-      />
+      {isStockCardOpen && (
+        <StockCardModal
+          isOpen={isStockCardOpen}
+          onClose={() => setIsStockCardOpen(false)}
+          item={stockCardItem}
+        />
+      )}
 
-      <SupplierModal
-        isOpen={isSupplierModalOpen}
-        onClose={() => setIsSupplierModalOpen(false)}
-        supplier={selectedSupplier}
-        onSuccess={() => dispatch(fetchSuppliers())}
-      />
+      {isSupplierModalOpen && (
+        <SupplierModal
+          isOpen={isSupplierModalOpen}
+          onClose={() => setIsSupplierModalOpen(false)}
+          supplier={selectedSupplier}
+          onSuccess={() => dispatch(fetchSuppliers())}
+        />
+      )}
 
-      <ConfirmModal
-        isOpen={isConfirmOpen}
-        title={itemToToggle?.isActive ? 'Ngừng kinh doanh phụ tùng' : 'Kích hoạt phụ tùng'}
-        message={`Bạn có chắc chắn muốn ${
-          itemToToggle?.isActive ? 'ngừng' : 'kích hoạt lại'
-        } mã SKU ${itemToToggle?.sku}?`}
-        onConfirm={handleConfirmToggle}
-        onCancel={() => setIsConfirmOpen(false)}
-        confirmText="Đồng ý"
-        isDestructive={itemToToggle?.isActive ? true : false}
-      />
-
-      {toast.show && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast({ ...toast, show: false })}
+      {isConfirmOpen && (
+        <ConfirmModal
+          isOpen={isConfirmOpen}
+          title={itemToToggle?.isActive ? 'Ngừng kinh doanh phụ tùng' : 'Kích hoạt phụ tùng'}
+          message={`Bạn có chắc chắn muốn ${
+            itemToToggle?.isActive ? 'ngừng' : 'kích hoạt lại'
+          } mã SKU ${itemToToggle?.sku}?`}
+          onConfirm={handleConfirmToggle}
+          onCancel={() => setIsConfirmOpen(false)}
+          confirmText="Đồng ý"
+          isDestructive={itemToToggle?.isActive ? true : false}
         />
       )}
     </div>

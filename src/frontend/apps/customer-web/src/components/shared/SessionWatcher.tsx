@@ -36,6 +36,7 @@ export default function SessionWatcher() {
     }
 
     const checkSession = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       if (checkingRef.current) return;
       if (typeof window !== 'undefined' && window.location.pathname.startsWith('/login')) return;
       checkingRef.current = true;
@@ -59,7 +60,7 @@ export default function SessionWatcher() {
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
-    const interval = setInterval(checkSession, 3000);
+    const interval = setInterval(checkSession, 30000);
 
     return () => {
       clearInterval(interval);

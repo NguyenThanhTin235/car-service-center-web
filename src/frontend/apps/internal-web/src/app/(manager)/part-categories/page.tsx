@@ -1,14 +1,19 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import toast from 'react-hot-toast';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
   fetchPartCategories,
   fetchUoms,
   PartCategory,
 } from '@/store/slices/inventorySlice';
-import { PartCategoryModal } from './components/PartCategoryModal';
-import Toast from '@/components/shared/Toast';
+
+const PartCategoryModal = dynamic(
+  () => import('./components/PartCategoryModal').then((m) => m.PartCategoryModal),
+  { ssr: false }
+);
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
   PART: 'Phụ tùng',
@@ -28,8 +33,6 @@ export default function PartCategoriesPage() {
   
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<PartCategory | null>(null);
-  
-  const [toast, setToast] = useState<{show: boolean, type: 'success' | 'error', message: string}>({ show: false, type: 'success', message: '' });
 
   useEffect(() => {
     dispatch(fetchPartCategories());
@@ -108,15 +111,17 @@ export default function PartCategoriesPage() {
       {/* 2. Asymmetrical 12-Col Bento Summary (5 + 7 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Hero Card (5 cols) */}
-        <div
+        <button
+          type="button"
+          aria-pressed={itemType === 'all'}
           onClick={() => setItemType('all')}
-          className="lg:col-span-5 cursor-pointer rounded-2xl saas-hero-gradient text-white p-5 relative overflow-hidden flex flex-col justify-between"
+          className="text-left lg:col-span-5 cursor-pointer rounded-2xl saas-hero-gradient text-white p-5 relative overflow-hidden flex flex-col justify-between"
         >
           <div className="absolute inset-0 saas-subtle-grid pointer-events-none" />
-          <div className="relative z-10 flex items-start justify-between">
+          <div className="relative z-10 flex items-start justify-between w-full">
             <div>
               <span className="text-xs font-medium text-blue-100/90">
-                Tổng danh mục gốc (Master)
+                Tổng danh mục gốc
               </span>
               <div className="text-3xl font-mono font-extrabold tabular-nums tracking-tight mt-1">
                 {categories.length}{' '}
@@ -127,13 +132,13 @@ export default function PartCategoriesPage() {
               <span className="material-symbols-outlined text-[22px] text-white">account_tree</span>
             </div>
           </div>
-          <div className="relative z-10 mt-4 pt-3.5 border-t border-white/15 flex items-center justify-between text-xs text-blue-50">
+          <div className="relative z-10 mt-4 pt-3.5 border-t border-white/15 flex items-center justify-between text-xs text-blue-50 w-full">
             <span>Đơn vị tính đang áp dụng</span>
             <span className="px-2.5 py-0.5 rounded-full bg-white/15 font-mono font-semibold">
               {uoms.length} ĐVT
             </span>
           </div>
-        </div>
+        </button>
 
         {/* 3 Type Breakdown Tiles (7 cols) */}
         <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -147,7 +152,7 @@ export default function PartCategoriesPage() {
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Phụ tùng (PART)</span>
+              <span className="text-xs font-semibold text-slate-500">Phụ tùng thay thế</span>
               <div className="w-8 h-8 rounded-lg bg-blue-100/80 text-[#0866ff] flex items-center justify-center">
                 <span className="material-symbols-outlined text-[18px]">settings</span>
               </div>
@@ -206,7 +211,7 @@ export default function PartCategoriesPage() {
       <div className="saas-card p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5 flex-1">
-            <div className="flex items-center gap-2 min-w-[260px] flex-1 sm:max-w-sm h-9 px-3 rounded-xl bg-slate-50/80 border border-slate-200/80 focus-within:bg-white focus-within:border-[#0866ff] transition-all">
+            <div className="flex items-center gap-2 w-full sm:w-auto sm:min-w-[260px] flex-1 sm:max-w-sm h-9 px-3 rounded-xl bg-slate-50/80 border border-slate-200/80 focus-within:bg-white focus-within:border-[#0866ff] transition-all">
               <span className="material-symbols-outlined text-slate-500 text-[18px] shrink-0">
                 search
               </span>
@@ -214,7 +219,7 @@ export default function PartCategoriesPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Tìm theo mã code, tên danh mục..."
+                placeholder="Tìm theo mã, tên danh mục..."
                 className="flex-1 min-w-0 bg-transparent text-slate-900 placeholder:text-slate-500 text-xs focus:outline-none"
               />
             </div>
@@ -244,7 +249,7 @@ export default function PartCategoriesPage() {
           <table className="w-full text-left border-collapse min-w-[680px]">
             <thead>
               <tr className="h-11 bg-slate-50/90 border-b border-slate-200/80 text-xs text-slate-600 font-bold uppercase tracking-wider">
-                <th className="py-3 px-5 font-mono">Mã Code</th>
+                <th className="py-3 px-5 font-mono">Mã danh mục</th>
                 <th className="py-3 px-5 min-w-[240px]">Tên danh mục</th>
                 <th className="py-3 px-5">Phân loại</th>
                 <th className="py-3 px-5">Đơn vị tính</th>
@@ -253,11 +258,15 @@ export default function PartCategoriesPage() {
             </thead>
             <tbody className="divide-y divide-slate-200/60 text-sm">
               {loading ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-12 text-slate-500 text-xs">
-                    Đang tải danh mục phụ tùng...
-                  </td>
-                </tr>
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-3.5 px-5"><div className="h-4 w-20 bg-slate-200 rounded" /></td>
+                    <td className="py-3.5 px-5"><div className="h-4 w-48 bg-slate-200 rounded" /></td>
+                    <td className="py-3.5 px-5"><div className="h-5 w-24 bg-slate-100 rounded-lg" /></td>
+                    <td className="py-3.5 px-5"><div className="h-4 w-16 bg-slate-100 rounded" /></td>
+                    <td className="py-3.5 px-5"><div className="h-8 w-8 mx-auto bg-slate-100 rounded-xl" /></td>
+                  </tr>
+                ))
               ) : filteredCategories.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-12 text-slate-400 text-xs">
@@ -292,7 +301,9 @@ export default function PartCategoriesPage() {
                     </td>
                     <td className="py-3.5 px-5 text-center">
                       <button
+                        type="button"
                         onClick={() => handleEditCategory(cat)}
+                        aria-label={`Chỉnh sửa ${cat.name}`}
                         className="w-8 h-8 mx-auto rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-[#0866ff] flex items-center justify-center transition-colors cursor-pointer"
                         title="Chỉnh sửa"
                       >
@@ -350,19 +361,17 @@ export default function PartCategoriesPage() {
         </div>
       </div>
 
-      <PartCategoryModal
-        isOpen={isCategoryModalOpen}
-        onClose={() => setIsCategoryModalOpen(false)}
-        category={selectedCategory}
-        onSuccess={() => {
-          dispatch(fetchPartCategories());
-          setToast({ show: true, type: 'success', message: selectedCategory ? 'Cập nhật danh mục thành công' : 'Thêm danh mục thành công' });
-        }}
-        uomOptions={uoms}
-      />
-
-      {toast.show && (
-        <Toast message={toast.message} type={toast.type} onClose={() => setToast({...toast, show: false})} />
+      {isCategoryModalOpen && (
+        <PartCategoryModal
+          isOpen={isCategoryModalOpen}
+          onClose={() => setIsCategoryModalOpen(false)}
+          category={selectedCategory}
+          onSuccess={() => {
+            dispatch(fetchPartCategories());
+            toast.success(selectedCategory ? 'Cập nhật danh mục thành công' : 'Thêm danh mục thành công');
+          }}
+          uomOptions={uoms}
+        />
       )}
     </div>
   );

@@ -1,7 +1,10 @@
 'use client';
 import React from 'react';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
+import { formatVehicleSize } from '@/components/advisor/work-order/work-order.constants';
 
 export default function IntakeDetailModal({ record, onClose }: { record: any, onClose: () => void }) {
+  const backdropProps = useBackdropClose(onClose);
   if (!record) return null;
 
   const getTypeName = (type: string) => {
@@ -48,13 +51,27 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Chi tiết phiếu tiếp nhận"
+      {...backdropProps}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+    >
       <div className="bg-surface-container-lowest rounded-2xl w-full max-w-2xl shadow-xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/40 bg-surface-container-lowest">
           <h2 className="text-title-lg font-bold text-on-surface">Chi tiết phiếu tiếp nhận</h2>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors">
+          <button
+            type="button"
+            aria-label="Đóng hộp thoại"
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"
+          >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
@@ -101,7 +118,7 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {/* Customer Info */}
             <div className="flex flex-col gap-3">
               <h3 className="text-label-lg font-bold text-primary flex items-center gap-2">
@@ -124,7 +141,7 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
               <div className="flex flex-col gap-2 text-body-md text-on-surface">
                 <p><span className="text-on-surface-variant inline-block w-20">Biển số:</span> <span className="font-mono font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">{record.vehicle?.license_plate}</span></p>
                 <p><span className="text-on-surface-variant inline-block w-20">Xe:</span> <span className="font-semibold">{record.vehicle?.make} {record.vehicle?.model}</span></p>
-                <p><span className="text-on-surface-variant inline-block w-20">Phân khúc:</span> {record.vehicle?.vehicle_size}</p>
+                <p><span className="text-on-surface-variant inline-block w-20">Phân khúc:</span> {formatVehicleSize(record.vehicle?.vehicle_size)}</p>
                 <p><span className="text-on-surface-variant inline-block w-20">Màu sắc:</span> {record.vehicle?.color || '—'}</p>
               </div>
             </div>

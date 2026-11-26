@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { formatVND } from '@/lib/utils/formatters';
 
 type OverviewData = {
   checkInTime: string;
@@ -59,10 +60,10 @@ export default function WOOverviewCards({ data }: { data: OverviewData }) {
           Báo giá
         </span>
         <div className="text-title-lg font-bold text-primary leading-tight mt-1 whitespace-nowrap">
-          {data.quotationTotal.toLocaleString('vi-VN')} đ
+          {formatVND(data.quotationTotal)}
         </div>
         <div className="text-body-sm text-on-surface-variant mt-2 leading-tight">
-          {data.quotationQuotes} báo giá · {data.quotationApproved.toLocaleString('vi-VN')} đ đã duyệt
+          {data.quotationQuotes} báo giá · {formatVND(data.quotationApproved)} đã duyệt
         </div>
       </div>
       
@@ -72,10 +73,10 @@ export default function WOOverviewCards({ data }: { data: OverviewData }) {
           Thanh toán
         </span>
         <div className="text-title-md font-bold text-on-surface leading-tight">
-          {data.billingCollected.toLocaleString('vi-VN')} đ đã thu
+          {formatVND(data.billingCollected)} đã thu
         </div>
         <div className="text-body-sm text-on-surface-variant mt-2 leading-tight">
-          {data.billingInvoices} hóa đơn · {data.billingInsurer.toLocaleString('vi-VN')} đ BH trả
+          {data.billingInvoices} hóa đơn · {formatVND(data.billingInsurer)} BH trả
         </div>
       </div>
     </div>

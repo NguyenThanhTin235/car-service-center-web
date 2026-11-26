@@ -1,5 +1,6 @@
 import { PrismaClient, Prisma, AppointmentStatus } from '@prisma/client';
 import { notificationService } from './notification.service';
+import { WarrantyService } from './warranty.service';
 import { 
   renderAppointmentCreatedTemplate, 
   renderAppointmentRescheduledTemplate, 
@@ -9,6 +10,8 @@ import {
 
 import prisma from '../utils/prisma';
 
+const warrantyService = new WarrantyService();
+
 export interface CreateAppointmentDto {
   customer_id: number;
   vehicle_id: number;
@@ -16,6 +19,10 @@ export interface CreateAppointmentDto {
   scheduled_time: string;
   notes?: string;
   service_ids?: number[];
+  is_warranty?: boolean;
+  warranty_item_ids?: Array<number | string>;
+  symptoms_description?: string;
+  evidence_urls?: string[];
 }
 
 export interface UpdateAppointmentDto {
@@ -205,6 +212,52 @@ export class AppointmentService {
 
     const scheduledDateObj = new Date(`${rawDateStr}T00:00:00.000Z`);
 
+    // UC-82: Kiểm tra lịch hẹn bảo hành
+    if (data.is_warranty) {
+      if (!data.warranty_item_ids || data.warranty_item_ids.length === 0) {
+        throw new Error('Vui lòng chọn ít nhất một hạng mục dịch vụ hoặc phụ tùng còn bảo hành.');
+      }
+      if (!data.symptoms_description || !data.symptoms_description.trim()) {
+        throw new Error('Vui lòng nhập mô tả chi tiết hiện tượng sự cố.');
+      }
+
+      // Tiền điều kiện UC-82: Phương tiện phải có ít nhất 1 hạng mục dịch vụ/phụ tùng còn hạn bảo hành
+      const eligibility = await warrantyService.checkVehicleWarrantyEligibility({ vehicleId: data.vehicle_id });
+      if (!eligibility.hasHistory || eligibility.summary.validItems === 0) {
+        throw new Error('Phương tiện không có hạng mục nào còn trong thời hạn bảo hành để đặt lịch.');
+      }
+      if (Array.isArray(eligibility.items) && eligibility.items.length > 0) {
+        const eligibleIds = new Set(
+          eligibility.items
+            .filter((i) => i.status === 'VALID')
+            .map((i) => String(i.id))
+        );
+        const compositeEligibleIds = new Set(
+          eligibility.items
+            .filter((i) => i.status === 'VALID')
+            .flatMap((i) => (i.type ? [`${i.type}-${i.id}`] : [`SERVICE-${i.id}`, `PART-${i.id}`]))
+        );
+        const hasInvalidSelection = data.warranty_item_ids.some((rawId) => {
+          const idStr = String(rawId);
+          return !eligibleIds.has(idStr) && !compositeEligibleIds.has(idStr);
+        });
+        if (hasInvalidSelection) {
+          throw new Error('Một hoặc nhiều hạng mục đã chọn đã hết hạn bảo hành hoặc không thuộc phương tiện này.');
+        }
+      }
+    }
+
+    let finalNotes = data.notes || '';
+    if (data.is_warranty) {
+      const warrantyLines = [
+        `[ĐẶT LỊCH BẢO HÀNH]`,
+        `Hiện tượng sự cố: ${data.symptoms_description?.trim()}`,
+        `Hạng mục bảo hành yêu cầu: ${data.warranty_item_ids?.join(', ')}`,
+        data.evidence_urls && data.evidence_urls.length > 0 ? `Minh chứng hiện trường: ${data.evidence_urls.join('; ')}` : null,
+      ].filter(Boolean).join('\n');
+      finalNotes = finalNotes ? `${finalNotes}\n\n${warrantyLines}` : warrantyLines;
+    }
+
     return prisma.$transaction(async (tx) => {
       const appointment = await tx.appointment.create({
         data: {
@@ -212,7 +265,8 @@ export class AppointmentService {
           vehicle_id: data.vehicle_id,
           scheduled_date: scheduledDateObj,
           scheduled_time: timeDate,
-          notes: data.notes,
+          notes: finalNotes || null,
+          is_warranty: Boolean(data.is_warranty),
           status: 'REQUESTED',
           created_by_id: createdById,
         },
@@ -237,7 +291,7 @@ export class AppointmentService {
         registeredServices = serviceEntities.map(s => s.name);
       }
 
-      // Gửi thông báo & email xác nhận đặt lịch (UC-11 & UC-17)
+      // Gửi thông báo & email xác nhận đặt lịch (UC-11 & UC-17 & UC-82)
       const customerForEmail = await tx.user.findUnique({ where: { id: appointment.customer_id } });
       const dateStr = new Date(appointment.scheduled_date).toLocaleDateString('vi-VN');
       const timeStr = data.scheduled_time;
@@ -255,6 +309,10 @@ export class AppointmentService {
           })
         : undefined;
 
+      const emailSubject = data.is_warranty
+        ? `[Car Service Center] Xác nhận đặt lịch bảo hành ngày ${dateStr}`
+        : `[Car Service Center] Xác nhận đặt lịch hẹn ngày ${dateStr}`;
+
       notificationService
         .notifyAndEmail({
           userId: appointment.customer_id,
@@ -264,7 +322,7 @@ export class AppointmentService {
           entityType: 'APPOINTMENT',
           entityId: appointment.id,
           email: customerForEmail?.email || undefined,
-          subject: `[Car Service Center] Xác nhận đặt lịch hẹn ngày ${dateStr}`,
+          subject: emailSubject,
           html,
         })
         .catch(err => console.error('Failed to send appointment created notification:', err));
@@ -582,10 +640,18 @@ export class AppointmentService {
   }
 
   /**
-   * Đánh dấu lịch hẹn đã đến (Tiếp nhận xe) – UC-21 Luồng chính
+   * Đánh dấu lịch hẹn đã đến (Tiếp nhận xe) – UC-21 Luồng chính & UC-83 Tiếp nhận bảo hành từ lịch hẹn
    * Chuyển Appointment → ARRIVED + Tạo IntakeRecord → QUEUED trong cùng transaction
    */
-  async arriveAppointment(id: number, createdById?: number) {
+  async arriveAppointment(
+    id: number,
+    createdById?: number,
+    arrivalData?: {
+      parentWorkOrderId?: number;
+      symptoms?: string;
+      evidenceUrls?: string[];
+    }
+  ) {
     const appointment = await prisma.appointment.findUnique({
       where: { id },
       include: {
@@ -607,6 +673,9 @@ export class AppointmentService {
       throw new Error('Xe này đang trong hàng đợi tiếp nhận. Không thể tạo phiếu trùng.');
     }
 
+    const isWarrantyApt = Boolean(appointment.is_warranty);
+    const intakeType = isWarrantyApt ? 'WARRANTY' : 'APPOINTMENT';
+
     const result = await prisma.$transaction(async (tx) => {
       // Cập nhật trạng thái lịch hẹn → ARRIVED
       const updatedAppointment = await tx.appointment.update({
@@ -619,15 +688,25 @@ export class AppointmentService {
         },
       });
 
+      let intakeNotes = appointment.notes || '';
+      if (isWarrantyApt) {
+        const extraWarrantyLines = [
+          `[TIẾP NHẬN BẢO HÀNH TỪ LỊCH HẸN #${appointment.id}]`,
+          arrivalData?.parentWorkOrderId ? `Phiếu dịch vụ gốc: #${arrivalData.parentWorkOrderId}` : null,
+          arrivalData?.symptoms ? `Hiện tượng sự cố thực tế: ${arrivalData.symptoms.trim()}` : null,
+        ].filter(Boolean).join('\n');
+        intakeNotes = intakeNotes ? `${intakeNotes}\n\n${extraWarrantyLines}` : extraWarrantyLines;
+      }
+
       // Tạo IntakeRecord → QUEUED
       const intakeRecord = await tx.intakeRecord.create({
         data: {
           customer_id: appointment.customer_id,
           vehicle_id: appointment.vehicle_id,
-          intake_type: 'APPOINTMENT',
+          intake_type: intakeType,
           status: 'QUEUED',
           arrived_at: new Date(),
-          notes: appointment.notes,
+          notes: intakeNotes || null,
           created_by_id: createdById || appointment.customer_id,
         },
         include: {
@@ -663,8 +742,8 @@ export class AppointmentService {
       return { appointment: updatedAppointment, intakeRecord };
     });
 
-    const plate = result.intakeRecord?.vehicle?.license_plate || appointment.vehicle?.license_plate || '';
-    const customerName = result.intakeRecord?.customer?.full_name || appointment.customer?.full_name || '';
+    const plate = appointment.vehicle?.license_plate || '';
+    const customerName = appointment.customer?.full_name || '';
     notificationService
       .sendInAppToRoles(['SA'], {
         type: 'CHECKIN_READY',

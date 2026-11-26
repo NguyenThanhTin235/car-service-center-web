@@ -194,7 +194,12 @@ export const arriveAppointment = async (req: Request, res: Response): Promise<vo
   try {
     const { id } = req.params;
     const createdById = req.user?.id;
-    const result = await appointmentService.arriveAppointment(Number(id), createdById);
+    const arrivalData = {
+      parentWorkOrderId: req.body?.parentWorkOrderId ?? req.body?.parent_work_order_id,
+      symptoms: req.body?.symptoms,
+      evidenceUrls: req.body?.evidenceUrls ?? req.body?.evidence_urls,
+    };
+    const result = await appointmentService.arriveAppointment(Number(id), createdById, arrivalData);
     
     res.json({
       success: true,

@@ -145,18 +145,14 @@ interface TrackingState {
   orders: WorkOrderTrackingDto[];
   selectedOrder: WorkOrderTrackingDto | null;
   loading: boolean;
-  detailLoading: boolean;
   error: string | null;
-  lastUpdated: string | null;
 }
 
 const initialState: TrackingState = {
   orders: [],
   selectedOrder: null,
   loading: false,
-  detailLoading: false,
   error: null,
-  lastUpdated: null,
 };
 
 export const fetchMyTrackingOrders = createAsyncThunk(
@@ -171,27 +167,12 @@ export const fetchMyTrackingOrders = createAsyncThunk(
   }
 );
 
-export const fetchTrackingDetail = createAsyncThunk(
-  'tracking/fetchTrackingDetail',
-  async (id: number, { rejectWithValue }) => {
-    try {
-      const response = await api.get(`/api/work-orders/my-tracking/${id}`);
-      return response.data.data as WorkOrderTrackingDto;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Không thể tải chi tiết tiến độ');
-    }
-  }
-);
-
 const trackingSlice = createSlice({
   name: 'tracking',
   initialState,
   reducers: {
     setSelectedOrder: (state, action: PayloadAction<WorkOrderTrackingDto | null>) => {
       state.selectedOrder = action.payload;
-    },
-    clearTrackingError: (state) => {
-      state.error = null;
     },
   },
   extraReducers: (builder) => {
@@ -204,7 +185,6 @@ const trackingSlice = createSlice({
       .addCase(fetchMyTrackingOrders.fulfilled, (state, action) => {
         state.loading = false;
         state.orders = action.payload;
-        state.lastUpdated = new Date().toISOString();
         // Tự động chọn phiếu đầu tiên nếu chưa chọn hoặc phiếu hiện tại không còn trong danh sách
         if (!state.selectedOrder && action.payload.length > 0) {
           state.selectedOrder = action.payload[0];
@@ -216,22 +196,9 @@ const trackingSlice = createSlice({
       .addCase(fetchMyTrackingOrders.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-      })
-
-      // Fetch detail
-      .addCase(fetchTrackingDetail.pending, (state) => {
-        state.detailLoading = true;
-      })
-      .addCase(fetchTrackingDetail.fulfilled, (state, action) => {
-        state.detailLoading = false;
-        state.selectedOrder = action.payload;
-      })
-      .addCase(fetchTrackingDetail.rejected, (state, action) => {
-        state.detailLoading = false;
-        state.error = action.payload as string;
       });
   },
 });
 
-export const { setSelectedOrder, clearTrackingError } = trackingSlice.actions;
+export const { setSelectedOrder } = trackingSlice.actions;
 export default trackingSlice.reducer;

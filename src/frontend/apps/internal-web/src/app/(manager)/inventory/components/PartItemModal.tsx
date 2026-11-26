@@ -11,7 +11,7 @@ import {
   Brand,
 } from '@/store/slices/inventorySlice';
 import Modal from '@/components/shared/Modal';
-import Toast from '@/components/shared/Toast';
+import toast from 'react-hot-toast';
 
 interface PartItemModalProps {
   isOpen: boolean;
@@ -57,16 +57,7 @@ export function PartItemModal({
     brandId: '',
     sellingPrice: '',
     reorderLevel: '5',
-  });
-
-  const [toast, setToast] = useState<{
-    show: boolean;
-    type: 'success' | 'error';
-    message: string;
-  }>({
-    show: false,
-    type: 'success',
-    message: '',
+    warrantyMonths: '',
   });
 
   useEffect(() => {
@@ -77,6 +68,7 @@ export function PartItemModal({
           brandId: item.brandId?.toString() || '',
           sellingPrice: Math.round(item.sellingPrice || 0).toString(),
           reorderLevel: (item.reorderLevel ?? 0).toString(),
+          warrantyMonths: item.warrantyMonths != null ? item.warrantyMonths.toString() : '',
         });
       } else {
         setFormData({
@@ -84,6 +76,7 @@ export function PartItemModal({
           brandId: '',
           sellingPrice: '',
           reorderLevel: '5',
+          warrantyMonths: '',
         });
       }
       dispatch(clearActionError());
@@ -104,13 +97,13 @@ export function PartItemModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.partCategoryId) {
-      setToast({ show: true, type: 'error', message: 'Vui lòng chọn Danh mục phụ tùng' });
+      toast.error('Vui lòng chọn Danh mục phụ tùng');
       return;
     }
 
     const sellingPriceNum = parseFloat(formData.sellingPrice || '0');
     if (isNaN(sellingPriceNum) || sellingPriceNum <= 0) {
-      setToast({ show: true, type: 'error', message: 'Vui lòng nhập Giá bán dự kiến hợp lệ (> 0)' });
+      toast.error('Vui lòng nhập Giá bán dự kiến hợp lệ (> 0)');
       return;
     }
 
@@ -119,6 +112,7 @@ export function PartItemModal({
       brandId: formData.brandId ? parseInt(formData.brandId, 10) : null,
       sellingPrice: sellingPriceNum,
       reorderLevel: Math.max(0, parseInt(formData.reorderLevel || '0', 10) || 0),
+      warrantyMonths: formData.warrantyMonths ? Math.max(0, parseInt(formData.warrantyMonths, 10) || 0) : null,
     };
 
     const resultAction = item
@@ -126,21 +120,13 @@ export function PartItemModal({
       : await dispatch(createInventoryItem(data));
 
     if (resultAction.meta.requestStatus === 'fulfilled') {
-      setToast({
-        show: true,
-        type: 'success',
-        message: item ? 'Cập nhật phụ tùng thành công!' : 'Đã thêm phụ tùng mới vào danh mục kho!',
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 900);
+      toast.success(
+        item ? 'Cập nhật phụ tùng thành công!' : 'Đã thêm phụ tùng mới vào danh mục kho!'
+      );
+      onSuccess();
+      onClose();
     } else {
-      setToast({
-        show: true,
-        type: 'error',
-        message: (resultAction.payload as string) || 'Không thể lưu thông tin phụ tùng',
-      });
+      toast.error((resultAction.payload as string) || 'Không thể lưu thông tin phụ tùng');
     }
   };
 
@@ -375,6 +361,20 @@ export function PartItemModal({
             </div>
           </div>
 
+          <div>
+            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+              Bảo hành (tháng)
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={formData.warrantyMonths}
+              onChange={(e) => setFormData({ ...formData, warrantyMonths: e.target.value })}
+              placeholder="VD: 12"
+              className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono tabular-nums"
+            />
+          </div>
+
           {actionError && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
               <span className="material-symbols-outlined text-[16px]">error</span>
@@ -411,14 +411,6 @@ export function PartItemModal({
           </div>
         </form>
       </Modal>
-
-      {toast.show && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast({ ...toast, show: false })}
-        />
-      )}
     </>
   );
 }

@@ -142,8 +142,8 @@ export function StockCardModal({ isOpen, onClose, item }: StockCardModalProps) {
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="inline-flex p-0.5 rounded-xl bg-slate-100 border border-slate-200/80">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="inline-flex flex-wrap p-0.5 rounded-xl bg-slate-100 border border-slate-200/80 max-w-full">
             <button
               type="button"
               onClick={() => setFilterType('ALL')}

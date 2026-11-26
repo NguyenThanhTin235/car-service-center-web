@@ -3,6 +3,9 @@
 import React from 'react';
 import { RootState } from '@/store';
 import { RepairHistoryItem } from '@/store/slices/historySlice';
+import { formatFuelLevel, formatVnd, parseComplaintText, parseSafeText } from '@/utils/customerHelpers';
+
+const DEFAULT_COMPLAINT_FALLBACK = 'Kiểm tra bảo dưỡng định kỳ tổng quát phương tiện';
 
 interface HistoryDetailModalProps {
   selected: RepairHistoryItem;
@@ -15,9 +18,6 @@ interface HistoryDetailModalProps {
   onClose: () => void;
   statusConfig: Record<string, { label: string; badgeClass: string; icon: string; dotClass: string }>;
   formatDateTime: (value?: string | null) => string;
-  formatMoney: (value?: string | number | null) => string;
-  parseComplaintText: (raw?: string | null) => string;
-  parseSafeText: (raw?: string | null, fallback?: string) => string;
 }
 
 export default function HistoryDetailModal({
@@ -31,9 +31,6 @@ export default function HistoryDetailModal({
   onClose,
   statusConfig,
   formatDateTime,
-  formatMoney,
-  parseComplaintText,
-  parseSafeText,
 }: HistoryDetailModalProps) {
   return (
     <div
@@ -179,7 +176,7 @@ export default function HistoryDetailModal({
                     <div>
                       <span className="text-slate-400 block font-medium">Chi phí hóa đơn:</span>
                       <span className="font-bold text-emerald-700 text-sm">
-                        {formatMoney(detail.invoice?.totalAmount || selected.invoice?.total_amount)}
+                        {formatVnd(detail.invoice?.totalAmount || selected.invoice?.total_amount)}
                       </span>
                       <span className="text-slate-500 block">
                         {detail.invoice?.invoiceNumber ? `HĐ #${detail.invoice.invoiceNumber}` : 'Chưa xuất hóa đơn'}
@@ -198,7 +195,7 @@ export default function HistoryDetailModal({
                       <div>
                         <span className="text-slate-400 block font-medium">Yêu cầu sửa chữa của khách:</span>
                         <p className="font-semibold text-slate-800 text-sm mt-0.5 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                          {parseComplaintText(detail.checkIn?.complaint || selected.complaint)}
+                          {parseComplaintText(detail.checkIn?.complaint || selected.complaint, DEFAULT_COMPLAINT_FALLBACK)}
                         </p>
                       </div>
 
@@ -212,7 +209,7 @@ export default function HistoryDetailModal({
                         <div className="p-2.5 rounded-xl bg-slate-50">
                           <span className="text-slate-400 block">Mức nhiên liệu vào:</span>
                           <span className="font-bold text-slate-800">
-                            {detail.checkIn?.fuelLevel || 'Theo xe'}
+                            {formatFuelLevel(detail.checkIn?.fuelLevel)}
                           </span>
                         </div>
                         <div className="p-2.5 rounded-xl bg-slate-50 col-span-2 sm:col-span-1">

@@ -1,20 +1,22 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef, useDeferredValue } from 'react';
+import dynamic from 'next/dynamic';
 import {
   WorkOrder,
   WoJobPart,
-  getWorkOrderParts,
   deleteJobPart,
 } from '@/lib/api/work-order.api';
-import AddPartModal from '../modals/AddPartModal';
 import TablePagination from '@/components/shared/TablePagination';
 import toast from 'react-hot-toast';
+
+const AddPartModal = dynamic(() => import('../modals/AddPartModal'), { ssr: false });
 
 interface TabPartsProps {
   workOrder?: WorkOrder;
   refetchWO?: () => void;
   isReadOnly?: boolean;
+  setActiveTab?: (tabId: string) => void;
 }
 
 const PART_STATUS_MAP: Record<string, { label: string; bg: string; text: string }> = {
@@ -63,17 +65,21 @@ const getEffectivePartStatus = (part: WoJobPart) => {
   };
 };
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 10;
 
-export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: TabPartsProps) {
-  const [parts, setParts] = useState<WoJobPart[]>(
-    () => workOrder?.services?.flatMap((s) => s.jobs?.flatMap((j) => j.parts || []) || []) || []
-  );
-  const [loading, setLoading] = useState(false);
-  const hasPartsRef = useRef(parts.length > 0);
-  useEffect(() => {
-    hasPartsRef.current = parts.length > 0;
-  }, [parts.length]);
+export default function TabParts({ workOrder, refetchWO, isReadOnly = false, setActiveTab }: TabPartsProps) {
+  const parts = useMemo<WoJobPart[]>(() => {
+    if (!workOrder?.services) return [];
+    return workOrder.services.flatMap((s) =>
+      (s.jobs || []).flatMap((j) =>
+        (j.parts || []).map((p) => ({
+          ...p,
+          job: p.job || { id: j.id, name: j.name, wo_service: { id: s.id, name: s.name } },
+        }))
+      )
+    );
+  }, [workOrder?.services]);
+  const loading = false;
 
   // Pagination state (5 items per page)
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,34 +97,17 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
 
   // Delete confirm state
   const [deletingPartId, setDeletingPartId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const isWOClosed = isReadOnly || ['CLOSED', 'CANCELLED', 'RELEASED'].includes(workOrder?.status || '');
 
-  const fetchParts = useCallback(async () => {
-    if (!workOrder?.id) return;
-    try {
-      if (!hasPartsRef.current) {
-        setLoading(true);
-      }
-      const res = await getWorkOrderParts(workOrder.id);
-      if (res.success && res.data) {
-        setParts(res.data);
-      }
-    } catch (err: any) {
-      console.error('Error fetching parts:', err);
-      toast.error('Lỗi khi tải danh sách phụ tùng');
-    } finally {
-      setLoading(false);
-    }
-  }, [workOrder?.id]);
-
-  useEffect(() => {
-    fetchParts();
-  }, [workOrder, fetchParts]);
+  const fetchParts = useCallback(() => {
+    setError(null);
+    if (refetchWO) refetchWO();
+  }, [refetchWO]);
 
   // Handle successful save from modal
   const handleModalSuccess = () => {
-    fetchParts();
     if (refetchWO) refetchWO();
   };
 
@@ -135,7 +124,6 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
       const res = await deleteJobPart(workOrder.id, part.job_id, part.id);
       if (res.success) {
         toast.success('Đã xóa phụ tùng khỏi công việc');
-        fetchParts();
         if (refetchWO) refetchWO();
       }
     } catch (err: any) {
@@ -226,9 +214,9 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
             <span className="material-symbols-outlined text-[26px]">category</span>
           </div>
           <div>
-            <div className="text-body-small text-on-surface-variant font-medium">Tổng loại phụ tùng</div>
-            <div className="text-title-large font-bold text-on-surface mt-0.5">
-              {stats.totalItems} <span className="text-label-medium font-normal text-on-surface-variant">mặt hàng</span>
+            <div className="text-xs text-on-surface-variant font-medium">Tổng loại phụ tùng</div>
+            <div className="text-lg font-mono font-bold text-on-surface mt-0.5 tabular-nums">
+              {stats.totalItems} <span className="text-xs font-sans font-normal text-on-surface-variant">mặt hàng</span>
             </div>
           </div>
         </div>
@@ -239,9 +227,9 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
             <span className="material-symbols-outlined text-[26px]">payments</span>
           </div>
           <div>
-            <div className="text-body-small text-on-surface-variant font-medium">Chi phí phụ tùng dự kiến</div>
-            <div className="text-title-large font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
-              {stats.totalEstimatedCost.toLocaleString('vi-VN')} <span className="text-label-medium font-normal">VNĐ</span>
+            <div className="text-xs text-on-surface-variant font-medium">Chi phí phụ tùng dự kiến</div>
+            <div className="text-lg font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 tabular-nums">
+              {stats.totalEstimatedCost.toLocaleString('vi-VN')} <span className="text-xs font-sans font-normal">VNĐ</span>
             </div>
           </div>
         </div>
@@ -264,13 +252,13 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
             </span>
           </div>
           <div>
-            <div className="text-body-small font-medium">
+            <div className="text-xs font-medium">
               {stats.shortagesCount > 0 ? 'Cảnh báo thiếu kho' : 'Tình trạng tồn kho'}
             </div>
-            <div className="text-title-large font-bold mt-0.5">
+            <div className="text-lg font-bold mt-0.5 tabular-nums">
               {stats.shortagesCount > 0 ? (
-                <span>
-                  {stats.shortagesCount} <span className="text-label-medium font-normal">mặt hàng thiếu</span>
+                <span className="font-mono">
+                  {stats.shortagesCount} <span className="text-xs font-sans font-normal">mặt hàng thiếu</span>
                 </span>
               ) : (
                 <span className="text-emerald-600 dark:text-emerald-400">Sẵn sàng cấp phát</span>
@@ -341,7 +329,21 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
 
       {/* 3. Table of Parts */}
       <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl overflow-hidden shadow-sm">
-        {loading ? (
+        {error ? (
+          <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rose-50 text-rose-800 text-xs">
+            <div className="flex items-center gap-2 font-semibold">
+              <span className="material-symbols-outlined text-[18px] text-rose-600">error</span>
+              <span>{error}</span>
+            </div>
+            <button
+              type="button"
+              onClick={fetchParts}
+              className="sa-press px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer self-start sm:self-auto"
+            >
+              Thử lại
+            </button>
+          </div>
+        ) : loading ? (
           <div className="p-12 text-center text-on-surface-variant flex items-center justify-center gap-2">
             <span className="material-symbols-outlined animate-spin text-[24px] text-primary">progress_activity</span>
             Đang tải dữ liệu phụ tùng...
@@ -351,8 +353,8 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
             <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center mx-auto text-on-surface-variant mb-3">
               <span className="material-symbols-outlined text-[32px]">inventory_2</span>
             </div>
-            <h4 className="text-title-medium font-bold text-on-surface">Chưa có phụ tùng nào</h4>
-            <p className="text-body-medium text-on-surface-variant mt-1 max-w-md mx-auto">
+            <h4 className="text-base font-bold text-on-surface">Chưa có phụ tùng nào</h4>
+            <p className="text-sm text-on-surface-variant mt-1 max-w-md mx-auto">
               {search || selectedJobFilter !== 'ALL' || stockFilter !== 'ALL'
                 ? 'Không tìm thấy phụ tùng phù hợp với bộ lọc hiện tại.'
                 : 'Chưa có phụ tùng hay vật tư nào được khai báo cho phiếu này.'}
@@ -364,7 +366,7 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
                   setPreselectedJobId(null);
                   setIsModalOpen(true);
                 }}
-                className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary text-on-primary hover:bg-primary/90 font-semibold text-body-medium rounded-xl transition-all shadow-sm"
+                className="sa-press mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary text-on-primary hover:bg-primary-container font-semibold text-sm rounded-xl transition-colors shadow-sm cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">add</span>
                 Khai báo phụ tùng ngay
@@ -374,9 +376,9 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
         ) : (
           <>
             <div className="overflow-x-auto styled-scrollbar">
-            <table className="w-full text-left border-collapse text-body-medium">
+            <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="border-b border-outline-variant/60 bg-surface-container-low/40 text-on-surface-variant text-label-medium uppercase tracking-wider font-semibold">
+                <tr className="border-b border-outline-variant/60 bg-surface-container-low/40 text-on-surface-variant text-xs uppercase tracking-wider font-semibold">
                   <th className="py-3 px-4 hidden xl:table-cell whitespace-nowrap">Mã</th>
                   <th className="py-3 px-2.5 lg:px-4 min-w-[170px]">Tên phụ tùng & Hãng</th>
                   <th className="py-3 px-2.5 lg:px-4 min-w-[150px]">Công việc áp dụng</th>
@@ -548,6 +550,23 @@ export default function TabParts({ workOrder, refetchWO, isReadOnly = false }: T
         </>
       )}
     </div>
+
+      {/* Next-Step Lifecycle CTA */}
+      {setActiveTab && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs">
+          <div className="text-xs text-slate-600">
+            <span className="font-bold text-slate-900">Bước tiếp theo:</span> Tổng hợp nhân công &amp; phụ tùng để lập báo giá gửi khách hàng.
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('quotation')}
+            className="sa-press inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0c2340] hover:bg-[#0050cd] text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
+          >
+            <span>Tiếp tục: Lập &amp; gửi báo giá</span>
+            <span aria-hidden="true">→</span>
+          </button>
+        </div>
+      )}
 
       {/* 4. Modal Add/Edit Part */}
       {isModalOpen && (

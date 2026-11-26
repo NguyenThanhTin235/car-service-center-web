@@ -42,3 +42,26 @@
 | `OPT-002` | `src/app/(public)/home/page.tsx` | Lọc danh sách dịch vụ đồng bộ theo từng phím gõ; 5 ảnh Hero không phân biệt độ ưu tiên tải. | Áp dụng `useDeferredValue(searchQuery)` + `useMemo` cho `filteredServices`; đặt `loading="eager"` + `fetchPriority="high"` cho ảnh đầu tiên và `loading="lazy" decoding="async"` cho các ảnh carousel sau. |
 | `OPT-003` | `src/app/(customer)/customer/profile/page.tsx` | Nạp tĩnh đồng thời `TrackingView`, `InvoicesView`, `HistoryView` (~3,260 dòng) khi mở `/customer/profile`; tính lại `activeVehicles` & lịch tháng trong render. | Chuyển 3 tab sang `next/dynamic` kèm `LoadingSkeleton`; memo hóa `activeVehicles` và `bookingCalendarMeta` qua `useMemo`. |
 | `OPT-004` | `src/components/tracking/TrackingView.tsx`, `src/components/invoices/InvoicesView.tsx` | Nạp tĩnh 4 modal nghiệp vụ nặng (`CustomerQuotationModal`, `CustomerCheckInModal`, `CustomerQCModal`, `CustomerPaymentModal`). | Chuyển cả 4 modal sang `next/dynamic` và bọc điều kiện render theo state `is...ModalOpen` để chỉ tải chunk JS khi người dùng mở modal. |
+
+---
+
+## 3. Ponytail Pass 2 — Dead Code, Deduplication & Render Isolation (`PT-021` → `PT-032`, `OPT-005`)
+
+| Mã Log | Đối tượng / File | Thay đổi | Bằng chứng Chesterton's Fence / Lý do | Trạng thái |
+| :--- | :--- | :---: | :--- | :---: |
+| `PT-021` | `src/components/ui/StatusBadge.tsx`, `src/components/ui/index.ts` | -69 LOC | `StatusBadge` có `0` active callers trong toàn bộ `customer-web` và `e2e/` (chỉ re-export trong `ui/index.ts`). | Đã xóa |
+| `PT-022` | `public/{file,globe,next,vercel,window}.svg` | 5 files | 5 SVG mẫu mặc định của `create-next-app`, `0` tham chiếu trong `customer-web`. | Đã xóa |
+| `PT-023` | `src/store/slices/appointmentSlice.ts` | -89 LOC net | Gỡ thunk nội bộ của Staff (`confirmAppointment`, `arriveAppointment`), state/action thừa (`selectedAppointment`, `filters`, `pagination`, `setSelectedAppointment`, `setFilters`), `PayloadAction` unused, và handler rỗng `createAppointment.fulfilled`. | Đã dọn |
+| `PT-024` | `src/store/slices/trackingSlice.ts` | -34 LOC net | Gỡ `fetchTrackingDetail`, `detailLoading`, `lastUpdated`, `clearTrackingError` (`0` callers). | Đã dọn |
+| `PT-025` | `src/store/slices/{invoiceSlice,vehicleSlice,profileSlice}.ts` | -13 LOC net | Gỡ `clearInvoiceError`, `clearActionError` (`0` callers) và import `PayloadAction` dư thừa. | Đã dọn |
+| `PT-026` | `src/lib/api/{payment.api,notification.api}.ts` | -33 LOC | Gỡ `PaymentStatusResponse`, `getPaymentStatus`, `cancelPendingPayment` và `getNotificationById` (`0` callers). | Đã dọn |
+| `PT-027` | `src/components/ui/StateBoundary.tsx` | -36 LOC net | Gỡ 2 nhánh `LoadingSkeleton` không sử dụng (`variant="detail"` và `variant="list"` — chỉ `variant="cards"` được gọi). | Đã dọn |
+| `PT-028` | `TrackingView.tsx`, `InvoicesView.tsx`, `HistoryView.tsx`, `profile/page.tsx` | -34 LOC | Gỡ prop `isEmbedded` và nhánh breadcrumb `{!isEmbedded && ...}` không bao giờ chạy (cả 3 route độc lập đều `redirect('/customer/profile?tab=...')`), kèm ternary trùng giá trị `confirmText` trong `profile/page.tsx`. | Đã dọn |
+| `PT-029` | `src/utils/customerHelpers.ts` ← `TrackingView.tsx`, `InvoicesView.tsx`, `HistoryView.tsx`, `quotation.api.ts` | Hợp nhất 4 bản sao | Gom `createObjectURL` + `<a>` + `revokeObjectURL` lặp 4 nơi thành `downloadPdfBlob`. | Đã hợp nhất |
+| `PT-030` | `src/utils/customerHelpers.ts` ← `TrackingView.tsx`, `HistoryView.tsx`, `HistoryDetailModal.tsx`, `CustomerCheckInModal.tsx`, `CustomerPaymentModal.tsx` | Hợp nhất | Gom `parseComplaintData`, `parseComplaintText`, `parseSafeText`, `formatVnd`; bỏ 3 pass-through props thừa từ `HistoryView` → `HistoryDetailModal`. | Đã hợp nhất |
+| `PT-031` | `src/utils/customerHelpers.ts` ← `profile/page.tsx`, `CustomerBookingModal.tsx` | Hợp nhất | Gom `MORNING_BOOKING_SLOTS`, `AFTERNOON_BOOKING_SLOTS`, `ALL_BOOKING_SLOTS`, `isBookingSlotInPast` vào 1 nguồn duy nhất. | Đã hợp nhất |
+| `PT-032` | `CustomerPaymentModal.tsx`, `CustomerQuotationModal.tsx` | Fix lint | Bỏ biến catch không dùng `(e)` / `(err: any)` để hết cảnh báo ESLint `no-unused-vars`. | Đã sửa |
+| `OPT-005` | `src/components/tracking/TrackingView.tsx` | Cô lập timer 1s | Tách `LiveCountdownBadge` (reset qua `key={syncTick}`) và `LiveClockOverlay` thành 2 leaf component `React.memo`, chấm dứt tình trạng re-render toàn bộ `TrackingView` (~1,400 dòng) mỗi giây (60 lần/phút). | Đã tối ưu |
+
+> **Tổng kết Pass 2 (`git diff --stat` trên code nguồn):** Xóa **6 file/asset chết**, giảm ròng **530 deletions / 142 insertions** (trong đó `+51` dòng là unit test mới cho `customerHelpers` trong `tests/unit/customer-logic.test.ts` và `+95` dòng tại `src/utils/customerHelpers.ts`).
+> **Xác minh Pass 2:** `npx tsc --noEmit` (0 lỗi), `npm run lint` (0 lỗi), `npm run test:unit` (22/22 pass), `npm run build` (20/20 routes pass).

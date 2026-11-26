@@ -1,9 +1,11 @@
 import { IntakeType, IntakeStatus } from '@prisma/client';
 import prisma from '../utils/prisma';
 import { IntakeRepository, IntakeFilters } from '../repositories/intake.repository';
+import { WarrantyService } from './warranty.service';
 import { notificationService } from './notification.service';
 
 const intakeRepo = new IntakeRepository();
+const warrantyService = new WarrantyService();
 
 export interface CreateIntakeDto {
   customerId: number;
@@ -13,6 +15,9 @@ export interface CreateIntakeDto {
   towCompany?: string;
   notes?: string;
   serviceIds?: number[];
+  parentWorkOrderId?: number;
+  symptoms?: string;
+  evidenceUrls?: string[];
   // Quick-create customer (khi KH chưa có trong hệ thống)
   newCustomer?: {
     fullName: string;
@@ -120,6 +125,44 @@ export class IntakeService {
         throw new Error('Xe này đang trong hàng đợi tiếp nhận. Không thể tạo phiếu trùng.');
       }
 
+      // UC-83: Nghiệp vụ Tiếp nhận bảo hành (chỉ kiểm tra theo tháng, không check ODO / Goodwill)
+      let parentWoNumber: string | null = null;
+
+      if (dto.intakeType === 'WARRANTY') {
+        if (!dto.parentWorkOrderId) {
+          throw new Error('Vui lòng chọn phiếu dịch vụ gốc liên quan đến khiếu nại bảo hành.');
+        }
+
+        const parentWo = await tx.workOrder.findUnique({
+          where: { id: dto.parentWorkOrderId },
+        });
+        if (!parentWo) {
+          throw new Error('Không tìm thấy phiếu dịch vụ gốc được chọn.');
+        }
+        if (parentWo.vehicle_id !== vehicleId) {
+          throw new Error('Phiếu dịch vụ gốc không thuộc về phương tiện này.');
+        }
+        parentWoNumber = parentWo.wo_number;
+
+        const eligibility = await warrantyService.checkVehicleWarrantyEligibility({ vehicleId });
+        const parentWoItems = eligibility.items.filter((it) => it.workOrderId === dto.parentWorkOrderId);
+        const hasValidItem = parentWoItems.some((it) => it.status === 'VALID');
+        if (parentWoItems.length > 0 && !hasValidItem) {
+          throw new Error('Các hạng mục trong phiếu dịch vụ gốc đã quá hạn bảo hành.');
+        }
+      }
+
+      // Xây dựng ghi chú tiếp nhận
+      let finalNotes = dto.notes || '';
+      if (dto.intakeType === 'WARRANTY') {
+        const warrantyLines = [
+          parentWoNumber ? `[TIẾP NHẬN BẢO HÀNH] Phiếu dịch vụ gốc: #${parentWoNumber}` : `[TIẾP NHẬN BẢO HÀNH]`,
+          dto.symptoms ? `Hiện tượng sự cố: ${dto.symptoms.trim()}` : null,
+          dto.evidenceUrls && dto.evidenceUrls.length > 0 ? `Minh chứng hiện trạng: ${dto.evidenceUrls.join('; ')}` : null,
+        ].filter(Boolean).join('\n');
+        finalNotes = finalNotes ? `${finalNotes}\n\n${warrantyLines}` : warrantyLines;
+      }
+
       // Tạo IntakeRecord
       const intakeRecord = await intakeRepo.createInTransaction(tx, {
         customer_id: customerId,
@@ -128,7 +171,7 @@ export class IntakeService {
         status: 'QUEUED',
         arrived_at: new Date(dto.arrivedAt),
         tow_company: dto.towCompany || null,
-        notes: dto.notes || null,
+        notes: finalNotes || null,
         created_by_id: createdById,
       });
 

@@ -236,6 +236,9 @@ export class QuotationService {
         throw new Error(`Phiếu công việc đã ở trạng thái ${wo.status}, không thể tạo báo giá mới`);
       }
 
+      // 1.5. Đơn giá bảo hành luôn là 0đ (không còn cơ chế bảo hành thiện chí)
+      const calcWarrantyPrice = (_basePrice: number, _lineKind: 'PACKAGE' | 'LABOUR' | 'PART'): number => 0;
+
       // 2. Bóc tách toàn bộ chi phí theo 3 mô hình tính giá
       const lineInputs: PricingLineItemInput[] = [];
       let sortIndex = 0;
@@ -243,10 +246,16 @@ export class QuotationService {
       for (const woService of wo.services) {
         // Mô hình 1: Gói cố định (FIXED)
         if (woService.pricing_type === 'FIXED') {
-          const packagePrice = Number(woService.service?.fixed_price || 0);
+          const isWarranty = wo.order_type === 'WARRANTY';
+          const baseFixedPrice = Number(woService.service?.fixed_price || 0);
+          const packagePrice = isWarranty ? calcWarrantyPrice(baseFixedPrice, 'PACKAGE') : baseFixedPrice;
+          const desc = isWarranty && !woService.name.includes('[Bảo hành]')
+            ? `[Bảo hành] ${woService.name}`
+            : woService.name;
+
           lineInputs.push({
             lineType: 'PACKAGE',
-            description: woService.name,
+            description: desc,
             quantity: 1,
             unitPrice: packagePrice,
             woServiceId: woService.id,
@@ -259,7 +268,9 @@ export class QuotationService {
           const sizePriceObj = woService.service?.size_prices?.find(
             (sp) => sp.vehicle_size === vehicleSize
           );
-          const sizePrice = Number(sizePriceObj?.price || 0);
+          const isWarranty = wo.order_type === 'WARRANTY';
+          const baseSizePrice = Number(sizePriceObj?.price || 0);
+          const sizePrice = isWarranty ? calcWarrantyPrice(baseSizePrice, 'PACKAGE') : baseSizePrice;
 
           const sizeLabelsVi: Record<string, string> = {
             SMALL: 'Cỡ nhỏ',
@@ -269,10 +280,13 @@ export class QuotationService {
             TRUCK: 'Bán tải',
           };
           const sizeTextVi = sizeLabelsVi[vehicleSize] || vehicleSize;
+          const desc = isWarranty && !woService.name.includes('[Bảo hành]')
+            ? `[Bảo hành] ${woService.name} (Phân khúc xe: ${sizeTextVi})`
+            : `${woService.name} (Phân khúc xe: ${sizeTextVi})`;
 
           lineInputs.push({
             lineType: 'PACKAGE',
-            description: `${woService.name} (Phân khúc xe: ${sizeTextVi})`,
+            description: desc,
             quantity: 1,
             unitPrice: sizePrice,
             woServiceId: woService.id,
@@ -282,13 +296,21 @@ export class QuotationService {
         // Mô hình 3: Nhân công & Phụ tùng thực tế (LABOUR_PARTS)
         else {
           for (const job of woService.jobs) {
-            // Tiền nhân công (Fixed price theo JobLabour)
+            const isWarrantyJob = Boolean(job.is_warranty);
+
+            // Tiền nhân công (Fixed price theo JobLabour, áp dụng 0đ hoặc mức Goodwill nếu là bảo hành - UC-84)
             for (const labour of job.labours) {
+              const baseLabourPrice = Number(labour.price);
+              const unitPrice = isWarrantyJob ? calcWarrantyPrice(baseLabourPrice, 'LABOUR') : baseLabourPrice;
+              const desc = isWarrantyJob && !labour.description?.includes('[Bảo hành]')
+                ? `[Bảo hành] ${labour.description || `Tiền công: ${job.name}`}`
+                : labour.description || `Tiền công: ${job.name}`;
+
               lineInputs.push({
                 lineType: 'LABOUR',
-                description: labour.description || `Tiền công: ${job.name}`,
+                description: desc,
                 quantity: 1,
-                unitPrice: Number(labour.price),
+                unitPrice,
                 woServiceId: woService.id,
                 jobId: job.id,
                 jobLabourId: labour.id,
@@ -296,17 +318,23 @@ export class QuotationService {
               });
             }
 
-            // Tiền phụ tùng (Số lượng x Giá bán)
+            // Tiền phụ tùng (Số lượng x Giá bán, tách biệt hoàn toàn với cờ bảo hành công của Job - UC-84)
             for (const part of job.parts) {
-              const partName =
+              const isWarrantyPart = Boolean(part.is_warranty);
+              const basePartPrice = Number(part.unit_price);
+              const unitPrice = isWarrantyPart ? calcWarrantyPrice(basePartPrice, 'PART') : basePartPrice;
+              const rawPartName =
                 part.item.part_category.name +
                 (part.item.brand ? ` (${part.item.brand.name})` : ` - ${part.item.sku}`);
+              const partName = isWarrantyPart && !rawPartName.includes('[Bảo hành]')
+                ? `[Bảo hành] ${rawPartName}`
+                : rawPartName;
 
               lineInputs.push({
                 lineType: 'PART',
                 description: partName,
                 quantity: Number(part.planned_quantity),
-                unitPrice: Number(part.unit_price),
+                unitPrice,
                 woServiceId: woService.id,
                 jobId: job.id,
                 jobPartId: part.id,
@@ -318,7 +346,17 @@ export class QuotationService {
       }
 
       if (lineInputs.length === 0) {
-        throw new Error('Phiếu công việc chưa có bất kỳ hạng mục dịch vụ hoặc phụ tùng nào có chi phí.');
+        throw new Error('Phiếu công việc chưa có bất kỳ hạng mục dịch vụ hoặc phụ tùng nào.');
+      }
+
+      // Tự động phân loại đơn hỗn hợp MIXED nếu có cả hạng mục bảo hành (0đ) và dịch vụ phát sinh tính phí (>0đ) (UC-84 Luồng thay thế)
+      const hasWarrantyLine = lineInputs.some((l) => Number(l.unitPrice) === 0);
+      const hasChargedLine = lineInputs.some((l) => Number(l.unitPrice) > 0);
+      if (hasWarrantyLine && hasChargedLine && wo.order_type !== 'MIXED') {
+        await tx.workOrder.update({
+          where: { id: workOrderId },
+          data: { order_type: 'MIXED' },
+        });
       }
 
       const rawSubtotal = lineInputs.reduce(

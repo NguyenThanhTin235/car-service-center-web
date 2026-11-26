@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { employeeApi, EmployeeData } from '@/lib/api/employees';
+import { useBackdropClose } from '@/hooks/useBackdropClose';
 
 interface EmployeeDetailModalProps {
   isOpen: boolean;
@@ -66,6 +67,7 @@ export default function EmployeeDetailModal({
   fallbackData,
   onEdit,
 }: EmployeeDetailModalProps) {
+  const backdropProps = useBackdropClose(onClose);
   const [detailData, setDetailData] = useState<any | null>(fallbackData || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,30 +83,30 @@ export default function EmployeeDetailModal({
       setDetailData(fallbackData);
     }
 
-    let isMounted = true;
+    const controller = new AbortController();
     const fetchDetail = async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await employeeApi.getById(employeeId);
-        if (isMounted) {
+        const res = await employeeApi.getById(employeeId, controller.signal);
+        if (!controller.signal.aborted) {
           const emp = res.data?.data || res.data;
           setDetailData(emp);
         }
       } catch (err: any) {
-        if (isMounted) {
-          setError(err.response?.data?.message || 'Không thể tải chi tiết nhân viên từ máy chủ.');
-        }
+        if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED' || controller.signal.aborted) return;
+        setError(err.response?.data?.message || 'Không thể tải chi tiết nhân viên từ máy chủ.');
       } finally {
-        if (isMounted) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     fetchDetail();
     return () => {
-      isMounted = false;
+      controller.abort();
     };
-  }, [isOpen, employeeId, fallbackData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, employeeId]);
 
   if (!isOpen) return null;
 
@@ -135,7 +137,16 @@ export default function EmployeeDetailModal({
     : '—';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Hồ sơ Chi tiết Nhân viên"
+      {...backdropProps}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+    >
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-slate-200/80 bg-slate-50/70 flex items-center justify-between">
@@ -147,7 +158,7 @@ export default function EmployeeDetailModal({
               <h2 className="text-base font-bold text-slate-900 tracking-tight">
                 Hồ sơ Chi tiết Nhân viên
               </h2>
-              <p className="text-xs text-slate-500 font-mono">
+              <p className="text-xs text-slate-500 font-mono tabular-nums">
                 Mã định danh: EMP-{String(employeeId || currentEmp?.id || 0).padStart(4, '0')}
               </p>
             </div>
@@ -155,7 +166,8 @@ export default function EmployeeDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors cursor-pointer"
+            aria-label="Đóng"
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200/70 transition-colors cursor-pointer"
             title="Đóng"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
@@ -342,8 +354,8 @@ export default function EmployeeDetailModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-3.5 border-t border-slate-200/80 bg-slate-50/60 flex items-center justify-between gap-3">
-          <span className="text-[11px] text-slate-400">Hệ thống Quản trị Car Service Center</span>
+        <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200/80 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3">
+          <span className="text-[11px] text-slate-500">Hệ thống Quản trị Car Service Center</span>
           <div className="flex items-center gap-2">
             {onEdit && currentEmp && (
               <button

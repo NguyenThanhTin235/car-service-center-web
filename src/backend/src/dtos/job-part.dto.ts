@@ -19,6 +19,7 @@ export const addJobPartSchema = Joi.object({
     'number.base': 'Đơn giá phải là số',
     'number.min': 'Đơn giá không được âm',
   }),
+  is_warranty: Joi.boolean().optional(),
 });
 
 /**
@@ -33,6 +34,7 @@ export const updateJobPartSchema = Joi.object({
     'number.base': 'Đơn giá phải là số',
     'number.min': 'Đơn giá không được âm',
   }),
+  is_warranty: Joi.boolean().optional(),
   status: Joi.string().valid('PLANNED', 'RESERVED', 'ISSUED', 'USED', 'RETURNED').optional().messages({
     'any.only': 'Trạng thái cấp phát không hợp lệ',
   }),

@@ -11,7 +11,7 @@ import {
   Uom,
 } from '@/store/slices/inventorySlice';
 import Modal from '@/components/shared/Modal';
-import Toast from '@/components/shared/Toast';
+import toast from 'react-hot-toast';
 
 function generateCodeFromName(name: string): string {
   if (!name) return '';
@@ -55,15 +55,6 @@ export function PartCategoryModal({
     uomId: '',
     description: '',
   });
-  const [toast, setToast] = useState<{
-    show: boolean;
-    type: 'success' | 'error';
-    message: string;
-  }>({
-    show: false,
-    type: 'success',
-    message: '',
-  });
 
   useEffect(() => {
     if (isOpen) {
@@ -103,21 +94,10 @@ export function PartCategoryModal({
       : await dispatch(createPartCategory(data));
 
     if (resultAction.meta.requestStatus === 'fulfilled') {
-      setToast({
-        show: true,
-        type: 'success',
-        message: category ? 'Cập nhật danh mục thành công' : 'Thêm danh mục thành công',
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 1000);
+      onSuccess();
+      onClose();
     } else {
-      setToast({
-        show: true,
-        type: 'error',
-        message: (resultAction.payload as string) || 'Có lỗi xảy ra',
-      });
+      toast.error((resultAction.payload as string) || 'Có lỗi xảy ra');
     }
   };
 
@@ -129,9 +109,9 @@ export function PartCategoryModal({
         title={category ? 'Cập nhật Danh mục phụ tùng' : 'Thêm Danh mục phụ tùng'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label htmlFor="part-category-code" className="block text-xs font-bold text-slate-700 mb-1.5">
                 Mã danh mục <span className="text-rose-500">*</span>
               </label>
               <input
@@ -144,8 +124,8 @@ export function PartCategoryModal({
                 required
               />
             </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            <div className="sm:col-span-2">
+              <label htmlFor="part-category-name" className="block text-xs font-bold text-slate-700 mb-1.5">
                 Tên danh mục <span className="text-rose-500">*</span>
               </label>
               <input
@@ -167,9 +147,9 @@ export function PartCategoryModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label htmlFor="part-category-type" className="block text-xs font-bold text-slate-700 mb-1.5">
                 Loại vật tư <span className="text-rose-500">*</span>
               </label>
               <select
@@ -186,7 +166,7 @@ export function PartCategoryModal({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label htmlFor="part-category-uom" className="block text-xs font-bold text-slate-700 mb-1.5">
                 Đơn vị tính <span className="text-rose-500">*</span>
               </label>
               <select
@@ -207,7 +187,7 @@ export function PartCategoryModal({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">Mô tả</label>
+            <label htmlFor="part-category-description" className="block text-xs font-bold text-slate-700 mb-1.5">Mô tả</label>
             <textarea
               id="part-category-description"
               value={formData.description}
@@ -241,14 +221,6 @@ export function PartCategoryModal({
           </div>
         </form>
       </Modal>
-
-      {toast.show && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast({ ...toast, show: false })}
-        />
-      )}
     </>
   );
 }

@@ -26,6 +26,7 @@ export default function WorkOrdersPage() {
 
   const [items, setItems] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -60,6 +61,7 @@ export default function WorkOrdersPage() {
   const fetchWOs = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await getWorkOrders({
         page: currentPage,
         limit,
@@ -76,9 +78,13 @@ export default function WorkOrdersPage() {
           setTotalRecords(res.data.length);
           setTotalPages(Math.ceil(res.data.length / limit) || 1);
         }
+      } else {
+        setError(res.message || 'Không thể tải danh sách phiếu công việc');
       }
-    } catch {
-      toast.error('Lỗi tải danh sách phiếu công việc');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi tải danh sách phiếu công việc';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -167,14 +173,14 @@ export default function WorkOrdersPage() {
             </div>
           </div>
           <div className="mt-3">
-            <div className="bg-[#0c2340] rounded-2xl p-1.5 flex items-stretch h-10 gap-1.5">
+            <div className="bg-[#0c2340] rounded-xl p-1 flex items-stretch h-7 gap-1">
               <div
                 style={{ width: `${Math.max(25, Math.min(75, pageStats.inWorkPct))}%` }}
-                className="bg-white text-zinc-900 rounded-xl px-2.5 flex items-center font-mono font-extrabold text-xs tabular-nums"
+                className="bg-white text-zinc-900 rounded-lg px-2.5 flex items-center font-mono font-extrabold text-[11px] leading-none tabular-nums whitespace-nowrap transition-all"
               >
                 {pageStats.inWorkPct}% mở
               </div>
-              <div className="flex-1 text-white px-2.5 flex items-center font-mono font-extrabold text-xs tabular-nums">
+              <div className="flex-1 text-white px-2.5 flex items-center font-mono font-extrabold text-[11px] leading-none tabular-nums whitespace-nowrap">
                 {pageStats.completedPct}% xong
               </div>
             </div>
@@ -278,9 +284,9 @@ export default function WorkOrdersPage() {
         </div>
 
         {/* Table Content */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[65vh] overflow-y-auto">
           <table className="table-auto w-full text-left border-collapse">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
               <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400">
                 <th className="py-3 pr-2 lg:pr-3">Phương tiện & Biển số</th>
                 <th className="py-3 px-2 lg:px-3">Mã phiếu (RO)</th>
@@ -321,6 +327,23 @@ export default function WorkOrdersPage() {
                     </td>
                   </tr>
                 ))
+              ) : error ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-12 text-center">
+                    <div className="inline-flex flex-col items-center gap-2.5 text-rose-700 bg-rose-50/70 border border-rose-200 rounded-2xl px-6 py-5">
+                      <span className="material-symbols-outlined text-[28px] text-rose-600">error</span>
+                      <span className="text-xs font-semibold">Không thể tải phiếu công việc: {error}</span>
+                      <button
+                        type="button"
+                        onClick={fetchWOs}
+                        className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">refresh</span>
+                        <span>Thử lại</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               ) : items.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-5 py-14 text-center text-slate-500">

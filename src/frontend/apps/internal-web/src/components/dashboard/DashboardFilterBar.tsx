@@ -46,7 +46,7 @@ export const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-sm mb-6">
       <div className="flex items-center gap-2 flex-wrap">
         {/* Quick Period Buttons */}
-        <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+        <div className="flex flex-wrap items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg max-w-full">
           {PERIOD_OPTIONS.map((opt) => (
             <button
               key={opt.key}

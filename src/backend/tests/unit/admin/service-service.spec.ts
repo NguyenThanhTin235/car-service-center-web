@@ -163,6 +163,7 @@ describe('Unit - ServiceService (TICKET-ADM-05)', () => {
           description: undefined,
           pricing_type: 'FIXED',
           fixed_price: 200000,
+          warranty_months: 0,
         },
       });
       expect(createdFixed?.id).toBe(15);
@@ -180,6 +181,7 @@ describe('Unit - ServiceService (TICKET-ADM-05)', () => {
           description: undefined,
           pricing_type: 'LABOUR_PARTS',
           fixed_price: null,
+          warranty_months: 0,
         },
       });
     });

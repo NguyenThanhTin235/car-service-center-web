@@ -38,7 +38,7 @@ Dự án **"Hệ thống Quản lý Trung tâm Dịch vụ Ô tô" (Car Service 
 
 Hệ thống được xây dựng trên nền tảng **Node.js + Express + Prisma + MySQL** (phía máy chủ) và **Next.js** (phía giao diện). Bộ kiểm thử tự động sử dụng Vitest (kiểm thử đơn vị và tích hợp) kết hợp Playwright (kiểm thử E2E) và được tích hợp trong pipeline CI/CD với GitHub Actions.
 
-**Đội ngũ kiểm thử chịu trách nhiệm đảm bảo hệ thống đáp ứng toàn bộ 87 Use Case (UC-01 đến UC-87)** trải rộng trên 7 vai trò tác nhân, bao phủ vòng đời dịch vụ hoàn chỉnh từ Đặt lịch → Tiếp nhận → Khám xe → Báo giá → Thi công → Kiểm định chất lượng (QC) → Thanh toán → Bàn giao xe.
+**Đội ngũ kiểm thử chịu trách nhiệm đảm bảo hệ thống đáp ứng toàn bộ 86 Use Case (UC-01 đến UC-86)** trải rộng trên 7 vai trò tác nhân, bao phủ vòng đời dịch vụ hoàn chỉnh từ Đặt lịch → Tiếp nhận → Khám xe → Báo giá → Thi công → Kiểm định chất lượng (QC) → Thanh toán → Bàn giao xe.
 
 **Mục tiêu quan trọng nhất** là đảm bảo các chức năng nghiệp vụ cốt lõi (must-have) hoạt động chính xác, không có lỗi hồi quy, và đáp ứng đầy đủ 7 tiêu chí nghiệm thu đề tài (AC-01 đến AC-07):
 
@@ -120,7 +120,7 @@ Phạm vi kiểm thử của đồ án bao gồm toàn bộ các yêu cầu ch�
 **Ngoài phạm vi kiểm thử:**
 - Ứng dụng di động (Mobile App).
 - Tích hợp cổng thanh toán thực tế (VNPAY/MoMo production).
-- Phân hệ Bảo hành (Warranty Management – UC-81 đến UC-87): Dự kiến bổ sung trong giai đoạn tiếp theo.
+- Phân hệ Bảo hành (Warranty Management – UC-81 đến UC-86): Dự kiến bổ sung trong giai đoạn tiếp theo.
 - Bộ kịch bản kiểm thử hóa đơn/thanh toán nội bộ chi tiết (TC_Billing_Invoice_Process.md): Dự kiến bổ sung trong giai đoạn tiếp theo.
 - Kiểm thử bảo mật URL/API riêng lẻ: Sẽ được thực hiện trong bộ kiểm thử API riêng biệt.
 
@@ -152,7 +152,7 @@ Các rủi ro sau đây đã được xác định và sẽ có hành động th
 | **2** | **Thay đổi chức năng ở phút chót:** Sửa code vào giai đoạn cuối làm vô hiệu hóa các kịch bản kiểm thử đã viết và làm hỏng bộ test tự động. | **Cao** | Các test case cũ không còn phù hợp; bộ kiểm thử tự động báo lỗi (FAIL) đột ngột. | Hạn chế tối đa việc thay đổi đặc tả trong giai đoạn kiểm thử. Nếu bắt buộc có thay đổi, phải cập nhật tài liệu và test case tương ứng ngay lập tức. Duy trì pipeline CI/CD để phát hiện hồi quy sớm. |
 | **3** | **Thiếu dữ liệu kiểm thử:** Dữ liệu mẫu (seed data) trong database không đủ để thực thi tất cả các kịch bản kiểm thử thủ công, đặc biệt là các kịch bản phụ thuộc vào trạng thái trung gian của Work Order. | **Trung bình** | Tester không thể thực thi các test case vì thiếu dữ liệu tiền điều kiện. | Chuẩn bị bộ dữ liệu mẫu (seed data) toàn diện cho từng vai trò. Lập hướng dẫn cài đặt môi trường kiểm thử và chia sẻ cho toàn nhóm. |
 | **4** | **Trễ tiến độ lập trình:** Các module code không hoàn thành đúng mốc thời gian dự kiến, dẫn đến không đủ thời gian kiểm thử trước ngày nộp đồ án. | **Trung bình** | Các chức năng chưa hoàn thiện theo kế hoạch sprint. | Phân bổ thời gian dự phòng (buffer). Thành viên hoàn thành chức năng nào sẽ tiến hành kiểm thử chéo ngay chức năng đó thay vì chờ đến giai đoạn kiểm thử tổng thể. |
-| **5** | **Hai phân hệ lớn chưa có bộ kịch bản kiểm thử:** Phân hệ Hóa đơn/Thanh toán (Billing) và Bảo hành (Warranty – UC-81 đến UC-87) chưa được viết test case thủ công, làm giảm độ bao phủ kiểm thử tổng thể. | **Trung bình** | Luồng nghiệp vụ Thanh toán và Bảo hành không được xác nhận qua kiểm thử hộp đen. | Bổ sung TC_Billing_Invoice_Process.md và TC_Warranty_Process.md trong giai đoạn tiếp theo. Tạm thời bù đắp bằng bộ kiểm thử tích hợp tự động cho hóa đơn (invoice-payment-api.spec.ts). |
+| **5** | **Độ phức tạp của các phân hệ tài chính & bảo hành:** Phân hệ Hóa đơn/Thanh toán (Billing) và Bảo hành (Warranty) có nhiều trạng thái chuyển tiếp nhạy cảm và điều kiện chốt chặn tài chính. | **Trung bình** | Sai lệch số liệu tiền tệ, chiết khấu âm, hoặc xe xuất xưởng khi chưa thanh toán đủ. | Đã hoàn thành 2 bộ kịch bản chuyên biệt: TC_Billing_Invoice_Process.md (30 TCs) và TC_Warranty_Process.md (25 TCs) bao phủ 100% full flow E2E, kết hợp kiểm thử tự động API hóa đơn. |
 
 ---
 
@@ -182,19 +182,20 @@ Phương pháp kiểm thử hộp đen (Black-box Testing) theo hành vi ngườ
    - **Kiểm thử theo Use Case (Use Case Testing):** Mỗi bộ test case ánh xạ trực tiếp đến các Use Case đã định nghĩa.
 4. So sánh kết quả thực tế (Actual Result) với kết quả mong đợi (Expected Result); ghi nhận mọi điểm bất thường (Bug/Defect) vào cột ghi chú tương ứng trong bảng kịch bản.
 
-**Bộ kịch bản kiểm thử thủ công hiện có (292 kịch bản – 6 bộ file):**
+**Bộ kịch bản kiểm thử thủ công hoàn chỉnh (407 kịch bản – 9 bộ file):**
 
 | **Bộ kịch bản** | **Phân hệ / Phạm vi** | **Số TC** | **Use Case tương ứng** |
 | :--- | :--- | :---: | :--- |
-| TC_Auth_Profile_Process.md | Xác thực, Hồ sơ cá nhân (Guest + Customer + Nhân viên) | 38 | UC-01 đến UC-10 |
-| TC_Appointment_Intake_Process.md | Đặt lịch hẹn, Tiếp nhận xe (Customer + Lễ tân) | 43 | UC-11 đến UC-14, UC-17 đến UC-21 |
-| TC_Customer_Profile_Process.md | Hồ sơ khách hàng, Phương tiện, Dịch vụ, Hóa đơn (Customer Portal) | 37 | UC-06 đến UC-16, UC-26 đến UC-28 |
-| TC_WorkOrder_SA_Process.md | Phiếu công việc, Khám xe, AI Job Planner, Báo giá, Thi công, QC, Bàn giao (SA) | 64 | UC-29 đến UC-43 |
-| TC_Manager_Process.md | Quản lý kho, Danh mục, Báo cáo, Danh mục dịch vụ (Manager) | 60 | UC-44 đến UC-53 |
-| TC_Admin_Process.md | Quản trị tài khoản, Dữ liệu chủ, Phân quyền (Admin) | 50 | UC-54 đến UC-78 |
-| **TỔNG CỘNG** | | **292** | **UC-01 đến UC-78, UC-79** |
-
-> **Lưu ý:** Hai phân hệ **Hóa đơn/Thanh toán chi tiết** (TC_Billing_Invoice_Process.md) và **Bảo hành** (TC_Warranty_Process.md – UC-81 đến UC-87) chưa có bộ kịch bản thủ công; sẽ được bổ sung trong giai đoạn tiếp theo.
+| [TC_Admin_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Admin_Process.md) | Quản trị tài khoản, Dữ liệu chủ, Dịch vụ, Phụ tùng, Bảng giá, Phân quyền (Admin) | 50 | UC-54 đến UC-78 |
+| [TC_Appointment_Intake_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Appointment_Intake_Process.md) | Đặt lịch hẹn, Tiếp nhận xe (Hẹn, Walk-in, Cứu hộ), Hàng đợi xe, Bàn giao tài sản | 50 | UC-01, UC-11 đến UC-14, UC-17 đến UC-21 |
+| [TC_Auth_Profile_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Auth_Profile_Process.md) | Xác thực OTP, Đăng nhập đa vai trò, Đổi mật khẩu chủ động, Remember Me, Đăng xuất đa tab | 32 | UC-02 đến UC-06 |
+| [TC_Customer_Profile_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Customer_Profile_Process.md) | Hồ sơ khách hàng, Quản lý xe, Phân loại cỡ xe (vehicleSize), Sổ bảo dưỡng trọn đời | 40 | UC-06 đến UC-10, UC-22 đến UC-25, UC-80 |
+| [TC_Manager_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Manager_Process.md) | Kho phụ tùng, Thẻ kho, Cảnh báo biên WAC, Hủy phiếu nháp, Bảng điều hành xưởng | 62 | UC-44 đến UC-53 |
+| [TC_WorkOrder_SA_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_WorkOrder_SA_Process.md) | Lệnh sửa chữa, Check-in, Khám 2D, Báo giá bổ sung (Change Order), Đổi thợ, KCS, Bàn giao | 68 | UC-29 đến UC-43 |
+| [TC_Dashboard_Report_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Dashboard_Report_Process.md) | Dashboard đa vai trò & Báo cáo phân tích doanh thu, sản lượng, tồn kho, bảo hành | 50 | UC-15, UC-16, UC-44, UC-54, UC-78, UC-86 |
+| [TC_Billing_Invoice_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Billing_Invoice_Process.md) | Thu ngân, 4 tab hàng đợi, hóa đơn nháp, chiết khấu quầy, thanh toán đa phương thức, nợ, in PDF | 30 | UC-16, UC-26 đến UC-28, FDS-B05, FDS-B06 |
+| [TC_Warranty_Process.md](file:///d:/hocTap/TLCN/CAR%20SERVICE%20CENTER/CAR%20SERVICE%20CENTER/docs/testing/manual/TC_Warranty_Process.md) | Vòng đời bảo hành E2E: Tra cứu hạn theo tháng, Đặt lịch, Tiếp nhận, Báo giá 0đ, Hóa đơn 0đ | 20 | UC-81 đến UC-86 |
+| **TỔNG CỘNG** | | **402** | **Bao phủ toàn diện UC-01 đến UC-86 (100% Use Cases)** |
 
 ---
 
@@ -395,7 +396,7 @@ python scripts/test_runner.py --all
 | **Sản phẩm bàn giao (Deliverable)** | **Dành cho** | **Ngày / Cột mốc** |
 | :--- | :--- | :---: |
 | Kế hoạch kiểm thử (Test Plan) – TestPlan.md | Giảng viên hướng dẫn; Nhóm dự án | |
-| Bộ kịch bản kiểm thử thủ công (6 file TC_*.md, 292 kịch bản) | Nhóm dự án; Giảng viên | |
+| Bộ kịch bản kiểm thử thủ công (9 file TC_*.md, 407 kịch bản) | Nhóm dự án; Giảng viên | |
 | Phân tích hộp trắng (White-box Analysis) – 10 hàm nghiệp vụ | Giảng viên hướng dẫn | |
 | Bộ kiểm thử tự động (111 tests, 17 files) – 100% Pass | Nhóm dự án; Giảng viên | |
 | Ma trận truy xuất yêu cầu (Requirements Traceability Matrix) | Giảng viên hướng dẫn; Nhóm dự án | |
