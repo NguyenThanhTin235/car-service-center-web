@@ -133,13 +133,18 @@ export default function ProfilePage() {
     };
   }, []);
 
-  // Preload heavy tab chunks right after initial mount so tab clicks render in <16ms
+  // Preload heavy tab chunks during browser idle time without competing with initial hydration
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const preloadTabs = () => {
       import('@/components/tracking/TrackingView');
       import('@/components/invoices/InvoicesView');
       import('@/components/history/HistoryView');
-    }, 50);
+    };
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const idleId = window.requestIdleCallback(preloadTabs, { timeout: 2500 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+    const timer = setTimeout(preloadTabs, 1500);
     return () => clearTimeout(timer);
   }, []);
 

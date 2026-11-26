@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction, isAnyOf } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, isAnyOf } from '@reduxjs/toolkit';
 import api from '@/lib/axios';
 
 export interface Uom {
@@ -201,6 +201,14 @@ const initialState: InventoryState = {
   actionError: null,
 };
 
+function getApiError(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const resp = (error as { response?: { data?: { message?: string } } }).response;
+    if (resp?.data?.message) return resp.data.message;
+  }
+  return fallback;
+}
+
 export const fetchPartCategories = createAsyncThunk(
   'inventory/fetchCategories',
   async (params: { search?: string; itemType?: string; page?: number; limit?: number } | void, { rejectWithValue }) => {
@@ -208,8 +216,8 @@ export const fetchPartCategories = createAsyncThunk(
     try {
       const response = await api.get('/api/part-categories', { params: { limit: 500, ...p } });
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải danh mục phụ tùng');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi tải danh mục phụ tùng'));
     }
   }
 );
@@ -220,8 +228,8 @@ export const createPartCategory = createAsyncThunk(
     try {
       const response = await api.post('/api/part-categories', data);
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi thêm danh mục');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi thêm danh mục'));
     }
   }
 );
@@ -232,8 +240,8 @@ export const updatePartCategory = createAsyncThunk(
     try {
       const response = await api.put(`/api/part-categories/${id}`, data);
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi cập nhật danh mục');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi cập nhật danh mục'));
     }
   }
 );
@@ -244,8 +252,8 @@ export const fetchBrands = createAsyncThunk(
     try {
       const response = await api.get('/api/inventory/brands');
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải thương hiệu');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi tải thương hiệu'));
     }
   }
 );
@@ -256,8 +264,8 @@ export const fetchUoms = createAsyncThunk(
     try {
       const response = await api.get('/api/inventory/uoms');
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải đơn vị tính');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi tải đơn vị tính'));
     }
   }
 );
@@ -268,8 +276,8 @@ export const fetchInventoryItems = createAsyncThunk(
     try {
       const response = await api.get('/api/inventory-items', { params });
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải danh sách phụ tùng');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi tải danh sách phụ tùng'));
     }
   }
 );
@@ -280,8 +288,8 @@ export const createInventoryItem = createAsyncThunk(
     try {
       const response = await api.post('/api/inventory-items', data);
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi thêm phụ tùng');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi thêm phụ tùng'));
     }
   }
 );
@@ -292,8 +300,8 @@ export const updateInventoryItem = createAsyncThunk(
     try {
       const response = await api.put(`/api/inventory-items/${id}`, data);
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi cập nhật phụ tùng');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi cập nhật phụ tùng'));
     }
   }
 );
@@ -304,8 +312,8 @@ export const toggleInventoryItem = createAsyncThunk(
     try {
       const response = await api.patch(`/api/inventory-items/${id}/toggle`);
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi cập nhật trạng thái phụ tùng');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi cập nhật trạng thái phụ tùng'));
     }
   }
 );
@@ -316,8 +324,8 @@ export const fetchAllInventoryItems = createAsyncThunk(
     try {
       const response = await api.get('/api/inventory-items', { params: { page: 1, limit: 500 } });
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải toàn bộ danh mục phụ tùng');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi tải toàn bộ danh mục phụ tùng'));
     }
   }
 );
@@ -328,8 +336,8 @@ export const fetchItemMovements = createAsyncThunk(
     try {
       const response = await api.get(`/api/inventory-items/${itemId}/movements`, { params: { page, limit } });
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải thẻ kho phụ tùng');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi tải thẻ kho phụ tùng'));
     }
   }
 );
@@ -352,20 +360,20 @@ export const fetchReceipts = createAsyncThunk(
     try {
       const response = await api.get('/api/inventory/receipts', { params });
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải danh sách phiếu nhập kho');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi tải danh sách phiếu nhập kho'));
     }
   }
 );
 
 export const createReceipt = createAsyncThunk(
   'inventory/createReceipt',
-  async (data: any, { rejectWithValue }) => {
+  async (data: Record<string, unknown>, { rejectWithValue }) => {
     try {
       const response = await api.post('/api/inventory/receipts', data);
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tạo phiếu nhập kho');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi tạo phiếu nhập kho'));
     }
   }
 );
@@ -376,8 +384,8 @@ export const postDraftReceipt = createAsyncThunk(
     try {
       const response = await api.post(`/api/inventory/receipts/${id}/post`);
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi ghi sổ phiếu nhập kho');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi ghi sổ phiếu nhập kho'));
     }
   }
 );
@@ -388,8 +396,8 @@ export const cancelReceipt = createAsyncThunk(
     try {
       const response = await api.post(`/api/inventory/receipts/${id}/cancel`, { cancelReason });
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi hủy phiếu nhập kho');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi hủy phiếu nhập kho'));
     }
   }
 );
@@ -400,8 +408,8 @@ export const fetchSuppliers = createAsyncThunk(
     try {
       const response = await api.get('/api/inventory/suppliers', { params: params || {} });
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải danh sách nhà cung cấp');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi tải danh sách nhà cung cấp'));
     }
   }
 );
@@ -412,8 +420,8 @@ export const createSupplier = createAsyncThunk(
     try {
       const response = await api.post('/api/inventory/suppliers', data);
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi thêm nhà cung cấp');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi thêm nhà cung cấp'));
     }
   }
 );
@@ -424,8 +432,8 @@ export const updateSupplier = createAsyncThunk(
     try {
       const response = await api.put(`/api/inventory/suppliers/${id}`, data);
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi cập nhật nhà cung cấp');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi cập nhật nhà cung cấp'));
     }
   }
 );

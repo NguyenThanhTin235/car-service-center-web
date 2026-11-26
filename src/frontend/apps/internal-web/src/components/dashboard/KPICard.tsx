@@ -143,11 +143,11 @@ export const KPICard: React.FC<KPICardProps> = React.memo(({
   // ================= VARIANT 1: DARK NAVY (#0c2340) =================
   if (variant === 'navy') {
     return (
-      <div className="sa-card-lift bg-[#0c2340] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md hover:shadow-lg relative overflow-hidden group">
+      <div className="sa-card-lift bg-[#0c2340] text-white rounded-2xl p-4 sm:p-5 flex flex-col justify-between min-h-[168px] shadow-md hover:shadow-lg relative overflow-hidden group">
         <div>
           <div className="flex items-center justify-between text-zinc-300 text-xs font-semibold tracking-wide">
             <span>{label}</span>
-            <span className="material-symbols-outlined text-[20px] text-zinc-400 group-hover:text-white transition-colors">
+            <span className="material-symbols-outlined text-[20px] text-zinc-300 group-hover:text-white transition-colors" aria-hidden="true">
               {icon}
             </span>
           </div>
@@ -162,13 +162,13 @@ export const KPICard: React.FC<KPICardProps> = React.memo(({
                 isGood ? 'text-[#60a5fa]' : 'text-rose-400'
               }`}
             >
-              <span className="material-symbols-outlined text-[13px]">
+              <span className="material-symbols-outlined text-[13px]" aria-hidden="true">
                 {displayBadgeIcon}
               </span>
               {displayBadgeText}
             </span>
           </div>
-          <p className="text-[11px] text-zinc-400 mt-1 line-clamp-1">
+          <p className="text-[11px] text-zinc-300 mt-1 line-clamp-1">
             {subtitle || 'Dữ liệu vận hành đồng bộ trực tiếp'}
           </p>
         </div>
@@ -243,11 +243,11 @@ export const KPICard: React.FC<KPICardProps> = React.memo(({
     const splitRight = 100 - splitLeft;
 
     return (
-      <div className="sa-card-lift bg-[#0050cd] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md shadow-[#0050cd]/20 hover:shadow-lg relative overflow-hidden group">
+      <div className="sa-card-lift bg-[#0050cd] text-white rounded-2xl p-4 sm:p-5 flex flex-col justify-between min-h-[168px] shadow-md shadow-[#0050cd]/20 hover:shadow-lg relative overflow-hidden group">
         <div>
           <div className="flex items-center justify-between text-blue-100 text-xs font-semibold tracking-wide">
             <span>{label}</span>
-            <span className="material-symbols-outlined text-[20px] text-blue-200 group-hover:text-white transition-colors">
+            <span className="material-symbols-outlined text-[20px] text-blue-200 group-hover:text-white transition-colors" aria-hidden="true">
               {icon}
             </span>
           </div>
@@ -258,7 +258,7 @@ export const KPICard: React.FC<KPICardProps> = React.memo(({
             </span>
             {unit && <span className="text-xs font-medium text-blue-100">{unit}</span>}
             <span className="text-[11px] font-bold text-emerald-300 flex items-center gap-0.5">
-              <span className="material-symbols-outlined text-[13px]">{displayBadgeIcon}</span>
+              <span className="material-symbols-outlined text-[13px]" aria-hidden="true">{displayBadgeIcon}</span>
               {displayBadgeText}
             </span>
           </div>
@@ -299,11 +299,11 @@ export const KPICard: React.FC<KPICardProps> = React.memo(({
   // ================= VARIANT 3: SOFT COOL SLATE (#e4e7ec) =================
   if (variant === 'slate') {
     return (
-      <div className="sa-card-lift bg-[#e4e7ec] text-zinc-900 rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-xs hover:shadow-md relative overflow-hidden group">
+      <div className="sa-card-lift bg-[#e4e7ec] text-zinc-900 rounded-2xl p-4 sm:p-5 flex flex-col justify-between min-h-[168px] shadow-xs hover:shadow-md relative overflow-hidden group">
         <div>
           <div className="flex items-center justify-between text-slate-700 text-xs font-semibold tracking-wide">
             <span>{label}</span>
-            <span className="material-symbols-outlined text-[20px] text-slate-500 group-hover:text-zinc-900 transition-colors">
+            <span className="material-symbols-outlined text-[20px] text-slate-500 group-hover:text-zinc-900 transition-colors" aria-hidden="true">
               {icon}
             </span>
           </div>
@@ -314,7 +314,7 @@ export const KPICard: React.FC<KPICardProps> = React.memo(({
             </span>
             {unit && <span className="text-xs font-medium text-slate-600">{unit}</span>}
             <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-0.5">
-              <span className="material-symbols-outlined text-[13px]">{displayBadgeIcon}</span>
+              <span className="material-symbols-outlined text-[13px]" aria-hidden="true">{displayBadgeIcon}</span>
               {displayBadgeText}
             </span>
           </div>
@@ -364,11 +364,11 @@ export const KPICard: React.FC<KPICardProps> = React.memo(({
 
   // ================= VARIANT 4: MIDNIGHT / DEEP INDIGO (#111827) =================
   return (
-    <div className="sa-card-lift bg-[#111827] text-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between min-h-[220px] shadow-md hover:shadow-lg relative overflow-hidden group">
+    <div className="sa-card-lift bg-[#111827] text-white rounded-2xl p-4 sm:p-5 flex flex-col justify-between min-h-[168px] shadow-md hover:shadow-lg relative overflow-hidden group">
       <div>
         <div className="flex items-center justify-between text-slate-300 text-xs font-semibold tracking-wide">
           <span>{label}</span>
-          <span className="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-white transition-colors">
+          <span className="material-symbols-outlined text-[20px] text-slate-300 group-hover:text-white transition-colors" aria-hidden="true">
             {icon}
           </span>
         </div>
@@ -379,11 +379,11 @@ export const KPICard: React.FC<KPICardProps> = React.memo(({
           </span>
           {unit && <span className="text-xs font-medium text-slate-300">{unit}</span>}
           <span className="text-[11px] font-bold text-cyan-400 flex items-center gap-0.5">
-            <span className="material-symbols-outlined text-[13px]">{displayBadgeIcon}</span>
+            <span className="material-symbols-outlined text-[13px]" aria-hidden="true">{displayBadgeIcon}</span>
             {displayBadgeText}
           </span>
         </div>
-        <p className="text-[11px] text-slate-400 mt-1 line-clamp-1">
+        <p className="text-[11px] text-slate-300 mt-1 line-clamp-1">
           {subtitle || 'Đã kiểm duyệt quy chuẩn niêm yết'}
         </p>
       </div>
