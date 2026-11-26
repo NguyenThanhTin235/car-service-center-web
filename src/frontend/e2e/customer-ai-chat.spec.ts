@@ -153,7 +153,7 @@ test.describe('Customer AI Support Chatbot — Dual-Mode Concierge E2E', () => {
     await expect(page.getByText('Thanh toán trực tuyến SePay')).toBeVisible({ timeout: 15000 });
 
     // Close SePay payment modal cleanly before interacting with header menu
-    await page.getByRole('button', { name: 'Đóng' }).click();
+    await page.getByRole('button', { name: 'Đóng', exact: true }).click();
     await expect(page.getByText('Thanh toán trực tuyến SePay')).toHaveCount(0);
 
     // Verify user chat key exists in sessionStorage before logout, and is wiped on Logout

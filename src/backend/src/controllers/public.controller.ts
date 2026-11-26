@@ -1,10 +1,7 @@
 import { Request, Response } from 'express';
-import prisma from '../utils/prisma';
-import { getCache, setCache } from '../utils/redis.util';
+import { serviceService } from '../services/service.service';
 import logger from '../loggers/logger';
 
-const CATALOG_CACHE_TTL_SECONDS = 300;
-const isCatalogCacheEnabled = (): boolean => process.env.NODE_ENV !== 'test';
 const ALLOWED_VITALS = new Set(['LCP', 'INP', 'CLS', 'FCP', 'TTFB']);
 
 export class PublicController {
@@ -12,35 +9,9 @@ export class PublicController {
    * GET /api/public/categories
    * Lấy danh sách danh mục dịch vụ active
    */
-  async getServiceCategories(req: Request, res: Response): Promise<void> {
+  async getServiceCategories(_req: Request, res: Response): Promise<void> {
     try {
-      const cacheKey = 'catalog:public:categories';
-      if (isCatalogCacheEnabled()) {
-        const cached = await getCache(cacheKey);
-        if (cached) {
-          res.json({ status: 'success', data: JSON.parse(cached) });
-          return;
-        }
-      }
-
-      const categories = await prisma.serviceCategory.findMany({
-        where: { is_active: true },
-        orderBy: { sort_order: 'asc' },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          sort_order: true,
-          _count: {
-            select: { services: { where: { is_active: true } } },
-          },
-        },
-      });
-
-      if (isCatalogCacheEnabled()) {
-        void setCache(cacheKey, JSON.stringify(categories), CATALOG_CACHE_TTL_SECONDS).catch(() => {});
-      }
-
+      const categories = await serviceService.getPublicCategories();
       res.json({ status: 'success', data: categories });
     } catch (err) {
       console.error('[PublicController] getServiceCategories error:', err);
@@ -54,53 +25,8 @@ export class PublicController {
    */
   async getServices(req: Request, res: Response): Promise<void> {
     try {
-      const categoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined;
-      const cacheKey = `catalog:public:services:${categoryId ?? 'all'}`;
-
-      if (isCatalogCacheEnabled()) {
-        const cached = await getCache(cacheKey);
-        if (cached) {
-          res.json({ status: 'success', data: JSON.parse(cached) });
-          return;
-        }
-      }
-
-      const services = await prisma.service.findMany({
-        where: {
-          is_active: true,
-          ...(categoryId ? { category_id: categoryId } : {}),
-        },
-        include: {
-          category: { select: { id: true, name: true } },
-          size_prices: {
-            select: { vehicle_size: true, price: true },
-            orderBy: { vehicle_size: 'asc' },
-          },
-        },
-        orderBy: [
-          { category: { sort_order: 'asc' } },
-          { name: 'asc' },
-        ],
-      });
-
-      // Format response
-      const formatted = services.map((svc) => ({
-        id: svc.id,
-        name: svc.name,
-        description: svc.description,
-        category: svc.category,
-        pricingType: svc.pricing_type,
-        fixedPrice: svc.fixed_price,
-        sizePrices: svc.size_prices.map((sp) => ({
-          vehicleSize: sp.vehicle_size,
-          price: sp.price,
-        })),
-      }));
-
-      if (isCatalogCacheEnabled()) {
-        void setCache(cacheKey, JSON.stringify(formatted), CATALOG_CACHE_TTL_SECONDS).catch(() => {});
-      }
-
+      const parsedCategoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined;
+      const formatted = await serviceService.getPublicServices(parsedCategoryId);
       res.json({ status: 'success', data: formatted });
     } catch (err) {
       console.error('[PublicController] getServices error:', err);

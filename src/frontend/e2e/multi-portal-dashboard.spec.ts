@@ -229,13 +229,12 @@ test.describe('Multi-Portal Interactive Dashboard & Taste Audit (SPEC-MULTI-PORT
     await page.goto('http://localhost:3001/advisor/dashboard');
 
     // 1. Tiêu đề
-    await expect(page.locator('h1')).toContainText('Bảng Điều Hành Cố Vấn Dịch Vụ');
+    await expect(page.locator('h1')).toContainText('Phân tích & KPI Cá nhân');
 
-    // 2. Kiểm tra nút chuyển đổi Scope
-    const myScopeBtn = page.locator('button', { hasText: 'Việc của tôi' });
-    const workshopScopeBtn = page.locator('button', { hasText: 'Toàn bộ xưởng' });
-    await expect(myScopeBtn).toBeVisible();
-    await expect(workshopScopeBtn).toBeVisible();
+    // 2. Kiểm tra bộ lọc kỳ và thẻ tóm tắt cá nhân
+    await expect(page.getByRole('button', { name: '7 ngày qua' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '30 ngày' })).toBeVisible();
+    await expect(page.locator('text=Tóm tắt hiệu suất cá nhân')).toBeVisible();
 
     // 3. Kiểm tra KPI Cards đặc thù SA
     await expect(page.locator('text=Báo giá chờ khách duyệt')).toBeVisible();

@@ -144,7 +144,7 @@ test.describe('Admin Services E2E (/services) (TICKET-ADM-05)', () => {
     await expect(page.locator('text=Phủ Ceramic 9H')).toBeVisible();
 
     expect(queryLog.some((q) => q.includes('categoryId=2'))).toBe(true);
-    expect(queryLog.some((q) => q.includes('search=Ceramic'))).toBe(true);
+    await expect.poll(() => queryLog.some((q) => q.includes('search=Ceramic'))).toBe(true);
   });
 
   test('E2E-ADM-SRV-02: Tạo & Sửa dịch vụ với cả 3 chế độ giá (FIXED, VEHICLE_SIZE, LABOUR_PARTS)', async ({

@@ -42,7 +42,7 @@ Tài liệu này chuẩn hóa và liệt kê **TOÀN BỘ 47 thực thể (model
 | Tên Bảng (Model) | Bảng CSDL (Table) | Thuộc tính quan trọng |
 | :--- | :--- | :--- |
 | **ServiceCategory** | `service_categories` | id **(PK)**<br>name, description, is_active, sort_order |
-| **Service** | `services` | id **(PK)**<br>category_id *(FK)*<br>name, description, pricing_type, fixed_price, warranty_months, warranty_mileage, is_active, created_at, updated_at |
+| **Service** | `services` | id **(PK)**<br>category_id *(FK)*<br>name, description, pricing_type, fixed_price, warranty_months, is_active, created_at, updated_at |
 | **VehicleSizePrice** | `vehicle_size_prices` | id **(PK)**<br>service_id *(FK)*<br>vehicle_size, price |
 | **JobType** | `job_types` | id **(PK)**<br>name, description, is_active |
 | **JobTemplate** | `job_templates` | id **(PK)**<br>job_type_id *(FK)*, service_id *(FK)*<br>name, price, estimated_hours, requires_qc |
@@ -157,7 +157,7 @@ Tài liệu này chuẩn hóa và liệt kê **TOÀN BỘ 47 thực thể (model
 | **VehicleRelease** | `vehicle_releases` | id **(PK)**<br>work_order_id *(FK)*, released_by_id *(FK)*, confirmed_by_customer_id *(FK)*<br>release_notes, released_at, confirmed_at |
 | **Supplier** | `suppliers` | id **(PK)**<br>code, name, tax_code, contact_person, phone, email, address, is_active, created_at, updated_at |
 | **PartCategory** | `part_categories` | id **(PK)**<br>uom_id *(FK)*<br>code, name, item_type, description, is_active, created_at, updated_at |
-| **InventoryItem** | `inventory_items` | id **(PK)**<br>part_category_id *(FK)*, brand_id *(FK)*<br>sku, selling_price, average_cost, on_hand, reorder_level, warranty_months, warranty_mileage, is_active, created_at, updated_at |
+| **InventoryItem** | `inventory_items` | id **(PK)**<br>part_category_id *(FK)*, brand_id *(FK)*<br>sku, selling_price, average_cost, on_hand, reorder_level, warranty_months, is_active, created_at, updated_at |
 | **GoodsReceipt** | `goods_receipts` | id **(PK)**<br>supplier_id *(FK)*, created_by_id *(FK)*<br>receipt_number, receipt_type, status, reference_no, received_date, subtotal, discount_amount, tax_rate, tax_amount, grand_total, notes, cancel_reason, cancelled_at, created_at |
 | **GoodsReceiptItem** | `goods_receipt_items` | id **(PK)**<br>receipt_id *(FK)*, item_id *(FK)*<br>quantity, unit_cost, discount_rate, line_total, old_on_hand, old_average_cost, new_average_cost |
 | **StockMovement** | `stock_movements` | id **(PK)**<br>item_id *(FK)*, source_movement_id *(FK)*, job_id *(FK)*, job_part_id *(FK)*, created_by_id *(FK)*<br>movement_type, reference_type, reference_id, quantity, unit_cost, balance_after, notes, created_at |

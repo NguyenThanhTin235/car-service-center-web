@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 };
 
 import StoreProvider from "@/components/StoreProvider";
-import WebVitalsReporter from "@/components/shared/WebVitalsReporter";
+import { WebVitalsReporter } from "@car-service-center/ui";
 import { Toaster } from "react-hot-toast";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

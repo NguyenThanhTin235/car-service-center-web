@@ -1,11 +1,15 @@
 import * as redisUtil from '../utils/redis.util';
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken, JwtPayload } from '../utils/jwt.util';
-import { BLACKLIST_JTI_KEY, TOKEN_INVALID_BEFORE_KEY } from '../services/auth.service';
+import {
+  BLACKLIST_JTI_KEY,
+  TOKEN_INVALID_BEFORE_KEY,
+  USER_AUTH_CACHE_KEY,
+} from '../constants/auth-cache.constant';
 import prisma from '../utils/prisma';
 import { resolvePortalFromHeaders } from '../utils/cors.util';
 
-export const USER_AUTH_CACHE_KEY = (userId: number) => `user_auth:${userId}`;
+export { USER_AUTH_CACHE_KEY } from '../constants/auth-cache.constant';
 const USER_AUTH_CACHE_TTL_SECONDS = 60;
 
 const isUserAuthCacheEnabled = (): boolean =>

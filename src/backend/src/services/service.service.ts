@@ -2,6 +2,9 @@ import { PricingType } from '@prisma/client';
 import prisma from '../utils/prisma';
 import * as redisUtil from '../utils/redis.util';
 
+const CATALOG_CACHE_TTL_SECONDS = 300;
+const isCatalogCacheEnabled = (): boolean => process.env.NODE_ENV !== 'test';
+
 const invalidateCatalogCache = () => {
   try {
     if (
@@ -351,4 +354,95 @@ export class ServiceService {
       data: { id },
     };
   }
+
+  /**
+   * GET /api/public/categories — Lấy danh sách danh mục dịch vụ active cho cổng công khai
+   */
+  async getPublicCategories() {
+    const cacheKey = 'catalog:public:categories';
+    if (isCatalogCacheEnabled()) {
+      const cached = await redisUtil.getCache(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    }
+
+    const categories = await prisma.serviceCategory.findMany({
+      where: { is_active: true },
+      orderBy: { sort_order: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        sort_order: true,
+        _count: {
+          select: { services: { where: { is_active: true } } },
+        },
+      },
+    });
+
+    if (isCatalogCacheEnabled()) {
+      void redisUtil
+        .setCache(cacheKey, JSON.stringify(categories), CATALOG_CACHE_TTL_SECONDS)
+        .catch(() => {});
+    }
+
+    return categories;
+  }
+
+  /**
+   * GET /api/public/services — Lấy danh sách dịch vụ active cho cổng công khai
+   */
+  async getPublicServices(rawCategoryId?: number) {
+    const categoryId =
+      typeof rawCategoryId === 'number' && Number.isInteger(rawCategoryId) && rawCategoryId > 0
+        ? rawCategoryId
+        : undefined;
+    const cacheKey = `catalog:public:services:${categoryId ?? 'all'}`;
+
+    if (isCatalogCacheEnabled()) {
+      const cached = await redisUtil.getCache(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    }
+
+    const services = await prisma.service.findMany({
+      where: {
+        is_active: true,
+        ...(categoryId ? { category_id: categoryId } : {}),
+      },
+      include: {
+        category: { select: { id: true, name: true } },
+        size_prices: {
+          select: { vehicle_size: true, price: true },
+          orderBy: { vehicle_size: 'asc' },
+        },
+      },
+      orderBy: [{ category: { sort_order: 'asc' } }, { name: 'asc' }],
+    });
+
+    const formatted = services.map((svc) => ({
+      id: svc.id,
+      name: svc.name,
+      description: svc.description,
+      category: svc.category,
+      pricingType: svc.pricing_type,
+      fixedPrice: svc.fixed_price,
+      sizePrices: svc.size_prices.map((sp) => ({
+        vehicleSize: sp.vehicle_size,
+        price: sp.price,
+      })),
+    }));
+
+    if (isCatalogCacheEnabled()) {
+      void redisUtil
+        .setCache(cacheKey, JSON.stringify(formatted), CATALOG_CACHE_TTL_SECONDS)
+        .catch(() => {});
+    }
+
+    return formatted;
+  }
 }
+
+export const serviceService = new ServiceService();

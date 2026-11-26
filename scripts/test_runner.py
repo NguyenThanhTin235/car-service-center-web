@@ -2,11 +2,11 @@
 """
 Car Service Center - Master Automated Test Runner
 =================================================
-Runs all or targeted test suites across Backend (Unit + Integration)
-and Frontend (Playwright E2E).
+Runs all or targeted test suites across Backend (Unit + Integration),
+Frontend (Unit + Playwright E2E), and Infrastructure (AWS CDK).
 
 Usage:
-    python scripts/test_runner.py [--all] [--unit] [--integration] [--backend] [--e2e] [--ui]
+    python scripts/test_runner.py [--all] [--unit] [--integration] [--backend] [--frontend-unit] [--infra] [--e2e] [--ui]
 """
 
 import sys
@@ -30,6 +30,7 @@ class Colors:
 ROOT_DIR = Path(__file__).resolve().parent.parent
 BACKEND_DIR = ROOT_DIR / "src" / "backend"
 FRONTEND_DIR = ROOT_DIR / "src" / "frontend"
+INFRA_DIR = ROOT_DIR / "infra"
 
 def print_banner(title: str):
     line = "=" * 72
@@ -68,17 +69,19 @@ def run_step(name: str, cmd: list, cwd: Path) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Master Automated Test Runner for Car Service Center")
-    parser.add_argument("--all", action="store_true", help="Run all test suites (Unit, Integration, E2E)")
+    parser.add_argument("--all", action="store_true", help="Run all test suites (Unit, Integration, Frontend Unit, Infra, E2E)")
     parser.add_argument("--unit", action="store_true", help="Run Backend Unit Tests only")
     parser.add_argument("--integration", action="store_true", help="Run Backend Integration Tests only")
     parser.add_argument("--backend", action="store_true", help="Run all Backend Tests (Unit + Integration)")
+    parser.add_argument("--frontend-unit", action="store_true", help="Run Frontend Unit Tests only")
+    parser.add_argument("--infra", action="store_true", help="Run AWS CDK Infrastructure Tests only")
     parser.add_argument("--e2e", action="store_true", help="Run Frontend Playwright E2E Tests only")
     parser.add_argument("--ui", action="store_true", help="Open Playwright interactive UI mode")
 
     args = parser.parse_args()
 
     # Default to running all if no specific flag provided
-    run_all = args.all or (not args.unit and not args.integration and not args.backend and not args.e2e and not args.ui)
+    run_all = args.all or (not args.unit and not args.integration and not args.backend and not args.frontend_unit and not args.infra and not args.e2e and not args.ui)
 
     print_banner("CAR SERVICE CENTER - AUTOMATED TEST SUITE")
     
@@ -111,7 +114,25 @@ def main():
         )
         results.append(res)
 
-    # 4. Frontend Playwright E2E Tests
+    # 4. Frontend Unit Tests
+    if run_all or args.frontend_unit:
+        res = run_step(
+            "Frontend Unit Tests (Node Test Runner)",
+            ["npm", "run", "test:unit"],
+            FRONTEND_DIR
+        )
+        results.append(res)
+
+    # 5. AWS CDK Infrastructure Tests
+    if run_all or args.infra:
+        res = run_step(
+            "AWS CDK Infrastructure Tests (Vitest)",
+            ["npm", "test"],
+            INFRA_DIR
+        )
+        results.append(res)
+
+    # 6. Frontend Playwright E2E Tests
     if run_all or args.e2e:
         res = run_step(
             "Frontend E2E Tests (Playwright Chromium)",

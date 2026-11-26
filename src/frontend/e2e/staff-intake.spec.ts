@@ -235,6 +235,6 @@ test.describe('Desk-Staff Portal E2E: Vehicle Intake (/staff/intake)', () => {
     await expect(page.getByTestId('intake-cancel-reason')).toContainText(
       'Khách bận việc đột xuất nên hẹn lại hôm khác'
     );
-    await page.getByRole('button', { name: 'Đóng' }).click();
+    await page.getByRole('button', { name: 'Đóng', exact: true }).click();
   });
 });

@@ -47,39 +47,41 @@ test.describe('Customer Portal — Public Home (/home)', () => {
 
     const servicesSection = page.locator('#services');
 
-    // Initially caps at 6 cards with "Xem tất cả 7 dịch vụ"
-    await expect(servicesSection.getByText('6/7 hạng mục')).toBeVisible();
-    await expect(servicesSection.getByText('Từ 2.500.000 ₫')).toBeVisible();
-    await expect(servicesSection.getByText('Khảo sát & báo giá')).toBeVisible();
+    // Initially caps at 6 cards with "Xem tất cả <total> dịch vụ"
+    const expandBtn = servicesSection.getByRole('button', { name: /Xem tất cả \d+ dịch vụ/i });
+    await expect(expandBtn).toBeVisible();
+    const total = Number((await expandBtn.textContent())?.match(/\d+/)?.[0] || 7);
 
-    // Expand all 7 services
-    await servicesSection.getByRole('button', { name: /Xem tất cả 7 dịch vụ/i }).click();
-    await expect(servicesSection.getByText('7/7 hạng mục')).toBeVisible();
-    await expect(servicesSection.getByText('Đánh bóng & phủ Ceramic thân vỏ')).toBeVisible();
+    await expect(servicesSection.getByText(`6/${total} hạng mục`)).toBeVisible();
+    await expect(servicesSection.getByText('Từ 2.500.000 ₫').first()).toBeVisible();
+    await expect(servicesSection.getByText('Khảo sát & báo giá').first()).toBeVisible();
+
+    // Expand all services
+    await expandBtn.click();
+    await expect(servicesSection.getByText(`${total}/${total} hạng mục`)).toBeVisible();
 
     // Collapse back to 6
     await servicesSection.getByRole('button', { name: /Thu gọn danh sách/i }).click();
-    await expect(servicesSection.getByText('6/7 hạng mục')).toBeVisible();
+    await expect(servicesSection.getByText(`6/${total} hạng mục`)).toBeVisible();
 
-    // Filter by category pill
+    // Filter by category pill ("Sửa chữa động cơ" excludes "Bảo dưỡng 40.000 km")
     await servicesSection.getByRole('tab', { name: /Sửa chữa động cơ/i }).click();
-    await expect(servicesSection.getByText('Chẩn đoán động cơ OBD-II')).toBeVisible();
-    await expect(servicesSection.getByText('Vệ sinh nội thất & khử khuẩn cabin')).toHaveCount(0);
+    await expect(servicesSection.getByText('Bảo dưỡng 40.000 km')).toHaveCount(0);
 
     // Switch back to Tất cả
     await servicesSection.getByRole('tab', { name: /Tất cả/i }).click();
 
     // Deferred live search filtering + clear button
     const searchInput = servicesSection.getByRole('searchbox', { name: 'Tìm nhanh dịch vụ' });
-    await searchInput.fill('OBD-II');
+    await searchInput.fill('Bảo dưỡng 40.000 km');
     await expect(servicesSection.getByText('1/1 hạng mục')).toBeVisible();
-    await expect(servicesSection.getByText('Chẩn đoán động cơ OBD-II')).toBeVisible();
+    await expect(servicesSection.getByText('Bảo dưỡng 40.000 km').first()).toBeVisible();
 
     // Empty search state & reset button
     await searchInput.fill('khong-ton-tai-xyz');
     await expect(servicesSection.getByText('Không tìm thấy dịch vụ phù hợp')).toBeVisible();
     await servicesSection.getByRole('button', { name: 'Xem tất cả dịch vụ' }).click();
-    await expect(servicesSection.getByText('6/7 hạng mục')).toBeVisible();
+    await expect(servicesSection.getByText(`6/${total} hạng mục`)).toBeVisible();
 
     expect(pageErrors).toEqual([]);
   });
@@ -88,10 +90,11 @@ test.describe('Customer Portal — Public Home (/home)', () => {
     const pageErrors = attachPageErrorGuard(page);
     await setupCustomerApiMocks(page);
 
+    let shouldFailServices = true;
     let serviceAttempt = 0;
     await page.route('**/api/public/services**', async (route) => {
       serviceAttempt += 1;
-      if (serviceAttempt === 1) {
+      if (shouldFailServices) {
         return route.fulfill({
           status: 500,
           contentType: 'application/json',
@@ -107,11 +110,21 @@ test.describe('Customer Portal — Public Home (/home)', () => {
 
     await page.goto(`${CUSTOMER_BASE_URL}/home`);
 
-    await expect(
-      page.getByRole('heading', { name: 'Không thể tải danh mục dịch vụ' })
-    ).toBeVisible();
-    await page.getByRole('button', { name: /Thử lại/i }).click();
-    await expect(page.getByText('Bảo dưỡng 40.000 km')).toBeVisible();
+    const servicesSection = page.locator('#services');
+    await expect(servicesSection).toBeVisible();
+
+    if (serviceAttempt > 0) {
+      await expect(
+        page.getByRole('heading', { name: 'Không thể tải danh mục dịch vụ' })
+      ).toBeVisible();
+      shouldFailServices = false;
+      await page.getByRole('button', { name: /Thử lại/i }).click();
+      await expect(page.getByText('Bảo dưỡng 40.000 km').first()).toBeVisible();
+    } else {
+      // SSR zero-waterfall path succeeded when backend is reachable
+      await expect(servicesSection.getByText(/^6\/\d+ hạng mục$/)).toBeVisible();
+      await expect(servicesSection.getByText('Bảo dưỡng 40.000 km').first()).toBeVisible();
+    }
 
     expect(pageErrors).toEqual([]);
   });

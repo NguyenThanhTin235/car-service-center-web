@@ -1369,7 +1369,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
               onActionSuccess={(msg) => {
                 setToastType('success');
                 setToastMsg(msg);
-                loadData(true);
+                loadData(false);
               }}
             />
           )}
@@ -1413,7 +1413,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
               onSuccess={() => {
                 setToastType('success');
                 setToastMsg('Thanh toán thành công! Trạng thái xe đã chuyển sang Sẵn sàng bàn giao.');
-                loadData(true);
+                loadData(false);
                 setTimeout(() => {
                   setIsPaymentModalOpen(false);
                 }, 1200);

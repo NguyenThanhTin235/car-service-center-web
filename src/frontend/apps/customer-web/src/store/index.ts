@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
-import authReducer from './slices/authSlice';
+import { registerAuthHandlers } from '@/lib/axios';
+import authReducer, { logout, setCredentials } from './slices/authSlice';
 import appointmentReducer from './slices/appointmentSlice';
 import profileReducer from './slices/profileSlice';
 import vehicleReducer from './slices/vehicleSlice';
@@ -20,6 +21,11 @@ export const store = configureStore({
     history: historyReducer,
     notifications: notificationReducer,
   },
+});
+
+registerAuthHandlers({
+  onCredentialsRefreshed: (creds) => store.dispatch(setCredentials(creds)),
+  onForceLogout: () => store.dispatch(logout()),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

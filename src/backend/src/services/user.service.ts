@@ -1,6 +1,5 @@
 import { setCache, deleteCache } from '../utils/redis.util';
-import { USER_AUTH_CACHE_KEY } from '../middlewares/auth.middleware';
-import { TOKEN_INVALID_BEFORE_KEY } from './auth.service';
+import { TOKEN_INVALID_BEFORE_KEY, USER_AUTH_CACHE_KEY } from '../constants/auth-cache.constant';
 import { Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import prisma from '../utils/prisma';

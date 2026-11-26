@@ -64,12 +64,24 @@ fi
 echo "==> [${ENV_NAME}] Rolling back to tag ${TARGET_TAG}..."
 docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" "${PROFILE_ARGS[@]}" up -d --remove-orphans
 
-echo "==> [${ENV_NAME}] Verifying /health (timeout 60s)..."
+if [[ "${ENV_NAME}" == "staging" ]]; then
+  NGINX_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^car-service-prod-nginx' | head -n1 || true)"
+  if [[ -n "${NGINX_CONTAINER}" ]]; then
+    echo "==> [staging] Refreshing nginx config from updated template..."
+    docker exec "${NGINX_CONTAINER}" sh -c 'cp /etc/nginx/conf.d/app.conf /tmp/app.conf.bak 2>/dev/null || true; envsubst "\$DOMAIN_NAME \$CERT_DOMAIN" < /etc/nginx/templates/app.conf.template > /etc/nginx/conf.d/app.conf && nginx -t && nginx -s reload || { cp /tmp/app.conf.bak /etc/nginx/conf.d/app.conf 2>/dev/null || true; exit 1; }'
+  fi
+fi
+
+echo "==> [${ENV_NAME}] Running health checks (timeout 60s)..."
 for i in $(seq 1 30); do
   if curl -fsS "http://127.0.0.1:${BACKEND_PORT}/health" >/dev/null 2>&1; then
-    printf '%s\n' "${TARGET_TAG}" > "${STATE_DIR}/.current_tag"
-    echo "==> [${ENV_NAME}] Rollback to ${TARGET_TAG} succeeded and /health is OK."
-    exit 0
+    customer_code=$(curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1:${CUSTOMER_PORT}/" || echo "000")
+    internal_code=$(curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1:${INTERNAL_PORT}/" || echo "000")
+    if [[ "${customer_code}" =~ ^[234][0-9]{2}$ && "${internal_code}" =~ ^[234][0-9]{2}$ ]]; then
+      printf '%s\n' "${TARGET_TAG}" > "${STATE_DIR}/.current_tag"
+      echo "==> [${ENV_NAME}] Rollback to ${TARGET_TAG} succeeded on attempt ${i}/30 (backend=200, customer=${customer_code}, internal=${internal_code})."
+      exit 0
+    fi
   fi
   sleep 2
 done

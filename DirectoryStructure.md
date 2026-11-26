@@ -8,63 +8,77 @@ Tài liệu này cung cấp cái nhìn tổng quan về kiến trúc thư mục 
 
 ```text
 CAR SERVICE CENTER/
-├── .agents/                # [AI Config] Cấu hình, roles, rules và skills cho AI Agents (Không push code runtime vào đây).
-├── docs/                   # [Documentation] Toàn bộ tài liệu nghiệp vụ, database và kiến trúc.
+├── .agents/                # [AI Config] Cấu hình, roles, rules, scripts và skills cho AI Agents.
+├── .github/workflows/      # [CI/CD] GitHub Actions pipelines (ci.yml, cd.yml, rollback.yml).
+├── deploy/                 # [Runtime Deploy] Docker Compose AWS, Nginx SSL & scripts vận hành EC2.
+├── diagrams/database/      # [Database Diagrams] Sơ đồ ERD & UML chuẩn đồng bộ với Prisma Schema.
+├── docs/                   # [Documentation] Tài liệu nghiệp vụ, chatbot, CI/CD, database design & testing.
+├── infra/                  # [IaC] AWS CDK v2 (6 stacks hạ tầng & unit tests).
+├── scripts/                # [Automation] Master test runner (test_runner.py).
 ├── src/                    # [Source Code] Chứa mã nguồn thực thi chính của dự án.
 ├── .gitignore              # Danh sách các file/folder không đưa lên Git.
-├── README.md               # File giới thiệu tổng quan về dự án.
-└── Tech.md                 # Tài liệu chốt Tech Stack của dự án.
+├── docker-compose.yml      # Khởi chạy full stack local (MySQL, Redis, Backend, Frontend).
+├── DESIGN.md               # Hệ thống thiết kế chuẩn AutoCare Pro.
+├── DirectoryStructure.md   # (Là file này) Cấu trúc thư mục dự án.
+├── README.md               # Giới thiệu tổng quan, tech stack, API và hướng dẫn dự án.
+└── SETUP_GUIDE.md          # Hướng dẫn cài đặt chi tiết, SePay Webhook & tài khoản demo.
 ```
 
 ---
 
-## 📂 1. Tài liệu dự án (`docs/`)
+## 📂 1. Tài liệu & Sơ đồ (`docs/` & `diagrams/`)
 
 Chứa các tài liệu thiết kế, yêu cầu nghiệp vụ và cơ sở dữ liệu.
 
 ```text
+diagrams/
+└── database/                        # Sơ đồ ERD & UML phân hệ DB (01..04_*_ERD.md, Erd.md, UML/)
+
 docs/
+├── chatbot/                         # PRD, kiến trúc & QA cho Trợ lý AI tư vấn
+├── cicd/                            # Kiến trúc AWS, chi phí, pipeline specs & handover
+│   └── diagrams/                    # Sơ đồ kiến trúc AWS & CI/CD (.drawio)
 ├── database/
+│   ├── DATA/                        # Dữ liệu CSV master (xe, phụ tùng, chẩn đoán)
 │   └── design/
 │       ├── DatabaseDesignPlan.md    # Các quyết định thiết kế CSDL và quy định schema.
-│       ├── DataDictionary.md        # Từ điển dữ liệu chi tiết cho từng cột/bảng.
-│       ├── schema.sql               # File export SQL thuần.
-│       └── schema.prisma            # File Prisma Schema gốc (để backup/tham chiếu).
-├── diagrams/
-│   └── sequence/                    # Sơ đồ tuần tự (Sequence diagrams) cho các vai trò (admin, staff, customer...)
-├── phases/                          # Kế hoạch phát triển theo từng giai đoạn
-├── plan/                            # Kế hoạch chi tiết (plan.md)
-├── requirements/
-│   ├── Requirement.md               # Tài liệu đặc tả yêu cầu, FR/NFR, quy tắc nghiệp vụ.
-│   ├── UseCase.md                   # Mô tả các luồng Use Case chi tiết.
-│   └── ObjectStatus.md              # Tài liệu định nghĩa chi tiết vòng đời và trạng thái các đối tượng.
-├── UI/                              # Tài liệu & thiết kế UI cho các portal (auth, admin, manager, staff, qc, cus)
-│   ├── DESIGN_SYSTEM.md             # Hệ thống thiết kế chuẩn
-│   └── UI_DESIGN_PLAN.md            # Kế hoạch thiết kế giao diện
-└── DirectoryStructure.md            # (Là file này) Cấu trúc thư mục.
+│       ├── DataDictionary.md        # Từ điển dữ liệu chi tiết cho từng cột/bảng (SSOT).
+│       └── schema.sql               # Snapshot SQL khởi tạo tham chiếu.
+├── requirements/                    # Đặc tả yêu cầu (Requirement v2/v3, UseCase V2, references/)
+└── testing/                         # Kế hoạch test, checklist, kịch bản manual & automated
 ```
 
 ---
 
 ## 📂 2. Backend API (`src/backend/`)
 
-Xây dựng theo mô hình MVC kết hợp Repository Pattern trên nền **Express.js (TypeScript)** và **Prisma ORM**.
+Xây dựng theo mô hình phân tầng `Routes -> Middlewares -> Controllers -> Services -> Repositories / Prisma` trên nền **Express.js (TypeScript)** và **Prisma ORM**.
 
 ```text
 src/backend/
 ├── prisma/
-│   └── schema.prisma                # Định nghĩa các model Database cho Prisma.
+│   ├── migrations/                  # Lịch sử Prisma migrations (nguồn chuẩn schema DB).
+│   ├── schema.prisma                # Định nghĩa các model Database cho Prisma (Single Source of Truth).
+│   ├── seed.ts                      # Script nạp dữ liệu khởi tạo chuẩn.
+│   └── seed-massive.ts              # Script nạp dữ liệu khối lượng lớn cho kiểm thử.
 ├── src/
-│   ├── controllers/                 # [Controller] Nhận HTTP Request, gọi Service và trả về Response.
-│   ├── middlewares/                 # Các hàm can thiệp Request (Auth, ErrorHandler).
-│   ├── routes/                      # [Router] Định tuyến URL tới các Controllers.
-│   ├── services/                    # [Service] Chứa Business Logic cốt lõi (tính toán, xử lý nghiệp vụ).
-│   ├── utils/                       # Các hàm Helper dùng chung (jwt, prisma instance...).
-│   ├── validations/                 # Validation Schema (Joi/Zod) để validate input.
+│   ├── config/                      # Cấu hình dịch vụ ngoài (Cloudinary...).
+│   ├── constants/                   # Hằng số domain & Redis cache keys dùng chung.
+│   ├── controllers/                 # [Controller] Nhận HTTP Request, validate, gọi Service và trả Response.
+│   ├── dtos/                        # Validation Schema (Joi) và DTO interfaces.
+│   ├── jobs/                        # Cron background jobs (nhắc lịch hẹn...).
+│   ├── loggers/                     # Cấu hình Winston logger.
+│   ├── middlewares/                 # Request interceptors (Auth, Idempotency, Rate Limit, Upload).
+│   ├── repositories/                # [Repository] Truy vấn phức tạp / aggregate transactions.
+│   ├── routes/                      # [Router] Định tuyến URL và gắn RBAC guards tới Controllers.
+│   ├── services/                    # [Service] Chứa Business Logic cốt lõi, AI RAG/Chat & tích hợp AWS/SePay.
+│   ├── socket/                      # Socket.IO server & real-time notification rooms.
+│   ├── utils/                       # Các hàm Helper thuần (prisma, redis, jwt, otp, pdf, sepay, cors...).
 │   ├── app.ts                       # Khởi tạo Express, nạp middlewares và routes (Không listen port).
-│   └── server.ts                    # Entry point: Nạp env, khởi chạy HTTP Server (Listen port).
-├── .env                             # Biến môi trường (chứa DATABASE_URL, SECRET_KEY...).
+│   └── server.ts                    # Entry point: Nạp env, kết nối Redis, khởi chạy HTTP + Socket Server.
+├── tests/                           # Unit tests & Integration tests (Vitest + Supertest).
 ├── .env.example                     # File mẫu biến môi trường.
+├── Dockerfile                       # Multi-stage Docker build cho Backend.
 ├── package.json                     # Quản lý dependencies (express, prisma, typescript...).
 └── tsconfig.json                    # Cấu hình biên dịch TypeScript.
 ```
@@ -73,24 +87,30 @@ src/backend/
 
 ## 📂 3. Frontend Web (`src/frontend/` - Monorepo)
 
-Xây dựng theo chuẩn **Next.js (App Router)** với **Tailwind CSS** và **Redux Toolkit**. 
-Sử dụng cấu trúc **Monorepo (npm workspaces)** để tách biệt Web cho Khách hàng và Web Nội bộ, nhưng vẫn tái sử dụng được UI Components.
+Xây dựng theo chuẩn **Next.js 16 (App Router)** với **Tailwind CSS v4** và **Redux Toolkit**.  
+Sử dụng cấu trúc **Monorepo (npm workspaces)** để tách biệt Web cho Khách hàng và Web Nội bộ, tái sử dụng UI & HTTP Client dùng chung qua `packages/shared/`.
 
 ```text
 src/frontend/
 ├── apps/
 │   ├── customer-web/                # [Port 3000] Web dành cho Khách hàng & Guest.
-│   │   ├── src/app/(auth)/          # Đăng nhập, đăng ký cho khách.
-│   │   ├── src/app/(customer)/      # Lịch sử dịch vụ, tiến độ sửa chữa, lịch hẹn.
-│   │   ├── src/app/(public)/        # Trang chủ, thông tin công khai.
+│   │   ├── src/app/(auth)/          # Đăng nhập, đăng ký, OTP, quên mật khẩu cho khách.
+│   │   ├── src/app/(customer)/      # Hồ sơ, lịch hẹn, tiến độ sửa chữa, hóa đơn, bảo hành.
+│   │   ├── src/app/(public)/        # Trang chủ & bảng giá dịch vụ công khai.
+│   │   ├── tests/unit/              # Unit tests logic phía client.
 │   │   └── package.json             # App-specific dependencies.
-│   └── internal-web/                # [Port 3001] Web dành cho Nhân viên, QC, Quản lý, Admin.
-│       ├── src/app/(auth)/          # Đăng nhập nhân viên.
-│       ├── src/app/(dashboard)/     # Quản lý dịch vụ, kho, duyệt báo giá.
+│   └── internal-web/                # [Port 3001] Web dành cho Nhân viên, Cố vấn, Quản lý, Admin.
+│       ├── src/app/(admin)/         # Quản trị tài khoản, nhân sự, dịch vụ, danh mục.
+│       ├── src/app/(advisor)/       # Hàng đợi tiếp nhận, quản lý Phiếu công việc (WO), KPI.
+│       ├── src/app/(auth)/          # Đăng nhập & khôi phục mật khẩu nội bộ.
+│       ├── src/app/(dashboard)/     # Lịch hẹn, tiếp nhận xe, khách hàng, thu ngân/hóa đơn.
+│       ├── src/app/(manager)/       # Giám sát xưởng, tồn kho, danh mục phụ tùng, báo cáo.
+│       ├── tests/unit/              # Unit tests logic cổng nội bộ.
 │       └── package.json             # App-specific dependencies.
-├── packages/                        # Chứa các thư viện/components dùng chung.
-│   ├── shared/ui/                   # UI components (Button, Modal, Table...).
-│   └── shared/lib/                  # Tiện ích chung, Axios client, cấu hình Redux.
+├── packages/shared/                 # Thư viện dùng chung giữa 2 apps.
+│   ├── ui/                          # @car-service-center/ui (Icon, useDialogA11y, WebVitalsReporter).
+│   └── lib/                         # @car-service-center/lib (createApiClient factory chuẩn hóa Axios/401 refresh).
+├── e2e/                             # Kiểm thử E2E toàn trình bằng Playwright.
 ├── package.json                     # Root workspace cấu hình npm workspaces.
 └── package-lock.json                # Lockfile duy nhất cho toàn bộ Monorepo.
 ```
@@ -98,9 +118,9 @@ src/frontend/
 ---
 
 ## 📌 Hướng dẫn dành cho AI Agents
-1. **Tra cứu Quy tắc (Rules):** Luôn kiểm tra `.agents/rules/` để hiểu quy ước thiết kế, format API (API_CONVENTION.md) và các nguyên tắc code.
-2. **Nghiệp vụ cốt lõi:** Khi làm tính năng mới, bắt buộc đọc `docs/requirements/UseCase.md` để hiểu Flow trước khi tạo API hay Component.
-3. **Database:** Cấu trúc DB source-of-truth nằm tại `src/backend/prisma/schema.prisma`. 
-4. **Vị trí viết code:** 
+1. **Tra cứu Quy tắc (Rules):** Luôn kiểm tra `.agents/rules/` để hiểu quy ước thiết kế, format API (`API_CONVENTION.md`) và các nguyên tắc code.
+2. **Nghiệp vụ cốt lõi:** Khi làm tính năng mới, bắt buộc đọc `docs/requirements/UseCase V2.md` để hiểu Flow trước khi tạo API hay Component.
+3. **Database:** Cấu trúc DB source-of-truth nằm tại `src/backend/prisma/schema.prisma`.
+4. **Vị trí viết code:**
    - Tuyệt đối không mix logic Database vào Controller (Backend). Phải thông qua Service/Repository.
-   - Các components tái sử dụng (Frontend) phải đặt trong `src/components/`, không đặt trong thư mục của page.
+   - Các components dùng riêng cho một route giữ cục bộ trong thư mục route đó; các components tái sử dụng đặt trong `src/components/` hoặc `packages/shared/ui/`.

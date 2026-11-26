@@ -9,9 +9,21 @@ import {
   REFRESH_TOKEN_TTL_SECONDS,
   JwtPayload,
 } from '../utils/jwt.util';
-import { generateOtp, hashOtp, verifyOtp, isOtpExpired, getOtpExpiresAt } from '../utils/otp.util';
+import { generateOtp, hashOtp, verifyOtp } from '../utils/otp.util';
 import { sendOtpEmail } from '../utils/email.util';
 import { setCache, getCache, deleteCache } from '../utils/redis.util';
+import {
+  BLACKLIST_JTI_KEY,
+  TOKEN_INVALID_BEFORE_KEY,
+  REFRESH_FAMILY_KEY,
+} from '../constants/auth-cache.constant';
+import { FULL_NAME_REGEX, FULL_NAME_INVALID_MSG } from '../dtos/auth.dto';
+
+export {
+  BLACKLIST_JTI_KEY,
+  TOKEN_INVALID_BEFORE_KEY,
+  REFRESH_FAMILY_KEY,
+} from '../constants/auth-cache.constant';
 
 // Redis key prefix for pending registrations
 const REGISTER_KEY = (email: string) => `register:${email}`;
@@ -27,12 +39,6 @@ const LOGIN_FAIL_KEY = (email: string) => `login_fail:${email.toLowerCase()}`;
 const LOGIN_LOCK_KEY = (email: string) => `login_lock:${email.toLowerCase()}`;
 export const LOGIN_LOCKED_MESSAGE =
   'Bạn đã nhập sai mật khẩu quá số lần cho phép. Vui lòng thử lại sau ít phút hoặc sử dụng tính năng Quên mật khẩu.';
-
-// Token revocation & refresh rotation keys
-export const BLACKLIST_JTI_KEY = (jti: string) => `bl_jti:${jti}`;
-export const TOKEN_INVALID_BEFORE_KEY = (userId: number) => `token_invalid_before:${userId}`;
-export const REFRESH_FAMILY_KEY = (userId: number, familyId: string) =>
-  `rt_family:${userId}:${familyId}`;
 
 const STAFF_PORTAL_ROLES = new Set([
   'ADMIN',
@@ -53,6 +59,13 @@ export class LoginLockedError extends Error {
   constructor(public retryAfterSeconds: number) {
     super(LOGIN_LOCKED_MESSAGE);
     this.name = 'LoginLockedError';
+  }
+}
+
+export class AuthHttpError extends Error {
+  constructor(public statusCode: number, message: string) {
+    super(message);
+    this.name = 'AuthHttpError';
   }
 }
 
@@ -463,6 +476,206 @@ export class AuthService {
     const updated: PendingReset = { email, otpHash };
     await setCache(RESET_KEY(email), JSON.stringify(updated), OTP_TTL);
     await sendOtpEmail(email, otp, 'reset');
+  }
+
+  // ========================
+  // UC-06: Get own profile
+  // ========================
+  async getProfile(userId: number) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        full_name: true,
+        phone: true,
+        email: true,
+        address: true,
+        is_active: true,
+        created_at: true,
+        updated_at: true,
+        roles: { select: { role: { select: { name: true } } } },
+        employee: {
+          select: {
+            id: true,
+            position: true,
+            is_active: true,
+            created_at: true,
+            skills: {
+              select: {
+                skill: {
+                  select: { id: true, name: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!user) {
+      throw new AuthHttpError(404, 'Không tìm thấy người dùng.');
+    }
+
+    return {
+      id: user.id,
+      fullName: user.full_name,
+      phone: user.phone,
+      email: user.email,
+      address: user.address,
+      isActive: user.is_active,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+      roles: user.roles.map((r) => r.role.name),
+      employee: user.employee
+        ? {
+            id: user.employee.id,
+            position: user.employee.position,
+            isActive: user.employee.is_active,
+            createdAt: user.employee.created_at,
+            skills: user.employee.skills.map((s) => s.skill.name),
+          }
+        : null,
+    };
+  }
+
+  // ========================
+  // UC-06: Update own profile
+  // ========================
+  async updateProfile(
+    userId: number,
+    input: { fullName?: string; phone?: string | null; email?: string; address?: string | null }
+  ) {
+    const { fullName, phone, email, address } = input;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        roles: { include: { role: true } },
+        employee: {
+          select: {
+            id: true,
+            position: true,
+            is_active: true,
+            created_at: true,
+            skills: { select: { skill: { select: { id: true, name: true } } } },
+          },
+        },
+      },
+    });
+    if (!user) {
+      throw new AuthHttpError(404, 'Không tìm thấy người dùng.');
+    }
+
+    const userRoles = user.roles.map((r) => r.role.name.toUpperCase());
+    const isInternalAccount = userRoles.some((r) => r !== 'CUSTOMER');
+
+    if (isInternalAccount && email !== undefined && email !== user.email) {
+      throw new AuthHttpError(
+        403,
+        'Tài khoản nội bộ không thể tự thay đổi email đăng nhập. Vui lòng liên hệ Quản trị viên.'
+      );
+    }
+
+    const normalizedPhone = phone === '' ? null : phone;
+    const normalizedAddress = address === '' ? null : address;
+
+    // Chỉ kiểm tra ký tự hợp lệ khi họ tên thực sự thay đổi (tránh khóa tài khoản có tên cũ)
+    if (fullName !== undefined && fullName !== user.full_name && !FULL_NAME_REGEX.test(fullName)) {
+      throw new AuthHttpError(400, FULL_NAME_INVALID_MSG);
+    }
+
+    // Validate unique phone if changed and non-null
+    if (normalizedPhone !== undefined && normalizedPhone !== null && normalizedPhone !== user.phone) {
+      const existPhone = await prisma.user.findUnique({ where: { phone: normalizedPhone } });
+      if (existPhone && existPhone.id !== userId) {
+        throw new AuthHttpError(
+          400,
+          'Không thể cập nhật thông tin liên hệ này. Vui lòng kiểm tra lại và thử với thông tin khác.'
+        );
+      }
+    }
+
+    // Validate unique email if changed (customer self-service)
+    if (!isInternalAccount && email && email !== user.email) {
+      const existEmail = await prisma.user.findUnique({ where: { email } });
+      if (existEmail && existEmail.id !== userId) {
+        throw new AuthHttpError(
+          400,
+          'Không thể cập nhật thông tin liên hệ này. Vui lòng kiểm tra lại và thử với thông tin khác.'
+        );
+      }
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: {
+          full_name: fullName !== undefined ? fullName : undefined,
+          phone: normalizedPhone !== undefined ? normalizedPhone : undefined,
+          email: !isInternalAccount && email !== undefined ? email : undefined,
+          address: normalizedAddress !== undefined ? normalizedAddress : undefined,
+        },
+      });
+
+      if (fullName !== undefined && user.employee) {
+        await tx.employee.update({
+          where: { id: user.employee.id },
+          data: { full_name: fullName },
+        });
+      }
+
+      return updatedUser;
+    });
+
+    return {
+      id: updated.id,
+      fullName: updated.full_name,
+      phone: updated.phone,
+      email: updated.email,
+      address: updated.address,
+      isActive: updated.is_active,
+      createdAt: updated.created_at,
+      updatedAt: updated.updated_at,
+      roles: user.roles.map((r) => r.role.name),
+      employee: user.employee
+        ? {
+            id: user.employee.id,
+            position: user.employee.position,
+            isActive: user.employee.is_active,
+            createdAt: user.employee.created_at,
+            skills: user.employee.skills.map((s) => s.skill.name),
+          }
+        : null,
+    };
+  }
+
+  // ========================
+  // Change own password (authenticated)
+  // ========================
+  async changePassword(userId: number, currentPassword: string, newPassword: string): Promise<void> {
+    if (currentPassword === newPassword) {
+      throw new AuthHttpError(400, 'Mật khẩu mới không được trùng với mật khẩu hiện tại.');
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, password_hash: true },
+    });
+    if (!user) {
+      throw new AuthHttpError(404, 'Không tìm thấy người dùng.');
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isMatch) {
+      throw new AuthHttpError(400, 'Mật khẩu hiện tại không chính xác.');
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password_hash: newHash },
+    });
+
+    await this.revokeAllUserTokens(userId);
   }
 }
 

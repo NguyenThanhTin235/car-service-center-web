@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { serviceTemplateApi, ServiceTemplateData, CategoryData } from '@/lib/api/serviceTemplates';
+import { serviceTemplateApi, ServiceTemplateData, CategoryData } from '@/lib/api/services';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import Modal from '@/components/shared/Modal';
 import TablePagination from '@/components/shared/TablePagination';

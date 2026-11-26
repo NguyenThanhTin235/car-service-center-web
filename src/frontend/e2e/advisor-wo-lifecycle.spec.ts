@@ -431,7 +431,7 @@ test.describe('E2E Sprint 3: Internal Advisor Work Order & AI Job Lifecycle', ()
 
     // Verify WO Header & Badge Bar
     await expect(page.locator('text=WO-261018-001').first()).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('text=51A-999.99').first()).toBeVisible();
+    await expect(page.getByTestId('wo-detail-hero-grid').getByText('51A-999.99')).toBeVisible();
 
     // Verify Tab 1: Tiếp nhận & Kiểm tra
     await expect(page.locator('button:has-text("Tiếp nhận & Kiểm tra")')).toBeVisible();
@@ -442,7 +442,7 @@ test.describe('E2E Sprint 3: Internal Advisor Work Order & AI Job Lifecycle', ()
     await tabJobButton.click();
 
     // Verify Service Category and existing Job
-    await expect(page.getByRole('heading', { name: 'Sửa chữa động cơ bỏ máy' })).toBeVisible();
+    await expect(page.locator('div.pt-5 > div.block').getByText('Sửa chữa động cơ bỏ máy').first()).toBeVisible();
     await expect(page.locator('text=Chẩn đoán lỗi OBD-II')).toBeVisible();
   });
 

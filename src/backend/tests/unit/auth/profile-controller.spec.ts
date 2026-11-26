@@ -16,7 +16,16 @@ vi.mock('../../../src/utils/prisma', () => ({
   default: prismaMock,
 }));
 
+vi.mock('../../../src/utils/redis.util', () => ({
+  getCache: vi.fn().mockResolvedValue(null),
+  setCache: vi.fn().mockResolvedValue(undefined),
+  deleteCache: vi.fn().mockResolvedValue(undefined),
+  deleteCacheByPrefix: vi.fn().mockResolvedValue(undefined),
+  mgetCache: vi.fn().mockResolvedValue([]),
+}));
+
 import { authController } from '../../../src/controllers/auth.controller';
+import { authService } from '../../../src/services/auth.service';
 
 function createMockRes() {
   const res: any = {};
@@ -290,6 +299,7 @@ describe('AuthController — Internal Profile & Change Password', () => {
       const hash = await bcrypt.hash('OldPass123', 4);
       prismaMock.user.findUnique.mockResolvedValue({ id: 2, password_hash: hash });
       prismaMock.user.update.mockResolvedValue({ id: 2 });
+      const revokeSpy = vi.spyOn(authService, 'revokeAllUserTokens').mockResolvedValue(undefined);
 
       const req: any = {
         user: { id: 2, roles: ['MANAGER'] },
@@ -308,6 +318,8 @@ describe('AuthController — Internal Profile & Change Password', () => {
       expect(prismaMock.user.update).toHaveBeenCalledTimes(1);
       const updatedHash = prismaMock.user.update.mock.calls[0][0].data.password_hash;
       expect(await bcrypt.compare('NewStrongPass123', updatedHash)).toBe(true);
+      expect(revokeSpy).toHaveBeenCalledWith(2);
+      revokeSpy.mockRestore();
     });
   });
 });

@@ -2,9 +2,12 @@
   "name": "@car-service-center/ui",
   "version": "1.0.0",
   "private": true,
-  "main": "./index.ts",
+  "main": "./index.tsx",
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
+  },
+  "peerDependencies": {
+    "next": ">=15.0.0"
   }
 }

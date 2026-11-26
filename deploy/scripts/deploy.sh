@@ -105,6 +105,11 @@ if [[ "${ENV_NAME}" == "prod" && "${HOST_MEM_MB}" -gt 0 && "${HOST_MEM_MB}" -lt 
   fi
 fi
 
+if [[ "${RUN_DB_BACKUP:-false}" == "true" || ( "${ENV_NAME}" == "prod" && "${SKIP_DB_BACKUP:-false}" != "true" ) ]]; then
+  echo "==> [${ENV_NAME}] Running pre-migration database backup..."
+  "${SCRIPT_DIR}/backup-db.sh" "${ENV_NAME}" "${AWS_REGION}" || echo "WARNING: [${ENV_NAME}] Pre-migration backup skipped or failed; continuing deployment." >&2
+fi
+
 echo "==> [${ENV_NAME}] Running Prisma database migrations..."
 docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" run --rm --no-deps backend node ./node_modules/prisma/build/index.js migrate deploy
 
@@ -154,6 +159,7 @@ if [[ -s "${STATE_DIR}/.previous_tag" ]]; then
   PREV_TAG="$(cat "${STATE_DIR}/.previous_tag")"
   echo "==> [${ENV_NAME}] Auto-rolling back to previous tag ${PREV_TAG}..." >&2
   export IMAGE_TAG="${PREV_TAG}"
+  docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" pull || true
   docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" "${PROFILE_ARGS[@]}" up -d --remove-orphans || true
 else
   echo "WARNING: No .previous_tag found for auto-rollback." >&2
