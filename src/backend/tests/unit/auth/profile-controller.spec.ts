@@ -16,6 +16,14 @@ vi.mock('../../../src/utils/prisma', () => ({
   default: prismaMock,
 }));
 
+const notificationMock = vi.hoisted(() => ({
+  sendInApp: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../../src/services/notification.service', () => ({
+  notificationService: notificationMock,
+}));
+
 vi.mock('../../../src/utils/redis.util', () => ({
   getCache: vi.fn().mockResolvedValue(null),
   setCache: vi.fn().mockResolvedValue(undefined),
@@ -164,6 +172,14 @@ describe('AuthController — Internal Profile & Change Password', () => {
         where: { id: 5 },
         data: { full_name: 'Nguyễn Văn Bình' },
       });
+      expect(notificationMock.sendInApp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 2,
+          type: 'SYSTEM_ALERT',
+          entityType: 'USER',
+          entityId: 2,
+        })
+      );
     });
 
     it('rejects changing full name to one with digits or special characters', async () => {

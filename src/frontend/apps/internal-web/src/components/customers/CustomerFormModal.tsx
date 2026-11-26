@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useBackdropClose } from '@/hooks/useBackdropClose';
+import AddressAutocompleteInput from '@/components/shared/AddressAutocompleteInput';
 import {
   validateName,
   validatePhone,
@@ -256,11 +257,10 @@ export default function CustomerFormModal({ isOpen, onClose, onSave, initialData
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-700">Địa chỉ cư trú</label>
-                  <input
-                    name="address"
+                  <AddressAutocompleteInput
                     value={formData.address}
-                    onChange={handleChange}
-                    className="h-10 px-3.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-900 focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff] outline-none transition-all placeholder:text-slate-400"
+                    onChange={(nextAddress) => setFormData((prev) => ({ ...prev, address: nextAddress }))}
+                    className="w-full h-10 pr-3.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-900 focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff] outline-none transition-all placeholder:text-slate-400"
                     placeholder="Số nhà, tên đường, phường/xã..."
                   />
                 </div>

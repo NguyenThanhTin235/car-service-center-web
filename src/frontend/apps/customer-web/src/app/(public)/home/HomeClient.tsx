@@ -951,9 +951,20 @@ export default function HomeClient({
                   disabled={locating}
                   className="inline-flex items-center justify-center gap-2 min-h-[48px] px-5 rounded-xl border border-hairline-strong bg-surface-elevated hover:bg-surface-subtle disabled:opacity-60 text-ink-primary text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  <span className="material-symbols-outlined text-lg text-accent" aria-hidden="true">
-                    {directionsOrigin ? 'location_on' : 'my_location'}
-                  </span>
+                  {directionsOrigin ? (
+                    <span className="material-symbols-outlined text-lg text-accent" aria-hidden="true">
+                      location_on
+                    </span>
+                  ) : (
+                    <svg
+                      className="w-[18px] h-[18px] text-accent shrink-0"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4m8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7" />
+                    </svg>
+                  )}
                   <span>
                     {locating
                       ? 'Đang định vị...'

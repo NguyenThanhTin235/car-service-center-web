@@ -245,10 +245,7 @@ test.describe('Multi-Portal Interactive Dashboard & Taste Audit (SPEC-MULTI-PORT
   test('AUDIT-04: Staff Dashboard (/staff/dashboard) - Kiểm tra điều phối công việc và hàng đợi kỹ thuật', async ({ page }) => {
     await page.goto('http://localhost:3001/staff/dashboard');
 
-    // 1. Tiêu đề
-    await expect(page.locator('h1')).toContainText('Bảng Điều Phối Kỹ Thuật Viên & Tiếp Nhận');
-
-    // 2. Kiểm tra 4 thẻ KPI
+    // 1. Kiểm tra 4 thẻ KPI
     await expect(page.getByText('Công việc đang đảm nhiệm', { exact: true })).toBeVisible();
     await expect(page.locator('text=Hoàn thành trong kỳ')).toBeVisible();
 

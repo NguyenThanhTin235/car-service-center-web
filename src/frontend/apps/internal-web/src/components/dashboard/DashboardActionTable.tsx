@@ -112,7 +112,10 @@ export function DashboardActionTable<T extends Record<string, any>>({
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
           {headerExtra}
-          <div className="relative w-full sm:w-64">
+          <div className="flex items-center gap-2 w-full sm:w-64 h-9 px-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus-within:bg-white dark:focus-within:bg-slate-900 focus-within:border-[#0866ff] transition-colors">
+            <span className="material-symbols-outlined text-[16px] leading-none text-slate-400 shrink-0 pointer-events-none">
+              search
+            </span>
             <input
               type="text"
               value={search}
@@ -121,15 +124,17 @@ export function DashboardActionTable<T extends Record<string, any>>({
                 setPage(1);
               }}
               placeholder={searchPlaceholder}
-              className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              className="flex-1 min-w-0 bg-transparent text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
             />
-            <span className="material-symbols-outlined text-[16px] text-slate-400 absolute left-2.5 top-2 pointer-events-none">
-              search
-            </span>
             {search && (
               <button
-                onClick={() => setSearch('')}
-                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 text-xs"
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setPage(1);
+                }}
+                aria-label="Xóa tìm kiếm"
+                className="text-slate-400 hover:text-slate-600 text-xs shrink-0 cursor-pointer"
               >
                 ✕
               </button>

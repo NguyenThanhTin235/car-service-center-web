@@ -111,10 +111,15 @@ export default function NewVehiclePage() {
           router.push(redirectUrl);
         }, 1000);
       } else {
-        setToastMsg({
-          message: (result.payload as string) || 'Lỗi khi thêm xe. Vui lòng kiểm tra lại.',
-          type: 'error',
-        });
+        const errMsg = (result.payload as string) || 'Lỗi khi thêm xe. Vui lòng kiểm tra lại.';
+        if (/biển số|tồn tại/i.test(errMsg)) {
+          setErrors((prev) => ({ ...prev, licensePlate: errMsg }));
+        } else {
+          setToastMsg({
+            message: errMsg,
+            type: 'error',
+          });
+        }
       }
     } catch (err: any) {
       setToastMsg({ message: err.message || 'Lỗi kết nối máy chủ', type: 'error' });

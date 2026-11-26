@@ -138,7 +138,7 @@ test.describe('Desk-Staff Portal E2E: Vehicle Intake (/staff/intake)', () => {
     // WalkInIntakeModal 3-step validation check
     await page.locator('button:has-text("+ Tiếp nhận khách vãng lai")').click();
     await expect(page.locator('text=Tiếp nhận Khách vãng lai').first()).toBeVisible();
-    await expect(page.locator('text=1. Khách & Xe')).toBeVisible();
+    await expect(page.locator('text=Khách & Xe')).toBeVisible();
     await page.getByRole('button', { name: /Tiếp tục/i }).click();
     await expect(page.locator('text=Vui lòng chọn khách hàng')).toBeVisible();
     await page.getByRole('button', { name: 'Hủy', exact: true }).last().click();
@@ -146,7 +146,7 @@ test.describe('Desk-Staff Portal E2E: Vehicle Intake (/staff/intake)', () => {
     // TowInIntakeModal 3-step validation check
     await page.locator('button:has-text("Tiếp nhận xe cứu hộ")').click();
     await expect(page.locator('text=Tiếp nhận Xe cứu hộ').first()).toBeVisible();
-    await expect(page.locator('text=1. Khách & Xe')).toBeVisible();
+    await expect(page.locator('text=Khách & Xe')).toBeVisible();
     await page.getByRole('button', { name: /Tiếp tục/i }).click();
     await expect(
       page.locator('text=Đơn vị kéo xe / Người bàn giao không được để trống')

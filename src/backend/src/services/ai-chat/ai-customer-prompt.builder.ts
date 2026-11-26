@@ -43,6 +43,9 @@ export class AiCustomerPromptBuilder {
 NGUYÊN TẮC XƯNG HÔ & GIỌNG ĐIỆU:
 - Luôn xưng **"Em"** và gọi khách hàng là **"Anh/Chị"** (hoặc gọi tên khách nếu có trong hồ sơ).
 - Văn phong thân thiện, ngắn gọn, dễ hiểu cho cả khách lớn tuổi trên điện thoại; in đậm các thông tin quan trọng (biển số xe, mã phiếu, số tiền VNĐ, nút thao tác).
+- **CHUẨN HÓA TIẾNG VIỆT 100% TRONG \`reply\`:** TUYỆT ĐỐI KHÔNG để lọt mã enum tiếng Anh thô vào câu trả lời (như \`Medium\`, \`MEDIUM\`, \`SMALL\`, \`LARGE\`, \`SUV\`, \`TRUCK\`, \`REQUESTED\`, \`CONFIRMED\`, \`IN_PLANNING\`, \`PENDING_APPROVAL\`, \`IN_PROGRESS\`, \`ISSUED\`, \`PAID\`). Luôn dùng tiếng Việt tự nhiên:
+  - Cỡ xe: \`SMALL\` → **Xe nhỏ (Cỡ S)**, \`MEDIUM\` → **Trung bình (Cỡ M)**, \`LARGE\` → **Xe lớn (Cỡ L)**, \`SUV\` → **SUV / Crossover (Cỡ XL)**, \`TRUCK\` → **Bán tải / Xe tải**.
+  - Trạng thái: dịch tự nhiên sang tiếng Việt (VD: *Chờ xác nhận*, *Đã xác nhận*, *Đang lập kế hoạch*, *Chờ duyệt báo giá*, *Đang sửa chữa*, *Chờ thanh toán*, *Đã thanh toán*).
 - Hiểu tốt cả tiếng Việt CÓ DẤU lẫn KHÔNG DẤU hoặc viết tắt (VD: "xe xong chua", "bao gia", "thanh toan", "dat lich", "bao hanh").
 - Khi giải thích thuật ngữ kỹ thuật (VD: rô-tuyn cân bằng, bố thắng, đĩa phanh, bu-gi, lọc gió), luôn trình bày theo **3 lớp**:
   1. Nghĩa đời thường dễ hiểu (bộ phận đó là gì, làm nhiệm vụ gì).
@@ -142,7 +145,24 @@ NGUYÊN TẮC XƯNG HÔ & GIỌNG ĐIỆU:
       JSON.stringify(compactCatalog),
       ``,
       `=== HỒ SƠ CÁ NHÂN KHÁCH HÀNG (CUSTOMER PRIVATE CONTEXT) ===`,
-      customerContext ? JSON.stringify(customerContext) : 'null (Khách vãng lai - CHƯA ĐĂNG NHẬP)',
+      customerContext
+        ? JSON.stringify({
+            ...customerContext,
+            vehicles: (customerContext.vehicles || []).map((v) => ({
+              ...v,
+              vehicleSizeLabel:
+                (
+                  {
+                    SMALL: 'Xe nhỏ (Cỡ S)',
+                    MEDIUM: 'Trung bình (Cỡ M)',
+                    LARGE: 'Xe lớn (Cỡ L)',
+                    SUV: 'SUV / Crossover (Cỡ XL)',
+                    TRUCK: 'Bán tải / Xe tải',
+                  } as Record<string, string>
+                )[String(v.vehicleSize || '').toUpperCase()] || v.vehicleSize,
+            })),
+          })
+        : 'null (Khách vãng lai - CHƯA ĐĂNG NHẬP)',
       ``,
       `=== LỊCH SỬ HỘI THOẠI GẦN NHẤT ===`,
       historyLines,

@@ -18,6 +18,7 @@ import {
   REFRESH_FAMILY_KEY,
 } from '../constants/auth-cache.constant';
 import { FULL_NAME_REGEX, FULL_NAME_INVALID_MSG } from '../dtos/auth.dto';
+import { notificationService } from './notification.service';
 
 export {
   BLACKLIST_JTI_KEY,
@@ -625,6 +626,18 @@ export class AuthService {
 
       return updatedUser;
     });
+
+    notificationService
+      .sendInApp({
+        userId,
+        type: 'SYSTEM_ALERT',
+        title: 'Thông tin cá nhân đã được cập nhật',
+        message:
+          'Hồ sơ tài khoản của bạn vừa được cập nhật thành công. Nếu bạn không thực hiện thay đổi này, vui lòng đổi mật khẩu ngay.',
+        entityType: 'USER',
+        entityId: userId,
+      })
+      .catch((err) => console.error('Failed to notify user on profile updated:', err));
 
     return {
       id: updated.id,

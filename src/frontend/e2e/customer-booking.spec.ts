@@ -203,7 +203,7 @@ test.describe('Customer Portal — Profile, Vehicles CRUD & 3-Step Booking', () 
     await expect(page.getByRole('heading', { name: 'Đặt lịch dịch vụ & sửa chữa' })).toBeVisible({
       timeout: 15000,
     });
-    await expect(page.getByText('1. Chọn xe cần làm dịch vụ')).toBeVisible();
+    await expect(page.getByText('Chọn xe cần làm dịch vụ')).toBeVisible();
 
     await page.getByRole('button', { name: 'Tiếp tục' }).click();
     await expect(

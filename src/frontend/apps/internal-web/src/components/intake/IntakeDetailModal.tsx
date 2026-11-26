@@ -2,6 +2,7 @@
 import React from 'react';
 import { useBackdropClose } from '@/hooks/useBackdropClose';
 import { formatVehicleSize } from '@/components/advisor/work-order/work-order.constants';
+import { formatDisplayNotes } from '@/lib/utils/notes';
 
 export default function IntakeDetailModal({ record, onClose }: { record: any, onClose: () => void }) {
   const backdropProps = useBackdropClose(onClose);
@@ -49,6 +50,8 @@ export default function IntakeDetailModal({ record, onClose }: { record: any, on
       actualNotes = '';
     }
   }
+
+  actualNotes = formatDisplayNotes(actualNotes);
 
   return (
     <div

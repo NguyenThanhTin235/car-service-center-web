@@ -150,32 +150,6 @@ export default function StaffCommandDashboardPage() {
 
   return (
     <div className="flex flex-col min-w-0 w-full space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Bảng Điều Phối Kỹ Thuật Viên & Tiếp Nhận
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Giám sát nhiệm vụ sửa chữa cá nhân, tiến độ hoàn thành ca và lưu lượng tiếp nhận xe tại xưởng.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/staff/intake"
-            className="px-3 py-1.5 text-xs font-medium bg-[#0050cd] hover:bg-blue-700 text-white rounded-lg transition-colors shadow-xs"
-          >
-            + Tiếp nhận xe mới
-          </Link>
-          <Link
-            href="/staff/appointments"
-            className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-lg transition-colors"
-          >
-            Lịch hẹn hôm nay
-          </Link>
-        </div>
-      </div>
-
       {/* Filter Bar */}
       <DashboardFilterBar
         period={period}

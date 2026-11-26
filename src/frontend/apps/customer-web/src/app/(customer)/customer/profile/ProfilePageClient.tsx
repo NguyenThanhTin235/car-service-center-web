@@ -25,6 +25,7 @@ import {
   Appointment,
 } from '@/store/slices/appointmentSlice';
 import Toast from '@/components/shared/Toast';
+import AddressAutocompleteInput from '@/components/shared/AddressAutocompleteInput';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import CustomerOverviewTab from '@/components/profile/CustomerOverviewTab';
 import { ErrorState, LoadingSkeleton } from '@/components/ui';
@@ -479,7 +480,12 @@ export default function ProfilePageClient({ defaultTab }: { defaultTab?: TabKey 
       setVehicleModalOpen(false);
       dispatch(fetchVehicles());
     } catch (err: any) {
-      setVehicleToast({ message: typeof err === 'string' ? err : 'Thao tác không thành công', type: 'error' });
+      const errMsg = typeof err === 'string' ? err : 'Thao tác không thành công';
+      if (/biển số|tồn tại/i.test(errMsg)) {
+        setVehicleErrors((prev) => ({ ...prev, licensePlate: errMsg }));
+      } else {
+        setVehicleToast({ message: errMsg, type: 'error' });
+      }
     }
   };
 
@@ -541,6 +547,9 @@ export default function ProfilePageClient({ defaultTab }: { defaultTab?: TabKey 
         d.getDate() === today.getDate() &&
         d.getMonth() === today.getMonth() &&
         d.getFullYear() === today.getFullYear();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const cellStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const isPast = cellStart < todayStart;
 
       // Construct local YYYY-MM-DD string to avoid UTC timezone offset shift
       const cellYear = d.getFullYear();
@@ -571,6 +580,7 @@ export default function ProfilePageClient({ defaultTab }: { defaultTab?: TabKey 
         dateStr: cellDateStr,
         isCurrentMonth,
         isToday,
+        isPast,
         appointments: dayApts,
       };
     });
@@ -965,19 +975,15 @@ export default function ProfilePageClient({ defaultTab }: { defaultTab?: TabKey 
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
                       Địa chỉ liên hệ
                     </label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">location_on</span>
-                      <input
-                        type="text"
-                        value={form.address}
-                        onChange={(e) => handleProfileInputChange('address', e.target.value)}
-                        onBlur={(e) => isEditing && handleProfileInputChange('address', e.target.value)}
-                        readOnly={!isEditing}
-                        aria-invalid={Boolean(profileErrors.address)}
-                        className={`${inputClass(isEditing, Boolean(profileErrors.address))} pl-10`}
-                        placeholder="Nhập địa chỉ của bạn"
-                      />
-                    </div>
+                    <AddressAutocompleteInput
+                      value={form.address}
+                      onChange={(val) => handleProfileInputChange('address', val)}
+                      onBlur={() => isEditing && handleProfileInputChange('address', form.address)}
+                      readOnly={!isEditing}
+                      hasError={Boolean(profileErrors.address)}
+                      className={inputClass(isEditing, Boolean(profileErrors.address))}
+                      placeholder="Nhập địa chỉ của bạn"
+                    />
                     {isEditing && profileErrors.address && (
                       <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center gap-1">
                         <span className="material-symbols-outlined text-[14px]">error</span>
@@ -1267,15 +1273,18 @@ export default function ProfilePageClient({ defaultTab }: { defaultTab?: TabKey 
                         <div
                           key={idx}
                           onClick={() => {
-                            if (cell.appointments.length === 0) {
+                            if (!cell.isPast) {
                               handleOpen3StepBooking(cell.date);
                             }
                           }}
-                          className={`min-h-[110px] p-2 flex flex-col justify-between transition-colors cursor-pointer group ${!cell.isCurrentMonth
-                              ? 'bg-slate-50/50 text-slate-300'
-                              : cell.isToday
-                                ? 'bg-blue-50/40'
-                                : 'hover:bg-blue-50/20'
+                          className={`min-h-[110px] p-2 flex flex-col justify-between transition-colors ${cell.isPast
+                              ? `bg-slate-50/70 text-slate-400 ${cell.appointments.length === 0 ? 'cursor-not-allowed' : 'cursor-default'}`
+                              : `cursor-pointer group ${!cell.isCurrentMonth
+                                  ? 'bg-slate-50/50 text-slate-300'
+                                  : cell.isToday
+                                    ? 'bg-blue-50/40'
+                                    : 'hover:bg-blue-50/20'
+                                }`
                             }`}
                         >
                           {/* Date Header */}
@@ -1283,14 +1292,14 @@ export default function ProfilePageClient({ defaultTab }: { defaultTab?: TabKey 
                             <span
                               className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${cell.isToday
                                   ? 'bg-blue-600 text-white shadow-sm font-bold'
-                                  : cell.isCurrentMonth
-                                    ? 'text-slate-800'
-                                    : 'text-slate-400'
+                                  : cell.isPast || !cell.isCurrentMonth
+                                    ? 'text-slate-400'
+                                    : 'text-slate-800'
                                 }`}
                             >
                               {cell.dateNum}
                             </span>
-                            {cell.isCurrentMonth && (
+                            {cell.isCurrentMonth && !cell.isPast && (
                               <span className="opacity-0 group-hover:opacity-100 text-[10px] text-blue-600 font-semibold transition-opacity">
                                 + Đặt lịch
                               </span>
@@ -1638,8 +1647,29 @@ export default function ProfilePageClient({ defaultTab }: { defaultTab?: TabKey 
                   <span className="material-symbols-outlined text-sm text-blue-600">notes</span>
                   <span>Ghi chú / Tình trạng xe</span>
                 </div>
-                <p className="text-slate-700 bg-white p-3 rounded-lg border border-slate-200 leading-relaxed">
-                  {selectedAptDetail.notes?.trim() ? selectedAptDetail.notes : 'Không có ghi chú thêm.'}
+                <p className="text-slate-700 bg-white p-3 rounded-lg border border-slate-200 leading-relaxed whitespace-pre-wrap">
+                  {(() => {
+                    const raw = selectedAptDetail.notes?.trim() || '';
+                    if (!raw) return 'Không có ghi chú thêm.';
+                    if (!raw.includes('[ĐẶT LỊCH BẢO HÀNH]') && !raw.includes('[TIẾP NHẬN BẢO HÀNH')) {
+                      return raw;
+                    }
+                    const lines = raw
+                      .split(/\r?\n/)
+                      .map((l) => l.trim())
+                      .filter(
+                        (l) =>
+                          l &&
+                          !/^\[ĐẶT LỊCH BẢO HÀNH\]$/i.test(l) &&
+                          !/^\[TIẾP NHẬN BẢO HÀNH[^\]]*\]/i.test(l) &&
+                          !/^Hạng mục bảo hành yêu cầu:/i.test(l) &&
+                          !/^Phiếu dịch vụ gốc:/i.test(l) &&
+                          !/^Minh chứng hiện (?:trường|trạng):/i.test(l)
+                      )
+                      .map((l) => l.replace(/^Hiện tượng sự cố(?: thực tế)?:\s*/i, '').trim())
+                      .filter(Boolean);
+                    return lines.length > 0 ? Array.from(new Set(lines)).join('\n') : 'Không có ghi chú thêm.';
+                  })()}
                 </p>
               </div>
 

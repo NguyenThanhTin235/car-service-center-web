@@ -3,6 +3,7 @@
 import React from 'react';
 import { IntakeQueueItem } from '@/lib/api/work-order.api';
 import { formatVehicleSize } from '@/components/advisor/work-order/work-order.constants';
+import { formatDisplayNotes } from '@/lib/utils/notes';
 import { getWaitMinutes } from '@/lib/utils/formatters';
 import ModalPortal from '@/components/advisor/common/ModalPortal';
 
@@ -99,6 +100,8 @@ export default function IntakeDetailModal({
     if (vcMatch) vehicleCondition = vcMatch[1].trim();
     if (nMatch) actualNotes = nMatch[1].trim();
   }
+
+  actualNotes = formatDisplayNotes(actualNotes);
 
   return (
     <ModalPortal onClose={onClose}>

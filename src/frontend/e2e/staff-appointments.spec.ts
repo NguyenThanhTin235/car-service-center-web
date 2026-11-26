@@ -145,9 +145,9 @@ test.describe('Desk-Staff Portal E2E: Appointments (/staff/appointments)', () =>
     // Open CreateAppointmentModal and verify 3-step wizard (identical UI to customer-web profile booking)
     await page.locator('button:has-text("+ Thêm lịch hẹn mới")').first().click();
     await expect(page.locator('h2:has-text("Đặt lịch hẹn mới")')).toBeVisible();
-    await expect(page.getByText('1. Chọn xe', { exact: true })).toBeVisible();
-    await expect(page.locator('text=2. Dịch vụ & Mô tả')).toBeVisible();
-    await expect(page.locator('text=3. Ngày & Giờ')).toBeVisible();
+    await expect(page.getByText('Chọn xe', { exact: true })).toBeVisible();
+    await expect(page.locator('text=Dịch vụ & Mô tả')).toBeVisible();
+    await expect(page.locator('text=Ngày & Giờ')).toBeVisible();
 
     await page.getByRole('button', { name: /Tiếp tục/i }).click();
     await expect(page.locator('text=Vui lòng chọn khách hàng.')).toBeVisible();
@@ -156,14 +156,14 @@ test.describe('Desk-Staff Portal E2E: Appointments (/staff/appointments)', () =>
     await page.locator('text=30H-123.45').last().click();
     await page.getByRole('button', { name: /Tiếp tục/i }).click();
 
-    await expect(page.locator('text=2. Dịch vụ yêu cầu & Mô tả tình trạng')).toBeVisible();
+    await expect(page.locator('text=Dịch vụ yêu cầu & Mô tả tình trạng')).toBeVisible();
     await page.getByRole('button', { name: /Tiếp tục/i }).click();
     await expect(page.locator('text=Vui lòng chọn dịch vụ hoặc mô tả tình trạng xe.')).toBeVisible();
 
     await page.locator('h4:has-text("Bảo dưỡng phanh")').click();
     await page.getByRole('button', { name: /Tiếp tục/i }).click();
 
-    await expect(page.locator('text=3. Chọn ngày & khung giờ tiếp nhận')).toBeVisible();
+    await expect(page.locator('text=Chọn ngày & khung giờ tiếp nhận')).toBeVisible();
     await expect(page.locator('text=Buổi sáng (07:30 - 11:30)')).toBeVisible();
     await expect(page.locator('text=Buổi chiều (13:30 - 17:30)')).toBeVisible();
     await expect(page.locator('text=Tóm tắt phiếu đặt hẹn:')).toBeVisible();

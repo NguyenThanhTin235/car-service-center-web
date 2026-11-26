@@ -246,10 +246,9 @@ test.describe('Desk-Staff Portal E2E: Overview (/staff) & Command Dashboard (/st
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('http://localhost:3001/staff/dashboard', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.locator('h1:has-text("Bảng Điều Phối Kỹ Thuật Viên & Tiếp Nhận")')).toBeVisible({
+    await expect(page.locator('text=Tiến độ thực thi nhiệm vụ kỹ thuật qua các khâu')).toBeVisible({
       timeout: 20000,
     });
-    await expect(page.locator('text=Tiến độ thực thi nhiệm vụ kỹ thuật qua các khâu')).toBeVisible();
     await expect(page.locator('text=Mật độ xe theo khung giờ ca trực')).toBeVisible();
     await expect(page.locator('text=Thay má phanh trước').first()).toBeVisible();
     await expect(page.locator('th:has-text("Mã lệnh (WO)")')).toBeVisible();
