@@ -110,30 +110,35 @@ export default function CustomerCheckInModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm overflow-y-auto cw-modal-overlay">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Biên bản tiếp nhận xe"
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm overflow-y-auto cw-modal-overlay"
+      >
         <div className="bg-surface-container-lowest w-full max-w-3xl rounded-2xl sm:rounded-3xl shadow-2xl border border-surface-container-highest flex flex-col max-h-[92vh] overflow-hidden cw-modal-panel">
           
           {/* ================= Header ================= */}
           <div className="p-5 sm:p-6 border-b border-surface-container-highest bg-gradient-to-r from-blue-50/80 via-white to-emerald-50/50 flex items-start justify-between">
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-mono font-bold bg-blue-100 text-primary border border-blue-200">
-                  <span className="material-symbols-outlined text-[14px]">directions_car</span>
+                <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-mono tabular-nums font-bold bg-blue-100 text-primary border border-blue-200">
+                  <span className="material-symbols-outlined text-[14px]" aria-hidden="true">directions_car</span>
                   {vehicle.licensePlate}
                 </span>
                 {woNumber && (
-                  <span className="text-xs px-2 py-0.5 rounded font-mono font-semibold bg-surface-container text-on-surface-variant">
+                  <span className="text-xs px-2 py-0.5 rounded font-mono tabular-nums font-semibold bg-surface-container text-on-surface-variant">
                     #{woNumber}
                   </span>
                 )}
                 {isConfirmed ? (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    <span className="material-symbols-outlined text-[14px]">verified</span>
+                    <span className="material-symbols-outlined text-[14px]" aria-hidden="true">verified</span>
                     Đã hoàn tất tiếp nhận
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">
-                    <span className="material-symbols-outlined text-[14px]">fact_check</span>
+                    <span className="material-symbols-outlined text-[14px]" aria-hidden="true">fact_check</span>
                     Biên bản tiếp nhận
                   </span>
                 )}
@@ -141,14 +146,14 @@ export default function CustomerCheckInModal({
 
               <h2 className="text-xl sm:text-2xl font-bold text-on-surface flex items-center gap-2">
                 <span className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[20px]">fact_check</span>
+                  <span className="material-symbols-outlined text-[20px]" aria-hidden="true">fact_check</span>
                 </span>
                 Biên bản Tiếp nhận Xe
               </h2>
 
               {formattedTime && (
-                <p className="text-xs text-on-surface-variant flex items-center gap-1 font-mono">
-                  <span className="material-symbols-outlined text-[14px]">schedule</span>
+                <p className="text-xs text-on-surface-variant flex items-center gap-1 font-mono tabular-nums">
+                  <span className="material-symbols-outlined text-[14px]" aria-hidden="true">schedule</span>
                   Tiếp nhận lúc: <strong className="text-on-surface">{formattedTime}</strong>
                 </p>
               )}
@@ -157,10 +162,11 @@ export default function CustomerCheckInModal({
             <button
               type="button"
               onClick={onClose}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors shrink-0"
+              aria-label="Đóng"
+              className="min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors shrink-0 cursor-pointer"
               title="Đóng modal"
             >
-              <span className="material-symbols-outlined text-[20px]">close</span>
+              <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
             </button>
           </div>
 

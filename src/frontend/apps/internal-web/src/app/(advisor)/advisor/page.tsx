@@ -225,13 +225,21 @@ export default function SADashboardPage() {
           >
             {/* CARD 1: DARK NAVY (#0c2340) — Total Work Orders + Wave Sparkline */}
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => router.push('/advisor/work-orders')}
-              className="sa-enter sa-card-lift bg-[#0c2340] text-white rounded-[28px] p-5 flex flex-col justify-between min-h-[215px] shadow-md hover:shadow-lg cursor-pointer relative overflow-hidden group"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  router.push('/advisor/work-orders');
+                }
+              }}
+              className="sa-enter sa-card-lift bg-[#0c2340] text-white rounded-[28px] p-5 flex flex-col justify-between min-h-[215px] shadow-md hover:shadow-lg cursor-pointer relative overflow-hidden group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0866ff]"
             >
               <div>
                 <div className="flex items-center justify-between text-zinc-300 text-xs font-medium">
                   <span>Tổng Phiếu Công Việc</span>
-                  <span className="material-symbols-outlined text-[18px] text-zinc-400 group-hover:text-white transition-colors">
+                  <span className="material-symbols-outlined text-[18px] text-zinc-400 group-hover:text-white transition-colors" aria-hidden="true">
                     tune
                   </span>
                 </div>
@@ -294,13 +302,21 @@ export default function SADashboardPage() {
 
             {/* CARD 2: VIBRANT ROYAL BLUE (#0050cd) — Intake Queue + Split Bar */}
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => router.push('/advisor/intake-queue')}
-              className="sa-enter sa-card-lift bg-[#0050cd] text-white rounded-[28px] p-5 flex flex-col justify-between min-h-[215px] shadow-md shadow-[#0050cd]/20 hover:shadow-lg cursor-pointer group"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  router.push('/advisor/intake-queue');
+                }
+              }}
+              className="sa-enter sa-card-lift bg-[#0050cd] text-white rounded-[28px] p-5 flex flex-col justify-between min-h-[215px] shadow-md shadow-[#0050cd]/20 hover:shadow-lg cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <div>
                 <div className="flex items-center justify-between text-blue-100 text-xs font-medium">
                   <span>Hàng Đợi Tiếp Nhận</span>
-                  <span className="material-symbols-outlined text-[18px] text-blue-200 group-hover:text-white transition-colors">
+                  <span className="material-symbols-outlined text-[18px] text-blue-200 group-hover:text-white transition-colors" aria-hidden="true">
                     tune
                   </span>
                 </div>
@@ -348,13 +364,21 @@ export default function SADashboardPage() {
 
             {/* CARD 3: SOFT COOL SLATE (#e4e7ec) — Completed/Ready + Dot Matrix Grid */}
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => router.push('/advisor/work-orders')}
-              className="sa-enter sa-card-lift bg-[#e4e7ec] text-zinc-900 rounded-[28px] p-5 flex flex-col justify-between min-h-[215px] shadow-xs hover:shadow-md cursor-pointer sm:col-span-2 xl:col-span-1 group"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  router.push('/advisor/work-orders');
+                }
+              }}
+              className="sa-enter sa-card-lift bg-[#e4e7ec] text-zinc-900 rounded-[28px] p-5 flex flex-col justify-between min-h-[215px] shadow-xs hover:shadow-md cursor-pointer sm:col-span-2 xl:col-span-1 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0866ff]"
             >
               <div>
                 <div className="flex items-center justify-between text-slate-600 text-xs font-medium">
                   <span>Sẵn Sàng & Hoàn Tất</span>
-                  <span className="material-symbols-outlined text-[18px] text-slate-500 group-hover:text-zinc-900 transition-colors">
+                  <span className="material-symbols-outlined text-[18px] text-slate-500 group-hover:text-zinc-900 transition-colors" aria-hidden="true">
                     tune
                   </span>
                 </div>

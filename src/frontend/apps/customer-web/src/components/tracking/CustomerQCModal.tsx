@@ -64,25 +64,31 @@ export default function CustomerQCModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs cw-modal-overlay">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Biên bản kiểm tra chất lượng"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs cw-modal-overlay"
+    >
       <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl max-w-2xl w-full max-h-[90vh] shadow-2xl border border-outline-variant flex flex-col overflow-hidden cw-modal-panel">
         {/* Certificate Header Banner */}
         <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-primary p-6 text-white relative">
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors cursor-pointer"
+            aria-label="Đóng"
+            className="absolute top-4 right-4 min-w-[44px] min-h-[44px] rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[20px]">close</span>
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
           </button>
 
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0 border border-white/30 shadow-inner">
-              <span className="material-symbols-outlined text-[28px] text-white">verified</span>
+              <span className="material-symbols-outlined text-[28px] text-white" aria-hidden="true">verified</span>
             </div>
             <div>
               <span className="text-[11px] font-extrabold uppercase tracking-widest text-blue-200">
-                Car Service Center • Tiêu Chuẩn KCS
+                AutoCare Pro • Tiêu Chuẩn KCS
               </span>
               <h3 className="text-xl font-bold tracking-tight">
                 Biên Bản Kiểm Định Chất Lượng Xuất Xưởng

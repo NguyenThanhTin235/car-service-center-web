@@ -2,8 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  transpilePackages: ["@car-service-center/ui"],
   compress: true,
   poweredByHeader: false,
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
   experimental: {
     optimizePackageImports: ['recharts', 'react-hot-toast', '@reduxjs/toolkit'],
   },

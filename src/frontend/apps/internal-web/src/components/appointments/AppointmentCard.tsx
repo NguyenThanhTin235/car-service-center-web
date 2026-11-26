@@ -66,8 +66,16 @@ const AppointmentCard = React.memo(function AppointmentCard({ appointment, onCli
 
   return (
     <div 
+      role="button"
+      tabIndex={0}
       onClick={() => onClick && onClick(appointment)}
-      className={`p-2.5 rounded-lg ${bgClass} transition-colors cursor-pointer`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.(appointment);
+        }
+      }}
+      className={`p-2.5 rounded-lg ${bgClass} transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary`}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
