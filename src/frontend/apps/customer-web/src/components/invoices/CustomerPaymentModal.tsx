@@ -145,7 +145,7 @@ export default function CustomerPaymentModal({
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
     >
       <div
-        className="bg-surface-container-lowest border border-surface-container-highest rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
+        className="bg-surface-container-lowest border border-surface-container-highest rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90dvh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -174,12 +174,23 @@ export default function CustomerPaymentModal({
         </div>
 
         {/* Body */}
-        <div>
+        <div className="overflow-y-auto flex-1">
           {/* Lỗi nếu có */}
           {errorMsg && (
-            <div className="m-6 mb-0 p-3 bg-red-50 border border-red-200 rounded-xl text-left text-xs text-red-700 flex items-start gap-2">
-              <span className="material-symbols-outlined text-[18px] text-red-600 shrink-0">error</span>
-              <span>{errorMsg}</span>
+            <div className="m-4 sm:m-6 mb-0 p-3 bg-red-50 border border-red-200 rounded-xl text-left text-xs text-red-700 flex items-center justify-between gap-3">
+              <div className="flex items-start gap-2">
+                <span className="material-symbols-outlined text-[18px] text-red-600 shrink-0" aria-hidden="true">error</span>
+                <span>{errorMsg}</span>
+              </div>
+              {!sepayData && !loading && (
+                <button
+                  type="button"
+                  onClick={handleStartPayment}
+                  className="px-3 py-1.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors shrink-0 cursor-pointer"
+                >
+                  Thử tạo lại mã QR
+                </button>
+              )}
             </div>
           )}
 
@@ -201,7 +212,7 @@ export default function CustomerPaymentModal({
             </div>
           ) : sepayData ? (
             /* Layout 2 cột: Mã QR bên trái, Thông tin bên phải */
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-6 items-stretch">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-4 sm:p-6 items-stretch">
               {/* CỘT TRÁI (Mã QR) */}
               <div className="md:col-span-5 flex flex-col items-center justify-center bg-slate-50/80 p-4 rounded-2xl border border-surface-container-highest shadow-2xs text-center">
                 <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
@@ -209,7 +220,9 @@ export default function CustomerPaymentModal({
                     <img
                       src={sepayData.bankInfo.qrCodeUrl}
                       alt="VietQR SePay"
-                      className="w-56 max-w-full h-auto mx-auto object-contain rounded-lg"
+                      width={224}
+                      height={224}
+                      className="w-56 h-56 max-w-full aspect-square mx-auto object-contain rounded-lg"
                     />
                   ) : (
                     <div className="w-56 h-56 bg-slate-100 flex items-center justify-center rounded-lg text-slate-400">
@@ -295,15 +308,17 @@ export default function CustomerPaymentModal({
                 </div>
 
                 {/* Nút giả lập thanh toán (dành cho môi trường test) */}
-                <button
-                  type="button"
-                  onClick={handleSimulateSuccess}
-                  disabled={simulating}
-                  className="w-full py-2 bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 text-xs font-semibold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
-                >
-                  <span className="material-symbols-outlined text-[15px]">science</span>
-                  <span>{simulating ? 'Đang xử lý...' : 'Giả lập thanh toán thành công (Test Sandbox)'}</span>
-                </button>
+                {process.env.NEXT_PUBLIC_ENABLE_SEPAY_SIMULATE === 'true' && (
+                  <button
+                    type="button"
+                    onClick={handleSimulateSuccess}
+                    disabled={simulating}
+                    className="w-full py-2 bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 text-xs font-semibold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                  >
+                    <span className="material-symbols-outlined text-[15px]" aria-hidden="true">science</span>
+                    <span>{simulating ? 'Đang xử lý...' : 'Giả lập thanh toán thành công (Test Sandbox)'}</span>
+                  </button>
+                )}
               </div>
             </div>
           ) : (

@@ -21,11 +21,11 @@ type OverviewData = {
 
 export default function WOOverviewCards({ data }: { data: OverviewData }) {
   return (
-    <div className="grid grid-cols-5 border border-outline-variant rounded-lg overflow-hidden bg-surface-container-lowest shadow-sm mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 divide-y sm:divide-y-0 lg:divide-x divide-outline-variant/60 border border-outline-variant rounded-lg overflow-hidden bg-surface-container-lowest shadow-sm mb-6">
       {/* Check-in */}
-      <div className="p-4 border-r border-outline-variant/60 flex flex-col justify-between">
+      <div className="p-4 flex flex-col justify-between">
         <span className="text-label-sm text-on-surface-variant font-bold uppercase tracking-wider flex items-center gap-1 mb-2">
-          <span className="material-symbols-outlined text-[16px]">calendar_today</span>
+          <span className="material-symbols-outlined text-[16px]" aria-hidden="true">calendar_today</span>
           Tiếp nhận
         </span>
         <div className="text-title-md font-bold text-on-surface leading-tight">{data.checkInTime}</div>
@@ -33,7 +33,7 @@ export default function WOOverviewCards({ data }: { data: OverviewData }) {
       </div>
 
       {/* Jobs */}
-      <div className="p-4 border-r border-outline-variant/60 flex flex-col justify-between">
+      <div className="p-4 flex flex-col justify-between">
         <span className="text-label-sm text-on-surface-variant font-bold uppercase tracking-wider mb-2">
           Hạng mục
         </span>
@@ -44,22 +44,22 @@ export default function WOOverviewCards({ data }: { data: OverviewData }) {
       </div>
 
       {/* Parts */}
-      <div className="p-4 border-r border-outline-variant/60 flex flex-col justify-between">
+      <div className="p-4 flex flex-col justify-between">
         <span className="text-label-sm text-on-surface-variant font-bold uppercase tracking-wider mb-2">
           Phụ tùng
         </span>
-        <div className="text-title-md font-bold text-on-surface leading-tight">{data.partsIn} / {data.partsTotal}</div>
+        <div className="text-title-md font-bold font-mono tabular-nums text-on-surface leading-tight">{data.partsIn} / {data.partsTotal}</div>
         <div className="text-body-sm text-on-surface-variant mt-2">
           {data.partsTotal === 0 ? 'không dùng phụ tùng' : data.partsIn === data.partsTotal ? 'đã cấp phát / lắp ráp đủ' : 'đang chờ xuất kho'}
         </div>
       </div>
 
       {/* Quotation */}
-      <div className="p-4 border-r border-outline-variant/60 flex flex-col justify-start">
+      <div className="p-4 flex flex-col justify-start">
         <span className="text-label-sm text-on-surface-variant font-bold uppercase tracking-wider mb-2">
           Báo giá
         </span>
-        <div className="text-title-lg font-bold text-primary leading-tight mt-1 whitespace-nowrap">
+        <div className="text-title-lg font-bold font-mono tabular-nums text-primary leading-tight mt-1 whitespace-nowrap">
           {formatVND(data.quotationTotal)}
         </div>
         <div className="text-body-sm text-on-surface-variant mt-2 leading-tight">
@@ -72,7 +72,7 @@ export default function WOOverviewCards({ data }: { data: OverviewData }) {
         <span className="text-label-sm text-on-surface-variant font-bold uppercase tracking-wider mb-2">
           Thanh toán
         </span>
-        <div className="text-title-md font-bold text-on-surface leading-tight">
+        <div className="text-title-md font-bold font-mono tabular-nums text-on-surface leading-tight">
           {formatVND(data.billingCollected)} đã thu
         </div>
         <div className="text-body-sm text-on-surface-variant mt-2 leading-tight">

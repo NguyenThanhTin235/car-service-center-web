@@ -29,10 +29,12 @@ export default function ServiceCategoriesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<ServiceCategoryData | null>(null);
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(async (page = 1, signal?: AbortSignal) => {
     setLoading(true);
+    setLoadError('');
     try {
       const res = await serviceCategoryApi.getAll({ search: debouncedSearch, page, limit: 10 }, signal);
       if (!signal?.aborted) {
@@ -41,7 +43,7 @@ export default function ServiceCategoriesPage() {
       }
     } catch (e: any) { 
       if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED' || signal?.aborted) return;
-      setError(e.response?.data?.message || 'Lỗi tải dữ liệu'); 
+      setLoadError(e.response?.data?.message || 'Không thể tải nhóm dịch vụ. Vui lòng thử lại.'); 
     } finally { 
       if (!signal?.aborted) {
         setLoading(false); 
@@ -247,15 +249,56 @@ export default function ServiceCategoriesPage() {
             </thead>
             <tbody className="divide-y divide-slate-200/60">
               {loading ? (
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-3.5 px-5"><div className="h-4 w-16 bg-slate-200 rounded" /></td>
+                    <td className="py-3.5 px-5"><div className="h-4 w-48 bg-slate-200 rounded mb-1.5" /><div className="h-3 w-32 bg-slate-100 rounded" /></td>
+                    <td className="py-3.5 px-5"><div className="h-4 w-10 bg-slate-200 rounded mx-auto" /></td>
+                    <td className="py-3.5 px-5"><div className="h-5 w-20 bg-slate-200 rounded-full mx-auto" /></td>
+                    <td className="py-3.5 px-5 pr-6"><div className="h-7 w-20 bg-slate-200 rounded-lg ml-auto" /></td>
+                  </tr>
+                ))
+              ) : loadError ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-xs text-slate-600">
-                    Đang tải danh mục dịch vụ...
+                  <td colSpan={5} className="py-12 px-4 text-center">
+                    <div className="inline-flex flex-col items-center gap-2.5 max-w-md">
+                      <span className="material-symbols-outlined text-3xl text-rose-500" aria-hidden="true">error</span>
+                      <p className="text-sm font-semibold text-slate-800">{loadError}</p>
+                      <button
+                        type="button"
+                        onClick={() => load(1)}
+                        className="mt-1 px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors cursor-pointer"
+                      >
+                        Thử lại
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ) : categories.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-xs text-slate-600">
-                    Không tìm thấy danh mục phù hợp
+                  <td colSpan={5} className="py-12 px-4 text-center">
+                    <div className="inline-flex flex-col items-center gap-2.5">
+                      <span className="material-symbols-outlined text-3xl text-slate-400" aria-hidden="true">folder_off</span>
+                      <p className="text-sm font-medium text-slate-600">Không tìm thấy nhóm dịch vụ phù hợp</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {search && (
+                          <button
+                            type="button"
+                            onClick={() => setSearch('')}
+                            className="px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
+                          >
+                            Xóa bộ lọc
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={openCreate}
+                          className="px-3.5 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 cursor-pointer"
+                        >
+                          Thêm nhóm dịch vụ
+                        </button>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ) : (

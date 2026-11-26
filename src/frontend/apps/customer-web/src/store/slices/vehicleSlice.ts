@@ -35,6 +35,14 @@ const initialState: VehicleState = {
   actionError: null,
 };
 
+function getApiError(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const resp = (error as { response?: { data?: { message?: string } } }).response;
+    if (resp?.data?.message) return resp.data.message;
+  }
+  return fallback;
+}
+
 // Async Thunks
 export const fetchVehicles = createAsyncThunk(
   'vehicles/fetchVehicles',
@@ -42,8 +50,8 @@ export const fetchVehicles = createAsyncThunk(
     try {
       const { data } = await api.get('/api/vehicles');
       return data.data as Vehicle[];
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải danh sách xe.');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi tải danh sách xe.'));
     }
   }
 );
@@ -54,8 +62,8 @@ export const createVehicle = createAsyncThunk(
     try {
       const { data } = await api.post('/api/vehicles', dto);
       return data.data as Vehicle;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi thêm xe.');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi thêm xe.'));
     }
   }
 );
@@ -66,8 +74,8 @@ export const updateVehicle = createAsyncThunk(
     try {
       const { data } = await api.put(`/api/vehicles/${id}`, dto);
       return data.data as Vehicle;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi cập nhật xe.');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi cập nhật xe.'));
     }
   }
 );
@@ -78,8 +86,8 @@ export const deleteVehicle = createAsyncThunk(
     try {
       const { data } = await api.delete(`/api/vehicles/${id}`);
       return { id, deactivated: data.deactivated, message: data.message as string | undefined };
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi xóa xe.');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi xóa xe.'));
     }
   }
 );
@@ -90,8 +98,8 @@ export const restoreVehicle = createAsyncThunk(
     try {
       const { data } = await api.patch(`/api/vehicles/${id}/restore`);
       return { id, message: data.message as string | undefined };
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi kích hoạt lại xe.');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi kích hoạt lại xe.'));
     }
   }
 );

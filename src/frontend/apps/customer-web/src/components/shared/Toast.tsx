@@ -48,13 +48,21 @@ export default function Toast({ message, type = 'success', duration = 3000, onCl
   };
 
   return (
-    <div className="fixed top-20 right-4 z-50 pointer-events-none">
+    <div
+      role={type === 'error' ? 'alert' : 'status'}
+      aria-live={type === 'error' ? 'assertive' : 'polite'}
+      className="fixed top-20 right-4 z-50 pointer-events-none"
+    >
       <div
         className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border transition-all duration-300 transform ${
           visible ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
         } ${getStyle()}`}
       >
-        <span className="material-symbols-outlined" style={{ fontSize: '20px', fontVariationSettings: "'FILL' 1" }}>
+        <span
+          className="material-symbols-outlined"
+          aria-hidden="true"
+          style={{ fontSize: '20px', fontVariationSettings: "'FILL' 1" }}
+        >
           {getIcon()}
         </span>
         <span className="text-sm font-medium">{message}</span>

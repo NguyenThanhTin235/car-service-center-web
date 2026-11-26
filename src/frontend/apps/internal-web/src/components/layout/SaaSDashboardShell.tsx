@@ -685,6 +685,12 @@ export default function SaaSDashboardShell({
 
   return (
     <div className="min-h-screen bg-[#f6f8fc] text-slate-900 font-[Be_Vietnam_Pro,sans-serif] flex flex-col antialiased overflow-x-clip">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:bg-[#0866ff] focus:text-white focus:rounded-lg focus:text-sm focus:font-semibold focus:shadow-lg"
+      >
+        Chuyển đến nội dung chính
+      </a>
       {/* DESKTOP SIDEBAR (lg >= 1024px) */}
       <aside
         data-testid="saas-sidebar"
@@ -740,11 +746,11 @@ export default function SaaSDashboardShell({
               aria-label="Mở menu điều hướng"
               className="lg:hidden w-11 h-11 rounded-xl bg-white border border-slate-200/90 text-slate-700 hover:text-[#0866ff] flex items-center justify-center shadow-2xs shrink-0 cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[22px]">menu</span>
+              <span className="material-symbols-outlined text-[22px]" aria-hidden="true">menu</span>
             </button>
 
             <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-700 min-w-0">
-              <span className="material-symbols-outlined text-[20px] text-[#0866ff] shrink-0">
+              <span className="material-symbols-outlined text-[20px] text-[#0866ff] shrink-0" aria-hidden="true">
                 {activePageMeta.icon}
               </span>
               <span className="font-semibold text-slate-900 truncate">
@@ -766,7 +772,7 @@ export default function SaaSDashboardShell({
               }
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-blue-50 text-xs font-semibold text-slate-700 hover:text-[#0050cd] transition-all cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[16px] text-[#0866ff]">
+              <span className="material-symbols-outlined text-[16px] text-[#0866ff]" aria-hidden="true">
                 {isLight ? 'dark_mode' : 'light_mode'}
               </span>
               <span className="hidden xl:inline">
@@ -802,7 +808,7 @@ export default function SaaSDashboardShell({
         </header>
 
         {/* PAGE CONTENT */}
-        <main className="flex-1 p-4 sm:p-6 max-w-[1440px] w-full mx-auto min-w-0">
+        <main id="main-content" className="flex-1 p-4 sm:p-6 max-w-[1440px] w-full mx-auto min-w-0">
           {children}
         </main>
       </div>

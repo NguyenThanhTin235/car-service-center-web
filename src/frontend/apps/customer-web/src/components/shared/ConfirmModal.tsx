@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 
 export interface ConfirmModalProps {
   isOpen: boolean;
@@ -23,16 +23,62 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  const titleId = useId();
+  const descId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCancelRef = useRef(onCancel);
+  const loadingRef = useRef(loading);
+
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+    loadingRef.current = loading;
+  }, [onCancel, loading]);
+
   useEffect(() => {
     if (!isOpen) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const rafId = requestAnimationFrame(() => {
+      if (!dialogRef.current) return;
+      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      (focusable[0] ?? dialogRef.current).focus();
+    });
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !loading) {
-        onCancel();
+      if (e.key === 'Escape' && !loadingRef.current) {
+        onCancelRef.current();
+        return;
+      }
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, loading, onCancel]);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = prevOverflow;
+      if (previousFocus && typeof previousFocus.focus === 'function') {
+        previousFocus.focus();
+      }
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -40,19 +86,24 @@ export default function ConfirmModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-labelledby="confirm-modal-title"
+      aria-labelledby={titleId}
+      aria-describedby={descId}
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
     >
       <div className="absolute inset-0 bg-inverse-surface/40 backdrop-blur-sm" onClick={loading ? undefined : onCancel} aria-hidden="true" />
-      <div className="relative bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-sm border border-surface-container-highest overflow-hidden">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="relative bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-sm border border-surface-container-highest overflow-hidden outline-none"
+      >
         <div className="p-6 text-center">
           <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${isDanger ? 'bg-status-danger-soft text-status-danger' : 'bg-accent-soft text-accent'}`}>
             <span className="material-symbols-outlined" style={{ fontSize: '28px' }} aria-hidden="true">
               {isDanger ? 'warning' : 'help'}
             </span>
           </div>
-          <h3 id="confirm-modal-title" className="font-bold text-on-surface text-lg mb-2">{title}</h3>
-          <p className="text-sm text-on-surface-variant mb-3">{message}</p>
+          <h3 id={titleId} className="font-bold text-on-surface text-lg mb-2">{title}</h3>
+          <p id={descId} className="text-sm text-on-surface-variant mb-3">{message}</p>
         </div>
         <div className="flex gap-3 px-6 pb-6">
           <button
@@ -74,7 +125,7 @@ export default function ConfirmModal({
             {loading ? (
               <div className={`w-4 h-4 border-2 border-t-transparent rounded-full animate-spin ${isDanger ? 'border-on-error' : 'border-on-primary'}`} />
             ) : (
-              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>check</span>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }} aria-hidden="true">check</span>
             )}
             {loading ? 'Đang xử lý...' : confirmText}
           </button>

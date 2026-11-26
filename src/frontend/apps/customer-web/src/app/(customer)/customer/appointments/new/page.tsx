@@ -10,6 +10,7 @@ function AppointmentRedirectContent() {
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', 'appointments');
+    params.set('openBooking', '1');
     router.replace(`/customer/profile?${params.toString()}`);
   }, [router, searchParams]);
 

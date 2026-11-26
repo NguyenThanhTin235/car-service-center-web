@@ -409,7 +409,7 @@ const InteractiveCarSVG = React.memo(function InteractiveCarSVG({
               onSelectFinding?.(isHighlighted ? '' : finding.id);
             }}
           >
-            <div className="relative group flex items-center justify-center w-8 h-8 cursor-pointer">
+            <div className="relative group flex items-center justify-center w-11 h-11 cursor-pointer">
               <div
                 className={`min-w-[20px] h-[20px] rounded-full text-white text-[11px] leading-none font-bold flex items-center justify-center shadow-md transition-all ${getMarkerColor(
                   finding.type
@@ -419,7 +419,17 @@ const InteractiveCarSVG = React.memo(function InteractiveCarSVG({
               </div>
 
               {/* Tooltip tiếng Việt hiện đại */}
-              <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 ${isHighlighted ? 'flex' : 'hidden group-hover:flex'} flex-col items-center w-max max-w-[300px] z-50 pointer-events-none drop-shadow-xl animate-in fade-in-0 zoom-in-95 duration-150`}>
+              <div
+                className={`absolute ${
+                  finding.y < 25 ? 'top-full mt-2' : 'bottom-full mb-2'
+                } ${
+                  finding.x < 25
+                    ? 'left-0'
+                    : finding.x > 75
+                      ? 'right-0'
+                      : 'left-1/2 -translate-x-1/2'
+                } ${isHighlighted ? 'flex' : 'hidden group-hover:flex'} flex-col items-center w-max max-w-[300px] z-50 pointer-events-none drop-shadow-xl`}
+              >
                 <div className="bg-white text-slate-800 rounded-lg p-2.5 border border-slate-200/90 shadow-xl flex flex-col gap-1.5 text-left w-full min-w-[210px]">
                   {/* Dòng 1: Badge số thứ tự + Badge Loại vết + Badge số lượng ảnh */}
                   <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-100">

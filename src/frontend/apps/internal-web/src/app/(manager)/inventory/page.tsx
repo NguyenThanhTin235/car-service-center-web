@@ -439,20 +439,20 @@ export default function InventoryPage() {
       </div>
 
       {/* 3. Enterprise 3-Tab Navigation Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/90 pb-1">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/90 pb-2">
         <div role="tablist" aria-label="Phân hệ kho phụ tùng" className="flex flex-wrap items-center gap-1.5 overflow-x-auto max-w-full">
           <button
             type="button"
             role="tab"
             aria-selected={activeTab === 'items'}
             onClick={() => setActiveTab('items')}
-            className={`h-10 px-4 rounded-t-xl text-xs font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            className={`min-h-[44px] lg:min-h-[40px] px-4 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
               activeTab === 'items'
-                ? 'border-[#0866ff] text-[#0866ff] bg-blue-50/50'
-                : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
+                ? 'bg-[#0866ff] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">inventory_2</span>
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">inventory_2</span>
             <span>Danh mục Tồn kho ({pagination?.totalRecords || kpiSourceItems.length})</span>
           </button>
 
@@ -461,16 +461,20 @@ export default function InventoryPage() {
             role="tab"
             aria-selected={activeTab === 'receipts'}
             onClick={() => setActiveTab('receipts')}
-            className={`h-10 px-4 rounded-t-xl text-xs font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            className={`min-h-[44px] lg:min-h-[40px] px-4 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
               activeTab === 'receipts'
-                ? 'border-[#0866ff] text-[#0866ff] bg-blue-50/50'
-                : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
+                ? 'bg-[#0866ff] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">receipt_long</span>
             <span>Sổ Phiếu Nhập Kho ({receiptsStats?.totalReceipts || receipts.length})</span>
             {receiptsStats && receiptsStats.draftCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-100 text-amber-800 border border-amber-300">
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                activeTab === 'receipts'
+                  ? 'bg-white/20 text-white border-white/30'
+                  : 'bg-amber-100 text-amber-800 border-amber-300'
+              }`}>
                 {receiptsStats.draftCount} nháp
               </span>
             )}
@@ -481,13 +485,13 @@ export default function InventoryPage() {
             role="tab"
             aria-selected={activeTab === 'suppliers'}
             onClick={() => setActiveTab('suppliers')}
-            className={`h-10 px-4 rounded-t-xl text-xs font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            className={`min-h-[44px] lg:min-h-[40px] px-4 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
               activeTab === 'suppliers'
-                ? 'border-[#0866ff] text-[#0866ff] bg-blue-50/50'
-                : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
+                ? 'bg-[#0866ff] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">local_shipping</span>
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">local_shipping</span>
             <span>Nhà cung cấp ({suppliers.length})</span>
           </button>
         </div>

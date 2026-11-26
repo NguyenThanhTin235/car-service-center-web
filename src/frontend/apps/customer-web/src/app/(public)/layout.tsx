@@ -11,9 +11,15 @@ export const metadata: Metadata = {
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col bg-canvas text-ink-primary antialiased">
+    <div className="min-h-screen flex flex-col bg-canvas text-ink-primary antialiased overflow-x-clip">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-white focus:rounded-lg focus:text-sm focus:font-semibold focus:shadow-lg"
+      >
+        Chuyển đến nội dung chính
+      </a>
       <PublicHeader />
-      <main className="flex-1 w-full">{children}</main>
+      <main id="main-content" className="flex-1 w-full">{children}</main>
       <PublicFooter />
       <CustomerAiChatWidget />
     </div>

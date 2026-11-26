@@ -1,6 +1,7 @@
 'use client';
 
 import React, { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useSelector } from 'react-redux';
 import api from '@/lib/axios';
@@ -286,15 +287,17 @@ const HeroSection = memo(function HeroSection({
               <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-surface-subtle">
                 {HERO_GARAGE_PHOTOS.map((photo, idx) => {
                   const isCurrent = idx === activePhotoIndex;
+                  const isNext = idx === (activePhotoIndex + 1) % HERO_GARAGE_PHOTOS.length;
+                  if (!isCurrent && !isNext) return null;
                   return (
-                    <img
+                    <Image
                       key={photo.src}
                       src={photo.src}
                       alt={photo.alt}
-                      loading={idx === 0 ? 'eager' : 'lazy'}
-                      decoding="async"
-                      fetchPriority={idx === 0 ? 'high' : 'auto'}
-                      className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-out ${
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 42vw"
+                      priority={idx === 0}
+                      className={`object-cover transition-opacity duration-700 ease-out ${
                         isCurrent
                           ? 'opacity-100 z-10 hero-photo-motion'
                           : 'opacity-0 z-0 pointer-events-none'
@@ -750,10 +753,10 @@ export default function HomePage() {
                           className="group svc-card-enter h-full"
                         >
                           {/* Child element animates on parent group-hover to prevent hover-boundary flicker (web-animation-design) */}
-                          <div className="relative flex flex-col justify-between h-full rounded-2xl bg-surface-elevated border border-accent/40 shadow-[0_10px_26px_-10px_rgba(0,80,205,0.16)] will-change-transform group-hover:-translate-y-1.5 group-hover:border-accent group-hover:ring-4 group-hover:ring-accent/10 group-hover:shadow-[0_20px_38px_-12px_rgba(0,80,205,0.28)] transition-[transform,border-color,box-shadow] duration-250 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 overflow-hidden">
+                          <div className="relative flex flex-col justify-between h-full rounded-2xl bg-surface-elevated border border-accent/40 shadow-[0_10px_26px_-10px_rgba(0,80,205,0.16)] group-hover:-translate-y-1.5 group-hover:border-accent group-hover:ring-4 group-hover:ring-accent/10 group-hover:shadow-[0_20px_38px_-12px_rgba(0,80,205,0.28)] transition-[transform,border-color,box-shadow] duration-250 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 overflow-hidden">
                             {/* Subtle Diagonal Light Sweep on Hover (GPU-only transform) */}
                             <div
-                              className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-0 will-change-transform group-hover:opacity-100 group-hover:translate-x-[320%] transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:hidden z-20"
+                              className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-0 group-hover:opacity-100 group-hover:translate-x-[320%] transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:hidden z-20"
                               aria-hidden="true"
                             />
 
@@ -766,7 +769,7 @@ export default function HomePage() {
                             <div className="relative z-10 p-5 sm:p-6 flex-1 flex flex-col justify-between">
                               <div>
                                 <div className="flex items-start justify-between gap-3">
-                                  <div className="w-12 h-12 rounded-2xl bg-accent text-white border border-accent flex items-center justify-center shrink-0 shadow-xs will-change-transform transition-[transform,box-shadow] duration-250 ease-[cubic-bezier(0.165,0.84,0.44,1)] group-hover:scale-110 group-hover:-rotate-3 group-hover:shadow-[0_8px_18px_-4px_rgba(0,80,205,0.45)] motion-reduce:group-hover:scale-100 motion-reduce:group-hover:rotate-0">
+                                  <div className="w-12 h-12 rounded-2xl bg-accent text-white border border-accent flex items-center justify-center shrink-0 shadow-xs transition-[transform,box-shadow] duration-250 ease-[cubic-bezier(0.165,0.84,0.44,1)] group-hover:scale-110 group-hover:-rotate-3 group-hover:shadow-[0_8px_18px_-4px_rgba(0,80,205,0.45)] motion-reduce:group-hover:scale-100 motion-reduce:group-hover:rotate-0">
                                     <span
                                       className="material-symbols-outlined text-[22px]"
                                       aria-hidden="true"
@@ -774,7 +777,7 @@ export default function HomePage() {
                                       {iconName}
                                     </span>
                                   </div>
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-accent text-white border border-accent shadow-2xs will-change-transform transition-transform duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] group-hover:scale-[1.03] motion-reduce:group-hover:scale-100">
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-accent text-white border border-accent shadow-2xs transition-transform duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] group-hover:scale-[1.03] motion-reduce:group-hover:scale-100">
                                     <span
                                       className="w-1.5 h-1.5 rounded-full bg-white shrink-0"
                                       aria-hidden="true"

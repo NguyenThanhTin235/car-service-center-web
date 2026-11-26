@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #f6f8fc;
@@ -119,7 +120,8 @@
   --font-label-md: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
   --font-headline-lg: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
   --font-headline-md: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
-  --font-code-sm: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-code-sm: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   --spacing-space-xxs: 0.125rem;
   --spacing-space-xs: 0.25rem;
@@ -153,6 +155,11 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-be-vietnam-pro), 'Be Vietnam Pro', sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .material-symbols-outlined {

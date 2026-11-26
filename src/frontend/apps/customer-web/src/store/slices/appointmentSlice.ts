@@ -35,39 +35,47 @@ const initialState: AppointmentState = {
   error: null,
 };
 
+function getApiError(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const resp = (error as { response?: { data?: { message?: string } } }).response;
+    if (resp?.data?.message) return resp.data.message;
+  }
+  return fallback;
+}
+
 // Async Thunks
 export const fetchAppointments = createAsyncThunk(
   'appointments/fetchAppointments',
-  async (filters: any = {}, { rejectWithValue }) => {
+  async (filters: Record<string, string | number | boolean | undefined> = {}, { rejectWithValue }) => {
     try {
       const { data } = await api.get('/api/appointments', { params: filters });
       return data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tải dữ liệu');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi tải dữ liệu'));
     }
   }
 );
 
 export const createAppointment = createAsyncThunk(
   'appointments/createAppointment',
-  async (appointmentData: any, { rejectWithValue }) => {
+  async (appointmentData: Record<string, unknown>, { rejectWithValue }) => {
     try {
       const { data } = await api.post('/api/appointments', appointmentData);
       return data.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi tạo lịch hẹn');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi tạo lịch hẹn'));
     }
   }
 );
 
 export const rescheduleAppointment = createAsyncThunk(
   'appointments/rescheduleAppointment',
-  async ({ id, updateData }: { id: number, updateData: any }, { rejectWithValue }) => {
+  async ({ id, updateData }: { id: number; updateData: Record<string, unknown> }, { rejectWithValue }) => {
     try {
       const { data } = await api.put(`/api/appointments/${id}`, updateData);
       return data.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Lỗi khi dời lịch hẹn');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Lỗi khi dời lịch hẹn'));
     }
   }
 );
@@ -78,8 +86,8 @@ export const cancelAppointment = createAsyncThunk(
     try {
       const response = await api.patch(`/api/appointments/${id}/cancel`, { cancel_reason: reason });
       return response.data.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Có lỗi xảy ra khi hủy lịch hẹn');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiError(error, 'Có lỗi xảy ra khi hủy lịch hẹn'));
     }
   }
 );

@@ -247,8 +247,16 @@ export default function CustomerBookingModal({
             ).unwrap();
             chosenVehicleId = newVehRes.id;
             dispatch(fetchVehicles());
-          } catch {
-            chosenVehicleId = vehicles[0]?.id;
+          } catch (vehErr: any) {
+            onToast({
+              message:
+                typeof vehErr === 'string'
+                  ? vehErr
+                  : 'Không thể tạo thông tin xe mới. Vui lòng kiểm tra biển số và thử lại.',
+              type: 'error',
+            });
+            setBookingSubmitting(false);
+            return;
           }
         }
       } else if (!chosenVehicleId) {
@@ -283,10 +291,16 @@ export default function CustomerBookingModal({
         }
       }
 
+      if (!chosenVehicleId) {
+        onToast({ message: 'Vui lòng chọn xe hoặc nhập biển số xe.', type: 'error' });
+        setBookingSubmitting(false);
+        return;
+      }
+
       await dispatch(
         createAppointment({
           customer_id: customerId,
-          vehicle_id: chosenVehicleId || vehicles[0]?.id || 1,
+          vehicle_id: chosenVehicleId,
           scheduled_date: formattedDate,
           scheduled_time: bookingTime,
           notes: bookingNotes,
@@ -327,17 +341,20 @@ export default function CustomerBookingModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center self-start sm:self-center transition-colors"
+            aria-label="Đóng cửa sổ đặt lịch"
+            className="min-w-[44px] min-h-[44px] rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center self-start sm:self-center transition-colors cursor-pointer"
           >
-            <span className="material-symbols-outlined text-lg">close</span>
+            <span className="material-symbols-outlined text-lg" aria-hidden="true">close</span>
           </button>
         </div>
 
         {/* Stepper Progress Bar */}
         <div className="flex items-center justify-center gap-3 py-1">
-          <div
+          <button
+            type="button"
             onClick={() => setBookingStep(1)}
-            className={`flex items-center gap-2 cursor-pointer ${bookingStep === 1 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'}`}
+            aria-current={bookingStep === 1 ? 'step' : undefined}
+            className={`min-h-[44px] px-2 flex items-center gap-2 cursor-pointer rounded-lg ${bookingStep === 1 ? 'text-blue-600 font-bold' : 'text-slate-500 font-medium hover:text-slate-700'}`}
           >
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${bookingStep === 1 ? 'bg-blue-600 text-white font-bold' : 'bg-blue-100 text-blue-700 font-semibold'}`}
@@ -345,13 +362,15 @@ export default function CustomerBookingModal({
               1
             </div>
             <span className="text-xs">1. Chọn xe</span>
-          </div>
+          </button>
 
-          <div className="w-12 h-0.5 bg-blue-500/40" />
+          <div className="w-12 h-0.5 bg-blue-500/40" aria-hidden="true" />
 
-          <div
+          <button
+            type="button"
             onClick={() => setBookingStep(2)}
-            className={`flex items-center gap-2 cursor-pointer ${bookingStep === 2 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'}`}
+            aria-current={bookingStep === 2 ? 'step' : undefined}
+            className={`min-h-[44px] px-2 flex items-center gap-2 cursor-pointer rounded-lg ${bookingStep === 2 ? 'text-blue-600 font-bold' : 'text-slate-500 font-medium hover:text-slate-700'}`}
           >
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
@@ -359,27 +378,29 @@ export default function CustomerBookingModal({
                   ? 'bg-blue-600 text-white font-bold'
                   : bookingStep > 2
                     ? 'bg-blue-100 text-blue-700 font-semibold'
-                    : 'bg-slate-100 text-slate-500'
+                    : 'bg-slate-100 text-slate-600'
               }`}
             >
               2
             </div>
             <span className="text-xs">2. Dịch vụ & Mô tả</span>
-          </div>
+          </button>
 
-          <div className="w-12 h-0.5 bg-blue-500/40" />
+          <div className="w-12 h-0.5 bg-blue-500/40" aria-hidden="true" />
 
-          <div
+          <button
+            type="button"
             onClick={() => setBookingStep(3)}
-            className={`flex items-center gap-2 cursor-pointer ${bookingStep === 3 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'}`}
+            aria-current={bookingStep === 3 ? 'step' : undefined}
+            className={`min-h-[44px] px-2 flex items-center gap-2 cursor-pointer rounded-lg ${bookingStep === 3 ? 'text-blue-600 font-bold' : 'text-slate-500 font-medium hover:text-slate-700'}`}
           >
             <div
-              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${bookingStep === 3 ? 'bg-blue-600 text-white font-bold' : 'bg-slate-100 text-slate-500'}`}
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${bookingStep === 3 ? 'bg-blue-600 text-white font-bold' : 'bg-slate-100 text-slate-600'}`}
             >
               3
             </div>
             <span className="text-xs">3. Ngày & Giờ</span>
-          </div>
+          </button>
         </div>
 
         {/* STEP 1: CHỌN XE CẦN LÀM DỊCH VỤ */}
