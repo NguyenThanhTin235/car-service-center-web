@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import toast from 'react-hot-toast';
+import StatusPill from '@/components/shared/StatusPill';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
   fetchInventoryItems,
@@ -653,22 +654,24 @@ export default function InventoryPage() {
                           </td>
                           <td className="py-3.5 px-5">
                             {item.brand ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-blue-50 text-[#0050cd] border border-blue-200/80">
-                                {item.brand.name}
-                              </span>
+                              <StatusPill label={item.brand.name} tone="primary" />
                             ) : (
                               <span className="text-slate-400 font-medium">—</span>
                             )}
                           </td>
                           <td className="py-3.5 px-5">
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${
-                                ITEM_TYPE_BADGE[item.itemType] ||
-                                'bg-slate-100 text-slate-700 border-slate-200/80'
-                              }`}
-                            >
-                              {ITEM_TYPE_LABELS[item.itemType] || item.itemType}
-                            </span>
+                            <StatusPill
+                              label={ITEM_TYPE_LABELS[item.itemType] || item.itemType}
+                              tone={
+                                item.itemType === 'PART'
+                                  ? 'primary'
+                                  : item.itemType === 'CONSUMABLE'
+                                    ? 'warning'
+                                    : item.itemType === 'CHEMICAL'
+                                      ? 'purple'
+                                      : 'sky'
+                              }
+                            />
                           </td>
                           <td className="py-3.5 px-5 text-right font-mono tabular-nums text-xs text-slate-700 font-medium">
                             {Math.round(item.averageCost).toLocaleString('vi-VN')} ₫

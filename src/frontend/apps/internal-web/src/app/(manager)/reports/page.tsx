@@ -18,12 +18,7 @@ const ServicesBarChart = dynamic(
   { ssr: false, loading: ChartLoadingSkeleton }
 );
 
-const WarrantyAnalysisBarChart = dynamic(
-  () => import('./components/ReportsCharts').then((mod) => mod.WarrantyAnalysisBarChart),
-  { ssr: false, loading: ChartLoadingSkeleton }
-);
-
-type ReportType = 'revenue' | 'services' | 'inventory' | 'warranty';
+type ReportType = 'revenue' | 'services' | 'inventory';
 
 interface RevenueRow {
   date: string;
@@ -45,61 +40,10 @@ interface InventoryRow {
   deficit: number;
 }
 
-interface WarrantyData {
-  period: { start: string; end: string };
-  operationalMetrics: {
-    totalServedCount: number;
-    warrantyCasesCount: number;
-    warrantyRate: number;
-  };
-  costMetrics: {
-    totalWarrantyMwaCost: number;
-    totalPartsQuantity: number;
-  };
-  topFaultyParts: Array<{
-    itemId: number;
-    sku: string;
-    partName: string;
-    categoryName: string;
-    faultyCount: number;
-    totalWarrantyMwaCost: number;
-    defectRate: number;
-    supplier: {
-      supplierId: number | null;
-      supplierName: string;
-      supplierPhone: string | null;
-      supplierEmail: string | null;
-      supplierContact: string | null;
-    };
-  }>;
-  technicalAnalysis: {
-    byTechnician: Array<{
-      technicianId: number;
-      technicianName: string;
-      position?: string;
-      warrantyCasesCount: number;
-      workOrders: Array<{
-        warrantyWoId: number;
-        warrantyWoNumber: string;
-        parentWoId?: number | null;
-        parentWoNumber?: string | null;
-        licensePlate?: string;
-        createdAt: string;
-      }>;
-    }>;
-    byCategory: Array<{
-      categoryId: number;
-      categoryName: string;
-      warrantyCasesCount: number;
-      totalWarrantyMwaCost: number;
-    }>;
-  };
-}
-
 interface ReportData {
   type: ReportType;
   period: { start: string; end: string } | null;
-  data: RevenueRow[] | ServiceRow[] | InventoryRow[] | WarrantyData;
+  data: RevenueRow[] | ServiceRow[] | InventoryRow[];
   summary: {
     totalRevenue?: number;
     totalInvoices?: number;
@@ -389,220 +333,6 @@ function InventorySection({
   );
 }
 
-// ============ Section 4: WARRANTY REPORT (UC-87) ============
-function WarrantySection({ data }: { data: WarrantyData }) {
-  const [activeAnalysis, setActiveAnalysis] = useState<'TECH' | 'CAT'>('TECH');
-
-  const handleExportCsv = () => {
-    const headers = [
-      'Mã SKU',
-      'Tên phụ tùng',
-      'Nhóm',
-      'Số lượng lỗi',
-      'Tỷ lệ lỗi (%)',
-      'Chi phí vốn MWA (VNĐ)',
-      'Nhà cung cấp',
-      'SĐT NCC',
-      'Người liên hệ',
-    ];
-
-    const rows = data.topFaultyParts.map((p) => [
-      `"${p.sku}"`,
-      `"${p.partName}"`,
-      `"${p.categoryName}"`,
-      p.faultyCount,
-      `${p.defectRate}%`,
-      p.totalWarrantyMwaCost,
-      `"${p.supplier.supplierName}"`,
-      `"${p.supplier.supplierPhone || ''}"`,
-      `"${p.supplier.supplierContact || ''}"`,
-    ]);
-
-    const csvBody = '\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const blob = new Blob([csvBody], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Bao_Cao_Bao_Hanh_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* 4 Core KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <SummaryCard
-          label="Lượt xe tiếp nhận bảo hành"
-          value={`${data.operationalMetrics.warrantyCasesCount} xe`}
-          icon="verified_user"
-          variant="amber"
-          subtext={`Trên tổng ${data.operationalMetrics.totalServedCount} lượt phục vụ`}
-        />
-        <SummaryCard
-          label="Tỷ lệ xe bảo hành"
-          value={`${data.operationalMetrics.warrantyRate}%`}
-          icon="pie_chart"
-          variant="blue"
-          subtext="Tỷ lệ lỗi quay lại xưởng"
-        />
-        <SummaryCard
-          label="Chi phí vốn thiệt hại (MWA)"
-          value={`${fmtCurrency(data.costMetrics.totalWarrantyMwaCost)} ₫`}
-          icon="account_balance_wallet"
-          variant="emerald"
-          subtext="Giá vốn xuất kho phụ tùng"
-        />
-        <SummaryCard
-          label="Linh kiện bảo hành đã xuất"
-          value={`${data.costMetrics.totalPartsQuantity} món`}
-          icon="inventory_2"
-          variant="default"
-          subtext="Linh kiện thay thế miễn phí"
-        />
-      </div>
-
-      {/* Chart: Technical Analysis by Technician or Category */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">
-              Phân tích lỗi kỹ thuật lặp lại (Chất lượng xưởng)
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Thống kê sự cố bảo hành theo thợ thi công phiếu gốc hoặc nhóm dịch vụ
-            </p>
-          </div>
-
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl">
-            <button
-              onClick={() => setActiveAnalysis('TECH')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                activeAnalysis === 'TECH'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Theo Kỹ thuật viên ({data.technicalAnalysis.byTechnician.length})
-            </button>
-            <button
-              onClick={() => setActiveAnalysis('CAT')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                activeAnalysis === 'CAT'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Theo Nhóm dịch vụ ({data.technicalAnalysis.byCategory.length})
-            </button>
-          </div>
-        </div>
-
-        {activeAnalysis === 'TECH' ? (
-          data.technicalAnalysis.byTechnician.length === 0 ? (
-            <EmptyState message="Chưa ghi nhận sự cố lặp lại theo kỹ thuật viên trong kỳ." />
-          ) : (
-            <WarrantyAnalysisBarChart
-              data={data.technicalAnalysis.byTechnician}
-              dataKey="technicianName"
-              fill="#e11d48"
-            />
-          )
-        ) : data.technicalAnalysis.byCategory.length === 0 ? (
-          <EmptyState message="Chưa ghi nhận sự cố theo nhóm dịch vụ trong kỳ." />
-        ) : (
-          <WarrantyAnalysisBarChart
-            data={data.technicalAnalysis.byCategory}
-            dataKey="categoryName"
-            fill="#f59e0b"
-          />
-        )}
-      </div>
-
-      {/* Table: Top Faulty Parts & Suppliers for Reimbursement */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
-        <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">
-              Danh sách phụ tùng hư hỏng nhiều nhất & Nhà cung cấp bồi hoàn
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Thông tin liên hệ NCC để xưởng thực hiện thủ tục yêu cầu bồi hoàn phụ tùng lỗi
-            </p>
-          </div>
-
-          <button
-            onClick={handleExportCsv}
-            disabled={data.topFaultyParts.length === 0}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer self-start sm:self-auto"
-          >
-            <span className="material-symbols-outlined text-[17px]">download</span>
-            <span>Xuất file CSV báo cáo</span>
-          </button>
-        </div>
-
-        {data.topFaultyParts.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 text-xs">
-            Chưa phát sinh phụ tùng bảo hành xuất kho trong khoảng thời gian này.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700 min-w-[800px]">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
-                <tr>
-                  <th className="py-3 px-4">Mã SKU</th>
-                  <th className="py-3 px-4">Tên linh kiện</th>
-                  <th className="py-3 px-4">Nhóm</th>
-                  <th className="py-3 px-4">Số lượng hỏng</th>
-                  <th className="py-3 px-4">Tỷ lệ lỗi</th>
-                  <th className="py-3 px-4">Giá vốn MWA</th>
-                  <th className="py-3 px-4">Nhà cung cấp bồi hoàn</th>
-                  <th className="py-3 px-4">Liên hệ NCC</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {data.topFaultyParts.map((part) => (
-                  <tr key={part.itemId} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{part.sku}</td>
-                    <td className="py-3.5 px-4 font-bold text-slate-900">{part.partName}</td>
-                    <td className="py-3.5 px-4 text-slate-500">{part.categoryName}</td>
-                    <td className="py-3.5 px-4">
-                      <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-bold font-mono">
-                        {part.faultyCount} cái
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 font-mono font-semibold text-slate-700">
-                      {part.defectRate}%
-                    </td>
-                    <td className="py-3.5 px-4 font-mono font-bold text-emerald-700">
-                      {fmtCurrency(part.totalWarrantyMwaCost)} ₫
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <strong className="text-slate-900 block font-semibold">
-                        {part.supplier.supplierName}
-                      </strong>
-                      {part.supplier.supplierContact && (
-                        <span className="text-[11px] text-slate-500">
-                          LH: {part.supplier.supplierContact}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
-                      {part.supplier.supplierPhone || part.supplier.supplierEmail || 'Chưa cập nhật'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ============ Main Report Component ============
 export default function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType>('revenue');
@@ -626,32 +356,18 @@ export default function ReportsPage() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      if (reportType === 'warranty') {
-        const res = await api.get('/api/reports/warranty', {
-          params: { startDate, endDate },
-          signal: controller.signal,
-        });
-        if (controller.signal.aborted) return;
-        setReportData({
-          type: 'warranty',
-          period: res.data.data.period,
-          data: res.data.data,
-          summary: {},
-        });
-      } else {
-        const params: Record<string, string> = { type: reportType };
-        if (reportType !== 'inventory') {
-          params.start = startDate;
-          params.end = endDate;
-        }
-        const res = await api.get('/api/reports/operational', {
-          params,
-          signal: controller.signal,
-        });
-        if (controller.signal.aborted) return;
-        if (res.data?.success) {
-          setReportData(res.data.data);
-        }
+      const params: Record<string, string> = { type: reportType };
+      if (reportType !== 'inventory') {
+        params.start = startDate;
+        params.end = endDate;
+      }
+      const res = await api.get('/api/reports/operational', {
+        params,
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+      if (res.data?.success) {
+        setReportData(res.data.data);
       }
     } catch (err: any) {
       if (controller.signal.aborted || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') {
@@ -680,16 +396,6 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
-          Báo cáo quản trị & Vận hành
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Theo dõi doanh thu, dịch vụ, kho phụ tùng và phân tích chất lượng bảo hành xưởng
-        </p>
-      </div>
-
       {/* Control Toolbar */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs flex flex-col xl:flex-row xl:items-center justify-between gap-3.5">
         <div className="flex flex-wrap items-center gap-2">
@@ -710,12 +416,6 @@ export default function ReportsPage() {
             label="Tồn kho phụ tùng"
             icon="inventory_2"
             onClick={() => handleTypeChange('inventory')}
-          />
-          <TypeBtn
-            active={reportType === 'warranty'}
-            label="Báo cáo Bảo hành"
-            icon="verified_user"
-            onClick={() => handleTypeChange('warranty')}
           />
         </div>
 
@@ -807,9 +507,6 @@ export default function ReportsPage() {
               data={reportData.data as InventoryRow[]}
               summary={reportData.summary}
             />
-          )}
-          {reportData.type === 'warranty' && (
-            <WarrantySection data={reportData.data as WarrantyData} />
           )}
         </>
       )}

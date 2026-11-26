@@ -5,6 +5,7 @@ import { catalogApi, CatalogData } from '@/lib/api/catalogs';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import Modal from '@/components/shared/Modal';
 import TablePagination from '@/components/shared/TablePagination';
+import StatusPill from '@/components/shared/StatusPill';
 import toast from 'react-hot-toast';
 import { validateName, validateRequired, validateInteger } from '@/lib/utils/validators';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -468,27 +469,25 @@ export default function CatalogsPage() {
                       )}
                     </td>
                     <td className="py-3.5 px-5">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold ${
-                          TYPE_COLOR[c.catalogType] || ''
-                        }`}
-                      >
-                        {CATALOG_TYPES[c.catalogType] || c.catalogType}
-                      </span>
+                      <StatusPill
+                        label={CATALOG_TYPES[c.catalogType] || c.catalogType}
+                        tone={
+                          c.catalogType === 'CANCEL_REASON'
+                            ? 'danger'
+                            : c.catalogType === 'ADJUST_REASON'
+                              ? 'warning'
+                              : 'primary'
+                        }
+                      />
                     </td>
                     <td className="py-3.5 px-5 font-mono tabular-nums text-xs font-semibold text-slate-600">
                       {c.sortOrder}
                     </td>
                     <td className="py-3.5 px-5 text-center">
-                      <span
-                        className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                          c.isActive
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                            : 'bg-rose-50 text-rose-700 border-rose-200/80'
-                        }`}
-                      >
-                        {c.isActive ? 'Hoạt động' : 'Vô hiệu'}
-                      </span>
+                      <StatusPill
+                        label={c.isActive ? 'Hoạt động' : 'Vô hiệu'}
+                        tone={c.isActive ? 'success' : 'danger'}
+                      />
                     </td>
                     <td className="py-3.5 px-5 pr-6">
                       <div className="flex items-center justify-end gap-2">

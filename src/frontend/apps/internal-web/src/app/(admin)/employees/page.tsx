@@ -8,6 +8,7 @@ import ConfirmModal from '@/components/shared/ConfirmModal';
 import Modal from '@/components/shared/Modal';
 import TablePagination from '@/components/shared/TablePagination';
 import ComboBox from '@/components/shared/ComboBox';
+import StatusPill from '@/components/shared/StatusPill';
 import toast from 'react-hot-toast';
 import { validateName, validateRequired } from '@/lib/utils/validators';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -501,20 +502,10 @@ export default function EmployeesPage() {
                           <span className="text-sm font-semibold text-slate-900 leading-tight">
                             {emp.fullName}
                           </span>
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${
-                              emp.isActive
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                                : 'bg-rose-50 text-rose-600 border-rose-200/80'
-                            }`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                emp.isActive ? 'bg-emerald-500' : 'bg-rose-500'
-                              }`}
-                            />
-                            {emp.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
-                          </span>
+                          <StatusPill
+                            label={emp.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+                            tone={emp.isActive ? 'success' : 'danger'}
+                          />
                         </div>
                       </div>
                     </td>

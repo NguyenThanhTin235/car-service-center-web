@@ -421,9 +421,9 @@ export default function WorkOrdersPage() {
                       {/* Status */}
                       <td className="py-3.5 px-2 lg:px-3 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold ${statusConfig.bg} ${statusConfig.text}`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap ${statusConfig.bg} ${statusConfig.text}`}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusConfig.dot}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusConfig.dot}`} aria-hidden="true" />
                           <span>{statusConfig.label}</span>
                         </span>
                       </td>

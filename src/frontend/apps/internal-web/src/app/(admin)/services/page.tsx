@@ -5,6 +5,7 @@ import { serviceTemplateApi, ServiceTemplateData, CategoryData } from '@/lib/api
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import Modal from '@/components/shared/Modal';
 import TablePagination from '@/components/shared/TablePagination';
+import StatusPill from '@/components/shared/StatusPill';
 import toast from 'react-hot-toast';
 import { validateName, validateRequired, validatePrice } from '@/lib/utils/validators';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -438,19 +439,16 @@ export default function ServicesPage() {
                     <td className="py-3.5 px-5">
                       <div className="text-sm font-semibold text-slate-900">{t.name}</div>
                       <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                            t.isActive
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                              : 'bg-rose-50 text-rose-700 border-rose-200/80'
-                          }`}
-                        >
-                          {t.isActive ? 'Đang cung cấp' : 'Ngừng cung cấp'}
-                        </span>
+                        <StatusPill
+                          label={t.isActive ? 'Đang cung cấp' : 'Ngừng cung cấp'}
+                          tone={t.isActive ? 'success' : 'danger'}
+                        />
                         {(t.warrantyMonths ?? 0) > 0 && (
-                          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-blue-50 text-blue-700 border-blue-200/80 font-mono tabular-nums">
-                            BH {t.warrantyMonths} tháng
-                          </span>
+                          <StatusPill
+                            label={`BH ${t.warrantyMonths} tháng`}
+                            tone="primary"
+                            className="font-mono tabular-nums"
+                          />
                         )}
                       </div>
                       {t.description && (
@@ -460,18 +458,19 @@ export default function ServicesPage() {
                       )}
                     </td>
                     <td className="py-3.5 px-5">
-                      <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 border border-slate-200/80 text-xs font-medium text-slate-700">
-                        {t.category.name}
-                      </span>
+                      <StatusPill label={t.category.name} tone="neutral" />
                     </td>
                     <td className="py-3.5 px-5">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold ${
-                          PRICING_COLORS[t.pricingType] || ''
-                        }`}
-                      >
-                        {PRICING_TYPE_LABELS[t.pricingType] || t.pricingType}
-                      </span>
+                      <StatusPill
+                        label={PRICING_TYPE_LABELS[t.pricingType] || t.pricingType}
+                        tone={
+                          t.pricingType === 'FIXED'
+                            ? 'primary'
+                            : t.pricingType === 'VEHICLE_SIZE'
+                              ? 'purple'
+                              : 'warning'
+                        }
+                      />
                     </td>
                     <td className="py-3.5 px-5 font-mono tabular-nums text-xs font-bold text-slate-900">
                       {t.pricingType === 'FIXED' && t.fixedPrice
