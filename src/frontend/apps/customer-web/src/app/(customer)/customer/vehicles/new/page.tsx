@@ -22,15 +22,21 @@ const VEHICLE_SIZES = [
   },
   {
     value: 'LARGE',
-    label: 'Cỡ lớn (Hạng D - SUV)',
-    desc: 'CUV/SUV cỡ trung & lớn: CX-5, CR-V, Santa Fe, Camry...',
+    label: 'Cỡ lớn (Hạng D - Crossover)',
+    desc: 'Sedan hạng D, Crossover 5 chỗ: Camry, Accord, CX-5, CR-V...',
     icon: 'airport_shuttle',
   },
   {
-    value: 'XL',
-    label: 'Rất lớn (MPV / Bán tải)',
-    desc: 'Bán tải, MPV gia đình: Ranger, Carnival, Everest...',
-    icon: 'rv_hookup',
+    value: 'SUV',
+    label: 'SUV (7 chỗ / Gầm cao)',
+    desc: 'SUV 7 chỗ & MPV lớn: Santa Fe, Everest, Fortuner, Carnival...',
+    icon: 'directions_car',
+  },
+  {
+    value: 'TRUCK',
+    label: 'Bán tải / Xe tải nhẹ',
+    desc: 'Bán tải & xe thương mại: Ranger, Hilux, Triton, Transit...',
+    icon: 'local_shipping',
   },
 ] as const;
 
@@ -48,7 +54,7 @@ export default function NewVehiclePage() {
     model: '',
     year: '',
     color: '',
-    vehicleSize: 'MEDIUM' as 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL',
+    vehicleSize: 'MEDIUM' as 'SMALL' | 'MEDIUM' | 'LARGE' | 'SUV' | 'TRUCK',
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});

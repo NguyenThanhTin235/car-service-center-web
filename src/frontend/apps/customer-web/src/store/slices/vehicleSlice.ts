@@ -8,7 +8,7 @@ export interface Vehicle {
   model: string;
   year: number | null;
   color: string | null;
-  vehicleSize: 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL' | null;
+  vehicleSize: 'SMALL' | 'MEDIUM' | 'LARGE' | 'SUV' | 'TRUCK' | 'XL' | null;
   isActive: boolean;
   hasTransactions?: boolean;
   activeWorkOrder?: {

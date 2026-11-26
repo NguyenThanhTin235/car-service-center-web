@@ -532,12 +532,16 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
             </thead>
             <tbody className="divide-y divide-surface-container-highest text-xs">
               {loading && invoices.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-on-surface-variant">
-                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                    Đang tải danh sách hóa đơn...
-                  </td>
-                </tr>
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-3.5 px-4"><div className="h-4 w-28 bg-slate-200 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-20 bg-slate-200 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-44 bg-slate-200 rounded mb-1.5" /><div className="h-3 w-28 bg-slate-100 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-24 bg-slate-200 rounded ml-auto" /></td>
+                    <td className="py-3.5 px-4"><div className="h-5 w-24 bg-slate-200 rounded-full mx-auto" /></td>
+                    <td className="py-3.5 px-4"><div className="h-7 w-20 bg-slate-200 rounded-lg mx-auto" /></td>
+                  </tr>
+                ))
               ) : filteredInvoices.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-on-surface-variant">
@@ -716,7 +720,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
             </div>
           )}
           <div className="hidden md:flex items-center gap-1">
-            <span className="text-[11px] text-outline">Hóa đơn điện tử khởi tạo từ hệ thống Car Service Center</span>
+            <span className="text-[11px] text-outline">Hóa đơn điện tử khởi tạo từ hệ thống AutoCare Pro</span>
           </div>        </div>
 
       </section>

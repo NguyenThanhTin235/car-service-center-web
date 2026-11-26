@@ -97,7 +97,7 @@ export default function CustomerBookingModal({
   );
   const [customPlateInput, setCustomPlateInput] = useState('');
   const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>(
-    initialServiceIds && initialServiceIds.length > 0 ? initialServiceIds : [1, 2]
+    initialServiceIds && initialServiceIds.length > 0 ? initialServiceIds : []
   );
   const [bookingNotes, setBookingNotes] = useState(initialNotes || '');
   const [bookingDate, setBookingDate] = useState<Date>(initialDate);
@@ -247,7 +247,7 @@ export default function CustomerBookingModal({
             ).unwrap();
             chosenVehicleId = newVehRes.id;
             dispatch(fetchVehicles());
-          } catch (vehErr: any) {
+          } catch (vehErr: unknown) {
             onToast({
               message:
                 typeof vehErr === 'string'
@@ -924,7 +924,18 @@ export default function CustomerBookingModal({
                     </span>
                   </div>
                   <p className="text-slate-700 mt-0.5">
-                    {customPlateInput || `${selectedVehicleObj?.make || 'Toyota'} ${selectedVehicleObj?.model || 'Vios'} (${selectedVehicleObj?.licensePlate || '51G-123.45'})`} • {selectedServiceIds.length} dịch vụ chọn • <strong className="text-blue-700">{bookingTime} - Ngày {bookingDate.getDate()}/{bookingDate.getMonth() + 1}/{bookingDate.getFullYear()}</strong> • Cố vấn dự kiến: <strong>KTV Trần Văn Nam</strong>
+                    {customPlateInput.trim() ||
+                      (selectedVehicleObj
+                        ? `${selectedVehicleObj.make} ${selectedVehicleObj.model} (${selectedVehicleObj.licensePlate})`
+                        : 'Chưa chọn xe')}{' '}
+                    •{' '}
+                    {isWarranty
+                      ? `${selectedWarrantyItemIds.length} hạng mục bảo hành`
+                      : `${selectedServiceIds.length} dịch vụ chọn`}{' '}
+                    •{' '}
+                    <strong className="text-blue-700 font-mono tabular-nums">
+                      {bookingTime} - Ngày {bookingDate.getDate()}/{bookingDate.getMonth() + 1}/{bookingDate.getFullYear()}
+                    </strong>
                   </p>
                 </div>
               </div>

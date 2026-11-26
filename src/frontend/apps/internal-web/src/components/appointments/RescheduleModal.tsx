@@ -65,25 +65,35 @@ export default function RescheduleModal({ appointment, onClose }: RescheduleModa
 
   return (
     <>
-      <div className="fixed inset-0 bg-on-surface/40 z-50 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-surface-container-lowest w-full max-w-sm rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
-          <div className="px-5 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-bright">
+      <div className="fixed inset-0 bg-on-surface/40 z-50 backdrop-blur-sm sa-modal-backdrop" onClick={onClose} aria-hidden="true"></div>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Dời lịch hẹn #${appointment.id}`}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      >
+        <div className="bg-surface-container-lowest w-full max-w-sm max-h-[90dvh] rounded-xl shadow-2xl overflow-hidden flex flex-col sa-modal-panel">
+          <div className="px-5 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-bright shrink-0">
             <h2 className="text-title-md font-title-md font-bold text-on-surface">Dời lịch hẹn #{appointment.id}</h2>
-            <button onClick={onClose} className="text-secondary hover:text-on-surface p-1 rounded-full hover:bg-surface-container transition-colors">
-              <span className="material-symbols-outlined text-xl" data-icon="close">close</span>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Đóng"
+              className="min-w-[44px] min-h-[44px] lg:min-w-[36px] lg:min-h-[36px] flex items-center justify-center text-secondary hover:text-on-surface rounded-full hover:bg-surface-container transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xl" data-icon="close" aria-hidden="true">close</span>
             </button>
           </div>
           
-          <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4 overflow-y-auto flex-1">
             {error && (
               <div className="p-3 rounded-lg bg-error-container text-on-error-container text-body-sm flex items-center gap-2">
-                <span className="material-symbols-outlined text-base" data-icon="error">error</span>
+                <span className="material-symbols-outlined text-base" data-icon="error" aria-hidden="true">error</span>
                 <span>{error}</span>
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-label-md font-label-md font-semibold text-on-surface">Ngày mới <span className="text-error">*</span></label>
                 <input 

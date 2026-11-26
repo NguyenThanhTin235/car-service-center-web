@@ -83,14 +83,14 @@ export default function NotificationDetailModal({
         aria-hidden="true"
       />
 
-      <div className="relative bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-lg border border-surface-container-highest overflow-hidden">
+      <div className="relative bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-lg max-h-[90dvh] flex flex-col border border-surface-container-highest overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-surface-container-high flex items-center justify-between gap-3">
+        <div className="px-6 py-4 border-b border-surface-container-high flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${bgClass} ${textClass}`}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px' }} aria-hidden="true">
                 {icon}
               </span>
             </div>
@@ -106,16 +106,16 @@ export default function NotificationDetailModal({
             onClick={onClose}
             disabled={deleting}
             aria-label="Đóng"
-            className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors disabled:opacity-50"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors disabled:opacity-50 cursor-pointer"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '20px' }} aria-hidden="true">
               close
             </span>
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
           {/* Status & Timestamp */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span

@@ -642,6 +642,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                         type="button"
                         onClick={() => {
                           setCsatSubmitted(true);
+                          setToastType('success');
                           setToastMsg('Cảm ơn Quý khách đã gửi đánh giá trải nghiệm dịch vụ!');
                         }}
                         className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap"
@@ -1164,11 +1165,11 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
               <div className="pt-4 mt-2">
                 <a
                   className="w-full inline-flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 min-h-[44px] py-2.5 px-3 rounded-xl bg-surface-container-lowest hover:bg-surface-container-low text-on-surface border border-surface-container-highest text-xs font-semibold transition-all shadow-2xs hover:border-primary/40 group text-center"
-                  href="tel:19008888"
+                  href="tel:19006868"
                 >
-                  <span className="material-symbols-outlined text-[18px] text-primary group-hover:scale-110 transition-transform shrink-0">headset_mic</span>
+                  <span className="material-symbols-outlined text-[18px] text-primary group-hover:scale-110 transition-transform shrink-0" aria-hidden="true">headset_mic</span>
                   <span>Tổng đài hỗ trợ kỹ thuật xưởng:</span>
-                  <strong className="text-primary font-mono tabular-nums whitespace-nowrap">1900 8888</strong>
+                  <strong className="text-primary font-mono tabular-nums whitespace-nowrap">1900 6868</strong>
                 </a>
               </div>
             </div>
@@ -1341,11 +1342,11 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                   </a>
                 ) : (
                   <a
-                    className="sm:ml-auto inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3.5 py-2 bg-primary text-white hover:bg-accent-hover rounded-xl text-xs font-semibold transition-colors active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-                    href="tel:19008888"
+                    className="sm:ml-auto inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3.5 py-2 bg-primary text-white hover:bg-accent-hover rounded-xl text-xs font-semibold transition-colors active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                    href="tel:19006868"
                   >
-                    <span className="material-symbols-outlined text-[16px] shrink-0">phone_in_talk</span>
-                    <span>Hotline: <span className="font-mono tabular-nums">1900 8888</span></span>
+                    <span className="material-symbols-outlined text-[16px] shrink-0" aria-hidden="true">phone_in_talk</span>
+                    <span>Hotline: <span className="font-mono tabular-nums">1900 6868</span></span>
                   </a>
                 )}
               </div>
@@ -1366,6 +1367,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
               vehiclePlate={activeOrder.vehicle.licensePlate}
               vehicleModel={`${activeOrder.vehicle.make} ${activeOrder.vehicle.model}`}
               onActionSuccess={(msg) => {
+                setToastType('success');
                 setToastMsg(msg);
                 loadData(true);
               }}
@@ -1409,6 +1411,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                 vehicleName: `${activeOrder.vehicle.make} ${activeOrder.vehicle.model}`,
               }}
               onSuccess={() => {
+                setToastType('success');
                 setToastMsg('Thanh toán thành công! Trạng thái xe đã chuyển sang Sẵn sàng bàn giao.');
                 loadData(true);
                 setTimeout(() => {
