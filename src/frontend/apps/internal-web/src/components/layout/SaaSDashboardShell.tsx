@@ -1,13 +1,23 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAppSelector } from '@/store';
 import LogoutButton from '@/components/shared/LogoutButton';
-import NotificationBell from '@/components/notifications/NotificationBell';
 import UserAvatarMenu from '@/components/layout/UserAvatarMenu';
 import { resolveProfileHref } from '@/components/profile/profileUtils';
+
+const NotificationBell = dynamic(
+  () => import('@/components/notifications/NotificationBell'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-10 h-10 rounded-xl bg-slate-100/60 shrink-0" aria-hidden="true" />
+    ),
+  }
+);
 
 export interface SaaSNavChildItem {
   label: string;

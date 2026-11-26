@@ -75,6 +75,7 @@ export default function InventoryPage() {
   const {
     items,
     allItems,
+    itemsSummary,
     pagination,
     loading,
     error,
@@ -132,7 +133,6 @@ export default function InventoryPage() {
 
   useEffect(() => {
     loadData(1);
-    dispatch(fetchAllInventoryItems());
     dispatch(fetchPartCategories());
     dispatch(fetchBrands());
   }, []);
@@ -158,6 +158,7 @@ export default function InventoryPage() {
         search: search || undefined,
         itemType: itemType !== 'all' ? itemType : undefined,
         partCategoryId: categoryId !== 'all' ? parseInt(categoryId, 10) : undefined,
+        stockStatus: stockStatus !== 'all' ? stockStatus : undefined,
         page,
         limit,
       })
@@ -180,7 +181,6 @@ export default function InventoryPage() {
 
   const refreshAllInventoryData = useCallback(() => {
     loadData(currentPage);
-    dispatch(fetchAllInventoryItems());
     if (receiptsLoadedRef.current || activeTab === 'receipts') {
       loadReceipts(receiptPage);
     }
@@ -218,25 +218,33 @@ export default function InventoryPage() {
   );
 
   const lowStockCount = useMemo(
-    () => kpiSourceItems.filter((i) => i.isActive && i.onHand <= i.reorderLevel).length,
-    [kpiSourceItems]
+    () =>
+      itemsSummary
+        ? itemsSummary.lowStockCount
+        : kpiSourceItems.filter((i) => i.isActive && i.onHand <= i.reorderLevel).length,
+    [itemsSummary, kpiSourceItems]
   );
 
   const totalValue = useMemo(
-    () => kpiSourceItems.reduce((sum, item) => sum + item.onHand * item.averageCost, 0),
-    [kpiSourceItems]
+    () =>
+      itemsSummary
+        ? itemsSummary.totalValue
+        : kpiSourceItems.reduce((sum, item) => sum + item.onHand * item.averageCost, 0),
+    [itemsSummary, kpiSourceItems]
   );
 
-  // If filtering by low stock, use kpiSourceItems so all low-stock items across pages appear
+  // Use server-filtered items when itemsSummary is active; fallback to kpiSourceItems if allItems loaded
   const displayedItems = useMemo(() => {
     if (stockStatus === 'low') {
-      return kpiSourceItems.filter((item) => item.onHand <= item.reorderLevel);
+      return allItems && allItems.length > 0
+        ? allItems.filter((item) => item.onHand <= item.reorderLevel)
+        : items.filter((item) => item.onHand <= item.reorderLevel);
     }
     if (stockStatus === 'sufficient') {
       return items.filter((item) => item.onHand > item.reorderLevel);
     }
     return items;
-  }, [items, kpiSourceItems, stockStatus]);
+  }, [items, allItems, stockStatus]);
 
   const filteredSuppliers = useMemo(() => {
     const q = supplierSearch.trim().toLowerCase();
@@ -404,8 +412,20 @@ export default function InventoryPage() {
         <button
           type="button"
           onClick={() => {
+            const nextStatus = stockStatus === 'low' ? 'all' : 'low';
             setActiveTab('items');
-            setStockStatus(stockStatus === 'low' ? 'all' : 'low');
+            setStockStatus(nextStatus);
+            setCurrentPage(1);
+            dispatch(
+              fetchInventoryItems({
+                search: search || undefined,
+                itemType: itemType !== 'all' ? itemType : undefined,
+                partCategoryId: categoryId !== 'all' ? parseInt(categoryId, 10) : undefined,
+                stockStatus: nextStatus !== 'all' ? nextStatus : undefined,
+                page: 1,
+                limit,
+              })
+            );
           }}
           className={`md:col-span-3 text-left rounded-2xl p-5 border transition-all flex flex-col justify-between cursor-pointer ${
             stockStatus === 'low'
@@ -548,7 +568,21 @@ export default function InventoryPage() {
 
                 <select
                   value={stockStatus}
-                  onChange={(e) => setStockStatus(e.target.value)}
+                  onChange={(e) => {
+                    const nextStatus = e.target.value;
+                    setStockStatus(nextStatus);
+                    setCurrentPage(1);
+                    dispatch(
+                      fetchInventoryItems({
+                        search: search || undefined,
+                        itemType: itemType !== 'all' ? itemType : undefined,
+                        partCategoryId: categoryId !== 'all' ? parseInt(categoryId, 10) : undefined,
+                        stockStatus: nextStatus !== 'all' ? nextStatus : undefined,
+                        page: 1,
+                        limit,
+                      })
+                    );
+                  }}
                   className="h-9 px-3 text-xs font-semibold text-slate-700 bg-slate-50/80 border border-slate-200/80 rounded-xl focus:border-[#0866ff] outline-none cursor-pointer"
                 >
                   <option value="all">Trạng thái: Tất cả</option>

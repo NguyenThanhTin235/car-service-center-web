@@ -78,6 +78,7 @@ const authSlice = createSlice({
         if (action.payload.refreshToken) {
           localStorage.setItem('refreshToken', action.payload.refreshToken);
         }
+        document.cookie = 'csc_cust_session=1; path=/; SameSite=Lax';
       }
     },
     logout: (state) => {
@@ -89,6 +90,7 @@ const authSlice = createSlice({
         localStorage.removeItem('user');
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
+        document.cookie = 'csc_cust_session=; path=/; Max-Age=0; SameSite=Lax';
         try {
           clearUserChatSessions(window.sessionStorage);
         } catch {}

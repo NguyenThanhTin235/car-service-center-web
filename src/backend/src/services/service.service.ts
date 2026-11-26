@@ -1,5 +1,21 @@
 import { PricingType } from '@prisma/client';
 import prisma from '../utils/prisma';
+import * as redisUtil from '../utils/redis.util';
+
+const invalidateCatalogCache = () => {
+  try {
+    if (
+      Object.prototype.hasOwnProperty.call(redisUtil, 'deleteCacheByPrefix') &&
+      typeof (redisUtil as { deleteCacheByPrefix?: (p: string) => Promise<void> }).deleteCacheByPrefix === 'function'
+    ) {
+      void (redisUtil as { deleteCacheByPrefix: (p: string) => Promise<void> })
+        .deleteCacheByPrefix('catalog:')
+        .catch(() => {});
+    }
+  } catch {
+    // Ignore when mocked without deleteCacheByPrefix
+  }
+};
 
 export interface CreateServiceDto {
   categoryId: number;
@@ -153,6 +169,9 @@ export class ServiceService {
         where: { id: template.id },
         include: { category: true, size_prices: true },
       });
+    }).then((res) => {
+      invalidateCatalogCache();
+      return res;
     });
   }
 
@@ -233,6 +252,9 @@ export class ServiceService {
         where: { id },
         include: { category: true, size_prices: true },
       });
+    }).then((res) => {
+      invalidateCatalogCache();
+      return res;
     });
   }
 
@@ -247,6 +269,7 @@ export class ServiceService {
       where: { id },
       data: { is_active: !existing.is_active },
     });
+    invalidateCatalogCache();
     return { isActive: !existing.is_active };
   }
 
@@ -320,6 +343,7 @@ export class ServiceService {
       });
     });
 
+    invalidateCatalogCache();
     return {
       deleted: true,
       isDeactivated: false,

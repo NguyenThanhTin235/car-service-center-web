@@ -22,25 +22,17 @@ export const metadata: Metadata = {
 };
 
 import StoreProvider from "@/components/StoreProvider";
+import WebVitalsReporter from "@/components/shared/WebVitalsReporter";
 import { Toaster } from "react-hot-toast";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi" className={`${beVietnamPro.variable} ${jetbrainsMono.variable} h-full antialiased`}>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0..1&display=block"
-          rel="stylesheet"
-        />
-      </head>
       <body className={`${beVietnamPro.className} min-h-full flex flex-col`}>
-        <StoreProvider>{children}</StoreProvider>
+        <StoreProvider>
+          <WebVitalsReporter appName="internal-web" />
+          {children}
+        </StoreProvider>
         <Toaster 
           position="bottom-right" 
           toastOptions={{

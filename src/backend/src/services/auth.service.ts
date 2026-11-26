@@ -274,11 +274,10 @@ export class AuthService {
 
   async revokeAllUserTokens(userId: number): Promise<void> {
     const nowSec = Math.floor(Date.now() / 1000);
-    await setCache(
-      TOKEN_INVALID_BEFORE_KEY(userId),
-      String(nowSec),
-      REFRESH_TOKEN_TTL_SECONDS
-    );
+    await Promise.all([
+      setCache(TOKEN_INVALID_BEFORE_KEY(userId), String(nowSec), REFRESH_TOKEN_TTL_SECONDS),
+      deleteCache(`user_auth:${userId}`),
+    ]);
   }
 
   // ========================

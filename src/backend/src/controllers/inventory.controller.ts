@@ -104,8 +104,9 @@ export const getItems = async (req: Request, res: Response) => {
     const itemType = req.query.itemType as any;
     const partCategoryId = parseInt(req.query.partCategoryId as string) || undefined;
     const brandId = parseInt(req.query.brandId as string) || undefined;
+    const stockStatus = req.query.stockStatus as string | undefined;
 
-    const result = await inventoryService.getItems(search, itemType, page, limit, partCategoryId, brandId);
+    const result = await inventoryService.getItems(search, itemType, page, limit, partCategoryId, brandId, stockStatus);
     res.status(200).json({ success: true, data: result });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });

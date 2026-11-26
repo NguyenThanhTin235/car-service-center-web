@@ -1,10 +1,24 @@
 import Redis from 'ioredis';
 
-// In-memory fallback cache when Redis is disconnected or unavailable
+// In-memory fallback cache when Redis is disconnected or unavailable (bounded FIFO)
+const MAX_MEMORY_CACHE_ENTRIES = 5000;
 const memoryCache = new Map<string, { value: string; expiresAt: number }>();
 
 const isMemoryExpired = (entry: { value: string; expiresAt: number }): boolean => {
   return Date.now() > entry.expiresAt;
+};
+
+const setMemoryEntry = (key: string, value: string, ttlSeconds: number) => {
+  if (memoryCache.has(key)) {
+    memoryCache.delete(key);
+  } else if (memoryCache.size >= MAX_MEMORY_CACHE_ENTRIES) {
+    const oldestKey = memoryCache.keys().next().value;
+    if (oldestKey !== undefined) memoryCache.delete(oldestKey);
+  }
+  memoryCache.set(key, {
+    value,
+    expiresAt: Date.now() + ttlSeconds * 1000,
+  });
 };
 
 const redisClient = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -51,10 +65,7 @@ export const connectRedis = async (): Promise<void> => {
  */
 export const setCache = async (key: string, value: string, ttlSeconds: number): Promise<void> => {
   // Always update memory fallback so data is never lost
-  memoryCache.set(key, {
-    value,
-    expiresAt: Date.now() + ttlSeconds * 1000,
-  });
+  setMemoryEntry(key, value, ttlSeconds);
 
   if (isRedisReady || redisClient.status === 'ready') {
     try {
@@ -63,6 +74,41 @@ export const setCache = async (key: string, value: string, ttlSeconds: number): 
       console.warn(`[Redis] setCache failed for key ${key}, falling back to memory:`, (err as Error).message);
     }
   }
+};
+
+/**
+ * Retrieve multiple values from Redis in a single roundtrip, with in-memory fallback
+ */
+export const mgetCache = async (keys: string[]): Promise<(string | null)[]> => {
+  if (keys.length === 0) return [];
+
+  if (isRedisReady || redisClient.status === 'ready') {
+    try {
+      const vals = await redisClient.mget(...keys);
+      return vals.map((val, idx) => {
+        if (val !== null) return val;
+        const mem = memoryCache.get(keys[idx]);
+        if (!mem) return null;
+        if (isMemoryExpired(mem)) {
+          memoryCache.delete(keys[idx]);
+          return null;
+        }
+        return mem.value;
+      });
+    } catch (err) {
+      console.warn('[Redis] mgetCache failed, falling back to memory:', (err as Error).message);
+    }
+  }
+
+  return keys.map((key) => {
+    const mem = memoryCache.get(key);
+    if (!mem) return null;
+    if (isMemoryExpired(mem)) {
+      memoryCache.delete(key);
+      return null;
+    }
+    return mem.value;
+  });
 };
 
 /**
@@ -100,6 +146,29 @@ export const deleteCache = async (key: string): Promise<void> => {
       await redisClient.del(key);
     } catch (err) {
       // Ignore del error
+    }
+  }
+};
+
+/**
+ * Delete all keys matching a prefix from memory cache and Redis (via SCAN)
+ */
+export const deleteCacheByPrefix = async (prefix: string): Promise<void> => {
+  for (const key of Array.from(memoryCache.keys())) {
+    if (key.startsWith(prefix)) memoryCache.delete(key);
+  }
+  if (isRedisReady || redisClient.status === 'ready') {
+    try {
+      let cursor = '0';
+      do {
+        const [nextCursor, keys] = await redisClient.scan(cursor, 'MATCH', `${prefix}*`, 'COUNT', 100);
+        cursor = nextCursor;
+        if (keys.length > 0) {
+          await redisClient.del(...keys);
+        }
+      } while (cursor !== '0');
+    } catch {
+      // Ignore scan/del error
     }
   }
 };

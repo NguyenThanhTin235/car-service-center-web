@@ -24,10 +24,11 @@ test.describe('Customer Portal — Tracking, Quotations, SePay Invoices, History
 
     // Open lazy CustomerQCModal
     await page.getByRole('button', { name: /Xem chứng nhận KCS/i }).click();
+    const qcDialog = page.getByRole('dialog', { name: /Biên bản kiểm tra chất lượng/i });
     await expect(
-      page.getByText('Biên Bản Kiểm Định Chất Lượng Xuất Xưởng')
+      qcDialog.getByText('Biên Bản Kiểm Định Chất Lượng Xuất Xưởng')
     ).toBeVisible({ timeout: 15000 });
-    await page.getByRole('button', { name: /close/i }).first().click();
+    await qcDialog.getByRole('button', { name: 'Đóng', exact: true }).click();
 
     // Open lazy CustomerQuotationModal & Approve
     await page.getByRole('button', { name: /Xem chi tiết & Phê duyệt/i }).click();
@@ -77,18 +78,19 @@ test.describe('Customer Portal — Tracking, Quotations, SePay Invoices, History
 
     await page.goto(`${CUSTOMER_BASE_URL}/customer/profile?tab=invoices`);
 
-    await expect(page.getByText('INV-261120-001').first()).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('INV-261015-002').first()).toBeVisible();
+    const invoiceTable = page.locator('table');
+    await expect(invoiceTable.getByText('INV-261120-001')).toBeVisible({ timeout: 15000 });
+    await expect(invoiceTable.getByText('INV-261015-002')).toBeVisible();
 
     // Filter by unpaid tab
     await page.getByRole('button', { name: /Chưa thanh toán/i }).click();
-    await expect(page.getByText('INV-261120-001').first()).toBeVisible();
-    await expect(page.getByText('INV-261015-002')).toHaveCount(0);
+    await expect(invoiceTable.getByText('INV-261120-001')).toBeVisible();
+    await expect(invoiceTable.getByText('INV-261015-002')).toHaveCount(0);
 
     // Search by license plate (useDeferredValue)
     const searchInput = page.getByPlaceholder(/Tìm theo Mã HĐ/i).first();
     await searchInput.fill('51A-999.99');
-    await expect(page.getByText('INV-261120-001').first()).toBeVisible();
+    await expect(invoiceTable.getByText('INV-261120-001')).toBeVisible();
 
     // Open lazy InvoiceDetailModal
     await page.getByRole('button', { name: 'Chi tiết' }).first().click();

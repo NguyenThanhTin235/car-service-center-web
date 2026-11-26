@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import PublicHeader from '@/components/layout/PublicHeader';
 import PublicFooter from '@/components/layout/PublicFooter';
-import CustomerAiChatWidget from '@/components/chat/CustomerAiChatWidget';
+import LazyCustomerAiChatWidget from '@/components/chat/LazyCustomerAiChatWidget';
 
 export const metadata: Metadata = {
   title: 'AutoCare Pro – Cổng Dịch vụ Kỹ thuật Ô tô',
@@ -21,7 +21,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <PublicHeader />
       <main id="main-content" className="flex-1 w-full">{children}</main>
       <PublicFooter />
-      <CustomerAiChatWidget />
+      <LazyCustomerAiChatWidget />
     </div>
   );
 }

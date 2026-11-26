@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
   },
   experimental: {
-    optimizePackageImports: ['recharts', 'react-hot-toast', '@reduxjs/toolkit'],
+    optimizePackageImports: ['react-hot-toast', '@reduxjs/toolkit'],
   },
 };
 

@@ -60,7 +60,7 @@ export class IntakeService {
           throw new Error(`Số điện thoại ${dto.newCustomer.phone} đã tồn tại trong hệ thống.`);
         }
 
-        const bcrypt = require('bcryptjs');
+        const bcrypt = require('bcrypt');
         const hashedPassword = await bcrypt.hash(dto.newCustomer.phone, 10);
 
         const newUser = await tx.user.create({

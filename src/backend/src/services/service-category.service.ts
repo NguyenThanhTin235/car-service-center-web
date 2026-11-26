@@ -1,4 +1,20 @@
 import prisma from '../utils/prisma';
+import * as redisUtil from '../utils/redis.util';
+
+const invalidateCatalogCache = () => {
+  try {
+    if (
+      Object.prototype.hasOwnProperty.call(redisUtil, 'deleteCacheByPrefix') &&
+      typeof (redisUtil as { deleteCacheByPrefix?: (p: string) => Promise<void> }).deleteCacheByPrefix === 'function'
+    ) {
+      void (redisUtil as { deleteCacheByPrefix: (p: string) => Promise<void> })
+        .deleteCacheByPrefix('catalog:')
+        .catch(() => {});
+    }
+  } catch {
+    // Ignore when mocked without deleteCacheByPrefix
+  }
+};
 
 export interface CreateCategoryDto {
   name: string;
@@ -61,7 +77,7 @@ export class ServiceCategoryService {
    */
   async createCategory(data: CreateCategoryDto) {
     const count = await prisma.serviceCategory.count();
-    return prisma.serviceCategory.create({
+    const created = await prisma.serviceCategory.create({
       data: {
         name: data.name,
         description: data.description,
@@ -69,6 +85,8 @@ export class ServiceCategoryService {
         sort_order: count + 1
       },
     });
+    invalidateCatalogCache();
+    return created;
   }
 
   /**
@@ -78,7 +96,7 @@ export class ServiceCategoryService {
     const existing = await prisma.serviceCategory.findUnique({ where: { id } });
     if (!existing) throw new Error('Không tìm thấy nhóm dịch vụ.');
 
-    return prisma.serviceCategory.update({
+    const updated = await prisma.serviceCategory.update({
       where: { id },
       data: {
         name: data.name,
@@ -86,6 +104,8 @@ export class ServiceCategoryService {
         is_active: data.isActive,
       },
     });
+    invalidateCatalogCache();
+    return updated;
   }
 
   /**
@@ -106,6 +126,7 @@ export class ServiceCategoryService {
           where: { id },
           data: { is_active: false },
         });
+        invalidateCatalogCache();
         return { message: 'danh mục dịch vụ đã có dịch vụ phụ thuộc, đã được vô hiệu hóa thành công.', deleted: false, isDeactivated: true };
       } else {
         return { message: 'danh mục dịch vụ đã có dịch vụ phụ thuộc, đã được vô hiệu hóa thành công.', deleted: false, isDeactivated: true };
@@ -114,6 +135,7 @@ export class ServiceCategoryService {
 
     // Xóa cứng nếu chưa có dịch vụ nào
     await prisma.serviceCategory.delete({ where: { id } });
+    invalidateCatalogCache();
     return { message: 'Xóa danh mục dịch vụ thành công.', deleted: true };
   }
 }

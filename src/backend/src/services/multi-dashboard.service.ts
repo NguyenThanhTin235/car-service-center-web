@@ -1,5 +1,8 @@
 import prisma from '../utils/prisma';
+import { getCache, setCache } from '../utils/redis.util';
 import { WorkOrderStatus, JobStatus, InvoiceStatus } from '@prisma/client';
+
+const MULTI_DASHBOARD_CACHE_TTL = 20;
 
 export type DashboardPeriodKey = 'today' | '7days' | '30days' | 'this_month' | 'custom';
 export type DashboardScope = 'my' | 'workshop';
@@ -27,6 +30,25 @@ export interface DashboardResponseData {
 }
 
 export class MultiDashboardService {
+  /**
+   * Cache Redis/memory 20s cho các dashboard tổng hợp nhiều query (bỏ qua trong môi trường unit test)
+   */
+  private async withDashboardCache<T>(cacheKey: string, loader: () => Promise<T>): Promise<T> {
+    if (process.env.NODE_ENV !== 'test') {
+      try {
+        const cached = await getCache(cacheKey);
+        if (cached) return JSON.parse(cached) as T;
+      } catch {
+        // Fallback DB nếu cache tạm thời gián đoạn
+      }
+    }
+    const fresh = await loader();
+    if (process.env.NODE_ENV !== 'test') {
+      await setCache(cacheKey, JSON.stringify(fresh), MULTI_DASHBOARD_CACHE_TTL).catch(() => {});
+    }
+    return fresh;
+  }
+
   /**
    * Helper phân giải mốc thời gian kỳ hiện tại và kỳ trước để tính delta so sánh
    */
@@ -64,7 +86,9 @@ export class MultiDashboardService {
    * 1. Dashboard Quản Trị Viên (Admin)
    */
   async getAdminDashboard(periodKey: DashboardPeriodKey = '7days', start?: string, end?: string): Promise<DashboardResponseData> {
-    const { startDate, endDate, prevStartDate, prevEndDate } = this.resolvePeriodDates(periodKey, start, end);
+    const cacheKey = `multi_dash:admin:${periodKey}:${start || ''}:${end || ''}`;
+    return this.withDashboardCache(cacheKey, async () => {
+      const { startDate, endDate, prevStartDate, prevEndDate } = this.resolvePeriodDates(periodKey, start, end);
 
     const [
       totalUsers,
@@ -166,13 +190,16 @@ export class MultiDashboardService {
         timestamp: u.created_at,
       })),
     };
+    });
   }
 
   /**
    * 2. Dashboard Giám Đốc Dịch Vụ (Manager)
    */
   async getManagerDashboard(periodKey: DashboardPeriodKey = '7days', start?: string, end?: string): Promise<DashboardResponseData> {
-    const { startDate, endDate, prevStartDate, prevEndDate } = this.resolvePeriodDates(periodKey, start, end);
+    const cacheKey = `multi_dash:manager:${periodKey}:${start || ''}:${end || ''}`;
+    return this.withDashboardCache(cacheKey, async () => {
+      const { startDate, endDate, prevStartDate, prevEndDate } = this.resolvePeriodDates(periodKey, start, end);
 
     const now = new Date();
     const overdueThreshold = new Date(now.getTime() - 8 * 60 * 60 * 1000);
@@ -290,6 +317,7 @@ export class MultiDashboardService {
         updatedAt: wo.updated_at,
       })),
     };
+    });
   }
 
   /**
@@ -301,6 +329,8 @@ export class MultiDashboardService {
     start?: string,
     end?: string
   ): Promise<DashboardResponseData> {
+    const cacheKey = `multi_dash:sa:${userId}:${periodKey}:${start || ''}:${end || ''}`;
+    return this.withDashboardCache(cacheKey, async () => {
     const { startDate, endDate, prevStartDate, prevEndDate } = this.resolvePeriodDates(periodKey, start, end);
     const saWhere = { advisor_id: userId };
 
@@ -544,6 +574,7 @@ export class MultiDashboardService {
         updatedAt: wo.updated_at,
       })),
     };
+    });
   }
 
   /**
@@ -556,6 +587,8 @@ export class MultiDashboardService {
     start?: string,
     end?: string
   ): Promise<DashboardResponseData> {
+    const cacheKey = `multi_dash:staff:${scope}:${scope === 'my' ? userId : 'all'}:${periodKey}:${start || ''}:${end || ''}`;
+    return this.withDashboardCache(cacheKey, async () => {
     const { startDate, endDate } = this.resolvePeriodDates(periodKey, start, end);
 
     // Tìm employee_id nếu có
@@ -666,6 +699,7 @@ export class MultiDashboardService {
         vehiclePlate: j.wo_service.work_order.vehicle.license_plate,
       })),
     };
+    });
   }
 }
 

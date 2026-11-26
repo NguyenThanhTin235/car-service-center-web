@@ -54,7 +54,7 @@ app.use(
     skip: (req) => req.path === '/health',
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
 // Routes

@@ -1,5 +1,11 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma';
+import { getCache, setCache } from '../utils/redis.util';
+import logger from '../loggers/logger';
+
+const CATALOG_CACHE_TTL_SECONDS = 300;
+const isCatalogCacheEnabled = (): boolean => process.env.NODE_ENV !== 'test';
+const ALLOWED_VITALS = new Set(['LCP', 'INP', 'CLS', 'FCP', 'TTFB']);
 
 export class PublicController {
   /**
@@ -8,6 +14,15 @@ export class PublicController {
    */
   async getServiceCategories(req: Request, res: Response): Promise<void> {
     try {
+      const cacheKey = 'catalog:public:categories';
+      if (isCatalogCacheEnabled()) {
+        const cached = await getCache(cacheKey);
+        if (cached) {
+          res.json({ status: 'success', data: JSON.parse(cached) });
+          return;
+        }
+      }
+
       const categories = await prisma.serviceCategory.findMany({
         where: { is_active: true },
         orderBy: { sort_order: 'asc' },
@@ -21,6 +36,10 @@ export class PublicController {
           },
         },
       });
+
+      if (isCatalogCacheEnabled()) {
+        void setCache(cacheKey, JSON.stringify(categories), CATALOG_CACHE_TTL_SECONDS).catch(() => {});
+      }
 
       res.json({ status: 'success', data: categories });
     } catch (err) {
@@ -36,6 +55,15 @@ export class PublicController {
   async getServices(req: Request, res: Response): Promise<void> {
     try {
       const categoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined;
+      const cacheKey = `catalog:public:services:${categoryId ?? 'all'}`;
+
+      if (isCatalogCacheEnabled()) {
+        const cached = await getCache(cacheKey);
+        if (cached) {
+          res.json({ status: 'success', data: JSON.parse(cached) });
+          return;
+        }
+      }
 
       const services = await prisma.service.findMany({
         where: {
@@ -69,11 +97,58 @@ export class PublicController {
         })),
       }));
 
+      if (isCatalogCacheEnabled()) {
+        void setCache(cacheKey, JSON.stringify(formatted), CATALOG_CACHE_TTL_SECONDS).catch(() => {});
+      }
+
       res.json({ status: 'success', data: formatted });
     } catch (err) {
       console.error('[PublicController] getServices error:', err);
       res.status(500).json({ status: 'error', message: 'Không thể tải danh sách dịch vụ.' });
     }
+  }
+
+  /**
+   * POST /api/public/web-vitals
+   * Thu thập Field Data RUM (Core Web Vitals) từ trình duyệt người dùng thật
+   */
+  async recordWebVitals(req: Request, res: Response): Promise<void> {
+    const body = req.body as {
+      name?: string;
+      value?: number;
+      rating?: string;
+      path?: string;
+      app?: string;
+    };
+    const metricName = typeof body?.name === 'string' ? body.name.toUpperCase() : '';
+    const metricValue = typeof body?.value === 'number' ? body.value : Number.NaN;
+
+    if (!ALLOWED_VITALS.has(metricName) || Number.isNaN(metricValue)) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Dữ liệu Web Vitals không hợp lệ.',
+        error: { code: 'INVALID_WEB_VITAL_PAYLOAD' },
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    logger.info('[RUM WebVitals]', {
+      app: typeof body.app === 'string' ? body.app.slice(0, 32) : 'unknown',
+      path: typeof body.path === 'string' ? body.path.slice(0, 120) : '/',
+      metric: metricName,
+      value: Number(metricValue.toFixed(2)),
+      rating: typeof body.rating === 'string' ? body.rating.slice(0, 24) : 'unknown',
+    });
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: 'Đã ghi nhận chỉ số Web Vitals',
+      data: null,
+      timestamp: new Date().toISOString(),
+    });
   }
 }
 

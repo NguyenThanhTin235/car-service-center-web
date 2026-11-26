@@ -116,6 +116,7 @@ export class InventoryService {
     limit: number = 10,
     partCategoryId?: number,
     brandId?: number,
+    stockStatus?: string,
   ) {
     const skip = (page - 1) * limit;
     const where: Prisma.InventoryItemWhereInput = {};
@@ -131,7 +132,15 @@ export class InventoryService {
     if (partCategoryId) where.part_category_id = partCategoryId;
     if (brandId) where.brand_id = brandId;
 
-    const [items, total] = await Promise.all([
+    if ((stockStatus === 'low' || stockStatus === 'sufficient') && typeof prisma.$queryRaw === 'function') {
+      const matchedIds =
+        stockStatus === 'low'
+          ? await prisma.$queryRaw<Array<{ id: number }>>`SELECT id FROM inventory_items WHERE on_hand <= reorder_level`
+          : await prisma.$queryRaw<Array<{ id: number }>>`SELECT id FROM inventory_items WHERE on_hand > reorder_level`;
+      where.id = { in: matchedIds.map((r) => Number(r.id)) };
+    }
+
+    const [items, total, summaryRows] = await Promise.all([
       prisma.inventoryItem.findMany({
         where,
         skip,
@@ -140,10 +149,29 @@ export class InventoryService {
         orderBy: { created_at: 'desc' },
       }),
       prisma.inventoryItem.count({ where }),
+      typeof prisma.$queryRaw === 'function'
+        ? prisma.$queryRaw<
+            Array<{ total_skus: bigint | number; low_stock_count: bigint | number; total_value: Prisma.Decimal | number | null }>
+          >`SELECT COUNT(*) AS total_skus, COALESCE(SUM(CASE WHEN is_active = 1 AND on_hand <= reorder_level THEN 1 ELSE 0 END), 0) AS low_stock_count, COALESCE(SUM(on_hand * average_cost), 0) AS total_value FROM inventory_items`
+        : Promise.resolve([]),
     ]);
+
+    const summaryRow = summaryRows[0];
+    const summary = summaryRow
+      ? {
+          totalSkus: Number(summaryRow.total_skus || 0),
+          lowStockCount: Number(summaryRow.low_stock_count || 0),
+          totalValue: Number(summaryRow.total_value || 0),
+        }
+      : {
+          totalSkus: total,
+          lowStockCount: items.filter((i) => i.is_active && i.on_hand <= i.reorder_level).length,
+          totalValue: items.reduce((sum, i) => sum + i.on_hand * Number(i.average_cost), 0),
+        };
 
     return {
       items: items.map((i) => this.mapItemToCamelCase(i)),
+      summary,
       pagination: { page, limit, totalRecords: total, totalPages: Math.ceil(total / limit) },
     };
   }
@@ -295,7 +323,7 @@ export class InventoryService {
       if (filters.toDate) where.received_date.lte = new Date(filters.toDate);
     }
 
-    const [receipts, total, allSummary] = await Promise.all([
+    const [receipts, total, groupedStats] = await Promise.all([
       prisma.goodsReceipt.findMany({
         where,
         skip,
@@ -308,8 +336,10 @@ export class InventoryService {
         orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
       }),
       prisma.goodsReceipt.count({ where }),
-      prisma.goodsReceipt.findMany({
-        select: { status: true, grand_total: true, items: { select: { quantity: true, unit_cost: true, line_total: true } } },
+      prisma.goodsReceipt.groupBy({
+        by: ['status'],
+        _count: { id: true },
+        _sum: { grand_total: true },
       }),
     ]);
 
@@ -318,24 +348,24 @@ export class InventoryService {
     let cancelledCount = 0;
     let totalPostedValue = 0;
 
-    for (const r of allSummary) {
-      const calcTotal = Number(r.grand_total) > 0
-        ? Number(r.grand_total)
-        : r.items.reduce((sum: number, i: { line_total: Prisma.Decimal | number; quantity: Prisma.Decimal | number; unit_cost: Prisma.Decimal | number }) => sum + (Number(i.line_total) > 0 ? Number(i.line_total) : Number(i.quantity) * Number(i.unit_cost)), 0);
-      if (r.status === 'POSTED') {
-        postedCount++;
-        totalPostedValue += calcTotal;
-      } else if (r.status === 'DRAFT') {
-        draftCount++;
-      } else if (r.status === 'CANCELLED') {
-        cancelledCount++;
+    for (const row of groupedStats) {
+      const cnt = row._count?.id ?? 0;
+      if (row.status === 'POSTED') {
+        postedCount = cnt;
+        totalPostedValue = Number(row._sum?.grand_total ?? 0);
+      } else if (row.status === 'DRAFT') {
+        draftCount = cnt;
+      } else if (row.status === 'CANCELLED') {
+        cancelledCount = cnt;
       }
     }
+
+    const totalReceipts = postedCount + draftCount + cancelledCount;
 
     return {
       receipts: receipts.map((r) => this.mapReceiptToCamelCase(r)),
       stats: {
-        totalReceipts: allSummary.length,
+        totalReceipts,
         postedCount,
         draftCount,
         cancelledCount,

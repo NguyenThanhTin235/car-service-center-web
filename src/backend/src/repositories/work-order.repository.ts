@@ -200,8 +200,9 @@ export class WorkOrderRepository {
    * Kiểm tra xe đã có Work Order đang mở chưa
    * (status khác CLOSED và CANCELLED)
    */
-  async findActiveByVehicleId(vehicleId: number) {
-    return prisma.workOrder.findFirst({
+  async findActiveByVehicleId(vehicleId: number, tx?: Prisma.TransactionClient) {
+    const client = tx ?? prisma;
+    return client.workOrder.findFirst({
       where: {
         vehicle_id: vehicleId,
         status: {
@@ -222,13 +223,19 @@ export class WorkOrderRepository {
     if (status) where.status = status;
     if (advisorId) where.advisor_id = advisorId;
 
-    if (search) {
-      where.OR = [
-        { wo_number: { contains: search } },
-        { customer: { full_name: { contains: search } } },
-        { customer: { phone: { contains: search } } },
-        { vehicle: { license_plate: { contains: search } } },
-      ];
+    const trimmedSearch = search?.trim();
+    if (trimmedSearch) {
+      if (/^WO-/i.test(trimmedSearch)) {
+        // Fast-path: use UNIQUE B-Tree index on wo_number when searching by RO prefix
+        where.wo_number = { startsWith: trimmedSearch.toUpperCase() };
+      } else {
+        where.OR = [
+          { wo_number: { contains: trimmedSearch } },
+          { customer: { full_name: { contains: trimmedSearch } } },
+          { customer: { phone: { contains: trimmedSearch } } },
+          { vehicle: { license_plate: { contains: trimmedSearch } } },
+        ];
+      }
     }
 
     const skip = (page - 1) * limit;

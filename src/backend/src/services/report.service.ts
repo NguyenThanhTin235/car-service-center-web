@@ -25,6 +25,26 @@ class ReportService {
     const endDate = end ? new Date(end) : new Date();
     endDate.setHours(23, 59, 59, 999);
 
+    if (typeof prisma.$queryRaw === 'function') {
+      const rows = await prisma.$queryRaw<
+        Array<{ date_key: string; total_revenue: unknown; inv_count: bigint | number }>
+      >`SELECT DATE_FORMAT(CONVERT_TZ(issued_at, '+00:00', '+07:00'), '%Y-%m-%d') AS date_key, COALESCE(SUM(total_amount), 0) AS total_revenue, COUNT(*) AS inv_count FROM invoices WHERE status = 'PAID' AND issued_at IS NOT NULL AND issued_at >= ${startDate} AND issued_at <= ${endDate} GROUP BY date_key ORDER BY date_key ASC`;
+
+      const data = rows.map((r) => ({
+        date: String(r.date_key),
+        totalRevenue: Number(r.total_revenue || 0),
+        count: Number(r.inv_count || 0),
+      }));
+      const totalRevenue = data.reduce((sum, d) => sum + d.totalRevenue, 0);
+      const totalInvoices = data.reduce((sum, d) => sum + d.count, 0);
+      return {
+        type: 'revenue',
+        period: { start: startDate.toISOString(), end: endDate.toISOString() },
+        data,
+        summary: { totalRevenue, totalInvoices },
+      };
+    }
+
     const invoices = await prisma.invoice.findMany({
       where: { status: InvoiceStatus.PAID, issued_at: { gte: startDate, lte: endDate } },
       select: { id: true, invoice_number: true, total_amount: true, issued_at: true },
@@ -77,6 +97,31 @@ class ReportService {
   }
 
   private async getInventoryReport() {
+    if (typeof prisma.$queryRaw === 'function') {
+      const rows = await prisma.$queryRaw<
+        Array<{
+          id: number;
+          sku: string;
+          category_name: string;
+          brand_name: string | null;
+          on_hand: number;
+          reorder_level: number;
+        }>
+      >`SELECT ii.id, ii.sku, pc.name AS category_name, sc.name AS brand_name, ii.on_hand, ii.reorder_level FROM inventory_items ii INNER JOIN part_categories pc ON pc.id = ii.part_category_id LEFT JOIN system_catalogs sc ON sc.id = ii.brand_id WHERE ii.is_active = 1 AND ii.on_hand <= ii.reorder_level ORDER BY ii.on_hand ASC`;
+
+      const data = rows.map((item) => ({
+        id: Number(item.id),
+        sku: item.sku,
+        name: item.brand_name ? `${item.category_name} - ${item.brand_name}` : item.category_name,
+        categoryName: item.category_name,
+        onHand: Number(item.on_hand),
+        reorderLevel: Number(item.reorder_level),
+        deficit: Number(item.reorder_level) - Number(item.on_hand),
+      }));
+
+      return { type: 'inventory', period: null, data, summary: { lowStockCount: data.length } };
+    }
+
     const lowStockItems = await prisma.inventoryItem.findMany({
       where: { is_active: true },
       include: { part_category: { select: { name: true, code: true } }, brand: { select: { name: true } } },

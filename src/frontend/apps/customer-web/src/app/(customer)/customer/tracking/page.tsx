@@ -1,18 +1,17 @@
-import { redirect } from 'next/navigation';
+import React, { Suspense } from 'react';
+import ProfilePageClient from '@/app/(customer)/customer/profile/ProfilePageClient';
+import { LoadingSkeleton } from '@/components/ui';
 
-export default async function CustomerTrackingPage({
-  searchParams,
-}: {
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const resolved = searchParams ? await searchParams : {};
-  const params = new URLSearchParams();
-  params.set('tab', 'tracking');
-  for (const [key, val] of Object.entries(resolved)) {
-    if (key !== 'tab' && typeof val === 'string') {
-      params.set(key, val);
-    }
-  }
-  redirect(`/customer/profile?${params.toString()}`);
+export default function CustomerTrackingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-4">
+          <LoadingSkeleton variant="cards" count={3} />
+        </div>
+      }
+    >
+      <ProfilePageClient defaultTab="tracking" />
+    </Suspense>
+  );
 }
-

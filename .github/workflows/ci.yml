@@ -89,6 +89,20 @@ jobs:
           NEXT_PUBLIC_INTERNAL_URL: "http://localhost:3001"
           NEXT_PUBLIC_CUSTOMER_URL: "http://localhost:3000"
 
+      - name: Frontend JS Bundle Budget Advisory
+        working-directory: src/frontend
+        run: |
+          node -e "
+            const fs = require('fs'), path = require('path'), zlib = require('zlib');
+            for (const app of ['customer-web', 'internal-web']) {
+              const dir = path.join('apps', app, '.next', 'static', 'chunks');
+              let raw = 0, gz = 0;
+              const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (p.endsWith('.js')) { const b = fs.readFileSync(p); raw += b.length; gz += zlib.gzipSync(b).length; } } };
+              if (fs.existsSync(dir)) walk(dir);
+              console.log(app + ' total JS: ' + Math.round(raw/1024) + ' KB raw / ' + Math.round(gz/1024) + ' KB gzip');
+            }
+          "
+
   # ===========================================================================
   # Stage 2: Lint & Static Analysis (Backend & Frontend in parallel)
   # ===========================================================================

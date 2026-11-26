@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
+import { idempotencyGuard } from '../middlewares/idempotency.middleware';
 import {
   getIntakeQueueForAdvisor,
   getWorkOrders,
@@ -106,7 +107,7 @@ router.post('/:id/start-work', authorize('SA', 'ADMIN'), startWorkOrder);
 router.post('/:id/cancel-release', authorize('SA', 'ADMIN'), cancelAndReleaseWorkOrder);
 
 // BÀN GIAO XE CHUẨN KHI ĐÃ HOÀN TẤT THANH TOÁN (UC-42)
-router.post('/:id/handover', authorize('SA', 'ADMIN', 'DESK STAFF'), completeHandover);
+router.post('/:id/handover', authorize('SA', 'ADMIN', 'DESK STAFF'), idempotencyGuard, completeHandover);
 
 // ĐÓNG HỒ SƠ PHIẾU CÔNG VIỆC (RELEASED → CLOSED)
 router.post('/:id/close', authorize('SA', 'ADMIN'), closeWorkOrder);

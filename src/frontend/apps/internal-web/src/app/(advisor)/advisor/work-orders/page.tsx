@@ -35,7 +35,6 @@ export default function WorkOrdersPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [searchInitialized, setSearchInitialized] = useState(false);
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   useEffect(() => {
@@ -45,7 +44,6 @@ export default function WorkOrdersPage() {
       setSearchQuery(initialSearch);
       setDebouncedSearch(initialSearch);
     }
-    setSearchInitialized(true);
   }, []);
 
   useEffect(() => {
@@ -91,9 +89,8 @@ export default function WorkOrdersPage() {
   }, [currentPage, limit, debouncedSearch, statusFilter]);
 
   useEffect(() => {
-    if (!searchInitialized) return;
     fetchWOs();
-  }, [fetchWOs, searchInitialized]);
+  }, [fetchWOs]);
 
   const pageStats = useMemo(() => {
     const inWork = items.filter((i) =>
@@ -286,7 +283,7 @@ export default function WorkOrdersPage() {
         {/* Table Content */}
         <div className="overflow-x-auto max-h-[65vh] overflow-y-auto">
           <table className="table-auto w-full text-left border-collapse">
-            <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
+            <thead className="sticky top-0 z-10 bg-slate-50">
               <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400">
                 <th className="py-3 pr-2 lg:pr-3">Phương tiện & Biển số</th>
                 <th className="py-3 px-2 lg:px-3">Mã phiếu (RO)</th>

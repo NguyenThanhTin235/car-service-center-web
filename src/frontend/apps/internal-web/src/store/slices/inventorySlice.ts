@@ -150,9 +150,16 @@ interface Pagination {
   totalPages: number;
 }
 
+export interface InventoryItemsSummary {
+  totalSkus: number;
+  lowStockCount: number;
+  totalValue: number;
+}
+
 interface InventoryState {
   items: InventoryItem[];
   allItems: InventoryItem[];
+  itemsSummary: InventoryItemsSummary | null;
   pagination: Pagination | null;
   loading: boolean;
   error: string | null;
@@ -181,6 +188,7 @@ interface InventoryState {
 const initialState: InventoryState = {
   items: [],
   allItems: [],
+  itemsSummary: null,
   pagination: null,
   loading: false,
   error: null,
@@ -272,7 +280,7 @@ export const fetchUoms = createAsyncThunk(
 
 export const fetchInventoryItems = createAsyncThunk(
   'inventory/fetchItems',
-  async (params: { search?: string; itemType?: string; partCategoryId?: number; brandId?: number; page?: number; limit?: number }, { rejectWithValue }) => {
+  async (params: { search?: string; itemType?: string; partCategoryId?: number; brandId?: number; stockStatus?: string; page?: number; limit?: number }, { rejectWithValue }) => {
     try {
       const response = await api.get('/api/inventory-items', { params });
       return response.data;
@@ -460,6 +468,7 @@ const inventorySlice = createSlice({
           : Array.isArray(action.payload?.data)
           ? action.payload.data
           : [];
+        state.itemsSummary = action.payload?.data?.summary || null;
         state.pagination =
           action.payload?.data?.pagination || action.payload?.pagination || null;
       })

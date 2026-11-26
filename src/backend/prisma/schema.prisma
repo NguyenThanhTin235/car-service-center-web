@@ -463,6 +463,7 @@ model Service {
   intake_services IntakeService[]
   wo_services     WoService[]
 
+  @@index([is_active, name])
   @@map("services")
 }
 
@@ -577,6 +578,8 @@ model Appointment {
   services   AppointmentService[]
   work_order WorkOrder?
 
+  @@index([status, scheduled_date])
+  @@index([scheduled_date, scheduled_time])
   @@map("appointments")
 }
 
@@ -667,6 +670,10 @@ model WorkOrder {
   invoices    Invoice[]
   release     VehicleRelease?
 
+  @@index([status, created_at(sort: Desc)])
+  @@index([advisor_id, status, updated_at(sort: Desc)])
+  @@index([order_type, created_at])
+  @@index([created_at(sort: Desc)])
   @@map("work_orders")
 }
 
@@ -900,6 +907,8 @@ model Quotation {
   created_by       User            @relation("CreatedQuotation", fields: [created_by_id], references: [id])
   lines            QuotationLine[]
 
+  @@index([work_order_id, status])
+  @@index([status, created_at(sort: Desc)])
   @@map("quotations")
 }
 
@@ -1028,6 +1037,8 @@ model InventoryItem {
   movements          StockMovement[]
   adjustments        StockAdjustment[]
 
+  @@index([is_active, created_at(sort: Desc)])
+  @@index([is_active, on_hand])
   @@map("inventory_items")
 }
 
@@ -1098,6 +1109,7 @@ model StockMovement {
   job_part        JobPart?        @relation(fields: [job_part_id], references: [id])
   created_by      User            @relation(fields: [created_by_id], references: [id])
 
+  @@index([item_id, created_at(sort: Desc), id(sort: Desc)])
   @@map("stock_movements")
 }
 
@@ -1152,6 +1164,9 @@ model Invoice {
   payments   Payment[]
 
   @@index([work_order_id])
+  @@index([status, created_at(sort: Desc)])
+  @@index([status, issued_at])
+  @@index([status, paid_at])
   @@map("invoices")
 }
 
@@ -1197,6 +1212,7 @@ model Payment {
   received_by User?   @relation(fields: [received_by_id], references: [id])
 
   @@index([invoice_id])
+  @@index([status, expires_at])
   @@map("payments")
 }
 
@@ -1269,5 +1285,7 @@ model AuditLog {
 
   user User? @relation(fields: [user_id], references: [id])
 
+  @@index([entity_type, entity_id, created_at(sort: Desc)])
+  @@index([created_at(sort: Desc)])
   @@map("audit_logs")
 }

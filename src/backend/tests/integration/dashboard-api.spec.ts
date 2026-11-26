@@ -233,12 +233,6 @@ describe('Integration API - Multi-Portal Dashboard Engine (/api/dashboard/:porta
           ],
         },
       ]);
-      (prisma.workOrder.count as any)
-        .mockResolvedValueOnce(6)
-        .mockResolvedValueOnce(2)
-        .mockResolvedValueOnce(1);
-      (prisma.job.count as any).mockResolvedValue(0);
-
       const res = await request(app)
         .get('/api/dashboard/workshop')
         .set('Authorization', `Bearer ${adminToken}`);
@@ -246,9 +240,9 @@ describe('Integration API - Multi-Portal Dashboard Engine (/api/dashboard/:porta
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data.kpis).toEqual({
-        totalActive: 6,
-        pendingApproval: 2,
-        billingRequested: 1,
+        totalActive: 1,
+        pendingApproval: 0,
+        billingRequested: 0,
         overdueJobs: 0,
       });
       expect(res.body.data.workOrders).toHaveLength(1);

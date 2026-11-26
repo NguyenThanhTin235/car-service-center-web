@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
+import { idempotencyGuard } from '../middlewares/idempotency.middleware';
 import {
   getMyInvoices,
   getBillingQueue,
@@ -32,19 +33,19 @@ router.get('/billing-queue', authorize('DESK STAFF', 'ADMIN', 'MANAGER'), getBil
 router.get('/preview', authorize('DESK STAFF', 'ADMIN'), previewInvoice);
 
 // UC-27: Tạo hóa đơn nháp từ Work Order đã được gửi Billing Request
-router.post('/', authorize('DESK STAFF', 'ADMIN'), createInvoiceDraft);
+router.post('/', authorize('DESK STAFF', 'ADMIN'), idempotencyGuard, createInvoiceDraft);
 
 // UC-27: Cập nhật chiết khấu & ghi chú cho hóa đơn nháp
 router.patch('/:id', authorize('DESK STAFF', 'ADMIN'), updateInvoiceDraft);
 
 // UC-27: Phát hành hóa đơn chính thức cho khách hàng
-router.post('/:id/issue', authorize('DESK STAFF', 'ADMIN'), issueInvoice);
+router.post('/:id/issue', authorize('DESK STAFF', 'ADMIN'), idempotencyGuard, issueInvoice);
 
 // UC-27: Hủy hóa đơn
 router.post('/:id/cancel', authorize('DESK STAFF', 'MANAGER', 'ADMIN'), cancelInvoice);
 
 // UC-28: Ghi nhận thanh toán thủ công (Tiền mặt / Thẻ ngân hàng)
-router.post('/:id/payments', authorize('DESK STAFF', 'ADMIN'), recordManualPayment);
+router.post('/:id/payments', authorize('DESK STAFF', 'ADMIN'), idempotencyGuard, recordManualPayment);
 
 // UC-28: Khởi tạo phiên thanh toán SePay (Khách hàng hoặc Desk Staff/Admin)
 router.post('/:id/payments/sepay', authorize('CUSTOMER', 'DESK STAFF', 'ADMIN', 'MANAGER'), createSepayPayment);

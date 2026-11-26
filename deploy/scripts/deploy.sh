@@ -96,6 +96,15 @@ aws ecr get-login-password --region "${AWS_REGION}" | \
 echo "==> [${ENV_NAME}] Pulling images for tag ${IMAGE_TAG}..."
 docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" pull
 
+# Protect low-memory hosts (<2600 MB RAM, e.g. t3.small) from running prod + staging concurrently
+HOST_MEM_MB="$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || echo 0)"
+if [[ "${ENV_NAME}" == "prod" && "${HOST_MEM_MB}" -gt 0 && "${HOST_MEM_MB}" -lt 2600 && "${ALLOW_SHARED_LOW_MEM_HOST:-false}" != "true" ]]; then
+  if docker ps --format '{{.Names}}' | grep -q '^car-service-staging'; then
+    echo "==> [prod] Host RAM is ${HOST_MEM_MB}MB (<2600MB); stopping car-service-staging to prevent swap thrashing/OOM..."
+    docker compose -f "${COMPOSE_FILE}" -p "car-service-staging" down || true
+  fi
+fi
+
 echo "==> [${ENV_NAME}] Running Prisma database migrations..."
 docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" run --rm --no-deps backend node ./node_modules/prisma/build/index.js migrate deploy
 

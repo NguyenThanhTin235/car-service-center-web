@@ -207,9 +207,9 @@ test.describe('Service Advisor Portal E2E: Work Orders List (/advisor/work-order
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('http://localhost:3001/advisor/work-orders', { waitUntil: 'domcontentloaded' });
 
-    // Call 1: 500 error toast
-    await expect(page.locator('text=Lỗi tải danh sách phiếu công việc').first()).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('text=Không có phiếu công việc nào')).toBeVisible();
+    // Call 1: 500 error toast/inline state
+    await expect(page.getByText(/Không thể tải phiếu công việc: Server error|Lỗi tải danh sách phiếu công việc/i).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=Không thể tải phiếu công việc')).toBeVisible();
 
     // Call 2: Retry -> Empty state
     await page.getByRole('button', { name: 'Làm mới' }).click();
