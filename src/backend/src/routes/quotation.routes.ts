@@ -20,7 +20,7 @@ router.use(authenticate);
 // 1. Quản lý báo giá theo Phiếu công việc (Work Order)
 router.get(
   '/work-orders/:workOrderId',
-  authorize('SA', 'ADMIN', 'DESK STAFF', 'CUSTOMER'),
+  authorize('SA', 'ADMIN', 'DESK STAFF', 'MANAGER', 'CUSTOMER'),
   getQuotationsByWorkOrder
 );
 router.post(
@@ -32,7 +32,7 @@ router.post(
 // 2. Thao tác trên từng Báo giá cụ thể
 router.get(
   '/:id',
-  authorize('SA', 'ADMIN', 'DESK STAFF', 'CUSTOMER'),
+  authorize('SA', 'ADMIN', 'DESK STAFF', 'MANAGER', 'CUSTOMER'),
   getQuotationById
 );
 router.patch(
@@ -62,7 +62,7 @@ router.post(
 );
 router.get(
   '/:id/pdf',
-  authorize('SA', 'ADMIN', 'DESK STAFF', 'CUSTOMER'),
+  authorize('SA', 'ADMIN', 'DESK STAFF', 'MANAGER', 'CUSTOMER'),
   exportQuotationPdf
 );
 

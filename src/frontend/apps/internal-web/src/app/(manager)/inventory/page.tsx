@@ -309,49 +309,7 @@ export default function InventoryPage() {
 
   return (
     <div className="flex flex-col min-w-0 space-y-6">
-      {/* 1. SaaS Header & Primary Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
-            Quản lý kho phụ tùng & Chứng từ nhập kho
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Theo dõi tồn kho SKU, hạch toán Giá vốn bình quân gia quyền (MWA), Sổ phiếu nhập kho và
-            Thẻ kho truy vết
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
-          {lowStockCount > 0 && (
-            <button
-              type="button"
-              onClick={() => handleOpenNewReceipt(true)}
-              className="h-10 px-3.5 flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
-              title="Lập nhanh phiếu nhập kho cho toàn bộ các mã đang chạm/dưới định mức an toàn"
-            >
-              <span className="material-symbols-outlined text-[18px] text-amber-600">bolt</span>
-              <span>Nhập bù hàng thiếu ({lowStockCount})</span>
-            </button>
-          )}
-          <button
-            id="btn-add-part"
-            onClick={handleAddPart}
-            className="h-10 px-4 flex items-center gap-2 bg-white text-slate-700 hover:text-[#0866ff] border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px] text-[#0866ff]">add</span>
-            <span>Thêm phụ tùng</span>
-          </button>
-          <button
-            onClick={() => handleOpenNewReceipt(false)}
-            className="h-10 px-4 flex items-center gap-2 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white rounded-xl text-xs font-bold shadow-md shadow-[#0866ff]/20 active:scale-[0.98] transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px]">add_box</span>
-            <span>Nhập kho</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Asymmetrical 12-Col Inventory Bento (5 + 4 + 3) */}
+      {/* 1. Asymmetrical 12-Col Inventory Bento (5 + 4 + 3) */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Hero Card: Tổng giá trị kho (5 cols) */}
         <div className="md:col-span-5 rounded-2xl saas-hero-gradient text-white p-5 relative overflow-hidden flex flex-col justify-between">
@@ -514,6 +472,37 @@ export default function InventoryPage() {
           >
             <span className="material-symbols-outlined text-[18px]" aria-hidden="true">local_shipping</span>
             <span>Nhà cung cấp ({suppliers.length})</span>
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          {lowStockCount > 0 && (
+            <button
+              type="button"
+              onClick={() => handleOpenNewReceipt(true)}
+              className="h-10 px-3.5 flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              title="Lập nhanh phiếu nhập kho cho toàn bộ các mã đang chạm/dưới định mức an toàn"
+            >
+              <span className="material-symbols-outlined text-[18px] text-amber-600">bolt</span>
+              <span>Nhập bù hàng thiếu ({lowStockCount})</span>
+            </button>
+          )}
+          <button
+            id="btn-add-part"
+            onClick={handleAddPart}
+            className="h-10 px-4 flex items-center gap-2 bg-white text-slate-700 hover:text-[#0866ff] border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px] text-[#0866ff]">add</span>
+            <span>Thêm phụ tùng</span>
+          </button>
+          <button
+            id="btn-create-receipt"
+            type="button"
+            onClick={() => handleOpenNewReceipt(false)}
+            className="h-10 px-4 flex items-center gap-2 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white rounded-xl text-xs font-bold shadow-md shadow-[#0866ff]/20 active:scale-[0.98] transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">add_box</span>
+            <span>Nhập kho</span>
           </button>
         </div>
       </div>

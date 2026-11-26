@@ -23,7 +23,7 @@ const WarrantyAnalysisBarChart = dynamic(
   { ssr: false, loading: ChartLoadingSkeleton }
 );
 
-type ReportType = 'revenue' | 'services' | 'inventory' | 'warranty';
+type ReportType = 'revenue' | 'services' | 'inventory';
 
 interface RevenueRow {
   date: string;
@@ -626,32 +626,18 @@ export default function ReportsPage() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      if (reportType === 'warranty') {
-        const res = await api.get('/api/reports/warranty', {
-          params: { startDate, endDate },
-          signal: controller.signal,
-        });
-        if (controller.signal.aborted) return;
-        setReportData({
-          type: 'warranty',
-          period: res.data.data?.period ?? null,
-          data: res.data.data,
-          summary: {},
-        });
-      } else {
-        const params: Record<string, string> = { type: reportType };
-        if (reportType !== 'inventory') {
-          params.start = startDate;
-          params.end = endDate;
-        }
-        const res = await api.get('/api/reports/operational', {
-          params,
-          signal: controller.signal,
-        });
-        if (controller.signal.aborted) return;
-        if (res.data?.success) {
-          setReportData(res.data.data);
-        }
+      const params: Record<string, string> = { type: reportType };
+      if (reportType !== 'inventory') {
+        params.start = startDate;
+        params.end = endDate;
+      }
+      const res = await api.get('/api/reports/operational', {
+        params,
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+      if (res.data?.success) {
+        setReportData(res.data.data);
       }
     } catch (err: any) {
       if (controller.signal.aborted || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') {
@@ -680,16 +666,6 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
-          Báo cáo quản trị & Vận hành
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Theo dõi doanh thu, dịch vụ, kho phụ tùng và phân tích chất lượng bảo hành xưởng
-        </p>
-      </div>
-
       {/* Control Toolbar */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs flex flex-col xl:flex-row xl:items-center justify-between gap-3.5">
         <div className="flex flex-wrap items-center gap-2">
@@ -710,12 +686,6 @@ export default function ReportsPage() {
             label="Tồn kho phụ tùng"
             icon="inventory_2"
             onClick={() => handleTypeChange('inventory')}
-          />
-          <TypeBtn
-            active={reportType === 'warranty'}
-            label="Báo cáo Bảo hành"
-            icon="verified_user"
-            onClick={() => handleTypeChange('warranty')}
           />
         </div>
 
@@ -807,9 +777,6 @@ export default function ReportsPage() {
               data={reportData.data as InventoryRow[]}
               summary={reportData.summary}
             />
-          )}
-          {reportData.type === 'warranty' && (
-            <WarrantySection data={reportData.data as WarrantyData} />
           )}
         </>
       )}

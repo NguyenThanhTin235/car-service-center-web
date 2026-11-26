@@ -782,9 +782,37 @@ export default function SaaSDashboardShell({
               }
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-blue-50 text-xs font-semibold text-slate-700 hover:text-[#0050cd] transition-all cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[16px] text-[#0866ff]" aria-hidden="true">
-                {isLight ? 'dark_mode' : 'light_mode'}
-              </span>
+              {isLight ? (
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                  className="w-4 h-4 text-[#0866ff] shrink-0"
+                >
+                  <path
+                    d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                  className="w-4 h-4 text-[#0866ff] shrink-0"
+                >
+                  <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+                  <path
+                    d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              )}
               <span className="hidden xl:inline">
                 {isLight ? 'Giao diện Sáng' : 'Giao diện Sapphire'}
               </span>

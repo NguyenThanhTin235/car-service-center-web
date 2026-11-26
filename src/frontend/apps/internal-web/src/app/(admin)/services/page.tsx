@@ -37,6 +37,8 @@ interface FormData {
 
 const defaultForm: FormData = { categoryId: '', name: '', description: '', pricingType: 'FIXED', fixedPrice: '', sizePrices: {}, warrantyMonths: '' };
 
+import ToggleActionIcon from '@/components/shared/ToggleActionIcon';
+
 export default function ServicesPage() {
   const [templates, setTemplates] = useState<ServiceTemplateData[]>([]);
   const [categories, setCategories] = useState<CategoryData[]>([]);
@@ -501,9 +503,7 @@ export default function ServicesPage() {
                           }`}
                           title={t.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
                         >
-                          <span className="material-symbols-outlined text-[18px]">
-                            {t.isActive ? 'toggle_off' : 'toggle_on'}
-                          </span>
+                          <ToggleActionIcon isActive={t.isActive} />
                         </button>
                         <button
                           type="button"

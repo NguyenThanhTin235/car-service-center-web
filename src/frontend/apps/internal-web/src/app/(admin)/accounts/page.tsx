@@ -592,22 +592,6 @@ function AccountsContent() {
                 </select>
               </div>
             </div>
-
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {['', 'ADMIN', 'MANAGER', 'ADVISOR', 'FRONT_DESK', 'TECHNICIAN', 'CUSTOMER'].map((r) => (
-                <button
-                  key={r || 'ALL'}
-                  type="button"
-                  onClick={() => setFilterRole(r)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${filterRole === r
-                      ? 'bg-[#0866ff] text-white shadow-2xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
-                    }`}
-                >
-                  {r ? ROLE_LABELS[r] : 'Tất cả'}
-                </button>
-              ))}
-            </div>
           </div>
 
           {pageError && (

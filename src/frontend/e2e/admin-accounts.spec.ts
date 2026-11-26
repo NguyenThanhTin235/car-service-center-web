@@ -94,8 +94,8 @@ test.describe('Admin Portal E2E: IAM Accounts (/accounts)', () => {
     await expect(searchInput).toHaveValue('advisor', { timeout: 20000 });
     await expect.poll(() => capturedQueries.some((q) => q.search === 'advisor')).toBe(true);
 
-    // Filter by role pill
-    await page.locator('button:has-text("Cố vấn dịch vụ")').first().click();
+    // Filter by role dropdown
+    await page.locator('select').first().selectOption('ADVISOR');
     await expect.poll(() => capturedQueries.some((q) => q.role === 'ADVISOR')).toBe(true);
 
     // Filter by status dropdown

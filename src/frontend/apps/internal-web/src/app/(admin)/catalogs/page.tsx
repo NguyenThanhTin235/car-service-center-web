@@ -69,6 +69,8 @@ const TILE_PALETTE = [
   },
 ];
 
+import ToggleActionIcon from '@/components/shared/ToggleActionIcon';
+
 export default function CatalogsPage() {
   const [catalogs, setCatalogs] = useState<CatalogData[]>([]);
   const [typeCounts, setTypeCounts] = useState<Record<string, number>>({
@@ -511,9 +513,7 @@ export default function CatalogsPage() {
                           }`}
                           title={c.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
                         >
-                          <span className="material-symbols-outlined text-[18px]">
-                            {c.isActive ? 'toggle_off' : 'toggle_on'}
-                          </span>
+                          <ToggleActionIcon isActive={c.isActive} />
                         </button>
                         <button
                           type="button"

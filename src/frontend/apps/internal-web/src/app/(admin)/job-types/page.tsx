@@ -19,6 +19,8 @@ const defaultForm: FormData = { name: '', description: '' };
 
 type ConfirmAction = { type: 'toggle'; item: JobTypeData } | { type: 'delete'; item: JobTypeData } | null;
 
+import ToggleActionIcon from '@/components/shared/ToggleActionIcon';
+
 export default function JobTypesPage() {
   const [jobTypes, setJobTypes] = useState<JobTypeData[]>([]);
   const [pagination, setPagination] = useState({ totalRecords: 0, totalPages: 1, currentPage: 1, limit: 10 });
@@ -416,9 +418,7 @@ export default function JobTypesPage() {
                           }`}
                           title={j.isActive ? 'Ngừng hoạt động' : 'Hoạt động'}
                         >
-                          <span className="material-symbols-outlined text-[18px]">
-                            {j.isActive ? 'toggle_off' : 'toggle_on'}
-                          </span>
+                          <ToggleActionIcon isActive={j.isActive} />
                         </button>
 
                         {/* Delete */}

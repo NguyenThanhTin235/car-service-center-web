@@ -60,18 +60,18 @@ router.get('/', authorize('SA', 'ADMIN', 'DESK STAFF'), getWorkOrders);
 router.post('/', authorize('SA', 'ADMIN'), createWorkOrder);
 
 // Lấy chi tiết phiếu công việc (Cả SA và Desk Staff đều được xem)
-router.get('/:id', authorize('SA', 'DESK STAFF', 'ADMIN'), getWorkOrderById);
+router.get('/:id', authorize('SA', 'DESK STAFF', 'MANAGER', 'ADMIN'), getWorkOrderById);
 
 // Cập nhật thông tin phiếu công việc (UC-29)
 router.put('/:id', authorize('SA', 'ADMIN'), updateWorkOrder);
 
 // TÌNH TRẠNG XE LÚC TIẾP NHẬN (UC-30)
 router.post('/:id/check-in', authorize('SA', 'ADMIN'), CheckInController.createOrUpdateCheckIn);
-router.get('/:id/check-in', authorize('SA', 'DESK STAFF', 'ADMIN'), CheckInController.getCheckIn);
+router.get('/:id/check-in', authorize('SA', 'DESK STAFF', 'MANAGER', 'ADMIN'), CheckInController.getCheckIn);
 router.post('/:id/check-in/confirm', authorize('SA', 'ADMIN'), CheckInController.confirmCheckIn);
 
 // KIỂM TRA XE & VẤN ĐỀ PHÁT HIỆN (UC-33)
-router.get('/:id/inspection', authorize('SA', 'DESK STAFF', 'ADMIN'), InspectionController.getInspection);
+router.get('/:id/inspection', authorize('SA', 'DESK STAFF', 'MANAGER', 'ADMIN'), InspectionController.getInspection);
 router.post('/:id/inspection/findings', authorize('SA', 'ADMIN'), InspectionController.createFinding);
 router.patch('/:id/inspection/findings/:findingId', authorize('SA', 'ADMIN'), InspectionController.updateFinding);
 router.delete('/:id/inspection/findings/:findingId', authorize('SA', 'ADMIN'), InspectionController.deleteFinding);
@@ -90,13 +90,13 @@ router.patch('/:id/services/:serviceId/status', authorize('SA', 'ADMIN'), update
 router.delete('/:id/services/:serviceId', authorize('SA', 'ADMIN'), removeServiceFromWO);
 
 // KHAI BÁO VÀ QUẢN LÝ PHỤ TÙNG / VẬT TƯ CHO CÔNG VIỆC (UC-36)
-router.get('/:id/parts', authorize('SA', 'DESK STAFF', 'ADMIN'), getWorkOrderParts);
+router.get('/:id/parts', authorize('SA', 'DESK STAFF', 'MANAGER', 'ADMIN'), getWorkOrderParts);
 router.post('/:id/jobs/:jobId/parts', authorize('SA', 'ADMIN'), addPartToJob);
 router.patch('/:id/jobs/:jobId/parts/:partId', authorize('SA', 'ADMIN'), updateJobPart);
 router.delete('/:id/jobs/:jobId/parts/:partId', authorize('SA', 'ADMIN'), removePartFromJob);
 
 // KIỂM ĐỊNH CHẤT LƯỢNG (QC / KCS) & VÒNG LẶP REWORK (UC-41)
-router.get('/:id/qc', authorize('SA', 'QC_STAFF', 'DESK STAFF', 'ADMIN', 'CUSTOMER'), getQcDetails);
+router.get('/:id/qc', authorize('SA', 'QC_STAFF', 'DESK STAFF', 'MANAGER', 'ADMIN', 'CUSTOMER'), getQcDetails);
 router.post('/:id/qc', authorize('SA', 'QC_STAFF', 'ADMIN'), submitQcEvaluation);
 router.post('/:id/request-billing', authorize('SA', 'ADMIN'), requestBilling);
 
