@@ -140,11 +140,11 @@ jobs:
           "
 
   # ===========================================================================
-  # Stage 2: Lint & Static Analysis (Parallel with Build & Test)
+  # Stage 2: Lint & Static Analysis
   # ===========================================================================
   lint-static:
     name: Stage 2 - Lint & Static Analysis
-    needs: prepare
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
@@ -180,11 +180,11 @@ jobs:
           npm run typecheck -w @car-service-center/internal-web
 
   # ===========================================================================
-  # Stage 3: Automated Tests (Parallel with Build & Lint)
+  # Stage 3: Automated Tests
   # ===========================================================================
   test:
     name: Stage 3 - Automated Tests
-    needs: prepare
+    needs: lint-static
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -229,7 +229,7 @@ jobs:
   # ===========================================================================
   security-scan:
     name: Stage 4 - Security & Dependency Scan
-    needs: [build, lint-static, test]
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read

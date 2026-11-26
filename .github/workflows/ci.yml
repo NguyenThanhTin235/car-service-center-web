@@ -108,6 +108,7 @@ jobs:
   # ===========================================================================
   lint-static-backend:
     name: Stage 2 - Lint & Static Analysis (Backend)
+    needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -140,6 +141,7 @@ jobs:
 
   lint-static-frontend:
     name: Stage 2 - Lint & Static Analysis (Frontend)
+    needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -175,6 +177,7 @@ jobs:
   # ===========================================================================
   test-backend:
     name: Stage 3 - Automated Tests (Backend)
+    needs: [lint-static-backend, lint-static-frontend]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -207,6 +210,7 @@ jobs:
 
   test-frontend-infra:
     name: Stage 3 - Automated Tests (Frontend Unit & AWS CDK)
+    needs: [lint-static-backend, lint-static-frontend]
     runs-on: ubuntu-latest
 
     steps:
@@ -233,6 +237,7 @@ jobs:
   # ===========================================================================
   security-scan:
     name: Stage 4 - Security & Dependency Scan
+    needs: [test-backend, test-frontend-infra]
     runs-on: ubuntu-latest
     permissions:
       contents: read
