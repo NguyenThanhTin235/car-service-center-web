@@ -27,13 +27,16 @@ jobs:
       contents: read
 
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION || 'ap-southeast-1' }}
 
-      - name: Execute rollback.sh on EC2 via AWS SSM
+      - name: Sync deploy/ & Execute rollback.sh on EC2 via AWS SSM
         env:
           INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
           AWS_REGION: ${{ vars.AWS_REGION || 'ap-southeast-1' }}
@@ -44,9 +47,11 @@ jobs:
           set -euo pipefail
           ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
           ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          DEPLOY_TAR_B64="$(tar -czf - -C deploy . | base64 -w0)"
 
           PARAMS_FILE="$(mktemp)"
           jq -n \
+            --arg b64 "$DEPLOY_TAR_B64" \
             --arg env_name "$ENV_NAME" \
             --arg target_tag "$TARGET_TAG" \
             --arg ecr_registry "$ECR_REGISTRY" \
@@ -55,6 +60,9 @@ jobs:
             '{
               commands: [
                 "set -euo pipefail",
+                "mkdir -p /opt/car-service/deploy",
+                ("echo \"" + $b64 + "\" | base64 -d | tar -xzf - -C /opt/car-service/deploy"),
+                "find /opt/car-service/deploy/scripts -type f -name \"*.sh\" -exec sed -i \"s/\\r$//\" {} + -exec chmod +x {} +",
                 ("export ENV_NAME=\"" + $env_name + "\" TARGET_TAG=\"" + $target_tag + "\" ECR_REGISTRY=\"" + $ecr_registry + "\" AWS_REGION=\"" + $aws_region + "\" DOMAIN_NAME=\"" + $domain_name + "\""),
                 "/opt/car-service/deploy/scripts/rollback.sh"
               ]
@@ -105,6 +113,34 @@ jobs:
 
           if [[ "$STATUS" != "Success" ]]; then
             echo "Rollback failed with SSM status: ${STATUS}"
+            exit 1
+          fi
+
+      - name: Post-Rollback HTTPS & Socket.IO Smoke Test
+        env:
+          ENV_NAME: ${{ inputs.environment }}
+          DOMAIN_NAME: ${{ vars.DOMAIN_NAME || 'carservice.id.vn' }}
+        run: |
+          set -euo pipefail
+          if [[ "$ENV_NAME" == "prod" ]]; then
+            API_URL="https://api.${DOMAIN_NAME}"
+            CUSTOMER_URL="https://${DOMAIN_NAME}"
+            INTERNAL_URL="https://ops.${DOMAIN_NAME}"
+          else
+            API_URL="https://staging-api.${DOMAIN_NAME}"
+            CUSTOMER_URL="https://staging.${DOMAIN_NAME}"
+            INTERNAL_URL="https://staging-ops.${DOMAIN_NAME}"
+          fi
+          echo "==> Checking ${API_URL}/health..."
+          curl -fsS "${API_URL}/health"
+          echo ""
+          echo "==> Checking Socket.IO handshake at ${API_URL}/socket.io/..."
+          curl -fsS "${API_URL}/socket.io/?EIO=4&transport=polling" >/dev/null
+          customer_code=$(curl -sS -o /dev/null -w "%{http_code}" "${CUSTOMER_URL}/")
+          internal_code=$(curl -sS -o /dev/null -w "%{http_code}" "${INTERNAL_URL}/")
+          echo "HTTPS status: customer=${customer_code}, internal=${internal_code}"
+          if [[ ! "$customer_code" =~ ^[23][0-9]{2}$ || ! "$internal_code" =~ ^[23][0-9]{2}$ ]]; then
+            echo "ERROR: Frontend HTTPS smoke test failed!" >&2
             exit 1
           fi
 

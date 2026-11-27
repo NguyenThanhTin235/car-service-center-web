@@ -69,7 +69,7 @@ export class WorkOrderService {
       }
 
       // 4. Kiểm tra xe chưa có WO đang mở
-      const activeWo = await workOrderRepo.findActiveByVehicleId(intake.vehicle_id);
+      const activeWo = await workOrderRepo.findActiveByVehicleId(intake.vehicle_id, tx);
       if (activeWo) {
         throw new Error(
           `Xe này đang có phiếu công việc đang xử lý (${activeWo.wo_number} - ${activeWo.status}). Vui lòng đóng phiếu cũ trước.`

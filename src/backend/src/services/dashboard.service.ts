@@ -40,41 +40,40 @@ class DashboardService {
     const now = new Date();
     const overdueThreshold = new Date(now.getTime() - 8 * 60 * 60 * 1000);
 
-    const [totalActive, pendingApproval, billingRequested, overdueJobs] = await Promise.all([
-      prisma.workOrder.count({ where: { status: { in: ACTIVE_WO_STATUSES } } }),
-      prisma.workOrder.count({ where: { status: WorkOrderStatus.PENDING_APPROVAL } }),
-      prisma.workOrder.count({ where: { status: WorkOrderStatus.BILLING_REQUESTED } }),
-      prisma.job.count({
-        where: {
-          status: { in: [JobStatus.PLANNED, JobStatus.IN_PROGRESS] },
-          started_at: { not: null, lt: overdueThreshold },
-          wo_service: { work_order: { status: { in: ACTIVE_WO_STATUSES } } },
-        },
-      }),
-    ]);
+    let pendingApproval = 0;
+    let billingRequested = 0;
+    let overdueJobs = 0;
 
-    const workOrders = activeWorkOrders.map((wo) => ({
-      id: wo.id,
-      woNumber: wo.wo_number,
-      status: wo.status,
-      customerName: wo.customer.full_name,
-      vehiclePlate: wo.vehicle.license_plate,
-      vehicleInfo: `${wo.vehicle.make} ${wo.vehicle.model} ${wo.vehicle.year ?? ''}`.trim(),
-      advisorName: wo.advisor.full_name,
-      createdAt: wo.created_at,
-      services: wo.services.map((s) => ({
-        id: s.id,
-        name: s.service?.name ?? s.name,
-        status: s.status,
-        jobs: s.jobs.map((j) => {
-          const isOverdue =
-            j.started_at !== null &&
-            (j.status === JobStatus.PLANNED || j.status === JobStatus.IN_PROGRESS) &&
-            j.started_at < overdueThreshold;
-          return { id: j.id, name: j.name, status: j.status, isOverdue, startedAt: j.started_at };
-        }),
-      })),
-    }));
+    const workOrders = activeWorkOrders.map((wo) => {
+      if (wo.status === WorkOrderStatus.PENDING_APPROVAL) pendingApproval += 1;
+      if (wo.status === WorkOrderStatus.BILLING_REQUESTED) billingRequested += 1;
+
+      return {
+        id: wo.id,
+        woNumber: wo.wo_number,
+        status: wo.status,
+        customerName: wo.customer.full_name,
+        vehiclePlate: wo.vehicle.license_plate,
+        vehicleInfo: `${wo.vehicle.make} ${wo.vehicle.model} ${wo.vehicle.year ?? ''}`.trim(),
+        advisorName: wo.advisor.full_name,
+        createdAt: wo.created_at,
+        services: wo.services.map((s) => ({
+          id: s.id,
+          name: s.service?.name ?? s.name,
+          status: s.status,
+          jobs: s.jobs.map((j) => {
+            const isOverdue =
+              j.started_at !== null &&
+              (j.status === JobStatus.PLANNED || j.status === JobStatus.IN_PROGRESS) &&
+              j.started_at < overdueThreshold;
+            if (isOverdue) overdueJobs += 1;
+            return { id: j.id, name: j.name, status: j.status, isOverdue, startedAt: j.started_at };
+          }),
+        })),
+      };
+    });
+
+    const totalActive = activeWorkOrders.length;
 
     return { kpis: { totalActive, pendingApproval, billingRequested, overdueJobs }, workOrders };
   }

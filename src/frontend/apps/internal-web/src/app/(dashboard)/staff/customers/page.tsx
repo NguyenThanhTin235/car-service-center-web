@@ -62,7 +62,7 @@ export default function CustomersPage() {
       console.error('Lỗi khi tải dữ liệu khách hàng', err);
       setError(err?.response?.data?.message || 'Không thể tải danh sách khách hàng. Vui lòng kiểm tra kết nối.');
     } finally {
-      setExporting(false);
+      setLoading(false);
     }
   };
 

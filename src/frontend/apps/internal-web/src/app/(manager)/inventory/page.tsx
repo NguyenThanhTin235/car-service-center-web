@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import toast from 'react-hot-toast';
+import StatusPill from '@/components/shared/StatusPill';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
   fetchInventoryItems,
@@ -74,6 +75,7 @@ export default function InventoryPage() {
   const {
     items,
     allItems,
+    itemsSummary,
     pagination,
     loading,
     error,
@@ -131,7 +133,6 @@ export default function InventoryPage() {
 
   useEffect(() => {
     loadData(1);
-    dispatch(fetchAllInventoryItems());
     dispatch(fetchPartCategories());
     dispatch(fetchBrands());
   }, []);
@@ -157,6 +158,7 @@ export default function InventoryPage() {
         search: search || undefined,
         itemType: itemType !== 'all' ? itemType : undefined,
         partCategoryId: categoryId !== 'all' ? parseInt(categoryId, 10) : undefined,
+        stockStatus: stockStatus !== 'all' ? stockStatus : undefined,
         page,
         limit,
       })
@@ -179,7 +181,6 @@ export default function InventoryPage() {
 
   const refreshAllInventoryData = useCallback(() => {
     loadData(currentPage);
-    dispatch(fetchAllInventoryItems());
     if (receiptsLoadedRef.current || activeTab === 'receipts') {
       loadReceipts(receiptPage);
     }
@@ -217,25 +218,33 @@ export default function InventoryPage() {
   );
 
   const lowStockCount = useMemo(
-    () => kpiSourceItems.filter((i) => i.isActive && i.onHand <= i.reorderLevel).length,
-    [kpiSourceItems]
+    () =>
+      itemsSummary
+        ? itemsSummary.lowStockCount
+        : kpiSourceItems.filter((i) => i.isActive && i.onHand <= i.reorderLevel).length,
+    [itemsSummary, kpiSourceItems]
   );
 
   const totalValue = useMemo(
-    () => kpiSourceItems.reduce((sum, item) => sum + item.onHand * item.averageCost, 0),
-    [kpiSourceItems]
+    () =>
+      itemsSummary
+        ? itemsSummary.totalValue
+        : kpiSourceItems.reduce((sum, item) => sum + item.onHand * item.averageCost, 0),
+    [itemsSummary, kpiSourceItems]
   );
 
-  // If filtering by low stock, use kpiSourceItems so all low-stock items across pages appear
+  // Use server-filtered items when itemsSummary is active; fallback to kpiSourceItems if allItems loaded
   const displayedItems = useMemo(() => {
     if (stockStatus === 'low') {
-      return kpiSourceItems.filter((item) => item.onHand <= item.reorderLevel);
+      return allItems && allItems.length > 0
+        ? allItems.filter((item) => item.onHand <= item.reorderLevel)
+        : items.filter((item) => item.onHand <= item.reorderLevel);
     }
     if (stockStatus === 'sufficient') {
       return items.filter((item) => item.onHand > item.reorderLevel);
     }
     return items;
-  }, [items, kpiSourceItems, stockStatus]);
+  }, [items, allItems, stockStatus]);
 
   const filteredSuppliers = useMemo(() => {
     const q = supplierSearch.trim().toLowerCase();
@@ -300,49 +309,7 @@ export default function InventoryPage() {
 
   return (
     <div className="flex flex-col min-w-0 space-y-6">
-      {/* 1. SaaS Header & Primary Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
-            Quản lý kho phụ tùng & Chứng từ nhập kho
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Theo dõi tồn kho SKU, hạch toán Giá vốn bình quân gia quyền (MWA), Sổ phiếu nhập kho và
-            Thẻ kho truy vết
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
-          {lowStockCount > 0 && (
-            <button
-              type="button"
-              onClick={() => handleOpenNewReceipt(true)}
-              className="h-10 px-3.5 flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
-              title="Lập nhanh phiếu nhập kho cho toàn bộ các mã đang chạm/dưới định mức an toàn"
-            >
-              <span className="material-symbols-outlined text-[18px] text-amber-600">bolt</span>
-              <span>Nhập bù hàng thiếu ({lowStockCount})</span>
-            </button>
-          )}
-          <button
-            id="btn-add-part"
-            onClick={handleAddPart}
-            className="h-10 px-4 flex items-center gap-2 bg-white text-slate-700 hover:text-[#0866ff] border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px] text-[#0866ff]">add</span>
-            <span>Thêm phụ tùng</span>
-          </button>
-          <button
-            onClick={() => handleOpenNewReceipt(false)}
-            className="h-10 px-4 flex items-center gap-2 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white rounded-xl text-xs font-bold shadow-md shadow-[#0866ff]/20 active:scale-[0.98] transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px]">add_box</span>
-            <span>Nhập kho</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Asymmetrical 12-Col Inventory Bento (5 + 4 + 3) */}
+      {/* 1. Asymmetrical 12-Col Inventory Bento (5 + 4 + 3) */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Hero Card: Tổng giá trị kho (5 cols) */}
         <div className="md:col-span-5 rounded-2xl saas-hero-gradient text-white p-5 relative overflow-hidden flex flex-col justify-between">
@@ -403,8 +370,20 @@ export default function InventoryPage() {
         <button
           type="button"
           onClick={() => {
+            const nextStatus = stockStatus === 'low' ? 'all' : 'low';
             setActiveTab('items');
-            setStockStatus(stockStatus === 'low' ? 'all' : 'low');
+            setStockStatus(nextStatus);
+            setCurrentPage(1);
+            dispatch(
+              fetchInventoryItems({
+                search: search || undefined,
+                itemType: itemType !== 'all' ? itemType : undefined,
+                partCategoryId: categoryId !== 'all' ? parseInt(categoryId, 10) : undefined,
+                stockStatus: nextStatus !== 'all' ? nextStatus : undefined,
+                page: 1,
+                limit,
+              })
+            );
           }}
           className={`md:col-span-3 text-left rounded-2xl p-5 border transition-all flex flex-col justify-between cursor-pointer ${
             stockStatus === 'low'
@@ -439,20 +418,20 @@ export default function InventoryPage() {
       </div>
 
       {/* 3. Enterprise 3-Tab Navigation Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/90 pb-1">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/90 pb-2">
         <div role="tablist" aria-label="Phân hệ kho phụ tùng" className="flex flex-wrap items-center gap-1.5 overflow-x-auto max-w-full">
           <button
             type="button"
             role="tab"
             aria-selected={activeTab === 'items'}
             onClick={() => setActiveTab('items')}
-            className={`h-10 px-4 rounded-t-xl text-xs font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            className={`min-h-[44px] lg:min-h-[40px] px-4 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
               activeTab === 'items'
-                ? 'border-[#0866ff] text-[#0866ff] bg-blue-50/50'
-                : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
+                ? 'bg-[#0866ff] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">inventory_2</span>
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">inventory_2</span>
             <span>Danh mục Tồn kho ({pagination?.totalRecords || kpiSourceItems.length})</span>
           </button>
 
@@ -461,16 +440,20 @@ export default function InventoryPage() {
             role="tab"
             aria-selected={activeTab === 'receipts'}
             onClick={() => setActiveTab('receipts')}
-            className={`h-10 px-4 rounded-t-xl text-xs font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            className={`min-h-[44px] lg:min-h-[40px] px-4 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
               activeTab === 'receipts'
-                ? 'border-[#0866ff] text-[#0866ff] bg-blue-50/50'
-                : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
+                ? 'bg-[#0866ff] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">receipt_long</span>
             <span>Sổ Phiếu Nhập Kho ({receiptsStats?.totalReceipts || receipts.length})</span>
             {receiptsStats && receiptsStats.draftCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-100 text-amber-800 border border-amber-300">
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                activeTab === 'receipts'
+                  ? 'bg-white/20 text-white border-white/30'
+                  : 'bg-amber-100 text-amber-800 border-amber-300'
+              }`}>
                 {receiptsStats.draftCount} nháp
               </span>
             )}
@@ -481,14 +464,45 @@ export default function InventoryPage() {
             role="tab"
             aria-selected={activeTab === 'suppliers'}
             onClick={() => setActiveTab('suppliers')}
-            className={`h-10 px-4 rounded-t-xl text-xs font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            className={`min-h-[44px] lg:min-h-[40px] px-4 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
               activeTab === 'suppliers'
-                ? 'border-[#0866ff] text-[#0866ff] bg-blue-50/50'
-                : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
+                ? 'bg-[#0866ff] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">local_shipping</span>
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">local_shipping</span>
             <span>Nhà cung cấp ({suppliers.length})</span>
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          {lowStockCount > 0 && (
+            <button
+              type="button"
+              onClick={() => handleOpenNewReceipt(true)}
+              className="h-10 px-3.5 flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              title="Lập nhanh phiếu nhập kho cho toàn bộ các mã đang chạm/dưới định mức an toàn"
+            >
+              <span className="material-symbols-outlined text-[18px] text-amber-600">bolt</span>
+              <span>Nhập bù hàng thiếu ({lowStockCount})</span>
+            </button>
+          )}
+          <button
+            id="btn-add-part"
+            onClick={handleAddPart}
+            className="h-10 px-4 flex items-center gap-2 bg-white text-slate-700 hover:text-[#0866ff] border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/40 rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px] text-[#0866ff]">add</span>
+            <span>Thêm phụ tùng</span>
+          </button>
+          <button
+            id="btn-create-receipt"
+            type="button"
+            onClick={() => handleOpenNewReceipt(false)}
+            className="h-10 px-4 flex items-center gap-2 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white rounded-xl text-xs font-bold shadow-md shadow-[#0866ff]/20 active:scale-[0.98] transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">add_box</span>
+            <span>Nhập kho</span>
           </button>
         </div>
       </div>
@@ -543,7 +557,21 @@ export default function InventoryPage() {
 
                 <select
                   value={stockStatus}
-                  onChange={(e) => setStockStatus(e.target.value)}
+                  onChange={(e) => {
+                    const nextStatus = e.target.value;
+                    setStockStatus(nextStatus);
+                    setCurrentPage(1);
+                    dispatch(
+                      fetchInventoryItems({
+                        search: search || undefined,
+                        itemType: itemType !== 'all' ? itemType : undefined,
+                        partCategoryId: categoryId !== 'all' ? parseInt(categoryId, 10) : undefined,
+                        stockStatus: nextStatus !== 'all' ? nextStatus : undefined,
+                        page: 1,
+                        limit,
+                      })
+                    );
+                  }}
                   className="h-9 px-3 text-xs font-semibold text-slate-700 bg-slate-50/80 border border-slate-200/80 rounded-xl focus:border-[#0866ff] outline-none cursor-pointer"
                 >
                   <option value="all">Trạng thái: Tất cả</option>
@@ -649,22 +677,24 @@ export default function InventoryPage() {
                           </td>
                           <td className="py-3.5 px-5">
                             {item.brand ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-blue-50 text-[#0050cd] border border-blue-200/80">
-                                {item.brand.name}
-                              </span>
+                              <StatusPill label={item.brand.name} tone="primary" />
                             ) : (
                               <span className="text-slate-400 font-medium">—</span>
                             )}
                           </td>
                           <td className="py-3.5 px-5">
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${
-                                ITEM_TYPE_BADGE[item.itemType] ||
-                                'bg-slate-100 text-slate-700 border-slate-200/80'
-                              }`}
-                            >
-                              {ITEM_TYPE_LABELS[item.itemType] || item.itemType}
-                            </span>
+                            <StatusPill
+                              label={ITEM_TYPE_LABELS[item.itemType] || item.itemType}
+                              tone={
+                                item.itemType === 'PART'
+                                  ? 'primary'
+                                  : item.itemType === 'CONSUMABLE'
+                                    ? 'warning'
+                                    : item.itemType === 'CHEMICAL'
+                                      ? 'purple'
+                                      : 'sky'
+                              }
+                            />
                           </td>
                           <td className="py-3.5 px-5 text-right font-mono tabular-nums text-xs text-slate-700 font-medium">
                             {Math.round(item.averageCost).toLocaleString('vi-VN')} ₫

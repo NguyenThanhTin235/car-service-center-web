@@ -8,6 +8,7 @@ import VehicleInspectionPanel from './VehicleInspectionPanel';
 import ImageLightbox from '@/components/advisor/common/ImageLightbox';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { formatVND } from '@/lib/utils/formatters';
+import { formatDisplayNotes } from '@/lib/utils/notes';
 
 interface TabCheckinProps {
   workOrder?: WorkOrder;
@@ -686,7 +687,9 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
 
                 <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-1 sm:gap-4 items-start">
                   <span className="text-body-sm text-on-surface-variant">Ghi chú</span>
-                  <span className="text-body-sm font-medium">{workOrder?.intake_record?.notes || complaint || 'Không có ghi chú.'}</span>
+                  <span className="text-body-sm font-medium whitespace-pre-wrap">
+                    {formatDisplayNotes(workOrder?.intake_record?.notes || complaint) || 'Không có ghi chú.'}
+                  </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-1 sm:gap-4 items-start">
                   <span className="text-body-sm text-on-surface-variant">Dự kiến xong</span>
@@ -725,8 +728,8 @@ export default function TabCheckinInspection({ workOrder, refetchWO, isReadOnly:
                 <label className="block text-body-sm text-on-surface-variant mb-1">
                   Yêu cầu &amp; triệu chứng khách báo (Lễ tân ghi nhận)
                 </label>
-                <div className="w-full px-3.5 py-3 bg-[#f2f4f8] rounded-xl text-body-md text-slate-600 italic">
-                  {workOrder?.intake_record?.notes || complaint || 'Không có ghi chú từ bộ phận tiếp nhận.'}
+                <div className="w-full px-3.5 py-3 bg-[#f2f4f8] rounded-xl text-body-md text-slate-600 italic whitespace-pre-wrap">
+                  {formatDisplayNotes(workOrder?.intake_record?.notes || complaint) || 'Không có ghi chú từ bộ phận tiếp nhận.'}
                 </div>
               </div>
 

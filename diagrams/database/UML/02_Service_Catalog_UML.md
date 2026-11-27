@@ -24,7 +24,6 @@ entity "Service" {
   pricing_type
   fixed_price
   warranty_months
-  warranty_mileage
   is_active
 }
 

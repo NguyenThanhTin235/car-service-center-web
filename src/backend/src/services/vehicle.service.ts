@@ -1,5 +1,6 @@
 import { VehicleSize } from '@prisma/client';
 import prisma from '../utils/prisma';
+import { notificationService } from './notification.service';
 
 export interface CreateVehicleDto {
   licensePlate: string;
@@ -100,6 +101,17 @@ export class VehicleService {
         status: 'ACTIVE',
       },
     });
+
+    notificationService
+      .sendInApp({
+        userId: customerId,
+        type: 'SYSTEM_ALERT',
+        title: `Đã thêm xe mới (${vehicle.license_plate})`,
+        message: `Phương tiện ${vehicle.make} ${vehicle.model} (${vehicle.license_plate}) đã được thêm vào hồ sơ xe của bạn.`,
+        entityType: 'VEHICLE',
+        entityId: vehicle.id,
+      })
+      .catch((err) => console.error('Failed to notify user on vehicle created:', err));
 
     return {
       id: vehicle.id,

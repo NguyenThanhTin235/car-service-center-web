@@ -26,6 +26,9 @@ export default function InvoiceDetailModal({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Chi tiết hóa đơn"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs cw-modal-overlay"
       onClick={onClose}
     >
@@ -37,13 +40,13 @@ export default function InvoiceDetailModal({
         <div className="p-4 sm:p-5 border-b border-surface-container-highest flex items-center justify-between sticky top-0 bg-surface-container-lowest z-10">
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-lg bg-primary-fixed text-primary flex items-center justify-center">
-              <span className="material-symbols-outlined text-[18px]">receipt</span>
+              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">receipt</span>
             </div>
             <div>
               <h3 className="text-base font-bold text-on-surface">
                 Chi tiết hóa đơn {selectedInvoice ? `#${selectedInvoice.invoiceNumber}` : ''}
               </h3>
-              <p className="text-xs text-on-surface-variant">Trung tâm dịch vụ kỹ thuật Car Service Center</p>
+              <p className="text-xs text-on-surface-variant">Trung tâm dịch vụ kỹ thuật AutoCare Pro</p>
             </div>
           </div>
 
@@ -53,13 +56,13 @@ export default function InvoiceDetailModal({
                 type="button"
                 onClick={() => onDownloadPdf(selectedInvoice.id, selectedInvoice.invoiceNumber)}
                 disabled={downloadingPdfId === selectedInvoice.id}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold rounded-lg border border-surface-container-highest transition-colors cursor-pointer"
+                className="min-h-[44px] sm:min-h-[36px] inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-semibold rounded-lg border border-surface-container-highest transition-colors cursor-pointer"
                 title="Tải file hóa đơn PDF chuẩn từ hệ thống"
               >
                 {downloadingPdfId === selectedInvoice.id ? (
                   <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <span className="material-symbols-outlined text-[16px] text-primary">download</span>
+                  <span className="material-symbols-outlined text-[16px] text-primary" aria-hidden="true">download</span>
                 )}
                 <span>{downloadingPdfId === selectedInvoice.id ? 'Đang tạo PDF...' : 'Tải hóa đơn PDF'}</span>
               </button>
@@ -67,9 +70,10 @@ export default function InvoiceDetailModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container-low transition-colors"
+              aria-label="Đóng"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container-low transition-colors cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[20px]">close</span>
+              <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
             </button>
           </div>
         </div>

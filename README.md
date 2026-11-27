@@ -143,9 +143,9 @@ erDiagram
 
 | Tầng hệ thống | Công nghệ chính |
 | :--- | :--- |
-| **Frontend (`src/frontend`)** | Next.js 16 (App Router), React 19, TypeScript 5, Tailwind CSS v4, Redux Toolkit, Axios, Socket.IO Client, Recharts, SheetJS (`xlsx`), React Hot Toast, Playwright |
+| **Frontend (`src/frontend`)** | Next.js 16 (App Router), React 19, TypeScript 5, Tailwind CSS v4, Redux Toolkit, Axios, Socket.IO Client, SheetJS (`xlsx`), React Hot Toast, Playwright |
 | **Backend (`src/backend`)** | Node.js 20+, Express 5, TypeScript 5.9, Prisma ORM 5, Joi, JWT & bcrypt, Socket.IO 4.8, PDFKit, Winston, Helmet, `node-cron`, Vitest & Supertest |
-| **Database & Cache** | MySQL 8.0, Redis (`ioredis` / `redis` — hỗ trợ fallback in-memory cache) |
+| **Database & Cache** | MySQL 8.0, Redis (`ioredis` — hỗ trợ fallback in-memory cache) |
 | **Dịch vụ bên thứ ba** | Google Gemini (`@google/genai`), SePay (`sepay-pg-node` / VietQR IPN), Cloudinary / AWS S3, SMTP Gmail / AWS SES |
 | **DevOps & Cloud** | Docker & Docker Compose, Nginx, AWS CDK v2 (6 stacks), GitHub Actions (CI/CD/Rollback), Trivy, Gitleaks |
 
@@ -281,6 +281,7 @@ npm run typecheck          # Kiểm tra kiểu TypeScript
 npm run lint               # Kiểm tra ESLint
 
 # Frontend (tại src/frontend)
+npm run test:unit          # Chạy toàn bộ unit tests Frontend (customer-web + internal-web)
 npm run test:unit:customer # Chạy unit tests của customer-web
 npm run test:e2e           # Chạy E2E tests (Playwright)
 npm run lint               # Kiểm tra ESLint tất cả workspaces

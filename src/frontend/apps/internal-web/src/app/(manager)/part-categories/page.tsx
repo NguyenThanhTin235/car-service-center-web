@@ -93,22 +93,7 @@ export default function PartCategoriesPage() {
 
   return (
     <div className="flex flex-col min-w-0 space-y-6">
-      {/* 1. SaaS Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
-          Danh mục phụ tùng
-        </h1>
-
-        <button
-          onClick={handleAddCategory}
-          className="h-10 px-4 flex items-center gap-2 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white rounded-xl text-xs font-bold shadow-md shadow-[#0866ff]/20 active:scale-[0.98] transition-all self-start sm:self-auto cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[18px]">create_new_folder</span>
-          <span>Thêm danh mục</span>
-        </button>
-      </div>
-
-      {/* 2. Asymmetrical 12-Col Bento Summary (5 + 7 cols) */}
+      {/* 1. Asymmetrical 12-Col Bento Summary (5 + 7 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Hero Card (5 cols) */}
         <button
@@ -237,9 +222,18 @@ export default function PartCategoriesPage() {
             </select>
           </div>
 
-          <span className="text-xs text-slate-400 font-mono">
-            Hiển thị <strong className="text-slate-700">{filteredCategories.length}</strong> danh mục
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs text-slate-400 font-mono">
+              Hiển thị <strong className="text-slate-700">{filteredCategories.length}</strong> danh mục
+            </span>
+            <button
+              onClick={handleAddCategory}
+              className="h-9 px-4 flex items-center gap-2 bg-gradient-to-r from-[#0866ff] to-[#0050cd] hover:brightness-110 text-white rounded-xl text-xs font-bold shadow-md shadow-[#0866ff]/20 active:scale-[0.98] transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">create_new_folder</span>
+              <span>Thêm danh mục</span>
+            </button>
+          </div>
         </div>
       </div>
 

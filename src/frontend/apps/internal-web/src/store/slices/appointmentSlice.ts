@@ -44,6 +44,7 @@ export interface AppointmentState {
     limit: number;
     total: number;
   };
+  activeCount: number | null;
 }
 
 const initialState: AppointmentState = {
@@ -62,6 +63,7 @@ const initialState: AppointmentState = {
     limit: 50,
     total: 0,
   },
+  activeCount: null,
 };
 
 // Async Thunks
@@ -158,6 +160,12 @@ const appointmentSlice = createSlice({
         state.loading = false;
         state.appointments = action.payload.data;
         state.pagination.total = action.payload.pagination.totalRecords;
+        const arg = action.meta.arg;
+        if (!arg?.status && !arg?.search) {
+          state.activeCount = (action.payload.data || []).filter((a: Appointment) =>
+            ['REQUESTED', 'CONFIRMED', 'RESCHEDULED'].includes(a.status)
+          ).length;
+        }
       })
       .addCase(fetchAppointments.rejected, (state, action) => {
         state.loading = false;

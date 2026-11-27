@@ -475,8 +475,8 @@ test.describe('SA Portal E2E: Work Order Detail Tabs (/advisor/work-orders/[id])
     await expect(tooltip).toBeVisible();
     await expect(tooltip.getByText('Cửa trước bên lái')).toBeVisible();
 
-    const findingsScrollWrapper = page.locator('div.md\\:overflow-x-auto').filter({ hasText: 'Loại dấu vết' }).first();
-    await expect(findingsScrollWrapper).toBeVisible();
+    await expect(page.getByText('Danh sách ghi nhận kiểm tra (1)')).toBeVisible();
+    await expect(page.getByText('Móp nhẹ góc dưới cửa lái', { exact: true })).toBeVisible();
     await expect(page.getByText('Chú thích:')).toHaveCount(0);
 
     const tabBar = page
@@ -513,7 +513,7 @@ test.describe('SA Portal E2E: Work Order Detail Tabs (/advisor/work-orders/[id])
 
     await activePanel.getByRole('button', { name: /Lịch sử \(1\)/ }).click();
     await expect(page.getByRole('heading', { name: /Lịch sử các phiên bản Báo giá/i })).toBeVisible();
-    await page.locator('button[title="Đóng modal"]').click();
+    await page.getByRole('button', { name: 'Đóng', exact: true }).last().click();
     await expect(page.getByRole('heading', { name: /Lịch sử các phiên bản Báo giá/i })).toHaveCount(0);
 
     // Tab 5 (qc): checklist items + "Chờ đánh giá" pill

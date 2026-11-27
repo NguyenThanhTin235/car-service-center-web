@@ -1,13 +1,18 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import LogoutButton from '@/components/shared/LogoutButton';
-import NotificationBell from '@/components/notifications/NotificationBell';
 import { getDashboardPathByRole } from '@/utils/roleRedirect';
+
+const NotificationBell = dynamic(
+  () => import('@/components/notifications/NotificationBell'),
+  { ssr: false }
+);
 
 const PUBLIC_NAV_LINKS = [
   { href: '/home', label: 'Trang chủ', sectionId: 'top' },

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch } from '@/store';
-import { createVehicle, fetchVehicles, Vehicle } from '@/store/slices/vehicleSlice';
+import { Vehicle } from '@/store/slices/vehicleSlice';
 import { Appointment, createAppointment, fetchAppointments } from '@/store/slices/appointmentSlice';
 import warrantyApi, { WarrantyItem, getWarrantyCompositeKey } from '@/lib/api/warranty.api';
 import {
@@ -57,6 +57,23 @@ const AVAILABLE_SERVICES = [
   },
 ];
 
+const CheckIcon = () => (
+  <svg
+    viewBox="0 0 16 16"
+    fill="none"
+    aria-hidden="true"
+    className="w-3 h-3"
+  >
+    <path
+      d="M3.5 8.5L6.5 11.5L12.5 4.5"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 interface CustomerBookingModalProps {
   initialDate: Date;
   initialTime: string;
@@ -95,9 +112,8 @@ export default function CustomerBookingModal({
   const [bookingVehicleId, setBookingVehicleId] = useState<number | null>(
     initialVehicleId ?? activeVehicles[0]?.id ?? vehicles[0]?.id ?? null
   );
-  const [customPlateInput, setCustomPlateInput] = useState('');
   const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>(
-    initialServiceIds && initialServiceIds.length > 0 ? initialServiceIds : [1, 2]
+    initialServiceIds && initialServiceIds.length > 0 ? initialServiceIds : []
   );
   const [bookingNotes, setBookingNotes] = useState(initialNotes || '');
   const [bookingDate, setBookingDate] = useState<Date>(initialDate);
@@ -141,7 +157,6 @@ export default function CustomerBookingModal({
   useEffect(() => {
     if (initialVehicleId) {
       setBookingVehicleId(initialVehicleId);
-      setCustomPlateInput('');
     }
   }, [initialVehicleId]);
 
@@ -207,8 +222,8 @@ export default function CustomerBookingModal({
   };
 
   const handleConfirm3StepBooking = async () => {
-    if (!bookingVehicleId && !customPlateInput.trim()) {
-      onToast({ message: 'Vui lòng chọn hoặc nhập thông tin xe.', type: 'error' });
+    if (!bookingVehicleId) {
+      onToast({ message: 'Vui lòng chọn phương tiện để đặt lịch.', type: 'error' });
       return;
     }
     if (selectedServiceIds.length === 0 && !bookingNotes.trim()) {
@@ -230,32 +245,11 @@ export default function CustomerBookingModal({
     setBookingSubmitting(true);
     try {
       let chosenVehicleId = bookingVehicleId;
-      if (customPlateInput.trim()) {
-        const plate = customPlateInput.trim().toUpperCase();
-        const existing = vehicles.find((v) => v.licensePlate.toUpperCase() === plate);
-        if (existing) {
-          chosenVehicleId = existing.id;
-        } else {
-          try {
-            const newVehRes = await dispatch(
-              createVehicle({
-                licensePlate: plate,
-                make: 'Khác',
-                model: 'Khác',
-                vehicleSize: 'MEDIUM',
-              })
-            ).unwrap();
-            chosenVehicleId = newVehRes.id;
-            dispatch(fetchVehicles());
-          } catch {
-            chosenVehicleId = vehicles[0]?.id;
-          }
-        }
-      } else if (!chosenVehicleId) {
+      if (!chosenVehicleId) {
         if (vehicles.length > 0) {
           chosenVehicleId = vehicles[0].id;
         } else {
-          onToast({ message: 'Vui lòng chọn xe hoặc nhập biển số xe.', type: 'error' });
+          onToast({ message: 'Vui lòng chọn phương tiện để đặt lịch.', type: 'error' });
           setBookingSubmitting(false);
           return;
         }
@@ -283,10 +277,16 @@ export default function CustomerBookingModal({
         }
       }
 
+      if (!chosenVehicleId) {
+        onToast({ message: 'Vui lòng chọn xe hoặc nhập biển số xe.', type: 'error' });
+        setBookingSubmitting(false);
+        return;
+      }
+
       await dispatch(
         createAppointment({
           customer_id: customerId,
-          vehicle_id: chosenVehicleId || vehicles[0]?.id || 1,
+          vehicle_id: chosenVehicleId,
           scheduled_date: formattedDate,
           scheduled_time: bookingTime,
           notes: bookingNotes,
@@ -327,31 +327,36 @@ export default function CustomerBookingModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center self-start sm:self-center transition-colors"
+            aria-label="Đóng cửa sổ đặt lịch"
+            className="min-w-[44px] min-h-[44px] rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center self-start sm:self-center transition-colors cursor-pointer"
           >
-            <span className="material-symbols-outlined text-lg">close</span>
+            <span className="material-symbols-outlined text-lg" aria-hidden="true">close</span>
           </button>
         </div>
 
         {/* Stepper Progress Bar */}
         <div className="flex items-center justify-center gap-3 py-1">
-          <div
+          <button
+            type="button"
             onClick={() => setBookingStep(1)}
-            className={`flex items-center gap-2 cursor-pointer ${bookingStep === 1 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'}`}
+            aria-current={bookingStep === 1 ? 'step' : undefined}
+            className={`min-h-[44px] px-2 flex items-center gap-2 cursor-pointer rounded-lg ${bookingStep === 1 ? 'text-blue-600 font-bold' : 'text-slate-500 font-medium hover:text-slate-700'}`}
           >
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${bookingStep === 1 ? 'bg-blue-600 text-white font-bold' : 'bg-blue-100 text-blue-700 font-semibold'}`}
             >
               1
             </div>
-            <span className="text-xs">1. Chọn xe</span>
-          </div>
+            <span className="text-xs">Chọn xe</span>
+          </button>
 
-          <div className="w-12 h-0.5 bg-blue-500/40" />
+          <div className="w-12 h-0.5 bg-blue-500/40" aria-hidden="true" />
 
-          <div
+          <button
+            type="button"
             onClick={() => setBookingStep(2)}
-            className={`flex items-center gap-2 cursor-pointer ${bookingStep === 2 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'}`}
+            aria-current={bookingStep === 2 ? 'step' : undefined}
+            className={`min-h-[44px] px-2 flex items-center gap-2 cursor-pointer rounded-lg ${bookingStep === 2 ? 'text-blue-600 font-bold' : 'text-slate-500 font-medium hover:text-slate-700'}`}
           >
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
@@ -359,27 +364,29 @@ export default function CustomerBookingModal({
                   ? 'bg-blue-600 text-white font-bold'
                   : bookingStep > 2
                     ? 'bg-blue-100 text-blue-700 font-semibold'
-                    : 'bg-slate-100 text-slate-500'
+                    : 'bg-slate-100 text-slate-600'
               }`}
             >
               2
             </div>
-            <span className="text-xs">2. Dịch vụ & Mô tả</span>
-          </div>
+            <span className="text-xs">Dịch vụ & Mô tả</span>
+          </button>
 
-          <div className="w-12 h-0.5 bg-blue-500/40" />
+          <div className="w-12 h-0.5 bg-blue-500/40" aria-hidden="true" />
 
-          <div
+          <button
+            type="button"
             onClick={() => setBookingStep(3)}
-            className={`flex items-center gap-2 cursor-pointer ${bookingStep === 3 ? 'text-blue-600 font-bold' : 'text-slate-400 font-medium'}`}
+            aria-current={bookingStep === 3 ? 'step' : undefined}
+            className={`min-h-[44px] px-2 flex items-center gap-2 cursor-pointer rounded-lg ${bookingStep === 3 ? 'text-blue-600 font-bold' : 'text-slate-500 font-medium hover:text-slate-700'}`}
           >
             <div
-              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${bookingStep === 3 ? 'bg-blue-600 text-white font-bold' : 'bg-slate-100 text-slate-500'}`}
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${bookingStep === 3 ? 'bg-blue-600 text-white font-bold' : 'bg-slate-100 text-slate-600'}`}
             >
               3
             </div>
-            <span className="text-xs">3. Ngày & Giờ</span>
-          </div>
+            <span className="text-xs">Ngày & Giờ</span>
+          </button>
         </div>
 
         {/* STEP 1: CHỌN XE CẦN LÀM DỊCH VỤ */}
@@ -390,7 +397,7 @@ export default function CustomerBookingModal({
                 <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
                   1
                 </div>
-                <h3 className="font-bold text-slate-900 text-sm">1. Chọn xe cần làm dịch vụ</h3>
+                <h3 className="font-bold text-slate-900 text-sm">Chọn xe cần làm dịch vụ</h3>
               </div>
               <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -418,13 +425,12 @@ export default function CustomerBookingModal({
                 </div>
               ) : (
                 activeVehicles.map((v) => {
-                  const isSelected = !customPlateInput && bookingVehicleId === v.id;
+                  const isSelected = bookingVehicleId === v.id;
                   return (
                     <div
                       key={v.id}
                       onClick={() => {
                         setBookingVehicleId(v.id);
-                        setCustomPlateInput('');
                       }}
                       className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between gap-3 ${
                         isSelected
@@ -438,11 +444,11 @@ export default function CustomerBookingModal({
                             {v.licensePlate}
                           </span>
                           <div
-                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
                               isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
                             }`}
                           >
-                            {isSelected && <span className="material-symbols-outlined text-[13px]">check</span>}
+                            {isSelected && <CheckIcon />}
                           </div>
                         </div>
                         <h4 className="font-bold text-sm text-slate-900 leading-snug">
@@ -466,36 +472,6 @@ export default function CustomerBookingModal({
                 })
               )}
             </div>
-
-            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-blue-700">
-                <span className="material-symbols-outlined text-base">add_circle</span>
-                <span>+ Sử dụng xe khác / Nhập biển số mới</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={customPlateInput}
-                  onChange={(e) => {
-                    setCustomPlateInput(e.target.value.toUpperCase());
-                    setBookingVehicleId(null);
-                  }}
-                  placeholder="Ví dụ: 51K-999.88 (Dòng xe)"
-                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono tracking-wider focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (customPlateInput.trim()) {
-                      setBookingVehicleId(0);
-                    }
-                  }}
-                  className="px-4 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-xl hover:bg-slate-900 transition-colors"
-                >
-                  Áp dụng
-                </button>
-              </div>
-            </div>
           </div>
         )}
 
@@ -506,7 +482,7 @@ export default function CustomerBookingModal({
               <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
                 2
               </div>
-              <h3 className="font-bold text-slate-900 text-sm">2. Dịch vụ yêu cầu & Mô tả tình trạng</h3>
+              <h3 className="font-bold text-slate-900 text-sm">Dịch vụ yêu cầu & Mô tả tình trạng</h3>
             </div>
             <p className="text-xs text-slate-500 -mt-3">
               Lựa chọn các hạng mục cần thực hiện hoặc ghi rõ triệu chứng bất thường
@@ -568,7 +544,7 @@ export default function CustomerBookingModal({
                               checked ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
                             }`}
                           >
-                            {checked && <span className="material-symbols-outlined text-[13px]">check</span>}
+                            {checked && <CheckIcon />}
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="font-bold text-xs text-slate-900">{item.name}</div>
@@ -627,7 +603,7 @@ export default function CustomerBookingModal({
                         isChecked ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
                       }`}
                     >
-                      {isChecked && <span className="material-symbols-outlined text-[13px]">check</span>}
+                      {isChecked && <CheckIcon />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -677,7 +653,7 @@ export default function CustomerBookingModal({
               <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
                 3
               </div>
-              <h3 className="font-bold text-slate-900 text-sm">3. Chọn ngày & khung giờ tiếp nhận</h3>
+              <h3 className="font-bold text-slate-900 text-sm">Chọn ngày & khung giờ tiếp nhận</h3>
             </div>
             <p className="text-xs text-slate-500 -mt-3">
               Hệ thống phân bổ khoang sửa chữa thông minh tránh tình trạng chờ đợi quá 10 phút
@@ -789,12 +765,17 @@ export default function CustomerBookingModal({
                   })}
                 </div>
 
-                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-blue-600" />
-                    Ngày đang chọn: <strong>{bookingDate.getDate()}/{bookingDate.getMonth() + 1}</strong>
+                <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                  <span className="flex items-center gap-1.5 whitespace-nowrap">
+                    <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                    <span>
+                      Ngày đang chọn:{' '}
+                      <strong className="text-slate-800 font-mono tabular-nums">
+                        {bookingDate.getDate()}/{bookingDate.getMonth() + 1}
+                      </strong>
+                    </span>
                   </span>
-                  <span>Xưởng mở cửa (07:30 - 17:30)</span>
+                  <span className="whitespace-nowrap">Xưởng mở cửa (07:30 - 17:30)</span>
                 </div>
                 {hasVehicleAppointmentOnDate(
                   bookingVehicleId,
@@ -903,7 +884,17 @@ export default function CustomerBookingModal({
                     </span>
                   </div>
                   <p className="text-slate-700 mt-0.5">
-                    {customPlateInput || `${selectedVehicleObj?.make || 'Toyota'} ${selectedVehicleObj?.model || 'Vios'} (${selectedVehicleObj?.licensePlate || '51G-123.45'})`} • {selectedServiceIds.length} dịch vụ chọn • <strong className="text-blue-700">{bookingTime} - Ngày {bookingDate.getDate()}/{bookingDate.getMonth() + 1}/{bookingDate.getFullYear()}</strong> • Cố vấn dự kiến: <strong>KTV Trần Văn Nam</strong>
+                    {selectedVehicleObj
+                      ? `${selectedVehicleObj.make} ${selectedVehicleObj.model} (${selectedVehicleObj.licensePlate})`
+                      : 'Chưa chọn xe'}{' '}
+                    •{' '}
+                    {isWarranty
+                      ? `${selectedWarrantyItemIds.length} hạng mục bảo hành`
+                      : `${selectedServiceIds.length} dịch vụ chọn`}{' '}
+                    •{' '}
+                    <strong className="text-blue-700 font-mono tabular-nums">
+                      {bookingTime} - Ngày {bookingDate.getDate()}/{bookingDate.getMonth() + 1}/{bookingDate.getFullYear()}
+                    </strong>
                   </p>
                 </div>
               </div>
@@ -940,8 +931,8 @@ export default function CustomerBookingModal({
             <button
               type="button"
               onClick={() => {
-                if (bookingStep === 1 && !bookingVehicleId && !customPlateInput.trim()) {
-                  onToast({ message: 'Vui lòng chọn xe hoặc nhập biển số xe để tiếp tục.', type: 'error' });
+                if (bookingStep === 1 && !bookingVehicleId) {
+                  onToast({ message: 'Vui lòng chọn phương tiện để tiếp tục.', type: 'error' });
                   return;
                 }
                 if (bookingStep === 2) {

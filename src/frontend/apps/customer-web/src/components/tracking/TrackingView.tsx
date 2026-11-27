@@ -58,6 +58,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
   const { orders, selectedOrder, loading, error } = useAppSelector((state) => state.tracking);
   const [syncTick, setSyncTick] = useState<number>(0);
   const [toastMsg, setToastMsg] = useState<string>('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
   const [isQuotationModalOpen, setIsQuotationModalOpen] = useState<boolean>(false);
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState<boolean>(false);
   const [isQCModalOpen, setIsQCModalOpen] = useState<boolean>(false);
@@ -73,8 +74,10 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
       setDownloadingPdfId(invId);
       const blob = await downloadInvoicePdfBlob(invId);
       downloadPdfBlob(blob, `Hoa_Don_${invNumber || invId}.pdf`);
+      setToastType('success');
       setToastMsg(`Đã tải hóa đơn PDF ${invNumber ? '#' + invNumber : ''} thành công!`);
     } catch (err: any) {
+      setToastType('error');
       setToastMsg('Không thể xuất file PDF: ' + (err.response?.data?.message || err.message || 'Lỗi hệ thống'));
     } finally {
       setDownloadingPdfId(null);
@@ -87,8 +90,10 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
       setDownloadingHandoverPdf(true);
       const blob = await downloadHandoverPdfBlob(activeOrder.id);
       downloadPdfBlob(blob, `Bien_Ban_Ban_Giao_${activeOrder.woNumber}.pdf`);
+      setToastType('success');
       setToastMsg(`Đã tải xuống Biên bản bàn giao xe #${activeOrder.woNumber} thành công!`);
     } catch (err: any) {
+      setToastType('error');
       setToastMsg('Không thể xuất file PDF biên bản bàn giao: ' + (err.response?.data?.message || err.message || 'Lỗi hệ thống'));
     } finally {
       setDownloadingHandoverPdf(false);
@@ -98,6 +103,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
     try {
       await dispatch(fetchMyTrackingOrders()).unwrap();
       if (isManual) {
+        setToastType('success');
         setToastMsg('Đã cập nhật tiến độ mới nhất');
       }
     } catch {
@@ -177,7 +183,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
       {toastMsg && (
         <Toast
           message={toastMsg}
-          type="success"
+          type={toastType}
           onClose={() => setToastMsg('')}
         />
       )}
@@ -303,10 +309,10 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                 <div>
                   <div className="flex flex-wrap items-center gap-2 mb-1.5">
                     {/* Authentic Vietnamese License Plate Badge */}
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md border-2 border-on-surface bg-white text-on-surface font-mono font-extrabold text-sm tracking-wider shadow-2xs">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md border-2 border-on-surface bg-white text-on-surface font-mono tabular-nums font-extrabold text-sm tracking-wider shadow-2xs">
                       {activeOrder.vehicle.licensePlate}
                     </span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-primary border border-blue-200 font-semibold">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-primary border border-blue-200 font-semibold font-mono tabular-nums">
                       Phiếu #{activeOrder.woNumber}
                     </span>
                   </div>
@@ -316,7 +322,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                   <p className="text-xs sm:text-sm text-on-surface-variant mt-1">
                     Màu sắc: <span className="font-medium text-on-surface">{activeOrder.vehicle.color || 'Chưa cập nhật'}</span>
                     {activeOrder.vehicle.mileage ? (
-                      <> • ODO: <span className="font-semibold text-on-surface font-mono">{activeOrder.vehicle.mileage.toLocaleString()} km</span></>
+                      <> • ODO: <span className="font-semibold text-on-surface font-mono tabular-nums">{activeOrder.vehicle.mileage.toLocaleString()} km</span></>
                     ) : null}
                   </p>
                 </div>
@@ -388,41 +394,38 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
           {activeOrder.activeQuotation && (
             <section className="animate-fade-in">
               {activeOrder.activeQuotation.status === 'SENT' || activeOrder.status === 'PENDING_APPROVAL' ? (
-                <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-amber-400 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  {/* Decorative background circle */}
-                  <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
-
-                  <div className="flex items-start space-x-3.5 z-10">
-                    <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0 border border-white/30 text-white">
-                      <span className="material-symbols-outlined text-[28px] animate-bounce">
+                <div className="bg-amber-50 border border-amber-300 text-amber-950 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-start space-x-3.5">
+                    <div className="w-11 h-11 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <span className="material-symbols-outlined text-[24px]" aria-hidden="true">
                         request_quote
                       </span>
                     </div>
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-extrabold uppercase tracking-wide bg-white text-amber-800 shadow-2xs">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-extrabold uppercase tracking-wide bg-amber-600 text-white">
                           Cần Quý khách xác nhận
                         </span>
-                        <span className="text-xs font-mono font-bold text-amber-100">
+                        <span className="text-xs font-mono tabular-nums font-bold text-amber-800">
                           #{activeOrder.activeQuotation.quotationNumber} (v{activeOrder.activeQuotation.version})
                         </span>
                       </div>
-                      <h3 className="text-lg font-bold leading-tight">
+                      <h3 className="text-lg font-bold leading-tight text-amber-950">
                         Bảng báo giá dịch vụ đã được gửi & đang chờ Quý khách phê duyệt
                       </h3>
-                      <p className="text-xs sm:text-sm text-amber-100 leading-relaxed">
-                        Dự toán tổng chi phí: <strong className="text-white font-mono text-base">{activeOrder.activeQuotation.grandTotal.toLocaleString()} đ</strong> (Chính sách 0% thuế VAT). Quý khách vui lòng kiểm tra và duyệt để xưởng bắt đầu thi công.
+                      <p className="text-xs sm:text-sm text-amber-900 leading-relaxed">
+                        Dự toán tổng chi phí: <strong className="text-amber-950 font-mono tabular-nums text-base">{activeOrder.activeQuotation.grandTotal.toLocaleString()} đ</strong> (Chính sách 0% thuế VAT). Quý khách vui lòng kiểm tra và duyệt để xưởng bắt đầu thi công.
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0 z-10">
+                  <div className="flex items-center gap-3 shrink-0">
                     <button
                       type="button"
                       onClick={() => setIsQuotationModalOpen(true)}
-                      className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-amber-900 font-extrabold text-sm hover:bg-amber-50 active:scale-[0.98] transition-all shadow-lg"
+                      className="w-full md:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 text-white font-bold text-sm hover:bg-amber-700 active:scale-[0.98] transition-all shadow-xs cursor-pointer"
                     >
-                      <span className="material-symbols-outlined text-[20px] text-amber-600">
+                      <span className="material-symbols-outlined text-[20px]" aria-hidden="true">
                         visibility
                       </span>
                       <span>Xem chi tiết & Phê duyệt</span>
@@ -433,14 +436,14 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                 <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm text-emerald-900 shadow-2xs">
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[22px]">check_circle</span>
+                      <span className="material-symbols-outlined text-[22px]" aria-hidden="true">check_circle</span>
                     </div>
                     <div>
                       <p className="font-bold">
                         Báo giá #{activeOrder.activeQuotation.quotationNumber} đã được phê duyệt
                       </p>
                       <p className="text-emerald-700 text-xs mt-0.5">
-                        Tổng thanh toán dự kiến: <strong className="font-mono">{activeOrder.activeQuotation.grandTotal.toLocaleString()} đ</strong>. Đội ngũ kỹ thuật đang tiếp tục thực hiện theo kế hoạch.
+                        Tổng thanh toán dự kiến: <strong className="font-mono tabular-nums">{activeOrder.activeQuotation.grandTotal.toLocaleString()} đ</strong>. Đội ngũ kỹ thuật đang tiếp tục thực hiện theo kế hoạch.
                       </p>
                     </div>
                   </div>
@@ -639,6 +642,7 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                         type="button"
                         onClick={() => {
                           setCsatSubmitted(true);
+                          setToastType('success');
                           setToastMsg('Cảm ơn Quý khách đã gửi đánh giá trải nghiệm dịch vụ!');
                         }}
                         className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap"
@@ -1161,11 +1165,11 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
               <div className="pt-4 mt-2">
                 <a
                   className="w-full inline-flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 min-h-[44px] py-2.5 px-3 rounded-xl bg-surface-container-lowest hover:bg-surface-container-low text-on-surface border border-surface-container-highest text-xs font-semibold transition-all shadow-2xs hover:border-primary/40 group text-center"
-                  href="tel:19008888"
+                  href="tel:19006868"
                 >
-                  <span className="material-symbols-outlined text-[18px] text-primary group-hover:scale-110 transition-transform shrink-0">headset_mic</span>
+                  <span className="material-symbols-outlined text-[18px] text-primary group-hover:scale-110 transition-transform shrink-0" aria-hidden="true">headset_mic</span>
                   <span>Tổng đài hỗ trợ kỹ thuật xưởng:</span>
-                  <strong className="text-primary font-mono tabular-nums whitespace-nowrap">1900 8888</strong>
+                  <strong className="text-primary font-mono tabular-nums whitespace-nowrap">1900 6868</strong>
                 </a>
               </div>
             </div>
@@ -1338,11 +1342,11 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                   </a>
                 ) : (
                   <a
-                    className="sm:ml-auto inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3.5 py-2 bg-primary text-white hover:bg-accent-hover rounded-xl text-xs font-semibold transition-colors active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-                    href="tel:19008888"
+                    className="sm:ml-auto inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3.5 py-2 bg-primary text-white hover:bg-accent-hover rounded-xl text-xs font-semibold transition-colors active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                    href="tel:19006868"
                   >
-                    <span className="material-symbols-outlined text-[16px] shrink-0">phone_in_talk</span>
-                    <span>Hotline: <span className="font-mono tabular-nums">1900 8888</span></span>
+                    <span className="material-symbols-outlined text-[16px] shrink-0" aria-hidden="true">phone_in_talk</span>
+                    <span>Hotline: <span className="font-mono tabular-nums">1900 6868</span></span>
                   </a>
                 )}
               </div>
@@ -1363,8 +1367,9 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
               vehiclePlate={activeOrder.vehicle.licensePlate}
               vehicleModel={`${activeOrder.vehicle.make} ${activeOrder.vehicle.model}`}
               onActionSuccess={(msg) => {
+                setToastType('success');
                 setToastMsg(msg);
-                loadData(true);
+                loadData(false);
               }}
             />
           )}
@@ -1406,8 +1411,9 @@ export default function TrackingView({ isEmbedded = false }: { isEmbedded?: bool
                 vehicleName: `${activeOrder.vehicle.make} ${activeOrder.vehicle.model}`,
               }}
               onSuccess={() => {
+                setToastType('success');
                 setToastMsg('Thanh toán thành công! Trạng thái xe đã chuyển sang Sẵn sàng bàn giao.');
-                loadData(true);
+                loadData(false);
                 setTimeout(() => {
                   setIsPaymentModalOpen(false);
                 }, 1200);

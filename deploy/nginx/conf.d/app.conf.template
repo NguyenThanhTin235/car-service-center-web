@@ -1,27 +1,33 @@
 # Production upstreams (host loopback via host.docker.internal)
 upstream prod_api_upstream {
     server host.docker.internal:5000;
+    keepalive 32;
 }
 
 upstream prod_customer_upstream {
     server host.docker.internal:3000;
+    keepalive 32;
 }
 
 upstream prod_admin_upstream {
     server host.docker.internal:3001;
+    keepalive 32;
 }
 
 # Staging upstreams (host loopback via host.docker.internal)
 upstream staging_api_upstream {
     server host.docker.internal:5100;
+    keepalive 16;
 }
 
 upstream staging_customer_upstream {
     server host.docker.internal:3100;
+    keepalive 16;
 }
 
 upstream staging_admin_upstream {
     server host.docker.internal:3101;
+    keepalive 16;
 }
 
 # HTTP: ACME challenge + HTTPS redirect for all 6 hostnames
@@ -72,6 +78,15 @@ server {
         proxy_send_timeout 86400s;
     }
 
+    location = /health {
+        access_log off;
+        proxy_pass http://prod_api_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        proxy_read_timeout 10s;
+    }
+
     location / {
         proxy_pass http://prod_api_upstream;
         proxy_http_version 1.1;
@@ -79,10 +94,11 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
-        proxy_read_timeout 86400s;
-        proxy_send_timeout 86400s;
+        proxy_set_header Connection "";
+        proxy_buffer_size 16k;
+        proxy_buffers 4 32k;
+        proxy_read_timeout 90s;
+        proxy_send_timeout 90s;
     }
 }
 
@@ -103,6 +119,25 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
+    location /_next/static/ {
+        access_log off;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        proxy_pass http://prod_customer_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+    }
+
+    location ~* ^/(images|fonts)/ {
+        access_log off;
+        add_header Cache-Control "public, max-age=86400, stale-while-revalidate=604800" always;
+        proxy_pass http://prod_customer_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+    }
+
     location / {
         proxy_pass http://prod_customer_upstream;
         proxy_http_version 1.1;
@@ -110,8 +145,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Connection "";
     }
 }
 
@@ -132,6 +166,25 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
+    location /_next/static/ {
+        access_log off;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        proxy_pass http://prod_admin_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+    }
+
+    location ~* ^/(images|fonts)/ {
+        access_log off;
+        add_header Cache-Control "public, max-age=86400, stale-while-revalidate=604800" always;
+        proxy_pass http://prod_admin_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+    }
+
     location / {
         proxy_pass http://prod_admin_upstream;
         proxy_http_version 1.1;
@@ -139,8 +192,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Connection "";
     }
 }
 
@@ -177,6 +229,15 @@ server {
         proxy_send_timeout 86400s;
     }
 
+    location = /health {
+        access_log off;
+        proxy_pass http://staging_api_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        proxy_read_timeout 10s;
+    }
+
     location / {
         proxy_pass http://staging_api_upstream;
         proxy_http_version 1.1;
@@ -184,10 +245,11 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
-        proxy_read_timeout 86400s;
-        proxy_send_timeout 86400s;
+        proxy_set_header Connection "";
+        proxy_buffer_size 16k;
+        proxy_buffers 4 32k;
+        proxy_read_timeout 90s;
+        proxy_send_timeout 90s;
     }
 }
 
@@ -208,6 +270,25 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
+    location /_next/static/ {
+        access_log off;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        proxy_pass http://staging_customer_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+    }
+
+    location ~* ^/(images|fonts)/ {
+        access_log off;
+        add_header Cache-Control "public, max-age=86400, stale-while-revalidate=604800" always;
+        proxy_pass http://staging_customer_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+    }
+
     location / {
         proxy_pass http://staging_customer_upstream;
         proxy_http_version 1.1;
@@ -215,8 +296,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Connection "";
     }
 }
 
@@ -237,6 +317,25 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
+    location /_next/static/ {
+        access_log off;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        proxy_pass http://staging_admin_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+    }
+
+    location ~* ^/(images|fonts)/ {
+        access_log off;
+        add_header Cache-Control "public, max-age=86400, stale-while-revalidate=604800" always;
+        proxy_pass http://staging_admin_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+    }
+
     location / {
         proxy_pass http://staging_admin_upstream;
         proxy_http_version 1.1;
@@ -244,7 +343,6 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Connection "";
     }
 }

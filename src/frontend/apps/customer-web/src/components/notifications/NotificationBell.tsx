@@ -150,7 +150,7 @@ export default function NotificationBell() {
 
       {/* Popover Dropdown */}
       {open && (
-        <div className="absolute top-full right-0 mt-2 w-80 sm:w-96 bg-surface-container-lowest border border-surface-container-highest rounded-xl shadow-xl z-50 overflow-hidden">
+        <div className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 bg-surface-container-lowest border border-surface-container-highest rounded-xl shadow-xl z-50 overflow-hidden">
           <div className="px-4 py-3 border-b border-surface-container-high flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-on-surface">Thông báo</h3>

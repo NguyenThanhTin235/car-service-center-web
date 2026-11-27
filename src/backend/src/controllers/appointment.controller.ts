@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { AppointmentService } from '../services/appointment.service';
 import { createAppointmentSchema, updateAppointmentSchema, cancelAppointmentSchema } from '../dtos/appointment.dto';
-import { AppointmentStatus } from '@prisma/client';
 
 const appointmentService = new AppointmentService();
 

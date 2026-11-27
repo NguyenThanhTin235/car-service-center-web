@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcrypt';
-import { authService, LoginLockedError } from '../services/auth.service';
-import prisma from '../utils/prisma';
+import { authService, AuthHttpError, LoginLockedError } from '../services/auth.service';
 import { resolvePortalFromHeaders } from '../utils/cors.util';
 import {
   loginSchema,
@@ -12,8 +10,6 @@ import {
   verifyOtpResetSchema,
   updateMeSchema,
   changePasswordSchema,
-  FULL_NAME_REGEX,
-  FULL_NAME_INVALID_MSG,
 } from '../dtos/auth.dto';
 
 const BASE_COOKIE_OPTIONS = {
@@ -274,7 +270,7 @@ export class AuthController {
         message:
           'Nếu email tồn tại trong hệ thống, mã OTP sẽ được gửi trong vài giây.',
       });
-    } catch (err: any) {
+    } catch {
       res.status(500).json({ status: 'error', message: 'Đã xảy ra lỗi. Vui lòng thử lại.' });
     }
   }
@@ -341,64 +337,13 @@ export class AuthController {
   // ========================
   async getMe(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.user!.id;
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          full_name: true,
-          phone: true,
-          email: true,
-          address: true,
-          is_active: true,
-          created_at: true,
-          updated_at: true,
-          roles: { select: { role: { select: { name: true } } } },
-          employee: {
-            select: {
-              id: true,
-              position: true,
-              is_active: true,
-              created_at: true,
-              skills: {
-                select: {
-                  skill: {
-                    select: { id: true, name: true },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-      if (!user) {
-        res.status(404).json({ status: 'error', message: 'Không tìm thấy người dùng.' });
+      const data = await authService.getProfile(req.user!.id);
+      res.json({ status: 'success', data });
+    } catch (err: any) {
+      if (err instanceof AuthHttpError) {
+        res.status(err.statusCode).json({ status: 'error', message: err.message });
         return;
       }
-      res.json({
-        status: 'success',
-        data: {
-          id: user.id,
-          fullName: user.full_name,
-          phone: user.phone,
-          email: user.email,
-          address: user.address,
-          isActive: user.is_active,
-          createdAt: user.created_at,
-          updatedAt: user.updated_at,
-          roles: user.roles.map((r) => r.role.name),
-          employee: user.employee
-            ? {
-                id: user.employee.id,
-                position: user.employee.position,
-                isActive: user.employee.is_active,
-                createdAt: user.employee.created_at,
-                skills: user.employee.skills.map((s) => s.skill.name),
-              }
-            : null,
-        },
-      });
-    } catch (err: any) {
       res.status(500).json({ status: 'error', message: err.message || 'Lỗi server.' });
     }
   }
@@ -414,119 +359,17 @@ export class AuthController {
     }
 
     try {
-      const userId = req.user!.id;
-      const { fullName, phone, email, address } = value;
-
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: {
-          roles: { include: { role: true } },
-          employee: {
-            select: {
-              id: true,
-              position: true,
-              is_active: true,
-              created_at: true,
-              skills: { select: { skill: { select: { id: true, name: true } } } },
-            },
-          },
-        },
-      });
-      if (!user) {
-        res.status(404).json({ status: 'error', message: 'Không tìm thấy người dùng.' });
-        return;
-      }
-
-      const userRoles = user.roles.map((r) => r.role.name.toUpperCase());
-      const isInternalAccount = userRoles.some((r) => r !== 'CUSTOMER');
-
-      if (isInternalAccount && email !== undefined && email !== user.email) {
-        res.status(403).json({
-          status: 'error',
-          message: 'Tài khoản nội bộ không thể tự thay đổi email đăng nhập. Vui lòng liên hệ Quản trị viên.',
-        });
-        return;
-      }
-
-      const normalizedPhone = phone === '' ? null : phone;
-      const normalizedAddress = address === '' ? null : address;
-
-      // Chỉ kiểm tra ký tự hợp lệ khi họ tên thực sự thay đổi (tránh khóa tài khoản có tên cũ)
-      if (fullName !== undefined && fullName !== user.full_name && !FULL_NAME_REGEX.test(fullName)) {
-        res.status(400).json({ status: 'error', message: FULL_NAME_INVALID_MSG });
-        return;
-      }
-
-      // Validate unique phone if changed and non-null
-      if (normalizedPhone !== undefined && normalizedPhone !== null && normalizedPhone !== user.phone) {
-        const existPhone = await prisma.user.findUnique({ where: { phone: normalizedPhone } });
-        if (existPhone && existPhone.id !== userId) {
-          res.status(400).json({
-            status: 'error',
-            message: 'Không thể cập nhật thông tin liên hệ này. Vui lòng kiểm tra lại và thử với thông tin khác.',
-          });
-          return;
-        }
-      }
-
-      // Validate unique email if changed (customer self-service)
-      if (!isInternalAccount && email && email !== user.email) {
-        const existEmail = await prisma.user.findUnique({ where: { email } });
-        if (existEmail && existEmail.id !== userId) {
-          res.status(400).json({
-            status: 'error',
-            message: 'Không thể cập nhật thông tin liên hệ này. Vui lòng kiểm tra lại và thử với thông tin khác.',
-          });
-          return;
-        }
-      }
-
-      const updated = await prisma.$transaction(async (tx) => {
-        const updatedUser = await tx.user.update({
-          where: { id: userId },
-          data: {
-            full_name: fullName !== undefined ? fullName : undefined,
-            phone: normalizedPhone !== undefined ? normalizedPhone : undefined,
-            email: !isInternalAccount && email !== undefined ? email : undefined,
-            address: normalizedAddress !== undefined ? normalizedAddress : undefined,
-          },
-        });
-
-        if (fullName !== undefined && user.employee) {
-          await tx.employee.update({
-            where: { id: user.employee.id },
-            data: { full_name: fullName },
-          });
-        }
-
-        return updatedUser;
-      });
-
+      const data = await authService.updateProfile(req.user!.id, value);
       res.json({
         status: 'success',
         message: 'Cập nhật hồ sơ thành công.',
-        data: {
-          id: updated.id,
-          fullName: updated.full_name,
-          phone: updated.phone,
-          email: updated.email,
-          address: updated.address,
-          isActive: updated.is_active,
-          createdAt: updated.created_at,
-          updatedAt: updated.updated_at,
-          roles: user.roles.map((r) => r.role.name),
-          employee: user.employee
-            ? {
-                id: user.employee.id,
-                position: user.employee.position,
-                isActive: user.employee.is_active,
-                createdAt: user.employee.created_at,
-                skills: user.employee.skills.map((s) => s.skill.name),
-              }
-            : null,
-        },
+        data,
       });
     } catch (err: any) {
+      if (err instanceof AuthHttpError) {
+        res.status(err.statusCode).json({ status: 'error', message: err.message });
+        return;
+      }
       res.status(500).json({ status: 'error', message: err.message || 'Lỗi server.' });
     }
   }
@@ -542,45 +385,17 @@ export class AuthController {
     }
 
     try {
-      const userId = req.user!.id;
       const { currentPassword, newPassword } = value;
-
-      if (currentPassword === newPassword) {
-        res.status(400).json({
-          status: 'error',
-          message: 'Mật khẩu mới không được trùng với mật khẩu hiện tại.',
-        });
-        return;
-      }
-
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, password_hash: true },
-      });
-      if (!user) {
-        res.status(404).json({ status: 'error', message: 'Không tìm thấy người dùng.' });
-        return;
-      }
-
-      const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
-      if (!isMatch) {
-        res.status(400).json({ status: 'error', message: 'Mật khẩu hiện tại không chính xác.' });
-        return;
-      }
-
-      const newHash = await bcrypt.hash(newPassword, 10);
-      await prisma.user.update({
-        where: { id: userId },
-        data: { password_hash: newHash },
-      });
-
-      await authService.revokeAllUserTokens(userId);
-
+      await authService.changePassword(req.user!.id, currentPassword, newPassword);
       res.json({
         status: 'success',
         message: 'Đổi mật khẩu thành công.',
       });
     } catch (err: any) {
+      if (err instanceof AuthHttpError) {
+        res.status(err.statusCode).json({ status: 'error', message: err.message });
+        return;
+      }
       res.status(500).json({ status: 'error', message: err.message || 'Lỗi server.' });
     }
   }

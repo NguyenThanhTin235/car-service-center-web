@@ -77,6 +77,7 @@ const authSlice = createSlice({
         if (action.payload.refreshToken) {
           localStorage.setItem('refreshToken', action.payload.refreshToken);
         }
+        document.cookie = 'csc_staff_session=1; path=/; SameSite=Lax';
       }
     },
     updateAuthUser: (state, action: PayloadAction<Partial<User>>) => {
@@ -95,6 +96,7 @@ const authSlice = createSlice({
         localStorage.removeItem('user');
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
+        document.cookie = 'csc_staff_session=; path=/; Max-Age=0; SameSite=Lax';
       }
     },
   },

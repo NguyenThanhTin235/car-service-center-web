@@ -114,7 +114,7 @@ export default function ProfileWorkspaceView({
           </div>
 
           {/* Right 8 cols: Tabbed Profile & Security Workspace */}
-          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/85 overflow-hidden">
+          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/85">
             {/* Tab Bar */}
             <div className="px-4 sm:px-6 pt-3 border-b border-slate-200/80 flex items-center justify-between gap-2">
               <div

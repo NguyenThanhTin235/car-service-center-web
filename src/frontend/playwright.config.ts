@@ -38,6 +38,10 @@ export default defineConfig({
       port: 3000,
       reuseExistingServer: true,
       timeout: 60000,
+      env: {
+        ...process.env,
+        NEXT_PUBLIC_ENABLE_SEPAY_SIMULATE: 'true',
+      },
     },
     {
       command: 'npm run dev:internal',

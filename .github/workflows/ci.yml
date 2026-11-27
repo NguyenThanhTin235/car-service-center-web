@@ -68,7 +68,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: src/frontend/apps/customer-web/.next/cache
-          key: ${{ runner.os }}-nextjs-customer-${{ hashFiles('src/frontend/package-lock.json', 'src/frontend/apps/customer-web/**/*.{js,jsx,ts,tsx}') }}
+          key: ${{ runner.os }}-nextjs-customer-${{ hashFiles('src/frontend/package-lock.json', 'src/frontend/packages/shared/**/*.{js,jsx,ts,tsx}', 'src/frontend/apps/customer-web/**/*.{js,jsx,ts,tsx}') }}
           restore-keys: |
             ${{ runner.os }}-nextjs-customer-
 
@@ -76,7 +76,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: src/frontend/apps/internal-web/.next/cache
-          key: ${{ runner.os }}-nextjs-internal-${{ hashFiles('src/frontend/package-lock.json', 'src/frontend/apps/internal-web/**/*.{js,jsx,ts,tsx}') }}
+          key: ${{ runner.os }}-nextjs-internal-${{ hashFiles('src/frontend/package-lock.json', 'src/frontend/packages/shared/**/*.{js,jsx,ts,tsx}', 'src/frontend/apps/internal-web/**/*.{js,jsx,ts,tsx}') }}
           restore-keys: |
             ${{ runner.os }}-nextjs-internal-
 
@@ -89,11 +89,26 @@ jobs:
           NEXT_PUBLIC_INTERNAL_URL: "http://localhost:3001"
           NEXT_PUBLIC_CUSTOMER_URL: "http://localhost:3000"
 
+      - name: Frontend JS Bundle Budget Advisory
+        working-directory: src/frontend
+        run: |
+          node -e "
+            const fs = require('fs'), path = require('path'), zlib = require('zlib');
+            for (const app of ['customer-web', 'internal-web']) {
+              const dir = path.join('apps', app, '.next', 'static', 'chunks');
+              let raw = 0, gz = 0;
+              const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (p.endsWith('.js')) { const b = fs.readFileSync(p); raw += b.length; gz += zlib.gzipSync(b).length; } } };
+              if (fs.existsSync(dir)) walk(dir);
+              console.log(app + ' total JS: ' + Math.round(raw/1024) + ' KB raw / ' + Math.round(gz/1024) + ' KB gzip');
+            }
+          "
+
   # ===========================================================================
   # Stage 2: Lint & Static Analysis (Backend & Frontend in parallel)
   # ===========================================================================
   lint-static-backend:
     name: Stage 2 - Lint & Static Analysis (Backend)
+    needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -126,6 +141,7 @@ jobs:
 
   lint-static-frontend:
     name: Stage 2 - Lint & Static Analysis (Frontend)
+    needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -161,6 +177,7 @@ jobs:
   # ===========================================================================
   test-backend:
     name: Stage 3 - Automated Tests (Backend)
+    needs: [lint-static-backend, lint-static-frontend]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -193,6 +210,7 @@ jobs:
 
   test-frontend-infra:
     name: Stage 3 - Automated Tests (Frontend Unit & AWS CDK)
+    needs: [lint-static-backend, lint-static-frontend]
     runs-on: ubuntu-latest
 
     steps:
@@ -206,9 +224,9 @@ jobs:
           cache: npm
           cache-dependency-path: src/frontend/package-lock.json
 
-      - name: Run Customer Web Unit Tests
+      - name: Run Frontend Unit Tests (Customer & Internal Web)
         working-directory: src/frontend
-        run: npm ci && npm run test:unit:customer
+        run: npm ci && npm run test:unit
 
       - name: Run AWS CDK Infrastructure Tests
         working-directory: infra
@@ -219,6 +237,7 @@ jobs:
   # ===========================================================================
   security-scan:
     name: Stage 4 - Security & Dependency Scan
+    needs: [test-backend, test-frontend-infra]
     runs-on: ubuntu-latest
     permissions:
       contents: read

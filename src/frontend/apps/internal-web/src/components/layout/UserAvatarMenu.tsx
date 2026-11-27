@@ -144,9 +144,9 @@ export default function UserAvatarMenu({
               role="menuitem"
               data-testid="avatar-menu-profile-link"
               onClick={() => setOpen(false)}
-              className="w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-blue-50/70 flex items-center gap-2.5 text-slate-800 hover:text-[#0050cd] transition-colors"
+              className="group w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-blue-50/70 flex items-center gap-2.5 text-slate-700 hover:text-[#0050cd] transition-colors"
             >
-              <span className="material-symbols-outlined text-[18px] text-[#0050cd]">
+              <span className="material-symbols-outlined text-[18px] text-slate-500 group-hover:text-[#0050cd] transition-colors">
                 account_circle
               </span>
               <span>Thông tin cá nhân</span>
@@ -156,9 +156,9 @@ export default function UserAvatarMenu({
               href={notificationsHref}
               role="menuitem"
               onClick={() => setOpen(false)}
-              className="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-50 flex items-center gap-2.5 text-slate-700 transition-colors"
+              className="group w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-blue-50/70 flex items-center gap-2.5 text-slate-700 hover:text-[#0050cd] transition-colors"
             >
-              <span className="material-symbols-outlined text-[18px] text-slate-500">
+              <span className="material-symbols-outlined text-[18px] text-slate-500 group-hover:text-[#0050cd] transition-colors">
                 notifications
               </span>
               <span>Trung tâm thông báo</span>
@@ -170,9 +170,9 @@ export default function UserAvatarMenu({
                 href={item.href}
                 role="menuitem"
                 onClick={() => setOpen(false)}
-                className="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-50 flex items-center gap-2.5 text-slate-700 transition-colors"
+                className="group w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-blue-50/70 flex items-center gap-2.5 text-slate-700 hover:text-[#0050cd] transition-colors"
               >
-                <span className="material-symbols-outlined text-[18px] text-slate-500">
+                <span className="material-symbols-outlined text-[18px] text-slate-500 group-hover:text-[#0050cd] transition-colors">
                   {item.icon}
                 </span>
                 <span>{item.label}</span>

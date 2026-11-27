@@ -218,7 +218,7 @@ describe('Car Service Center CDK Infrastructure', () => {
     template.resourceCountIs('AWS::Route53::RecordSet', 11);
   });
 
-  it('ObservabilityStack provisions 3 LogGroups (14-day retention), SSM CWAgent param, 1 SNS Topic, and 6 CloudWatch Alarms', () => {
+  it('ObservabilityStack provisions 3 LogGroups (14-day retention), SSM CWAgent param, 1 SNS Topic, and 7 CloudWatch Alarms', () => {
     const { observabilityStack } = createAllStacks();
     const template = Template.fromStack(observabilityStack);
 
@@ -234,6 +234,6 @@ describe('Car Service Center CDK Infrastructure', () => {
     });
 
     template.resourceCountIs('AWS::SNS::Topic', 1);
-    template.resourceCountIs('AWS::CloudWatch::Alarm', 6);
+    template.resourceCountIs('AWS::CloudWatch::Alarm', 7);
   });
 });

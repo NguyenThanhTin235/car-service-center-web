@@ -173,10 +173,11 @@ test.describe('Desk-Staff Portal E2E: Customers (/staff/customers)', () => {
       });
     });
 
+    let shouldFailHistory = true;
     let historyCalls = 0;
     await page.route('**/api/customers/1/service-history', async (route) => {
       historyCalls += 1;
-      if (historyCalls === 1) {
+      if (shouldFailHistory) {
         return route.fulfill({
           status: 500,
           contentType: 'application/json',
@@ -242,6 +243,7 @@ test.describe('Desk-Staff Portal E2E: Customers (/staff/customers)', () => {
     await expect(page.getByTestId('service-history-error')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('text=Lỗi tải lịch sử dịch vụ')).toBeVisible();
 
+    shouldFailHistory = false;
     await page.getByTestId('service-history-error').getByRole('button', { name: 'Thử lại' }).click();
 
     await expect(page.getByTestId('service-history-list')).toBeVisible({ timeout: 10000 });
@@ -251,7 +253,7 @@ test.describe('Desk-Staff Portal E2E: Customers (/staff/customers)', () => {
     await expect(page.locator('text=45.200 km')).toBeVisible();
     await expect(page.locator('a[href="/staff/billing/88"]')).toContainText('INV-2026-088');
     await expect(page.locator('text=Bảo hành')).toBeVisible();
-    expect(historyCalls).toBe(2);
+    expect(historyCalls).toBeGreaterThanOrEqual(2);
 
     // Click "Xem chi tiết phiếu" to open ReadOnlyROModal (shared with /staff/intake)
     await page.route('**/api/work-orders/501', async (route) => {

@@ -75,7 +75,7 @@ test.describe('Customer AI Support Chatbot — Dual-Mode Concierge E2E', () => {
     await expect(page.getByTestId('ai-chat-panel')).toHaveCount(0);
 
     // Verify pre-filled notes in Step 2 of CustomerBookingModal
-    await page.locator('.cw-modal-panel').getByText('2. Dịch vụ & Mô tả').click();
+    await page.locator('.cw-modal-panel').getByText('Dịch vụ & Mô tả').click();
     await expect(
       page.locator('.cw-modal-panel').getByPlaceholder('Nhập mô tả tình trạng xe của bạn (nếu có)...')
     ).toHaveValue('Xe phanh kêu két két khi rà thắng');
@@ -153,7 +153,7 @@ test.describe('Customer AI Support Chatbot — Dual-Mode Concierge E2E', () => {
     await expect(page.getByText('Thanh toán trực tuyến SePay')).toBeVisible({ timeout: 15000 });
 
     // Close SePay payment modal cleanly before interacting with header menu
-    await page.getByRole('button', { name: 'Đóng' }).click();
+    await page.getByRole('button', { name: 'Đóng', exact: true }).click();
     await expect(page.getByText('Thanh toán trực tuyến SePay')).toHaveCount(0);
 
     // Verify user chat key exists in sessionStorage before logout, and is wiped on Logout

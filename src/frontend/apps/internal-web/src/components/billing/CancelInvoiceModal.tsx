@@ -48,33 +48,39 @@ export default function CancelInvoiceModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-scrim/40 backdrop-blur-xs animate-fade-in">
-      <div className="bg-surface-container-lowest rounded-2xl max-w-lg w-full flex flex-col shadow-2xl border border-outline-variant overflow-hidden animate-scale-up">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Xác nhận hủy hóa đơn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-scrim/40 backdrop-blur-xs sa-modal-backdrop"
+    >
+      <div className="bg-surface-container-lowest rounded-2xl max-w-lg w-full max-h-[90dvh] flex flex-col shadow-2xl border border-outline-variant overflow-hidden sa-modal-panel">
         {/* Header */}
         <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-error-container/10 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-error-container text-error flex items-center justify-center shrink-0 shadow-xs">
-              <span className="material-symbols-outlined text-[20px]">cancel</span>
+              <span className="material-symbols-outlined text-[20px]" aria-hidden="true">cancel</span>
             </div>
             <div>
               <h2 className="text-title-md font-bold text-on-surface">Xác nhận hủy hóa đơn</h2>
-              <p className="text-xs text-on-surface-variant font-mono">Mã: {invoiceNumber}</p>
+              <p className="text-xs text-on-surface-variant font-mono tabular-nums">Mã: {invoiceNumber}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={handleClose}
             disabled={submitting}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-50"
+            aria-label="Đóng"
+            className="min-w-[44px] min-h-[44px] lg:min-w-[36px] lg:min-h-[36px] rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-50 cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[20px]">close</span>
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
-            <span className="material-symbols-outlined text-[18px] shrink-0 text-amber-600 mt-0.5">warning</span>
+            <span className="material-symbols-outlined text-[18px] shrink-0 text-amber-600 mt-0.5" aria-hidden="true">warning</span>
             <div>
               <p className="font-semibold">Hành động này không thể hoàn tác!</p>
               <p className="text-amber-800 dark:text-amber-300 mt-0.5">

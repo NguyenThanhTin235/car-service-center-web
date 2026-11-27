@@ -152,7 +152,6 @@ entity "InventoryItem" as InventoryItem {
   on_hand
   reorder_level
   warranty_months
-  warranty_mileage
   is_active
   created_at
   updated_at

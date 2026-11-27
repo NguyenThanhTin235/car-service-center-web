@@ -1,5 +1,6 @@
 import React from 'react';
 import { Appointment } from '@/store/slices/appointmentSlice';
+import { formatDisplayNotes } from '@/lib/utils/notes';
 
 interface AppointmentDetailPopoverProps {
   appointment: Appointment;
@@ -136,9 +137,12 @@ export default function AppointmentDetailPopover({
           <div>
             <span className="text-label-sm font-label-sm text-secondary">Nội dung yêu cầu:</span>
             <p className="font-medium text-body-sm text-on-surface mt-0.5">{serviceNames}</p>
-            {appointment.notes && (
-              <p className="text-xs text-secondary italic mt-1">Ghi chú: {appointment.notes}</p>
-            )}
+            {(() => {
+              const displayNotes = formatDisplayNotes(appointment.notes);
+              return displayNotes ? (
+                <p className="text-xs text-secondary italic mt-1 whitespace-pre-wrap">Ghi chú: {displayNotes}</p>
+              ) : null;
+            })()}
             {appointment.cancel_reason && (
               <p className="text-xs text-error mt-1 font-semibold">Lý do hủy: {appointment.cancel_reason}</p>
             )}

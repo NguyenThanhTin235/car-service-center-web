@@ -27,6 +27,14 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
+    const rafId = requestAnimationFrame(() => {
+      if (!dialogRef.current) return;
+      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      (focusable[0] ?? dialogRef.current).focus();
+    });
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onCloseRef.current();
@@ -50,6 +58,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = prevOverflow;
       if (previousFocus && typeof previousFocus.focus === 'function') {
@@ -78,7 +87,8 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`sa-modal-panel bg-white rounded-2xl border border-slate-200/90 shadow-2xl w-full ${sizeClasses[size]} overflow-hidden flex flex-col max-h-[90vh]`}
+        tabIndex={-1}
+        className={`sa-modal-panel bg-white rounded-2xl border border-slate-200/90 shadow-2xl w-full ${sizeClasses[size]} overflow-hidden flex flex-col max-h-[90vh] outline-none`}
       >
         <div className="px-4 sm:px-6 py-4 border-b border-slate-200/80 bg-slate-50/60 flex items-center justify-between">
           <h2 id={titleId} className="text-base font-extrabold text-slate-900 tracking-tight">{title}</h2>
@@ -89,7 +99,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
             className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0866ff] transition-all cursor-pointer"
             title="Đóng"
           >
-            <span className="material-symbols-outlined text-[20px]">close</span>
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
           </button>
         </div>
         <div className="p-4 sm:p-6 overflow-y-auto">

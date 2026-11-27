@@ -44,6 +44,14 @@ export default function ConfirmModal({
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
+    const rafId = requestAnimationFrame(() => {
+      if (!dialogRef.current) return;
+      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      (focusable[0] ?? dialogRef.current).focus();
+    });
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !isLoadingRef.current) {
         onCancelRef.current();
@@ -67,6 +75,7 @@ export default function ConfirmModal({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = prevOverflow;
       if (previousFocus && typeof previousFocus.focus === 'function') {
@@ -79,7 +88,7 @@ export default function ConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 sa-modal-backdrop"
       {...backdropProps}
     >
       <div
@@ -88,7 +97,8 @@ export default function ConfirmModal({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
-        className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl w-full max-w-md overflow-hidden flex flex-col transition-all"
+        tabIndex={-1}
+        className="sa-modal-panel bg-white rounded-2xl border border-slate-200/90 shadow-2xl w-full max-w-md overflow-hidden flex flex-col transition-all outline-none"
       >
         <div className="p-6 flex items-start gap-4">
           <div
@@ -98,7 +108,7 @@ export default function ConfirmModal({
                 : 'bg-blue-50 text-[#0050cd] border border-blue-200/80'
             }`}
           >
-            <span className="material-symbols-outlined text-[24px]">
+            <span className="material-symbols-outlined text-[24px]" aria-hidden="true">
               {isDestructive ? 'warning' : 'help'}
             </span>
           </div>
@@ -128,7 +138,7 @@ export default function ConfirmModal({
             }`}
           >
             {isLoading && (
-              <span className="material-symbols-outlined text-[15px] animate-spin">progress_activity</span>
+              <span className="material-symbols-outlined text-[15px] animate-spin" aria-hidden="true">progress_activity</span>
             )}
             <span>{confirmText}</span>
           </button>

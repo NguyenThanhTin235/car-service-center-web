@@ -86,9 +86,9 @@ export default function TablePagination({
             aria-label="Trang trước"
             disabled={currentPage <= 1}
             onClick={() => onPageChange(currentPage - 1)}
-            className="w-8 h-8 rounded-lg font-mono text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-white border border-slate-200 hover:bg-slate-50 text-slate-700"
+            className="min-w-[44px] min-h-[44px] lg:min-w-[36px] lg:min-h-[36px] rounded-lg font-mono text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-white border border-slate-200 hover:bg-slate-50 text-slate-700"
           >
-            <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">chevron_left</span>
           </button>
 
           {pages.map((p, idx) => {
@@ -96,7 +96,7 @@ export default function TablePagination({
               return (
                 <span
                   key={`ellipsis-${idx}`}
-                  className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 select-none font-mono"
+                  className="min-w-[32px] min-h-[44px] lg:min-h-[36px] flex items-center justify-center text-xs text-slate-500 select-none font-mono"
                 >
                   {p}
                 </span>
@@ -111,7 +111,7 @@ export default function TablePagination({
                 aria-label={`Trang ${p}`}
                 aria-current={isActive ? 'page' : undefined}
                 onClick={() => onPageChange(p)}
-                className={`w-8 h-8 rounded-lg font-mono text-xs font-semibold transition-colors cursor-pointer ${
+                className={`min-w-[44px] min-h-[44px] lg:min-w-[36px] lg:min-h-[36px] rounded-lg font-mono text-xs font-semibold transition-colors cursor-pointer ${
                   isActive
                     ? 'bg-[#0866ff] text-white shadow-2xs'
                     : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-700'
@@ -127,9 +127,9 @@ export default function TablePagination({
             aria-label="Trang sau"
             disabled={currentPage >= totalPages}
             onClick={() => onPageChange(currentPage + 1)}
-            className="w-8 h-8 rounded-lg font-mono text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-white border border-slate-200 hover:bg-slate-50 text-slate-700"
+            className="min-w-[44px] min-h-[44px] lg:min-w-[36px] lg:min-h-[36px] rounded-lg font-mono text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-white border border-slate-200 hover:bg-slate-50 text-slate-700"
           >
-            <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">chevron_right</span>
           </button>
         </nav>
       )}

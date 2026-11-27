@@ -63,6 +63,7 @@ interface IntakeState {
   } | null;
   createLoading: boolean;
   createError: string | null;
+  queuedCount: number | null;
 }
 
 const initialState: IntakeState = {
@@ -72,6 +73,7 @@ const initialState: IntakeState = {
   pagination: null,
   createLoading: false,
   createError: null,
+  queuedCount: null,
 };
 
 // Async thunks
@@ -151,6 +153,14 @@ const intakeSlice = createSlice({
         state.loading = false;
         state.records = action.payload.data || [];
         state.pagination = action.payload.meta?.pagination || null;
+        const arg = action.meta.arg;
+        if (!arg?.search && !arg?.date) {
+          if (!arg?.status) {
+            state.queuedCount = state.records.filter((r) => r.status === 'QUEUED').length;
+          } else if (arg.status === 'QUEUED') {
+            state.queuedCount = action.payload.meta?.pagination?.total ?? state.records.length;
+          }
+        }
       })
       .addCase(fetchIntakeQueue.rejected, (state, action) => {
         state.loading = false;

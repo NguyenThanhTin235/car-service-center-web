@@ -104,6 +104,18 @@ export class ObservabilityStack extends cdk.Stack {
     });
     rdsStorageAlarm.addAlarmAction(snsAction);
 
+    const rdsMemoryAlarm = new cloudwatch.Alarm(this, 'RdsLowMemoryAlarm', {
+      alarmDescription: 'RDS freeable memory dropped below 128MB',
+      metric: props.dbInstance.metricFreeableMemory({
+        period: cdk.Duration.minutes(5),
+        statistic: 'Average',
+      }),
+      threshold: 128 * 1024 * 1024,
+      evaluationPeriods: 2,
+      comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+    });
+    rdsMemoryAlarm.addAlarmAction(snsAction);
+
     const cwAgentConfig = fs.readFileSync(
       path.join(__dirname, '../scripts/cwagent-config.json'),
       'utf8',

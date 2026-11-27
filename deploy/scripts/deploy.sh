@@ -96,6 +96,20 @@ aws ecr get-login-password --region "${AWS_REGION}" | \
 echo "==> [${ENV_NAME}] Pulling images for tag ${IMAGE_TAG}..."
 docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" pull
 
+# Protect low-memory hosts (<2600 MB RAM, e.g. t3.small) from running prod + staging concurrently
+HOST_MEM_MB="$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || echo 0)"
+if [[ "${ENV_NAME}" == "prod" && "${HOST_MEM_MB}" -gt 0 && "${HOST_MEM_MB}" -lt 2600 && "${ALLOW_SHARED_LOW_MEM_HOST:-false}" != "true" ]]; then
+  if docker ps --format '{{.Names}}' | grep -q '^car-service-staging'; then
+    echo "==> [prod] Host RAM is ${HOST_MEM_MB}MB (<2600MB); stopping car-service-staging to prevent swap thrashing/OOM..."
+    docker compose -f "${COMPOSE_FILE}" -p "car-service-staging" down || true
+  fi
+fi
+
+if [[ "${RUN_DB_BACKUP:-false}" == "true" || ( "${ENV_NAME}" == "prod" && "${SKIP_DB_BACKUP:-false}" != "true" ) ]]; then
+  echo "==> [${ENV_NAME}] Running pre-migration database backup..."
+  "${SCRIPT_DIR}/backup-db.sh" "${ENV_NAME}" "${AWS_REGION}" || echo "WARNING: [${ENV_NAME}] Pre-migration backup skipped or failed; continuing deployment." >&2
+fi
+
 echo "==> [${ENV_NAME}] Running Prisma database migrations..."
 docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" run --rm --no-deps backend node ./node_modules/prisma/build/index.js migrate deploy
 
@@ -145,6 +159,7 @@ if [[ -s "${STATE_DIR}/.previous_tag" ]]; then
   PREV_TAG="$(cat "${STATE_DIR}/.previous_tag")"
   echo "==> [${ENV_NAME}] Auto-rolling back to previous tag ${PREV_TAG}..." >&2
   export IMAGE_TAG="${PREV_TAG}"
+  docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" pull || true
   docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" "${PROFILE_ARGS[@]}" up -d --remove-orphans || true
 else
   echo "WARNING: No .previous_tag found for auto-rollback." >&2

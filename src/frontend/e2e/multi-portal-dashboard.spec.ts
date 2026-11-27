@@ -33,6 +33,25 @@ test.describe('Multi-Portal Interactive Dashboard & Taste Audit (SPEC-MULTI-PORT
       });
     });
 
+    // Mock sidebar prefetch endpoints so DashboardLayout does not hit 401
+    await page.route('**/api/intake**', async (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data: [] }) })
+    );
+    await page.route('**/api/appointments**', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: [], pagination: { totalRecords: 0 } }),
+      })
+    );
+    await page.route('**/api/billing**', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: { tab: 'PENDING', summary: {}, records: [], pagination: {} } }),
+      })
+    );
+
     // Mock API for /api/dashboard/:portal
     await page.route('**/api/dashboard/**', async (route) => {
       const url = route.request().url();
@@ -209,10 +228,7 @@ test.describe('Multi-Portal Interactive Dashboard & Taste Audit (SPEC-MULTI-PORT
   test('AUDIT-02: Manager Dashboard (/dashboard) - Kiểm tra Doanh thu, Lọc chéo trạng thái và Lệnh xe', async ({ page }) => {
     await page.goto('http://localhost:3001/dashboard');
 
-    // 1. Kiểm tra tiêu đề trang
-    await expect(page.locator('h1')).toContainText('Trung Tâm Điều Hành & Giám Sát');
-
-    // 2. Kiểm tra KPI doanh thu hiển thị tiền VNĐ
+    // 1. Kiểm tra KPI doanh thu hiển thị tiền VNĐ
     await expect(page.getByText('Doanh thu quyết toán', { exact: true })).toBeVisible();
 
     // 3. Kiểm tra bảng Work Order
@@ -229,13 +245,12 @@ test.describe('Multi-Portal Interactive Dashboard & Taste Audit (SPEC-MULTI-PORT
     await page.goto('http://localhost:3001/advisor/dashboard');
 
     // 1. Tiêu đề
-    await expect(page.locator('h1')).toContainText('Bảng Điều Hành Cố Vấn Dịch Vụ');
+    await expect(page.locator('h1')).toContainText('Phân tích & KPI Cá nhân');
 
-    // 2. Kiểm tra nút chuyển đổi Scope
-    const myScopeBtn = page.locator('button', { hasText: 'Việc của tôi' });
-    const workshopScopeBtn = page.locator('button', { hasText: 'Toàn bộ xưởng' });
-    await expect(myScopeBtn).toBeVisible();
-    await expect(workshopScopeBtn).toBeVisible();
+    // 2. Kiểm tra bộ lọc kỳ và thẻ tóm tắt cá nhân
+    await expect(page.getByRole('button', { name: '7 ngày qua' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '30 ngày' })).toBeVisible();
+    await expect(page.locator('text=Tóm tắt hiệu suất cá nhân')).toBeVisible();
 
     // 3. Kiểm tra KPI Cards đặc thù SA
     await expect(page.locator('text=Báo giá chờ khách duyệt')).toBeVisible();
@@ -246,10 +261,7 @@ test.describe('Multi-Portal Interactive Dashboard & Taste Audit (SPEC-MULTI-PORT
   test('AUDIT-04: Staff Dashboard (/staff/dashboard) - Kiểm tra điều phối công việc và hàng đợi kỹ thuật', async ({ page }) => {
     await page.goto('http://localhost:3001/staff/dashboard');
 
-    // 1. Tiêu đề
-    await expect(page.locator('h1')).toContainText('Bảng Điều Phối Kỹ Thuật Viên & Tiếp Nhận');
-
-    // 2. Kiểm tra 4 thẻ KPI
+    // 1. Kiểm tra 4 thẻ KPI
     await expect(page.getByText('Công việc đang đảm nhiệm', { exact: true })).toBeVisible();
     await expect(page.locator('text=Hoàn thành trong kỳ')).toBeVisible();
 

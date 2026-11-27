@@ -304,10 +304,7 @@ test.describe('SaaS Dashboard Redesign E2E: Staff, Manager & Admin Roles', () =>
     await page.goto('http://localhost:3001/dashboard', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByTestId('saas-sidebar')).toBeVisible({ timeout: 20000 });
-    await expect(
-      page.locator('h1:has-text("Trung Tâm Điều Hành & Giám Sát Xưởng Dịch Vụ")')
-    ).toBeVisible({ timeout: 20000 });
-    await expect(page.getByText('Doanh thu quyết toán', { exact: true })).toBeVisible();
+    await expect(page.getByText('Doanh thu quyết toán', { exact: true })).toBeVisible({ timeout: 20000 });
     await expect(page.locator('text=Biểu đồ Doanh thu Quyết toán Thực tế')).toBeVisible();
     await expect(page.locator('text=WO-2026-501').first()).toBeVisible();
 
@@ -388,8 +385,8 @@ test.describe('SaaS Dashboard Redesign E2E: Staff, Manager & Admin Roles', () =>
       { path: '/staff/intake', selector: 'button:has-text("+ Tiếp nhận khách vãng lai")' },
       { path: '/staff/billing', selector: 'text=Chờ lập hóa đơn' },
       { path: '/staff/customers', selector: 'text=Tổng khách hàng hệ thống' },
-      { path: '/inventory', selector: 'h1:has-text("Quản lý kho phụ tùng")' },
-      { path: '/part-categories', selector: 'h1:has-text("Danh mục phụ tùng")' },
+      { path: '/inventory', selector: 'text=Tổng giá trị vốn tồn kho' },
+      { path: '/part-categories', selector: 'text=Tổng danh mục gốc' },
       { path: '/employees', selector: 'text=Tổng nhân sự hệ thống' },
       { path: '/services', selector: 'text=Tổng gói dịch vụ hệ thống' },
       { path: '/service-categories', selector: 'text=Tổng số nhóm danh mục' },
@@ -542,7 +539,7 @@ test.describe('SaaS Dashboard Redesign E2E: Staff, Manager & Admin Roles', () =>
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('http://localhost:3001/inventory', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.locator('h1:has-text("Quản lý kho phụ tùng")')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('text=Tổng giá trị vốn tồn kho')).toBeVisible({ timeout: 20000 });
     await expect(page.locator('text=VT-001-A')).toBeVisible();
 
     // Switch to Tab 2: Sổ Phiếu Nhập Kho
@@ -560,7 +557,7 @@ test.describe('SaaS Dashboard Redesign E2E: Staff, Manager & Admin Roles', () =>
     await expect(page.locator('text=NCC-001')).toBeVisible();
 
     // Open Enterprise Goods Receipt Modal
-    await page.click('button:has-text("Nhập kho")');
+    await page.locator('#btn-create-receipt').click();
     await expect(page.locator('h2:has-text("Lập Chứng Từ Nhập Kho Phụ Tùng")')).toBeVisible();
     await expect(page.locator('button:has-text("Lưu bản nháp (DRAFT)")')).toBeVisible();
     await expect(page.locator('button:has-text("Xác nhận & Ghi sổ Nhập kho")')).toBeVisible();

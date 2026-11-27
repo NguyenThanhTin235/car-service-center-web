@@ -3,6 +3,7 @@
 import React from 'react';
 import { IntakeQueueItem } from '@/lib/api/work-order.api';
 import { formatVehicleSize } from '@/components/advisor/work-order/work-order.constants';
+import { formatDisplayNotes } from '@/lib/utils/notes';
 import { getWaitMinutes } from '@/lib/utils/formatters';
 import ModalPortal from '@/components/advisor/common/ModalPortal';
 
@@ -17,13 +18,13 @@ export function calcWaitTime(arrivedAt: string): { text: string; minutes: number
 }
 
 const INTAKE_TYPE_BADGES: Record<string, { label: string; bgClass: string }> = {
-  WALK_IN: { label: 'Khoang sửa chữa', bgClass: 'bg-slate-100 text-slate-700' },
-  TOW_IN: { label: 'Khoang cứu hộ', bgClass: 'bg-rose-50 text-rose-700' },
-  APPOINTMENT: { label: 'Khoang bảo dưỡng', bgClass: 'bg-blue-50 text-[#0050cd]' },
+  WALK_IN: { label: 'Khoang sửa chữa', bgClass: 'bg-slate-100 text-slate-700 border border-slate-300' },
+  TOW_IN: { label: 'Khoang cứu hộ', bgClass: 'bg-rose-50 text-rose-700 border border-rose-200' },
+  APPOINTMENT: { label: 'Khoang bảo dưỡng', bgClass: 'bg-blue-50 text-[#0050cd] border border-blue-200' },
 };
 
 export function getIntakeTypeBadge(type: string) {
-  return INTAKE_TYPE_BADGES[type] || { label: type, bgClass: 'bg-slate-100 text-slate-700' };
+  return INTAKE_TYPE_BADGES[type] || { label: type, bgClass: 'bg-slate-100 text-slate-700 border border-slate-300' };
 }
 
 const SERVICE_CATEGORY_RULES: Array<[string, string[]]> = [
@@ -99,6 +100,8 @@ export default function IntakeDetailModal({
     if (vcMatch) vehicleCondition = vcMatch[1].trim();
     if (nMatch) actualNotes = nMatch[1].trim();
   }
+
+  actualNotes = formatDisplayNotes(actualNotes);
 
   return (
     <ModalPortal onClose={onClose}>

@@ -47,14 +47,14 @@ REDIS_URL=redis://localhost:6379
 # Cấu hình Gửi Email Thông báo & Hóa đơn (SMTP Gmail)
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
-EMAIL_USER=thanhtin23122@gmail.com
+EMAIL_USER=your_email@gmail.com
 EMAIL_PASS=your_gmail_app_password
-GMAIL_USER=thanhtin23122@gmail.com
+GMAIL_USER=your_email@gmail.com
 GMAIL_APP_PASSWORD=your_gmail_app_password
 
 # Cấu hình Cloudinary (Upload và lưu trữ ảnh xe, ảnh kiểm tra, avatar)
-CLOUDINARY_NAME=dmxxo6wgl
-CLOUDINARY_API_KEY=315628768938735
+CLOUDINARY_NAME=your_cloudinary_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 
 # Cấu hình Trợ lý AI (Google Gemini - Hỗ trợ phân tích kiểm định, chẩn đoán hỏng hóc)

@@ -12,6 +12,7 @@ import {
 import { fetchAppointments } from '@/store/slices/appointmentSlice';
 import api from '@/lib/axios';
 import TablePagination from '@/components/shared/TablePagination';
+import StatusPill, { StatusPillTone } from '@/components/shared/StatusPill';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 
@@ -22,18 +23,18 @@ const IntakeDetailModal = dynamic(() => import('@/components/intake/IntakeDetail
 const ConfirmModal = dynamic(() => import('@/components/shared/ConfirmModal'), { ssr: false });
 const ReadOnlyROModal = dynamic(() => import('@/components/intake/ReadOnlyROModal'), { ssr: false });
 
-const getTypeStyles = (type: string) => {
+const getTypeTone = (type: string): StatusPillTone => {
   switch (type) {
     case 'WALK_IN':
-      return 'bg-blue-50 text-[#0866ff] border border-blue-200/70';
+      return 'primary';
     case 'TOW_IN':
-      return 'bg-amber-50 text-amber-700 border border-amber-200/70';
+      return 'warning';
     case 'APPOINTMENT':
-      return 'bg-emerald-50 text-emerald-700 border border-emerald-200/70';
+      return 'success';
     case 'WARRANTY':
-      return 'bg-purple-50 text-purple-700 border border-purple-200/70';
+      return 'purple';
     default:
-      return 'bg-slate-100 text-slate-600 border border-slate-200';
+      return 'neutral';
   }
 };
 
@@ -558,8 +559,8 @@ export default function IntakePage() {
           </div>
 
           {/* Hàng 2: Tìm kiếm & Lọc loại tiếp nhận */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-            <div className="relative flex-1 sm:max-w-sm">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-2.5">
+            <div className="relative w-full sm:w-80">
               <span className="material-symbols-outlined text-[18px] absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                 search
               </span>
@@ -671,13 +672,11 @@ export default function IntakePage() {
                       <tr key={record.id} className="hover:bg-blue-50/25 transition-colors">
                         <td className="py-3.5 px-3.5 lg:px-5 whitespace-nowrap">
                           <div className="flex flex-col gap-1">
-                            <span
-                              className={`w-fit px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${getTypeStyles(
-                                record.intake_type
-                              )}`}
-                            >
-                              {getTypeName(record.intake_type)}
-                            </span>
+                            <StatusPill
+                              label={getTypeName(record.intake_type)}
+                              tone={getTypeTone(record.intake_type)}
+                              className="w-fit"
+                            />
                             <span className="text-xs font-mono text-slate-500">
                               {new Date(record.arrived_at).toLocaleTimeString('vi-VN', {
                                 hour: '2-digit',
@@ -765,15 +764,13 @@ export default function IntakePage() {
             <div className="md:hidden divide-y divide-slate-200/70">
               {paginatedRecords.map((record) => {
               const typeLabel = getTypeName(record.intake_type);
-              const typeBadge = getTypeStyles(record.intake_type);
+              const typeTone = getTypeTone(record.intake_type);
 
               return (
                 <div key={record.id} className="p-4 space-y-2.5 bg-white">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase whitespace-nowrap ${typeBadge}`}>
-                        {typeLabel}
-                      </span>
+                      <StatusPill label={typeLabel} tone={typeTone} />
                       <span className="text-xs font-mono text-slate-500">
                         {new Date(record.arrived_at).toLocaleTimeString('vi-VN', {
                           hour: '2-digit',

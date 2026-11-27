@@ -88,10 +88,10 @@ jobs:
           DATABASE_URL: "mysql://ci_user:ci_pass@localhost:3306/car_service_center"
         run: npm ci && npx prisma generate && npm run build
 
-      - name: Setup Node.js 20 (Frontend Cache)
+      - name: Setup Node.js 22 (Frontend Cache)
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: src/frontend/package-lock.json
 
@@ -99,7 +99,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: src/frontend/apps/customer-web/.next/cache
-          key: ${{ runner.os }}-nextjs-customer-${{ hashFiles('src/frontend/package-lock.json', 'src/frontend/apps/customer-web/**/*.{js,jsx,ts,tsx}') }}
+          key: ${{ runner.os }}-nextjs-customer-${{ hashFiles('src/frontend/package-lock.json', 'src/frontend/packages/shared/**/*.{js,jsx,ts,tsx}', 'src/frontend/apps/customer-web/**/*.{js,jsx,ts,tsx}') }}
           restore-keys: |
             ${{ runner.os }}-nextjs-customer-
 
@@ -107,7 +107,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: src/frontend/apps/internal-web/.next/cache
-          key: ${{ runner.os }}-nextjs-internal-${{ hashFiles('src/frontend/package-lock.json', 'src/frontend/apps/internal-web/**/*.{js,jsx,ts,tsx}') }}
+          key: ${{ runner.os }}-nextjs-internal-${{ hashFiles('src/frontend/package-lock.json', 'src/frontend/packages/shared/**/*.{js,jsx,ts,tsx}', 'src/frontend/apps/internal-web/**/*.{js,jsx,ts,tsx}') }}
           restore-keys: |
             ${{ runner.os }}-nextjs-internal-
 
@@ -125,6 +125,20 @@ jobs:
           NEXT_PUBLIC_CUSTOMER_URL: ${{ needs.prepare.outputs.next_public_customer_url }}
         run: npm run build
 
+      - name: Frontend JS Bundle Budget Advisory
+        working-directory: src/frontend
+        run: |
+          node -e "
+            const fs = require('fs'), path = require('path'), zlib = require('zlib');
+            for (const app of ['customer-web', 'internal-web']) {
+              const dir = path.join('apps', app, '.next', 'static', 'chunks');
+              let raw = 0, gz = 0;
+              const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (p.endsWith('.js')) { const b = fs.readFileSync(p); raw += b.length; gz += zlib.gzipSync(b).length; } } };
+              if (fs.existsSync(dir)) walk(dir);
+              console.log(app + ' total JS: ' + Math.round(raw/1024) + ' KB raw / ' + Math.round(gz/1024) + ' KB gzip');
+            }
+          "
+
   # ===========================================================================
   # Stage 2: Lint & Static Analysis
   # ===========================================================================
@@ -137,10 +151,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 20 (Backend Cache)
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: src/backend/package-lock.json
 
       - name: Backend Prisma Validate, Typecheck & Lint
         working-directory: src/backend
@@ -148,15 +164,20 @@ jobs:
           DATABASE_URL: "mysql://ci_user:ci_pass@localhost:3306/car_service_center"
         run: npm ci && npx prisma validate && npx prisma generate && npm run typecheck && npm run lint
 
+      - name: Setup Node.js 22 (Frontend Cache)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
       - name: Frontend Lint & Typegen/Typecheck
         working-directory: src/frontend
         run: |
           npm ci
           npm run lint
-          npm --workspace=@car-service-center/customer-web exec -- next typegen
-          npm --workspace=@car-service-center/customer-web exec -- tsc --noEmit
-          npm --workspace=@car-service-center/internal-web exec -- next typegen
-          npm --workspace=@car-service-center/internal-web exec -- tsc --noEmit
+          npm run typecheck -w @car-service-center/customer-web
+          npm run typecheck -w @car-service-center/internal-web
 
   # ===========================================================================
   # Stage 3: Automated Tests
@@ -195,9 +216,9 @@ jobs:
           cache: npm
           cache-dependency-path: src/frontend/package-lock.json
 
-      - name: Run Customer Web Unit Tests
+      - name: Run Frontend Unit Tests (Customer & Internal Web)
         working-directory: src/frontend
-        run: npm ci && npm run test:unit:customer
+        run: npm ci && npm run test:unit
 
       - name: Run AWS CDK Infrastructure Tests
         working-directory: infra

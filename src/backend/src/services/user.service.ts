@@ -1,4 +1,5 @@
 import { setCache, deleteCache } from '../utils/redis.util';
+import { TOKEN_INVALID_BEFORE_KEY, USER_AUTH_CACHE_KEY } from '../constants/auth-cache.constant';
 import { Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import prisma from '../utils/prisma';
@@ -323,6 +324,7 @@ export class UserService {
 
     const isStatusChanged = data.isActive !== undefined && data.isActive !== user.is_active;
     if (data.role || isStatusChanged) {
+      await deleteCache(USER_AUTH_CACHE_KEY(id));
       const changes: string[] = [];
       if (data.role) changes.push(`vai trò -> ${data.role}`);
       if (isStatusChanged) changes.push(`trạng thái -> ${data.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}`);
@@ -359,8 +361,11 @@ export class UserService {
       data: { is_active: false },
     });
 
-    // Thu hồi token lập tức qua Redis / In-memory blacklist
-    await setCache(`revoked_user:${id}`, 'true', 86400 * 7);
+    // Thu hồi token lập tức qua Redis / In-memory blacklist & xóa auth cache
+    await Promise.all([
+      setCache(`revoked_user:${id}`, 'true', 86400 * 7),
+      deleteCache(USER_AUTH_CACHE_KEY(id)),
+    ]);
 
     notificationService
       .sendInAppToRoles(['ADMIN'], {
@@ -385,8 +390,11 @@ export class UserService {
       data: { is_active: true },
     });
 
-    // Xóa cờ thu hồi token trong Redis khi kích hoạt lại
-    await deleteCache(`revoked_user:${id}`);
+    // Xóa cờ thu hồi token & auth cache trong Redis khi kích hoạt lại
+    await Promise.all([
+      deleteCache(`revoked_user:${id}`),
+      deleteCache(USER_AUTH_CACHE_KEY(id)),
+    ]);
 
     notificationService
       .sendInAppToRoles(['ADMIN'], {
@@ -411,6 +419,11 @@ export class UserService {
       where: { id },
       data: { password_hash: passwordHash },
     });
+
+    await Promise.all([
+      deleteCache(USER_AUTH_CACHE_KEY(id)),
+      setCache(TOKEN_INVALID_BEFORE_KEY(id), String(Math.floor(Date.now() / 1000)), 86400 * 7),
+    ]);
 
     notificationService
       .sendInAppToRoles(['ADMIN'], {

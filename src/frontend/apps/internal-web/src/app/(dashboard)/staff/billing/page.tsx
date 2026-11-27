@@ -367,7 +367,7 @@ export default function BillingQueuePage() {
         {/* 4. Desktop & Tablet Table view (Flush inside .saas-card - No Nested Card Border) */}
         <div className="hidden md:block overflow-x-auto max-h-[60vh] overflow-y-auto bg-white">
           <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur text-slate-600 font-semibold text-[11px] uppercase tracking-wider border-b border-slate-200/80">
+            <thead className="sticky top-0 z-10 bg-slate-50 text-slate-600 font-semibold text-[11px] uppercase tracking-wider border-b border-slate-200/80">
               {tab === 'PENDING' ? (
                 <tr>
                   <th className="py-3.5 px-3.5 lg:px-4 whitespace-nowrap">Mã phiếu WO</th>

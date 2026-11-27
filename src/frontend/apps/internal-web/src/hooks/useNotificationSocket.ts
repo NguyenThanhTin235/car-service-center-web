@@ -60,7 +60,7 @@ export function useNotificationSocket(): void {
         },
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionAttempts: Infinity,
+        reconnectionAttempts: 10,
         reconnectionDelay: 1500,
       });
 

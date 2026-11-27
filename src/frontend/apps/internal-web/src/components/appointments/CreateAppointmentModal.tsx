@@ -14,6 +14,30 @@ interface CreateAppointmentModalProps {
 
 const MORNING_SLOTS = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30'];
 const AFTERNOON_SLOTS = ['13:30', '14:00', '14:30', '15:00', '16:00'];
+const ALL_SLOTS = [...MORNING_SLOTS, ...AFTERNOON_SLOTS];
+
+const isBookingSlotInPast = (date: Date, slot: string): boolean => {
+  const [hh, mm] = slot.split(':').map(Number);
+  const slotDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hh || 0, mm || 0, 0, 0);
+  return slotDate.getTime() < Date.now();
+};
+
+const CheckIcon = () => (
+  <svg
+    viewBox="0 0 16 16"
+    fill="none"
+    aria-hidden="true"
+    className="w-3 h-3"
+  >
+    <path
+      d="M3.5 8.5L6.5 11.5L12.5 4.5"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 const getServiceIcon = (name: string) => {
   const lower = name.toLowerCase();
@@ -65,6 +89,7 @@ export default function CreateAppointmentModal({
   // Quick-add vehicle modal state
   const [quickVehicleOpen, setQuickVehicleOpen] = useState(false);
   const [savingQuickVehicle, setSavingQuickVehicle] = useState(false);
+  const [quickVehiclePlateError, setQuickVehiclePlateError] = useState<string | null>(null);
   const [quickVehicleForm, setQuickVehicleForm] = useState({
     licensePlate: '',
     make: '',
@@ -259,6 +284,7 @@ export default function CreateAppointmentModal({
     }
 
     setSavingQuickVehicle(true);
+    setQuickVehiclePlateError(null);
     try {
       const res = await api.post(`/api/customers/${customerId}/vehicles`, {
         licensePlate: quickVehicleForm.licensePlate.trim().toUpperCase(),
@@ -281,9 +307,11 @@ export default function CreateAppointmentModal({
       }
       toast.success('Thêm phương tiện mới thành công!');
       setQuickVehicleForm({ licensePlate: '', make: '', model: '', color: '', vehicleSize: 'MEDIUM' });
+      setQuickVehiclePlateError(null);
       setQuickVehicleOpen(false);
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Không thể thêm phương tiện';
+      setQuickVehiclePlateError(msg);
       toast.error(msg);
     } finally {
       setSavingQuickVehicle(false);
@@ -343,7 +371,7 @@ export default function CreateAppointmentModal({
                 >
                   1
                 </div>
-                <span className="text-xs">1. Chọn xe</span>
+                <span className="text-xs">Chọn xe</span>
               </div>
 
               <div className="w-10 sm:w-12 h-0.5 bg-blue-500/40" />
@@ -372,7 +400,7 @@ export default function CreateAppointmentModal({
                 >
                   2
                 </div>
-                <span className="text-xs">2. Dịch vụ &amp; Mô tả</span>
+                <span className="text-xs">Dịch vụ &amp; Mô tả</span>
               </div>
 
               <div className="w-10 sm:w-12 h-0.5 bg-blue-500/40" />
@@ -401,7 +429,7 @@ export default function CreateAppointmentModal({
                 >
                   3
                 </div>
-                <span className="text-xs">3. Ngày &amp; Giờ</span>
+                <span className="text-xs">Ngày &amp; Giờ</span>
               </div>
             </div>
           </div>
@@ -423,7 +451,7 @@ export default function CreateAppointmentModal({
                     <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
                       1
                     </div>
-                    <h3 className="font-bold text-slate-900 text-sm">1. Chọn xe cần làm dịch vụ</h3>
+                    <h3 className="font-bold text-slate-900 text-sm">Chọn xe cần làm dịch vụ</h3>
                   </div>
                   <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -513,11 +541,11 @@ export default function CreateAppointmentModal({
                                 {v.licensePlate}
                               </span>
                               <div
-                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
                                   isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
                                 }`}
                               >
-                                {isSelected && <span className="material-symbols-outlined text-[13px]">check</span>}
+                                {isSelected && <CheckIcon />}
                               </div>
                             </div>
                             <h4 className="font-bold text-sm text-slate-900 leading-snug">
@@ -551,7 +579,7 @@ export default function CreateAppointmentModal({
                   <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
                     2
                   </div>
-                  <h3 className="font-bold text-slate-900 text-sm">2. Dịch vụ yêu cầu &amp; Mô tả tình trạng</h3>
+                  <h3 className="font-bold text-slate-900 text-sm">Dịch vụ yêu cầu &amp; Mô tả tình trạng</h3>
                 </div>
                 <p className="text-xs text-slate-500 -mt-3">
                   Lựa chọn đặt lịch bảo dưỡng định kỳ, dịch vụ sửa chữa hoặc tiếp nhận bảo hành xe (0đ)
@@ -611,7 +639,7 @@ export default function CreateAppointmentModal({
                                   isChecked ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
                                 }`}
                               >
-                                {isChecked && <span className="material-symbols-outlined text-[13px]">check</span>}
+                                {isChecked && <CheckIcon />}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -707,7 +735,7 @@ export default function CreateAppointmentModal({
                                     isChecked ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300'
                                   }`}
                                 >
-                                  {isChecked && <span className="material-symbols-outlined text-[13px]">check</span>}
+                                  {isChecked && <CheckIcon />}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1.5 flex-wrap mb-1">
@@ -779,7 +807,7 @@ export default function CreateAppointmentModal({
                   <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
                     3
                   </div>
-                  <h3 className="font-bold text-slate-900 text-sm">3. Chọn ngày &amp; khung giờ tiếp nhận</h3>
+                  <h3 className="font-bold text-slate-900 text-sm">Chọn ngày &amp; khung giờ tiếp nhận</h3>
                 </div>
                 <p className="text-xs text-slate-500 -mt-3">
                   Hệ thống phân bổ khoang sửa chữa thông minh tránh tình trạng chờ đợi quá 10 phút
@@ -797,17 +825,25 @@ export default function CreateAppointmentModal({
                         </h4>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const d = new Date(bookingDate);
-                            d.setMonth(d.getMonth() - 1);
-                            setBookingDate(d);
-                          }}
-                          className="w-6 h-6 rounded hover:bg-slate-100 flex items-center justify-center text-slate-500 cursor-pointer"
-                        >
-                          ‹
-                        </button>
+                        {(() => {
+                          const now = new Date();
+                          const isPrevMonthPast =
+                            year < now.getFullYear() || (year === now.getFullYear() && month <= now.getMonth());
+                          return (
+                            <button
+                              type="button"
+                              disabled={isPrevMonthPast}
+                              onClick={() => {
+                                const d = new Date(bookingDate);
+                                d.setMonth(d.getMonth() - 1);
+                                setBookingDate(d);
+                              }}
+                              className="w-6 h-6 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-slate-500 cursor-pointer"
+                            >
+                              ‹
+                            </button>
+                          );
+                        })()}
                         <button
                           type="button"
                           onClick={() => {
@@ -840,20 +876,30 @@ export default function CreateAppointmentModal({
                       ))}
                       {Array.from({ length: daysInMonth }, (_, i) => {
                         const dayNum = i + 1;
+                        const cellDate = new Date(year, month, dayNum);
+                        const todayStart = new Date();
+                        todayStart.setHours(0, 0, 0, 0);
+                        const isPastDay = cellDate < todayStart;
                         const isSelectedDay = bookingDate.getDate() === dayNum;
                         return (
                           <button
                             key={dayNum}
                             type="button"
+                            disabled={isPastDay}
                             onClick={() => {
-                              const newD = new Date(bookingDate);
-                              newD.setDate(dayNum);
+                              const newD = new Date(year, month, dayNum);
                               setBookingDate(newD);
+                              if (isBookingSlotInPast(newD, bookingTime)) {
+                                const nextSlot = ALL_SLOTS.find((s) => !isBookingSlotInPast(newD, s));
+                                if (nextSlot) setBookingTime(nextSlot);
+                              }
                             }}
-                            className={`h-7 rounded-lg font-medium text-xs flex items-center justify-center transition-all cursor-pointer ${
-                              isSelectedDay
-                                ? 'bg-blue-600 text-white font-bold shadow-sm'
-                                : 'hover:bg-slate-100 text-slate-700'
+                            className={`h-7 rounded-lg font-medium font-mono tabular-nums text-xs flex items-center justify-center transition-all ${
+                              isPastDay
+                                ? 'text-slate-300 cursor-not-allowed line-through'
+                                : isSelectedDay
+                                  ? 'bg-blue-600 text-white font-bold shadow-sm cursor-pointer'
+                                  : 'hover:bg-slate-100 text-slate-700 cursor-pointer'
                             }`}
                           >
                             {dayNum}
@@ -862,12 +908,17 @@ export default function CreateAppointmentModal({
                       })}
                     </div>
 
-                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-blue-600" />
-                        Ngày đang chọn: <strong>{bookingDate.getDate()}/{month + 1}</strong>
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                      <span className="flex items-center gap-1.5 whitespace-nowrap">
+                        <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                        <span>
+                          Ngày đang chọn:{' '}
+                          <strong className="text-slate-800 font-mono tabular-nums">
+                            {bookingDate.getDate()}/{month + 1}
+                          </strong>
+                        </span>
                       </span>
-                      <span>Xưởng mở cửa (07:30 - 17:30)</span>
+                      <span className="whitespace-nowrap">Xưởng mở cửa (07:30 - 17:30)</span>
                     </div>
                   </div>
 
@@ -881,21 +932,25 @@ export default function CreateAppointmentModal({
                           Buổi sáng (07:30 - 11:30)
                         </span>
                         <span className="text-[11px] text-slate-500">
-                          {MORNING_SLOTS.length} khung giờ ca sáng
+                          {MORNING_SLOTS.filter((s) => !isBookingSlotInPast(bookingDate, s)).length}/{MORNING_SLOTS.length} khung giờ sẵn sàng
                         </span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         {MORNING_SLOTS.map((slot) => {
                           const isSelected = bookingTime === slot;
+                          const isSlotPast = isBookingSlotInPast(bookingDate, slot);
                           return (
                             <button
                               key={slot}
                               type="button"
+                              disabled={isSlotPast}
                               onClick={() => setBookingTime(slot)}
-                              className={`py-2 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
-                                isSelected
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                              className={`py-2 rounded-xl text-xs font-semibold transition-all border ${
+                                isSlotPast
+                                  ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed line-through'
+                                  : isSelected
+                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm cursor-pointer'
+                                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 cursor-pointer'
                               }`}
                             >
                               {slot}
@@ -913,21 +968,25 @@ export default function CreateAppointmentModal({
                           Buổi chiều (13:30 - 17:30)
                         </span>
                         <span className="text-[11px] text-slate-500">
-                          {AFTERNOON_SLOTS.length} khung giờ ca chiều
+                          {AFTERNOON_SLOTS.filter((s) => !isBookingSlotInPast(bookingDate, s)).length}/{AFTERNOON_SLOTS.length} khung giờ sẵn sàng
                         </span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         {AFTERNOON_SLOTS.map((slot) => {
                           const isSelected = bookingTime === slot;
+                          const isSlotPast = isBookingSlotInPast(bookingDate, slot);
                           return (
                             <button
                               key={slot}
                               type="button"
+                              disabled={isSlotPast}
                               onClick={() => setBookingTime(slot)}
-                              className={`py-2 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
-                                isSelected
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                              className={`py-2 rounded-xl text-xs font-semibold transition-all border ${
+                                isSlotPast
+                                  ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed line-through'
+                                  : isSelected
+                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm cursor-pointer'
+                                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 cursor-pointer'
                               }`}
                             >
                               {slot}
@@ -1071,10 +1130,23 @@ export default function CreateAppointmentModal({
                   type="text"
                   required
                   value={quickVehicleForm.licensePlate}
-                  onChange={(e) => setQuickVehicleForm((f) => ({ ...f, licensePlate: e.target.value }))}
+                  onChange={(e) => {
+                    setQuickVehicleForm((f) => ({ ...f, licensePlate: e.target.value }));
+                    if (quickVehiclePlateError) setQuickVehiclePlateError(null);
+                  }}
                   placeholder="VD: 51A-123.45"
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono uppercase focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                  aria-invalid={!!quickVehiclePlateError}
+                  className={`w-full h-10 px-3 rounded-xl border text-xs font-mono uppercase outline-none ${
+                    quickVehiclePlateError
+                      ? 'border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
+                      : 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                  }`}
                 />
+                {quickVehiclePlateError && (
+                  <p className="mt-1 text-xs text-rose-600 font-medium" role="alert">
+                    {quickVehiclePlateError}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

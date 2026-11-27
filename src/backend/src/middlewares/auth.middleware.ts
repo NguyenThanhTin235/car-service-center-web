@@ -1,9 +1,34 @@
-import { getCache } from '../utils/redis.util';
+import * as redisUtil from '../utils/redis.util';
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken, JwtPayload } from '../utils/jwt.util';
-import { BLACKLIST_JTI_KEY, TOKEN_INVALID_BEFORE_KEY } from '../services/auth.service';
+import {
+  BLACKLIST_JTI_KEY,
+  TOKEN_INVALID_BEFORE_KEY,
+  USER_AUTH_CACHE_KEY,
+} from '../constants/auth-cache.constant';
 import prisma from '../utils/prisma';
 import { resolvePortalFromHeaders } from '../utils/cors.util';
+
+export { USER_AUTH_CACHE_KEY } from '../constants/auth-cache.constant';
+const USER_AUTH_CACHE_TTL_SECONDS = 60;
+
+const isUserAuthCacheEnabled = (): boolean =>
+  process.env.ENABLE_AUTH_USER_CACHE === 'true' ||
+  (process.env.NODE_ENV !== 'test' && process.env.ENABLE_AUTH_USER_CACHE !== 'false');
+
+async function readCacheBatch(keys: string[]): Promise<(string | null)[]> {
+  try {
+    if (
+      Object.prototype.hasOwnProperty.call(redisUtil, 'mgetCache') &&
+      typeof (redisUtil as { mgetCache?: (k: string[]) => Promise<(string | null)[]> }).mgetCache === 'function'
+    ) {
+      return await (redisUtil as { mgetCache: (k: string[]) => Promise<(string | null)[]> }).mgetCache(keys);
+    }
+  } catch {
+    // Fall back to parallel getCache when mocked in tests without mgetCache
+  }
+  return Promise.all(keys.map((k) => (k ? redisUtil.getCache(k) : Promise.resolve(null))));
+}
 
 // Extend Express Request to include user
 declare global {
@@ -48,47 +73,81 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
   try {
     const payload = verifyAccessToken(token);
+    const cacheUserAuth = isUserAuthCacheEnabled();
+
+    const batchKeys = [
+      payload.jti ? BLACKLIST_JTI_KEY(payload.jti) : '',
+      TOKEN_INVALID_BEFORE_KEY(payload.id),
+      `revoked_user:${payload.id}`,
+      ...(cacheUserAuth ? [USER_AUTH_CACHE_KEY(payload.id)] : []),
+    ];
+    const [isBlacklisted, invalidBeforeRaw, isRevoked, cachedUserAuthRaw] =
+      await readCacheBatch(batchKeys);
 
     // Kiểm tra token đã bị thu hồi khi logout (blacklist jti)
-    if (payload.jti) {
-      const isBlacklisted = await getCache(BLACKLIST_JTI_KEY(payload.jti));
-      if (isBlacklisted) {
-        res.status(401).json({ status: 'error', message: 'Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.' });
-        return;
-      }
+    if (payload.jti && isBlacklisted) {
+      res.status(401).json({ status: 'error', message: 'Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.' });
+      return;
     }
 
     // Kiểm tra token có phát hành trước thời điểm đổi/đặt lại mật khẩu không
-    const invalidBeforeRaw = await getCache(TOKEN_INVALID_BEFORE_KEY(payload.id));
     if (invalidBeforeRaw && payload.iat && payload.iat < Number(invalidBeforeRaw)) {
       res.status(401).json({ status: 'error', message: 'Phiên đăng nhập đã hết hiệu lực do thay đổi bảo mật.' });
       return;
     }
 
     // Kiểm tra nhanh token đã bị thu hồi do khóa tài khoản chưa
-    const isRevoked = await getCache(`revoked_user:${payload.id}`);
     if (isRevoked) {
       res.status(401).json({ status: 'error', message: 'Tài khoản đã bị tạm khóa và phiên đăng nhập bị thu hồi.' });
       return;
     }
-    
-    // Load fresh roles directly from database to ensure role changes take effect immediately
-    const user = await prisma.user.findUnique({
-      where: { id: payload.id },
-      select: {
-        is_active: true,
-        roles: {
-          select: { role: { select: { name: true } } }
-        }
-      }
-    });
 
-    if (!user || !user.is_active) {
+    let isActive = false;
+    let liveRoles: string[] = [];
+
+    if (cacheUserAuth && cachedUserAuthRaw) {
+      try {
+        const parsed = JSON.parse(cachedUserAuthRaw) as { isActive: boolean; roles: string[] };
+        isActive = Boolean(parsed.isActive);
+        liveRoles = Array.isArray(parsed.roles) ? parsed.roles : [];
+      } catch {
+        // Ignore malformed cache entry and fall back to DB
+      }
+    }
+
+    if (!cacheUserAuth || !cachedUserAuthRaw) {
+      // Load fresh roles directly from database to ensure role changes take effect immediately
+      const user = await prisma.user.findUnique({
+        where: { id: payload.id },
+        select: {
+          is_active: true,
+          roles: {
+            select: { role: { select: { name: true } } },
+          },
+        },
+      });
+
+      if (!user || !user.is_active) {
+        res.status(401).json({ status: 'error', message: 'Tài khoản không tồn tại hoặc đã bị vô hiệu hóa.' });
+        return;
+      }
+
+      isActive = user.is_active;
+      liveRoles = user.roles.map((r: any) => r.role.name);
+
+      if (cacheUserAuth && typeof redisUtil.setCache === 'function') {
+        void redisUtil.setCache(
+          USER_AUTH_CACHE_KEY(payload.id),
+          JSON.stringify({ isActive, roles: liveRoles }),
+          USER_AUTH_CACHE_TTL_SECONDS
+        ).catch(() => {});
+      }
+    }
+
+    if (!isActive) {
       res.status(401).json({ status: 'error', message: 'Tài khoản không tồn tại hoặc đã bị vô hiệu hóa.' });
       return;
     }
-
-    const liveRoles = user.roles.map((r: any) => r.role.name);
 
     // If request is directed to internal management portal, enforce staff role
     if (portal === 'internal') {
@@ -163,21 +222,25 @@ export const optionalAuthenticate = async (
 
   try {
     const payload = verifyAccessToken(token);
+    const cacheUserAuth = isUserAuthCacheEnabled();
+    const [isBlacklisted, invalidBeforeRaw, isRevoked, cachedUserAuthRaw] =
+      await readCacheBatch([
+        payload.jti ? BLACKLIST_JTI_KEY(payload.jti) : '',
+        TOKEN_INVALID_BEFORE_KEY(payload.id),
+        `revoked_user:${payload.id}`,
+        ...(cacheUserAuth ? [USER_AUTH_CACHE_KEY(payload.id)] : []),
+      ]);
 
-    if (payload.jti) {
-      const isBlacklisted = await getCache(BLACKLIST_JTI_KEY(payload.jti));
-      if (isBlacklisted) {
-        if (isBearerToken) {
-          sendOptionalAuthError(res, 'SESSION_REVOKED', 'Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.');
-          return;
-        }
-        req.user = undefined;
-        next();
+    if (payload.jti && isBlacklisted) {
+      if (isBearerToken) {
+        sendOptionalAuthError(res, 'SESSION_REVOKED', 'Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.');
         return;
       }
+      req.user = undefined;
+      next();
+      return;
     }
 
-    const invalidBeforeRaw = await getCache(TOKEN_INVALID_BEFORE_KEY(payload.id));
     if (invalidBeforeRaw && payload.iat && payload.iat < Number(invalidBeforeRaw)) {
       if (isBearerToken) {
         sendOptionalAuthError(res, 'SESSION_REVOKED', 'Phiên đăng nhập đã hết hiệu lực do thay đổi bảo mật.');
@@ -188,7 +251,6 @@ export const optionalAuthenticate = async (
       return;
     }
 
-    const isRevoked = await getCache(`revoked_user:${payload.id}`);
     if (isRevoked) {
       if (isBearerToken) {
         sendOptionalAuthError(res, 'SESSION_REVOKED', 'Tài khoản đã bị tạm khóa và phiên đăng nhập bị thu hồi.');
@@ -199,17 +261,51 @@ export const optionalAuthenticate = async (
       return;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: payload.id },
-      select: {
-        is_active: true,
-        roles: {
-          select: { role: { select: { name: true } } },
-        },
-      },
-    });
+    let isActive = false;
+    let liveRoles: string[] = [];
 
-    if (!user || !user.is_active) {
+    if (cacheUserAuth && cachedUserAuthRaw) {
+      try {
+        const parsed = JSON.parse(cachedUserAuthRaw) as { isActive: boolean; roles: string[] };
+        isActive = Boolean(parsed.isActive);
+        liveRoles = Array.isArray(parsed.roles) ? parsed.roles : [];
+      } catch {}
+    }
+
+    if (!cacheUserAuth || !cachedUserAuthRaw) {
+      const user = await prisma.user.findUnique({
+        where: { id: payload.id },
+        select: {
+          is_active: true,
+          roles: {
+            select: { role: { select: { name: true } } },
+          },
+        },
+      });
+
+      if (!user || !user.is_active) {
+        if (isBearerToken) {
+          sendOptionalAuthError(res, 'UNAUTHORIZED', 'Tài khoản không tồn tại hoặc đã bị vô hiệu hóa.');
+          return;
+        }
+        req.user = undefined;
+        next();
+        return;
+      }
+
+      isActive = user.is_active;
+      liveRoles = user.roles.map((r: any) => r.role.name);
+
+      if (cacheUserAuth && typeof redisUtil.setCache === 'function') {
+        void redisUtil.setCache(
+          USER_AUTH_CACHE_KEY(payload.id),
+          JSON.stringify({ isActive, roles: liveRoles }),
+          USER_AUTH_CACHE_TTL_SECONDS
+        ).catch(() => {});
+      }
+    }
+
+    if (!isActive) {
       if (isBearerToken) {
         sendOptionalAuthError(res, 'UNAUTHORIZED', 'Tài khoản không tồn tại hoặc đã bị vô hiệu hóa.');
         return;
@@ -219,7 +315,6 @@ export const optionalAuthenticate = async (
       return;
     }
 
-    const liveRoles = user.roles.map((r: any) => r.role.name);
     req.user = {
       ...payload,
       roles: liveRoles.length > 0 ? liveRoles : payload.roles,

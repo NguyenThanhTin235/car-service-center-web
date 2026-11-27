@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAppSelector } from '@/store';
+import { useAppDispatch, useAppSelector } from '@/store';
+import { fetchAppointments } from '@/store/slices/appointmentSlice';
+import { fetchIntakeQueue } from '@/store/slices/intakeSlice';
+import { fetchBillingQueue } from '@/store/slices/billingSlice';
 import AuthGuard from '@/components/auth/AuthGuard';
 import SaaSDashboardShell, {
   SaaSNavItem,
@@ -11,18 +14,53 @@ import SaaSDashboardShell, {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const queuedIntakeCount = useAppSelector(
+  const dispatch = useAppDispatch();
+  const prefetchedRef = useRef(false);
+
+  const intakeQueuedCount = useAppSelector((state) => state.intake.queuedCount);
+  const intakeLoading = useAppSelector((state) => state.intake.loading);
+  const fallbackQueuedIntakeCount = useAppSelector(
     (state) => state.intake.records.filter((r) => r.status === 'QUEUED').length
   );
-  const activeAptCount = useAppSelector(
+  const queuedIntakeCount = intakeQueuedCount ?? fallbackQueuedIntakeCount;
+
+  const aptActiveCount = useAppSelector((state) => state.appointments.activeCount);
+  const aptLoading = useAppSelector((state) => state.appointments.loading);
+  const fallbackActiveAptCount = useAppSelector(
     (state) =>
       state.appointments.appointments.filter((a) =>
         ['REQUESTED', 'CONFIRMED', 'RESCHEDULED'].includes(a.status)
       ).length
   );
-  const pendingBillingCount = useAppSelector((state) => state.billing.summary?.pendingCount || 0);
-  const issuedBillingCount = useAppSelector((state) => state.billing.summary?.issuedCount || 0);
-  const paidTodayCount = useAppSelector((state) => state.billing.summary?.paidTodayCount || 0);
+  const activeAptCount = aptActiveCount ?? fallbackActiveAptCount;
+
+  const billingSummary = useAppSelector((state) => state.billing.summary);
+  const billingLoading = useAppSelector((state) => state.billing.loading);
+  const pendingBillingCount = billingSummary?.pendingCount || 0;
+  const issuedBillingCount = billingSummary?.issuedCount || 0;
+  const paidTodayCount = billingSummary?.paidTodayCount || 0;
+
+  useEffect(() => {
+    if (prefetchedRef.current) return;
+    prefetchedRef.current = true;
+    if (intakeQueuedCount === null && !intakeLoading) {
+      dispatch(fetchIntakeQueue({}));
+    }
+    if (aptActiveCount === null && !aptLoading) {
+      dispatch(fetchAppointments({}));
+    }
+    if (!billingSummary && !billingLoading) {
+      dispatch(fetchBillingQueue({}));
+    }
+  }, [
+    dispatch,
+    intakeQueuedCount,
+    intakeLoading,
+    aptActiveCount,
+    aptLoading,
+    billingSummary,
+    billingLoading,
+  ]);
 
   const navItems: SaaSNavItem[] = useMemo(
     () => [

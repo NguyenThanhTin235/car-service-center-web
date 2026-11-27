@@ -199,34 +199,32 @@ test.describe('Customer Portal — Profile, Vehicles CRUD & 3-Step Booking', () 
 
     await page.goto(`${CUSTOMER_BASE_URL}/customer/appointments/new`);
 
-    await expect(page.locator('h1')).toContainText('Đặt lịch hẹn mới');
-    await expect(page.getByText('1. Chọn phương tiện của bạn')).toBeVisible();
+    await expect(page).toHaveURL(/.*\/customer\/profile\?.*tab=appointments/, { timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Đặt lịch dịch vụ & sửa chữa' })).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(page.getByText('Chọn xe cần làm dịch vụ')).toBeVisible();
 
-    const vehicleCard = page.getByText('51A-999.99').first();
-    await expect(vehicleCard).toBeVisible();
-    await vehicleCard.click();
+    await page.getByRole('button', { name: 'Tiếp tục' }).click();
+    await expect(
+      page.getByPlaceholder('Nhập mô tả tình trạng xe của bạn (nếu có)...')
+    ).toBeVisible();
 
-    await page.click('button:has-text("Tiếp theo")');
-    await expect(page.getByText('2. Bạn cần chúng tôi làm gì?')).toBeVisible();
+    await page
+      .getByPlaceholder('Nhập mô tả tình trạng xe của bạn (nếu có)...')
+      .fill('Xe có tiếng kêu nhẹ khi khởi động vào buổi sáng');
+    await page.getByRole('button', { name: 'Tiếp tục' }).click();
 
-    await page.locator('input[type="checkbox"]').first().check();
-    await page.fill('textarea', 'Xe có tiếng kêu nhẹ khi khởi động vào buổi sáng');
-    await page.click('button:has-text("Tiếp theo")');
-
-    await expect(page.getByText('3. Chọn ngày và giờ mang xe đến')).toBeVisible();
-    const futureDate = new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0];
-    await page.fill('input[type="date"]', futureDate);
-    await page.fill('input[type="time"]', '09:30');
+    await page.getByRole('button', { name: '›' }).click();
+    await page.getByRole('button', { name: '15', exact: true }).click();
     const appointmentPost = page.waitForResponse(
       (res) => res.url().includes('/api/appointments') && res.request().method() === 'POST'
     );
-    await page.click('button:has-text("Xác nhận đặt lịch")');
+    await page.getByRole('button', { name: 'Lưu lịch hẹn' }).click();
     const postRes = await appointmentPost;
     expect(postRes.status()).toBe(201);
 
-    await expect(page).toHaveURL(/.*\/customer\/(appointments|profile\?tab=appointments)/, {
-      timeout: 10000,
-    });
+    await expect(page.getByText(/Đặt lịch dịch vụ thành công!/i)).toBeVisible({ timeout: 10000 });
 
     expect(pageErrors).toEqual([]);
   });

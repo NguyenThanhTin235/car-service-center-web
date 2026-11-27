@@ -25,7 +25,7 @@ test.describe('Customer Portal — UI, Responsive & Stacking-Context Regression 
       return Boolean(el && !el.closest('header'));
     });
     expect(bookingModalTopIsNotHeader).toBe(true);
-    await page.getByRole('button', { name: 'Đóng' }).click();
+    await page.getByRole('button', { name: 'Đóng', exact: true }).click();
 
     // 2. Check CustomerQuotationModal over PublicHeader
     await page.goto(`${CUSTOMER_BASE_URL}/customer/profile?tab=tracking`);

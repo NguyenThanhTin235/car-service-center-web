@@ -258,17 +258,17 @@ test.describe('Service Advisor Portal E2E: Overview (/advisor) & Analytics Dashb
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('http://localhost:3001/advisor/dashboard', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.locator('h1:has-text("Bảng Điều Hành Cố Vấn Dịch Vụ (Service Advisor)")')).toBeVisible({
+    await expect(page.locator('h1:has-text("Phân tích & KPI Cá nhân")')).toBeVisible({
       timeout: 20000,
     });
     await expect(page.locator('text=Báo giá chờ duyệt')).toBeVisible();
     await expect(page.locator('text=WO-2026-101').first()).toBeVisible();
-    await expect(page.locator('text=Danh Sách Hồ Sơ Xe (Tôi Phụ Trách)')).toBeVisible();
+    await expect(page.locator('text=Danh Sách Hồ Sơ Xe Tôi Phụ Trách')).toBeVisible();
 
-    // Switch scope to 'workshop'
-    await page.getByRole('button', { name: 'Toàn bộ xưởng' }).click();
-    await expect(page.locator('text=Danh Sách Hồ Sơ Xe (Toàn Bộ Xưởng)')).toBeVisible({ timeout: 10000 });
-    expect(capturedParams.some((p) => p.scope === 'workshop')).toBe(true);
+    // Cross-filter status dropdown
+    await page.getByLabel('Lọc theo trạng thái hồ sơ').selectOption('PENDING_APPROVAL');
+    await expect(page.getByText('Đang lọc theo:')).toBeVisible({ timeout: 10000 });
+    await page.getByRole('button', { name: /Hủy lọc/i }).first().click();
 
     // Switch period to '30days'
     await page.getByRole('button', { name: '30 ngày' }).click();

@@ -242,7 +242,10 @@ export const handleSepayIpn = async (req: Request, res: Response): Promise<void>
     const authHeader = req.headers['authorization'];
 
     console.log('[SePay Webhook Body]:', JSON.stringify(req.body, null, 2));
-    console.log('[SePay Webhook Headers]:', { secretKeyHeader, authHeader });
+    console.log('[SePay Webhook Headers]:', {
+      hasSecretKey: Boolean(secretKeyHeader),
+      hasAuthHeader: Boolean(authHeader),
+    });
 
     const result = await paymentService.handleSepayIpn(req.body, secretKeyHeader, authHeader);
 

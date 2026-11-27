@@ -180,7 +180,7 @@ export class CustomerService {
     }
 
     // Default password for customer
-    const bcrypt = require('bcryptjs');
+    const bcrypt = require('bcrypt');
     const hashedPassword = await bcrypt.hash(data.phone || '123456', 10);
 
     const newUser = await prisma.$transaction(async (tx) => {

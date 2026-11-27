@@ -7,3 +7,5 @@ tests
 coverage
 .git
 *.log
+prisma/log*.md
+prisma/seed*

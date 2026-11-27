@@ -24,6 +24,23 @@ interface BaseIntakeModalProps extends IntakeModalProps {
   mode: 'WALK_IN' | 'TOW_IN';
 }
 
+const CheckIcon = () => (
+  <svg
+    viewBox="0 0 16 16"
+    fill="none"
+    aria-hidden="true"
+    className="w-3 h-3"
+  >
+    <path
+      d="M3.5 8.5L6.5 11.5L12.5 4.5"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 const INITIAL_FORM_DATA = {
   customerId: '',
   vehicleId: '',
@@ -271,9 +288,9 @@ export default function BaseIntakeModal({
                       : 'bg-blue-100 text-blue-700'
                   }`}
                 >
-                  {step > 1 ? <span className="material-symbols-outlined text-[15px]">check</span> : '1'}
+                  {step > 1 ? <CheckIcon /> : '1'}
                 </div>
-                <span className="text-xs">1. Khách &amp; Xe</span>
+                <span className="text-xs">Khách &amp; Xe</span>
               </div>
 
               <div className={`flex-1 h-[2px] ${step > 1 ? 'bg-blue-500' : 'bg-slate-200'}`} />
@@ -292,9 +309,9 @@ export default function BaseIntakeModal({
                         : 'bg-slate-100 text-slate-400'
                   }`}
                 >
-                  {step > 2 ? <span className="material-symbols-outlined text-[15px]">check</span> : '2'}
+                  {step > 2 ? <CheckIcon /> : '2'}
                 </div>
-                <span className="text-xs">2. Dịch vụ &amp; Tình trạng</span>
+                <span className="text-xs">Dịch vụ &amp; Tình trạng</span>
               </div>
 
               <div className={`flex-1 h-[2px] ${step > 2 ? 'bg-blue-500' : 'bg-slate-200'}`} />
@@ -307,7 +324,7 @@ export default function BaseIntakeModal({
                 >
                   3
                 </div>
-                <span className="text-xs">3. Xác nhận phiếu</span>
+                <span className="text-xs">Xác nhận phiếu</span>
               </div>
             </div>
           </div>
@@ -330,7 +347,7 @@ export default function BaseIntakeModal({
                       <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
                         1
                       </div>
-                      <h3 className="font-bold text-slate-900 text-sm">1. Thông tin khách hàng &amp; phương tiện</h3>
+                      <h3 className="font-bold text-slate-900 text-sm">Thông tin khách hàng &amp; phương tiện</h3>
                     </div>
                   </div>
 
@@ -605,7 +622,7 @@ export default function BaseIntakeModal({
                                       isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
                                     }`}
                                   >
-                                    {isSelected && <span className="material-symbols-outlined text-[13px]">check</span>}
+                                    {isSelected && <CheckIcon />}
                                   </div>
                                 </button>
                               );
@@ -629,7 +646,7 @@ export default function BaseIntakeModal({
                       <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
                         2
                       </div>
-                      <h3 className="font-bold text-slate-900 text-sm">2. Dịch vụ yêu cầu &amp; Tình trạng tiếp nhận</h3>
+                      <h3 className="font-bold text-slate-900 text-sm">Dịch vụ yêu cầu &amp; Tình trạng tiếp nhận</h3>
                     </div>
                     <p className="text-xs text-slate-500 mt-1 ml-8">
                       Chọn các hạng mục dịch vụ dự kiến hoặc ghi rõ tình trạng xe thực tế lúc tiếp nhận
@@ -711,7 +728,7 @@ export default function BaseIntakeModal({
                       <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
                         3
                       </div>
-                      <h3 className="font-bold text-slate-900 text-sm">3. Xác nhận thông tin phiếu tiếp nhận</h3>
+                      <h3 className="font-bold text-slate-900 text-sm">Xác nhận thông tin phiếu tiếp nhận</h3>
                     </div>
                     <p className="text-xs text-slate-500 mt-1 ml-8">
                       Kiểm tra lại thông tin trước khi đưa xe vào hàng đợi tiếp nhận (QUEUED)

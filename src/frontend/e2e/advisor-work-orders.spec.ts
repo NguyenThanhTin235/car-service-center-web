@@ -172,17 +172,18 @@ test.describe('Service Advisor Portal E2E: Work Orders List (/advisor/work-order
   test('E2E-SA-WO-02: Empty state, Error toast + Retry via Làm mới, và 5 viewports', async ({
     page,
   }) => {
+    let phase: 'error' | 'empty' | 'loaded' = 'error';
     let woCalls = 0;
     await page.route('**/api/work-orders**', async (route) => {
       woCalls += 1;
-      if (woCalls === 1) {
+      if (phase === 'error') {
         return route.fulfill({
           status: 500,
           contentType: 'application/json',
           body: JSON.stringify({ success: false, message: 'Server error' }),
         });
       }
-      if (woCalls === 2) {
+      if (phase === 'empty') {
         return route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -207,15 +208,17 @@ test.describe('Service Advisor Portal E2E: Work Orders List (/advisor/work-order
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('http://localhost:3001/advisor/work-orders', { waitUntil: 'domcontentloaded' });
 
-    // Call 1: 500 error toast
-    await expect(page.locator('text=Lỗi tải danh sách phiếu công việc').first()).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('text=Không có phiếu công việc nào')).toBeVisible();
+    // Call 1: 500 error toast/inline state
+    await expect(page.getByText(/Không thể tải phiếu công việc: Server error|Lỗi tải danh sách phiếu công việc/i).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=Không thể tải phiếu công việc')).toBeVisible();
 
     // Call 2: Retry -> Empty state
+    phase = 'empty';
     await page.getByRole('button', { name: 'Làm mới' }).click();
     await expect(page.locator('text=Không có phiếu công việc nào')).toBeVisible({ timeout: 10000 });
 
     // Call 3: Retry -> Data loaded
+    phase = 'loaded';
     await page.getByRole('button', { name: 'Làm mới' }).click();
     await expect(page.locator('text=WO-2026-101').first()).toBeVisible({ timeout: 10000 });
     expect(woCalls).toBeGreaterThanOrEqual(3);

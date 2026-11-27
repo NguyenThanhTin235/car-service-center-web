@@ -231,4 +231,21 @@ describe('AiCustomerPromptBuilder & AiCustomerValidatorService', () => {
     expect(bookingRes.intent).toBe('BOOKING_REQUEST');
     expect(bookingRes.reply).toContain('Nghỉ Chủ nhật');
   });
+
+  it('localizes raw English vehicle size and status enums in AI replies to Vietnamese', () => {
+    const sanitized = validator.validateAndSanitize(
+      {
+        reply: '1. Xe Ford Vios (Cỡ xe: Medium) đang ở trạng thái IN_PROGRESS.',
+        intent: 'WORK_ORDER_TRACKING',
+        suggested_questions: [],
+        actions: [],
+      },
+      'CUSTOMER'
+    );
+
+    expect(sanitized.reply).toContain('(Cỡ xe: Trung bình (Cỡ M))');
+    expect(sanitized.reply).toContain('Đang sửa chữa');
+    expect(sanitized.reply).not.toContain('Medium');
+    expect(sanitized.reply).not.toContain('IN_PROGRESS');
+  });
 });

@@ -87,6 +87,49 @@ export function normalizeViText(text: string): string {
     .trim();
 }
 
+const VEHICLE_SIZE_LABELS_VI: Record<string, string> = {
+  SMALL: 'Xe nhỏ (Cỡ S)',
+  MEDIUM: 'Trung bình (Cỡ M)',
+  LARGE: 'Xe lớn (Cỡ L)',
+  SUV: 'SUV / Crossover (Cỡ XL)',
+  TRUCK: 'Bán tải / Xe tải',
+};
+
+const STATUS_LABELS_VI: Record<string, string> = {
+  REQUESTED: 'Chờ xác nhận',
+  CONFIRMED: 'Đã xác nhận',
+  RESCHEDULED: 'Đã dời lịch',
+  DRAFT: 'Nháp',
+  IN_PLANNING: 'Đang lập kế hoạch',
+  PENDING_APPROVAL: 'Chờ duyệt báo giá',
+  APPROVED: 'Đã duyệt',
+  REJECTED: 'Đã từ chối',
+  IN_PROGRESS: 'Đang sửa chữa',
+  BILLING_REQUESTED: 'Chờ thanh toán',
+  FINANCIAL_CLEARED: 'Đã thanh toán',
+  RELEASED: 'Đã bàn giao xe',
+  CLOSED: 'Hoàn tất',
+  CANCELLED: 'Đã hủy',
+  ISSUED: 'Chờ thanh toán',
+  PAID: 'Đã thanh toán',
+  QC_PASSED: 'Đạt kiểm định KCS',
+  QC_FAILED: 'Chưa đạt kiểm định KCS',
+};
+
+export function localizeReplyEnums(text: string): string {
+  let out = String(text || '');
+  out = out.replace(
+    /((?:cỡ\s*xe|kích\s*thước(?:\s*xe)?)\s*[:\-]?\s*\*?\*?)\b(SMALL|MEDIUM|LARGE|SUV|TRUCK)\b/gi,
+    (_, prefix: string, code: string) =>
+      `${prefix}${VEHICLE_SIZE_LABELS_VI[code.toUpperCase()] || code}`
+  );
+  out = out.replace(
+    /\b(IN_PLANNING|PENDING_APPROVAL|IN_PROGRESS|BILLING_REQUESTED|FINANCIAL_CLEARED|QC_PASSED|QC_FAILED|REQUESTED|RESCHEDULED|CONFIRMED|APPROVED|REJECTED|RELEASED|ISSUED|PAID|CLOSED|CANCELLED)\b/g,
+    (code: string) => STATUS_LABELS_VI[code] || code
+  );
+  return out;
+}
+
 export function formatVnd(amount: number): string {
   return `${new Intl.NumberFormat('vi-VN').format(Math.round(amount))} ₫`;
 }
@@ -256,7 +299,7 @@ export class AiCustomerValidatorService {
 
     const reply =
       typeof obj.reply === 'string' && obj.reply.trim().length > 0
-        ? obj.reply.trim()
+        ? localizeReplyEnums(obj.reply.trim())
         : 'Em đã tiếp nhận thông tin của Anh/Chị ạ. Anh/Chị vui lòng chọn gợi ý bên dưới hoặc liên hệ Hotline **1900 6868** để được hỗ trợ nhanh nhất nhé.';
 
     const intent = normalizeIntent(obj.intent);
@@ -527,8 +570,10 @@ export class AiCustomerValidatorService {
               },
             ];
 
+        const woStatusLabel = STATUS_LABELS_VI[activeWo.status] || activeWo.status;
+
         return {
-          reply: `Phiếu sửa chữa **${activeWo.woNumber}** cho xe **${activeWo.vehicle.licensePlate}** (${activeWo.vehicle.make} ${activeWo.vehicle.model}) hiện đang ở trạng thái **${activeWo.status}** (${activeWo.services.length} hạng mục).${quoteText}\n\nCố vấn dịch vụ phụ trách sẽ thông báo ngay khi xe hoàn tất kiểm định KCS ạ.`,
+          reply: `Phiếu sửa chữa **${activeWo.woNumber}** cho xe **${activeWo.vehicle.licensePlate}** (${activeWo.vehicle.make} ${activeWo.vehicle.model}) hiện đang ở trạng thái **${woStatusLabel}** (${activeWo.services.length} hạng mục).${quoteText}\n\nCố vấn dịch vụ phụ trách sẽ thông báo ngay khi xe hoàn tất kiểm định KCS ạ.`,
           intent: asksQuotation ? 'QUOTATION_EXPLANATION' : 'WORK_ORDER_TRACKING',
           suggested_questions: ['Thanh toán hóa đơn ở đâu?', 'Xem các hạng mục đang làm'],
           actions,

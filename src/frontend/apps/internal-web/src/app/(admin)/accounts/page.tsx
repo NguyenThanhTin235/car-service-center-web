@@ -8,6 +8,7 @@ import { userApi, UserData } from '@/lib/api/users';
 import SaaSWaveChart from '@/components/shared/SaaSWaveChart';
 import Modal from '@/components/shared/Modal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import StatusPill from '@/components/shared/StatusPill';
 import TablePagination from '@/components/shared/TablePagination';
 import { useDebounce } from '@/hooks/useDebounce';
 import toast from 'react-hot-toast';
@@ -591,22 +592,6 @@ function AccountsContent() {
                 </select>
               </div>
             </div>
-
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {['', 'ADMIN', 'MANAGER', 'ADVISOR', 'FRONT_DESK', 'TECHNICIAN', 'CUSTOMER'].map((r) => (
-                <button
-                  key={r || 'ALL'}
-                  type="button"
-                  onClick={() => setFilterRole(r)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${filterRole === r
-                      ? 'bg-[#0866ff] text-white shadow-2xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
-                    }`}
-                >
-                  {r ? ROLE_LABELS[r] : 'Tất cả'}
-                </button>
-              ))}
-            </div>
           </div>
 
           {pageError && (
@@ -700,13 +685,24 @@ function AccountsContent() {
                             {user.roles && user.roles.length > 0 ? (
                               user.roles.map((r: string) => {
                                 const norm = normalizeRoleKey(r);
+                                const roleTone =
+                                  norm === 'ADMIN'
+                                    ? 'purple'
+                                    : norm === 'MANAGER'
+                                      ? 'primary'
+                                      : norm === 'SA'
+                                        ? 'sky'
+                                        : norm === 'DESK STAFF'
+                                          ? 'warning'
+                                          : norm === 'TECHNICIAN'
+                                            ? 'success'
+                                            : 'neutral';
                                 return (
-                                  <span
+                                  <StatusPill
                                     key={r}
-                                    className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${getRoleBg(norm)}`}
-                                  >
-                                    {getRoleLabel(norm)}
-                                  </span>
+                                    label={getRoleLabel(norm)}
+                                    tone={roleTone}
+                                  />
                                 );
                               })
                             ) : (

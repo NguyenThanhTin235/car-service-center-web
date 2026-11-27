@@ -181,19 +181,19 @@ test.describe('Admin Portal — Employees Management E2E (/employees) [TICKET-AD
     await expect(page.locator('text=Lê Văn Tạm Ngưng')).toBeVisible();
 
     // 1. Click Bento Tile "Đang hoạt động" -> filterStatus = active
-    await page.locator('div[title="Bấm để lọc danh sách đang hoạt động"]').click();
+    await page.getByRole('button', { name: /Đang hoạt động/i }).first().click();
     await expect(page.locator('text=Nguyễn Văn Kỹ Thuật')).toBeVisible();
     await expect(page.locator('text=Lê Văn Tạm Ngưng')).toBeHidden();
     expect(requestedQueries.some((q) => q.includes('status=active'))).toBe(true);
 
     // 2. Click Bento Tile "Ngừng hoạt động" -> filterStatus = inactive
-    await page.locator('div[title="Bấm để lọc danh sách ngừng hoạt động"]').click();
+    await page.getByRole('button', { name: /Ngừng hoạt động/i }).first().click();
     await expect(page.locator('text=Lê Văn Tạm Ngưng')).toBeVisible();
     await expect(page.locator('text=Nguyễn Văn Kỹ Thuật')).toBeHidden();
     expect(requestedQueries.some((q) => q.includes('status=inactive'))).toBe(true);
 
     // Click again to clear filterStatus -> back to all (2 pages)
-    await page.locator('div[title="Bấm để lọc danh sách ngừng hoạt động"]').click();
+    await page.getByRole('button', { name: /Ngừng hoạt động/i }).first().click();
     await expect(page.locator('text=Nguyễn Văn Kỹ Thuật')).toBeVisible();
 
     // 3. Test TablePagination (click page 2)

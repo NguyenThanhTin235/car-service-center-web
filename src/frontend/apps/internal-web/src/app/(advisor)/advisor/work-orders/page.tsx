@@ -35,7 +35,6 @@ export default function WorkOrdersPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [searchInitialized, setSearchInitialized] = useState(false);
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   useEffect(() => {
@@ -45,7 +44,6 @@ export default function WorkOrdersPage() {
       setSearchQuery(initialSearch);
       setDebouncedSearch(initialSearch);
     }
-    setSearchInitialized(true);
   }, []);
 
   useEffect(() => {
@@ -91,9 +89,8 @@ export default function WorkOrdersPage() {
   }, [currentPage, limit, debouncedSearch, statusFilter]);
 
   useEffect(() => {
-    if (!searchInitialized) return;
     fetchWOs();
-  }, [fetchWOs, searchInitialized]);
+  }, [fetchWOs]);
 
   const pageStats = useMemo(() => {
     const inWork = items.filter((i) =>
@@ -286,7 +283,7 @@ export default function WorkOrdersPage() {
         {/* Table Content */}
         <div className="overflow-x-auto max-h-[65vh] overflow-y-auto">
           <table className="table-auto w-full text-left border-collapse">
-            <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
+            <thead className="sticky top-0 z-10 bg-slate-50">
               <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400">
                 <th className="py-3 pr-2 lg:pr-3">Phương tiện & Biển số</th>
                 <th className="py-3 px-2 lg:px-3">Mã phiếu (RO)</th>
@@ -421,9 +418,9 @@ export default function WorkOrdersPage() {
                       {/* Status */}
                       <td className="py-3.5 px-2 lg:px-3 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold ${statusConfig.bg} ${statusConfig.text}`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap ${statusConfig.bg} ${statusConfig.text}`}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusConfig.dot}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusConfig.dot}`} aria-hidden="true" />
                           <span>{statusConfig.label}</span>
                         </span>
                       </td>

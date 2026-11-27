@@ -88,8 +88,10 @@ test.describe('Internal Portal E2E: Warranty Synchronization (Months-Only, UC-81
     });
 
     await page.goto(`${INTERNAL_BASE_URL}/reports`);
-    await page.getByRole('button', { name: /Báo cáo Bảo hành/i }).click();
-    await expect(page.getByText('Lốc lạnh điều hòa')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Doanh thu/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Dịch vụ phổ biến/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Tồn kho phụ tùng/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Báo cáo Bảo hành/i })).toHaveCount(0);
   });
 
   test('E2E-INT-WAR-02: Staff Intake (/staff/intake) months-only WarrantyIntakeModal & Billing 0đ badge', async ({
@@ -266,7 +268,7 @@ test.describe('Internal Portal E2E: Warranty Synchronization (Months-Only, UC-81
     for (const vp of VIEWPORTS) {
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await page.goto(`${INTERNAL_BASE_URL}/reports`);
-      await expect(page.getByRole('button', { name: /Báo cáo Bảo hành/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /Doanh thu/i })).toBeVisible();
 
       const hasHorizontalOverflow = await page.evaluate(() => {
         return document.documentElement.scrollWidth > document.documentElement.clientWidth + 2;

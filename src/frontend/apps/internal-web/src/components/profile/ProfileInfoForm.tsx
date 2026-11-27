@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { useAppDispatch } from '@/store';
 import { updateAuthUser } from '@/store/slices/authSlice';
 import { InternalUserProfile, profileApi } from '@/lib/api/profile.api';
+import AddressAutocompleteInput from '@/components/shared/AddressAutocompleteInput';
 import { VN_PHONE_REGEX } from './profileUtils';
 
 export interface ProfileInfoFormProps {
@@ -193,15 +194,13 @@ export default function ProfileInfoForm({ profile, onUpdated }: ProfileInfoFormP
         >
           Địa chỉ liên hệ
         </label>
-        <textarea
+        <AddressAutocompleteInput
           id="profile-address"
-          data-testid="profile-input-address"
-          rows={3}
+          dataTestId="profile-input-address"
           value={address}
-          onChange={(e) => setAddress(e.target.value)}
+          onChange={setAddress}
           placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố..."
-          maxLength={500}
-          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 placeholder:text-slate-400 leading-relaxed transition-colors focus:outline-none focus:border-[#0050cd] focus:ring-2 focus:ring-[#0050cd]/30 resize-y"
+          className="w-full h-11 pr-3.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:outline-none focus:border-[#0050cd] focus:ring-2 focus:ring-[#0050cd]/30"
         />
       </div>
 

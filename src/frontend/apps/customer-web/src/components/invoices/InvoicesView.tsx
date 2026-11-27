@@ -55,6 +55,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
   };
 
   const handlePaymentSuccess = () => {
+    setToastType('success');
     setToastMsg('Thanh toán hóa đơn trực tuyến thành công!');
     dispatch(fetchMyInvoices({ status: activeTab, search: searchTerm }));
     if (selectedInvoice) {
@@ -208,42 +209,45 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
             Xem tiến độ xe
           </Link>
           <button
-            onClick={() => setToastMsg('Trung tâm hỗ trợ giải đáp hóa đơn: 1900 6868 (Ext: 102)')}
+            onClick={() => {
+              setToastType('info');
+              setToastMsg('Trung tâm hỗ trợ giải đáp hóa đơn: 1900 6868 (Ext: 102)');
+            }}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary text-on-primary text-xs sm:text-sm font-semibold rounded-lg shadow-2xs hover:bg-primary/90 transition-all active:scale-[0.98]"
             type="button"
           >
-            <span className="material-symbols-outlined text-[18px]">help</span>
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">help</span>
             Hỗ trợ hóa đơn
           </button>
         </div>
       </div>
 
-      {/* ================= 3 BENTO METRIC CARDS ================= */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+      {/* ================= ASYMMETRICAL BENTO METRIC CARDS (5 + 4 + 3) ================= */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5">
         
         {/* Card 1: Tổng chi tiêu */}
-        <div className="bg-surface-container-lowest border border-surface-container-highest rounded-2xl p-5 shadow-2xs relative overflow-hidden">
+        <div className="md:col-span-5 bg-surface-container-lowest border border-surface-container-highest rounded-2xl p-5 shadow-2xs relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
                 Tổng chi tiêu tại xưởng
               </p>
-              <h3 className="text-xl sm:text-2xl font-extrabold text-on-surface mt-2 tracking-tight">
-                {summary.totalSpent.toLocaleString()} <span className="text-sm font-normal text-on-surface-variant">đ</span>
+              <h3 className="text-xl sm:text-2xl font-extrabold font-mono tabular-nums text-on-surface mt-2 tracking-tight">
+                {summary.totalSpent.toLocaleString()} <span className="text-sm font-sans font-normal text-on-surface-variant">đ</span>
               </h3>
               <div className="flex items-center mt-2.5 text-xs font-medium text-emerald-700">
-                <span className="material-symbols-outlined text-[16px] mr-1 text-emerald-600">trending_up</span>
+                <span className="material-symbols-outlined text-[16px] mr-1 text-emerald-600" aria-hidden="true">trending_up</span>
                 <span>Ưu đãi thành viên tích lũy dịch vụ</span>
               </div>
             </div>
             <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-primary border border-blue-100 shrink-0">
-              <span className="material-symbols-outlined text-[24px]">receipt_long</span>
+              <span className="material-symbols-outlined text-[24px]" aria-hidden="true">receipt_long</span>
             </div>
           </div>
         </div>
 
         {/* Card 2: Chờ thanh toán */}
-        <div className="bg-surface-container-lowest border border-red-200 rounded-2xl p-5 shadow-2xs relative overflow-hidden bg-gradient-to-r from-white to-red-50/40">
+        <div className="md:col-span-4 bg-surface-container-lowest border border-red-200 rounded-2xl p-5 shadow-2xs relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center space-x-2">
@@ -251,42 +255,42 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
                   Chờ thanh toán
                 </p>
                 {summary.pendingCount > 0 && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-error">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-error font-mono tabular-nums">
                     {summary.pendingCount} hóa đơn
                   </span>
                 )}
               </div>
-              <h3 className="text-xl sm:text-2xl font-extrabold text-error mt-2 tracking-tight">
-                {summary.pendingAmount.toLocaleString()} <span className="text-sm font-normal text-on-surface-variant">đ</span>
+              <h3 className="text-xl sm:text-2xl font-extrabold font-mono tabular-nums text-error mt-2 tracking-tight">
+                {summary.pendingAmount.toLocaleString()} <span className="text-sm font-sans font-normal text-on-surface-variant">đ</span>
               </h3>
               <p className="text-xs text-on-surface-variant mt-2.5 flex items-center">
-                <span className="material-symbols-outlined text-[15px] mr-1 text-error">schedule</span>
+                <span className="material-symbols-outlined text-[15px] mr-1 text-error" aria-hidden="true">schedule</span>
                 {summary.pendingCount > 0 ? 'Có phiếu dịch vụ đã hoàn tất' : 'Không có hóa đơn nợ'}
               </p>
             </div>
             <div className="w-11 h-11 rounded-xl bg-red-100/70 flex items-center justify-center text-error border border-red-200 shrink-0">
-              <span className="material-symbols-outlined text-[24px]">pending_actions</span>
+              <span className="material-symbols-outlined text-[24px]" aria-hidden="true">pending_actions</span>
             </div>
           </div>
         </div>
 
         {/* Card 3: Điểm tích lũy VIP */}
-        <div className="bg-surface-container-lowest border border-surface-container-highest rounded-2xl p-5 shadow-2xs relative overflow-hidden">
+        <div className="md:col-span-3 bg-surface-container-lowest border border-surface-container-highest rounded-2xl p-5 shadow-2xs relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
                 Điểm thưởng thành viên
               </p>
-              <h3 className="text-xl sm:text-2xl font-extrabold text-on-surface mt-2 tracking-tight">
-                {summary.rewardPoints.toLocaleString()} <span className="text-sm font-normal text-on-surface-variant">điểm</span>
+              <h3 className="text-xl sm:text-2xl font-extrabold font-mono tabular-nums text-on-surface mt-2 tracking-tight">
+                {summary.rewardPoints.toLocaleString()} <span className="text-sm font-sans font-normal text-on-surface-variant">điểm</span>
               </h3>
               <p className="text-xs text-on-surface-variant mt-2.5 flex items-center">
-                <span className="material-symbols-outlined text-[16px] mr-1 text-amber-500">stars</span>
+                <span className="material-symbols-outlined text-[16px] mr-1 text-amber-500" aria-hidden="true">stars</span>
                 Quy đổi chiết khấu dịch vụ sau
               </p>
             </div>
             <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100 shrink-0">
-              <span className="material-symbols-outlined text-[24px]">workspace_premium</span>
+              <span className="material-symbols-outlined text-[24px]" aria-hidden="true">workspace_premium</span>
             </div>
           </div>
         </div>
@@ -528,12 +532,16 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
             </thead>
             <tbody className="divide-y divide-surface-container-highest text-xs">
               {loading && invoices.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-on-surface-variant">
-                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                    Đang tải danh sách hóa đơn...
-                  </td>
-                </tr>
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-3.5 px-4"><div className="h-4 w-28 bg-slate-200 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-20 bg-slate-200 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-44 bg-slate-200 rounded mb-1.5" /><div className="h-3 w-28 bg-slate-100 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-24 bg-slate-200 rounded ml-auto" /></td>
+                    <td className="py-3.5 px-4"><div className="h-5 w-24 bg-slate-200 rounded-full mx-auto" /></td>
+                    <td className="py-3.5 px-4"><div className="h-7 w-20 bg-slate-200 rounded-lg mx-auto" /></td>
+                  </tr>
+                ))
               ) : filteredInvoices.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-on-surface-variant">
@@ -712,7 +720,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
             </div>
           )}
           <div className="hidden md:flex items-center gap-1">
-            <span className="text-[11px] text-outline">Hóa đơn điện tử khởi tạo từ hệ thống Car Service Center</span>
+            <span className="text-[11px] text-outline">Hóa đơn điện tử khởi tạo từ hệ thống AutoCare Pro</span>
           </div>        </div>
 
       </section>
@@ -737,7 +745,7 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
                 </span>
               </div>
               <p className="text-xs text-on-surface-variant mt-0.5">
-                Thanh toán linh hoạt, tự động đối soát mở cổng xuất xưởng (Financial Clearance).
+                Thanh toán linh hoạt, tự động đối soát mở cổng xuất xưởng.
               </p>
             </div>
           </div>
@@ -795,17 +803,17 @@ export default function InvoicesView({ isEmbedded = false }: { isEmbedded?: bool
               Hóa đơn dịch vụ và chứng từ xuất xưởng được khởi tạo tự động, lưu trữ trên hệ thống và gửi về email khách hàng.
             </p>
             <div className="p-3 bg-slate-50 dark:bg-surface-container-low rounded-xl border border-slate-200/80 dark:border-surface-container-highest text-xs space-y-1">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Đơn vị phát hành:</p>
-              <p className="font-extrabold text-slate-900 text-xs truncate">TRUNG TÂM CAR SERVICE CENTER</p>
-              <p className="text-slate-500 text-[11px]">Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh</p>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Đơn vị phát hành:</p>
+              <p className="font-extrabold text-slate-900 text-xs truncate">TRUNG TÂM BẢO DƯỠNG &amp; SỬA CHỮA Ô TÔ AUTOCARE PRO</p>
+              <p className="text-slate-600 text-[11px]">Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh</p>
             </div>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-100 dark:border-surface-container-highest flex items-center justify-between text-xs">
             <span className="font-semibold text-primary flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px]">support_agent</span>
+              <span className="material-symbols-outlined text-[16px]" aria-hidden="true">support_agent</span>
               Hotline hỗ trợ đối soát
             </span>
-            <span className="text-xs font-bold text-slate-800 font-mono">1900 8888</span>
+            <span className="text-xs font-bold text-slate-800 font-mono tabular-nums">1900 6868</span>
           </div>
         </div>
 

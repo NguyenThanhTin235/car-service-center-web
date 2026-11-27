@@ -5,6 +5,7 @@ import { jobTypeApi, JobTypeData } from '@/lib/api/jobTypes';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import Modal from '@/components/shared/Modal';
 import TablePagination from '@/components/shared/TablePagination';
+import StatusPill from '@/components/shared/StatusPill';
 import toast from 'react-hot-toast';
 import { validateName } from '@/lib/utils/validators';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -17,6 +18,8 @@ interface FormData {
 const defaultForm: FormData = { name: '', description: '' };
 
 type ConfirmAction = { type: 'toggle'; item: JobTypeData } | { type: 'delete'; item: JobTypeData } | null;
+
+import ToggleActionIcon from '@/components/shared/ToggleActionIcon';
 
 export default function JobTypesPage() {
   const [jobTypes, setJobTypes] = useState<JobTypeData[]>([]);
@@ -45,8 +48,11 @@ export default function JobTypesPage() {
     }
   };
 
+  const [loadError, setLoadError] = useState('');
+
   const load = useCallback(async (page = 1, signal?: AbortSignal) => {
     setLoading(true);
+    setLoadError('');
     try {
       const res = await jobTypeApi.getAll({ search: debouncedSearch, page, limit: 10 }, signal);
       if (!signal?.aborted) {
@@ -55,7 +61,9 @@ export default function JobTypesPage() {
       }
     } catch (e: any) {
       if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED' || signal?.aborted) return;
-      showToast(e.response?.data?.message || 'Lỗi tải dữ liệu', 'error');
+      const msg = e.response?.data?.message || 'Không thể tải danh sách loại công việc. Vui lòng thử lại.';
+      setLoadError(msg);
+      showToast(msg, 'error');
     } finally {
       if (!signal?.aborted) {
         setLoading(false);
@@ -307,21 +315,55 @@ export default function JobTypesPage() {
             </thead>
             <tbody className="divide-y divide-slate-200/60">
               {loading ? (
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-3.5 px-5"><div className="h-4 w-16 bg-slate-200 rounded" /></td>
+                    <td className="py-3.5 px-5"><div className="h-4 w-48 bg-slate-200 rounded mb-1.5" /><div className="h-3 w-32 bg-slate-100 rounded" /></td>
+                    <td className="py-3.5 px-5"><div className="h-5 w-24 bg-slate-200 rounded-full mx-auto" /></td>
+                    <td className="py-3.5 px-5 pr-6"><div className="h-7 w-20 bg-slate-200 rounded-lg ml-auto" /></td>
+                  </tr>
+                ))
+              ) : loadError ? (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-xs text-slate-500">
-                    <span className="material-symbols-outlined animate-spin text-2xl text-[#0866ff] block mx-auto mb-1">
-                      progress_activity
-                    </span>
-                    <span>Đang tải dữ liệu...</span>
+                  <td colSpan={4} className="py-12 px-4 text-center">
+                    <div className="inline-flex flex-col items-center gap-2.5 max-w-md">
+                      <span className="material-symbols-outlined text-3xl text-rose-500" aria-hidden="true">error</span>
+                      <p className="text-sm font-semibold text-slate-800">{loadError}</p>
+                      <button
+                        type="button"
+                        onClick={() => load(1)}
+                        className="mt-1 px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors cursor-pointer"
+                      >
+                        Thử lại
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ) : jobTypes.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-xs text-slate-400">
-                    <span className="material-symbols-outlined text-3xl text-slate-300 block mb-1">
-                      search_off
-                    </span>
-                    Không tìm thấy loại công việc
+                  <td colSpan={4} className="py-12 px-4 text-center">
+                    <div className="inline-flex flex-col items-center gap-2.5">
+                      <span className="material-symbols-outlined text-3xl text-slate-400" aria-hidden="true">search_off</span>
+                      <p className="text-sm font-medium text-slate-600">Không tìm thấy loại công việc phù hợp</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {search && (
+                          <button
+                            type="button"
+                            onClick={() => setSearch('')}
+                            className="px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
+                          >
+                            Xóa bộ lọc
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={openCreate}
+                          className="px-3.5 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 cursor-pointer"
+                        >
+                          Thêm loại công việc
+                        </button>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -344,15 +386,10 @@ export default function JobTypesPage() {
                       )}
                     </td>
                     <td className="py-3.5 px-5 text-center">
-                      <span
-                        className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-                          j.isActive
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                            : 'bg-rose-50 text-rose-700 border-rose-200/80'
-                        }`}
-                      >
-                        {j.isActive ? 'Hoạt động' : 'Ngừng hoạt động'}
-                      </span>
+                      <StatusPill
+                        label={j.isActive ? 'Hoạt động' : 'Ngừng hoạt động'}
+                        tone={j.isActive ? 'success' : 'danger'}
+                      />
                     </td>
                     <td className="py-3.5 px-5 pr-6">
                       <div className="flex items-center justify-end gap-2">
@@ -381,9 +418,7 @@ export default function JobTypesPage() {
                           }`}
                           title={j.isActive ? 'Ngừng hoạt động' : 'Hoạt động'}
                         >
-                          <span className="material-symbols-outlined text-[18px]">
-                            {j.isActive ? 'toggle_off' : 'toggle_on'}
-                          </span>
+                          <ToggleActionIcon isActive={j.isActive} />
                         </button>
 
                         {/* Delete */}

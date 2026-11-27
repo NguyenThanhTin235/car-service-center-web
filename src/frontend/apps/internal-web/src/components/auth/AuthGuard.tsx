@@ -5,6 +5,25 @@ import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 
+function WorkspaceSkeleton() {
+  return (
+    <div className="space-y-6 p-1" aria-busy="true" aria-label="Đang tải không gian làm việc">
+      <div className="h-24 rounded-2xl bg-slate-200/70 animate-pulse" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-24 rounded-2xl bg-slate-100 animate-pulse" />
+        ))}
+      </div>
+      <div className="h-80 rounded-2xl bg-white border border-slate-200/80 p-4 space-y-3">
+        <div className="h-8 w-56 rounded-lg bg-slate-100 animate-pulse" />
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-11 rounded-xl bg-slate-100/80 animate-pulse" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   const router = useRouter();
@@ -16,26 +35,14 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (mounted && !isAuthenticated) {
-      // Safe client-side redirect with setTimeout to prevent back-navigation ignore bug in Next.js
-      const timer = setTimeout(() => {
-        router.replace('/login');
-      }, 50);
-      return () => clearTimeout(timer);
+      router.replace('/login');
     }
   }, [isAuthenticated, mounted, router]);
 
-  // Prevent hydration mismatch and hide content until authenticated
+  // Render static workspace skeleton during SSR/hydration before auth state resolves
   if (!mounted || !isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8f9ff]">
-        <div className="w-8 h-8 rounded-full border-2 border-[#c2c6d8] border-t-[#0866ff] animate-spin"></div>
-      </div>
-    );
+    return <WorkspaceSkeleton />;
   }
 
-  return (
-    <div className="animate-in fade-in duration-500">
-      {children}
-    </div>
-  );
+  return <>{children}</>;
 }

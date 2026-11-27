@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #f6f8fc;
@@ -119,7 +120,8 @@
   --font-label-md: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
   --font-headline-lg: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
   --font-headline-md: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
-  --font-code-sm: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-code-sm: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   --spacing-space-xxs: 0.125rem;
   --spacing-space-xs: 0.25rem;
@@ -155,6 +157,21 @@ body {
   font-family: var(--font-be-vietnam-pro), 'Be Vietnam Pro', sans-serif;
 }
 
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/material-symbols-outlined.woff2') format('woff2');
+}
+
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined';
   font-weight: normal;
@@ -162,6 +179,7 @@ body {
   font-size: 24px;
   line-height: 1;
   width: 1em;
+  height: 1em;
   overflow: hidden;
   letter-spacing: normal;
   text-transform: none;

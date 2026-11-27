@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { CheckInService } from '../services/check-in.service';
-import { createCheckInSchema, updateCheckInSchema } from '../dtos/check-in.dto';
+import { createCheckInSchema } from '../dtos/check-in.dto';
 
 const checkInService = new CheckInService();
 
