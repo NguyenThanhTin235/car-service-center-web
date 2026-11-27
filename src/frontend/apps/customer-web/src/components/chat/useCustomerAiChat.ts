@@ -5,8 +5,9 @@ import { usePathname } from 'next/navigation';
 import { useAppSelector } from '@/store';
 import {
   AiChatHistoryItem,
+  AiChatRequestError,
   fetchAiChatWelcome,
-  sendAiChatMessage,
+  sendAiChatMessageStream,
 } from '@/lib/api/ai-chat.api';
 import {
   clearUserChatSessions,
@@ -16,15 +17,25 @@ import {
   getUserOpenKey,
   promoteGuestSessionToUser,
   safeParseChatHistory,
+  selectContextualPreamble,
+  SMART_LOADING_STAGES,
   StoredChatMessage,
 } from './aiChatUtils';
 
 function resolveFriendlyChatError(err: any, isRetry = false): string {
-  const status = err?.response?.status;
+  if (err?.isTimeout || err?.code === 'STREAM_TIMEOUT') {
+    return 'Trợ lý AI phản hồi lâu hơn bình thường do hệ thống đang bận. Anh/Chị vui lòng thử gửi lại nhé.';
+  }
+
+  const status = err?.status ?? err?.response?.status;
   const rawServerMsg =
-    typeof err?.response?.data?.message === 'string' ? err.response.data.message.trim() : '';
+    typeof err?.response?.data?.message === 'string'
+      ? err.response.data.message.trim()
+      : typeof err?.message === 'string'
+        ? err.message.trim()
+        : '';
   const isRawEnglishError =
-    /^(internal server error|bad gateway|service unavailable|gateway timeout|network error|request failed|too many requests)/i.test(
+    /^(internal server error|bad gateway|service unavailable|gateway timeout|network error|request failed|too many requests|http \d{3})/i.test(
       rawServerMsg
     );
   const safeServerMsg = rawServerMsg && !isRawEnglishError ? rawServerMsg : '';
@@ -69,10 +80,18 @@ export function useCustomerAiChat() {
   const [welcomeLoading, setWelcomeLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [infoNotice, setInfoNotice] = useState<string | null>(null);
   const [lastFailedText, setLastFailedText] = useState<string | null>(null);
+  const [activePreamble, setActivePreamble] = useState('');
+  const [loadingStage, setLoadingStage] = useState<0 | 1 | 2>(0);
+  const [streamingReply, setStreamingReply] = useState('');
+  const [restoredDraft, setRestoredDraft] = useState<string | null>(null);
 
   const prevUserIdRef = useRef<number | null>(null);
   const hydratedScopeRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const stageTimersRef = useRef<number[]>([]);
+  const lastPreambleRef = useRef<string | null>(null);
 
   const getStorageKeys = useCallback((uid: number | null) => {
     if (uid) {
@@ -223,13 +242,43 @@ export function useCustomerAiChat() {
     }
   }, [isOpen, messages.length, welcomeLoading, activeUserId, loadWelcome]);
 
-  const sendMessage = useCallback(
-    async (rawText: string) => {
-      const text = rawText.trim();
-      if (!text || sending) return;
+  const clearPendingTimers = useCallback(() => {
+    for (const timerId of stageTimersRef.current) {
+      window.clearTimeout(timerId);
+    }
+    stageTimersRef.current = [];
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+      clearPendingTimers();
+    };
+  }, [clearPendingTimers]);
+
+  const executeSendRequest = useCallback(
+    async (text: string, baseMessages: StoredChatMessage[], isRetry: boolean) => {
+      abortControllerRef.current?.abort();
+      clearPendingTimers();
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      const userTurnCount = baseMessages.filter((m) => m.role === 'user').length;
+      const preamble = selectContextualPreamble({
+        userMessage: text,
+        turnCount: userTurnCount,
+        lastPreamble: lastPreambleRef.current,
+      });
+      lastPreambleRef.current = preamble;
 
       setError(null);
+      setInfoNotice(null);
       setLastFailedText(null);
+      setRestoredDraft(null);
+      setActivePreamble(preamble);
+      setLoadingStage(0);
+      setStreamingReply('');
 
       const userMsg: StoredChatMessage = {
         id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -238,22 +287,50 @@ export function useCustomerAiChat() {
         createdAt: new Date().toISOString(),
       };
 
-      const historyPayload: AiChatHistoryItem[] = messages
+      const historyPayload: AiChatHistoryItem[] = baseMessages
         .slice(-10)
         .map((m) => ({ role: m.role, content: m.content }));
 
-      const withUser = [...messages, userMsg];
+      const withUser = [...baseMessages, userMsg];
       setMessages(withUser);
       persistMessages(activeUserId, withUser);
       setSending(true);
 
-      try {
-        const res = await sendAiChatMessage({
-          message: text,
-          history: historyPayload,
-          contextPage: pathname,
-        });
+      let hasReceivedDelta = false;
+      const timer1 = window.setTimeout(() => {
+        if (!hasReceivedDelta && !controller.signal.aborted) {
+          setLoadingStage(1);
+        }
+      }, 2800);
+      const timer2 = window.setTimeout(() => {
+        if (!hasReceivedDelta && !controller.signal.aborted) {
+          setLoadingStage(2);
+        }
+      }, 6500);
+      stageTimersRef.current = [timer1, timer2];
 
+      try {
+        const res = await sendAiChatMessageStream(
+          {
+            message: text,
+            history: historyPayload,
+            contextPage: pathname,
+          },
+          {
+            signal: controller.signal,
+            timeoutMs: 20_000,
+            onDelta: (partialReply) => {
+              if (!hasReceivedDelta) {
+                hasReceivedDelta = true;
+                clearPendingTimers();
+                setLoadingStage(0);
+              }
+              setStreamingReply(partialReply);
+            },
+          }
+        );
+
+        clearPendingTimers();
         const botMsg: StoredChatMessage = {
           id: `bot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           role: 'assistant',
@@ -268,13 +345,50 @@ export function useCustomerAiChat() {
         setMessages(updated);
         persistMessages(activeUserId, updated);
       } catch (err: any) {
-        setError(resolveFriendlyChatError(err, false));
-        setLastFailedText(text);
+        clearPendingTimers();
+        if (err instanceof AiChatRequestError && err.isAborted) {
+          // Remove unanswered pending user bubble and restore draft to composer
+          setMessages(baseMessages);
+          persistMessages(activeUserId, baseMessages);
+          setRestoredDraft(text);
+          setInfoNotice('Đã dừng phản hồi. Nội dung câu hỏi đã được giữ lại bên dưới để Anh/Chị chỉnh sửa.');
+        } else {
+          setError(resolveFriendlyChatError(err, isRetry));
+          setLastFailedText(text);
+          setRestoredDraft(text);
+        }
       } finally {
+        clearPendingTimers();
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
+        setStreamingReply('');
+        setActivePreamble('');
+        setLoadingStage(0);
         setSending(false);
       }
     },
-    [activeUserId, messages, pathname, persistMessages, sending]
+    [activeUserId, clearPendingTimers, pathname, persistMessages]
+  );
+
+  const sendMessage = useCallback(
+    async (rawText: string) => {
+      const text = rawText.trim();
+      if (!text || sending) return;
+
+      // Avoid duplicate trailing user bubble if user re-submits restored failed text via Enter
+      const cleanedBase =
+        lastFailedText &&
+        text === lastFailedText &&
+        messages.length > 0 &&
+        messages[messages.length - 1].role === 'user' &&
+        messages[messages.length - 1].content === lastFailedText
+          ? messages.slice(0, -1)
+          : messages;
+
+      await executeSendRequest(text, cleanedBase, false);
+    },
+    [executeSendRequest, lastFailedText, messages, sending]
   );
 
   const retryLastMessage = useCallback(async () => {
@@ -288,62 +402,48 @@ export function useCustomerAiChat() {
         ? messages.slice(0, -1)
         : messages;
 
-    setError(null);
-    setLastFailedText(null);
-    setMessages(cleaned);
-    persistMessages(activeUserId, cleaned);
+    await executeSendRequest(textToRetry, cleaned, true);
+  }, [executeSendRequest, lastFailedText, messages, sending]);
 
-    const userMsg: StoredChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: textToRetry,
-      createdAt: new Date().toISOString(),
-    };
-    const withUser = [...cleaned, userMsg];
-    setMessages(withUser);
-    persistMessages(activeUserId, withUser);
-    setSending(true);
+  const cancelSending = useCallback(() => {
+    clearPendingTimers();
+    abortControllerRef.current?.abort();
+  }, [clearPendingTimers]);
 
-    try {
-      const historyPayload: AiChatHistoryItem[] = cleaned
-        .slice(-10)
-        .map((m) => ({ role: m.role, content: m.content }));
-      const res = await sendAiChatMessage({
-        message: textToRetry,
-        history: historyPayload,
-        contextPage: pathname,
-      });
+  const clearRestoredDraft = useCallback(() => {
+    setRestoredDraft(null);
+  }, []);
 
-      const botMsg: StoredChatMessage = {
-        id: `bot-${Date.now()}`,
-        role: 'assistant',
-        content: res.reply,
-        createdAt: new Date().toISOString(),
-        isFallback: res.is_fallback,
-        suggestedQuestions: res.suggested_questions,
-        actions: res.actions,
-      };
-      const updated = [...withUser, botMsg];
-      setMessages(updated);
-      persistMessages(activeUserId, updated);
-    } catch (err: any) {
-      setError(resolveFriendlyChatError(err, true));
-      setLastFailedText(textToRetry);
-    } finally {
-      setSending(false);
-    }
-  }, [activeUserId, lastFailedText, messages, pathname, persistMessages, sending]);
+  const dismissNotice = useCallback(() => {
+    setInfoNotice(null);
+  }, []);
 
   const resetConversation = useCallback(() => {
+    abortControllerRef.current?.abort();
+    clearPendingTimers();
     if (typeof window !== 'undefined') {
       const { historyKey } = getStorageKeys(activeUserId);
       window.sessionStorage.removeItem(historyKey);
     }
+    lastPreambleRef.current = null;
     setMessages([]);
     setError(null);
+    setInfoNotice(null);
     setLastFailedText(null);
+    setRestoredDraft(null);
+    setStreamingReply('');
+    setActivePreamble('');
+    setLoadingStage(0);
+    setSending(false);
     loadWelcome(activeUserId, null);
-  }, [activeUserId, getStorageKeys, loadWelcome]);
+  }, [activeUserId, clearPendingTimers, getStorageKeys, loadWelcome]);
+
+  const loadingStageMessage =
+    loadingStage === 2
+      ? SMART_LOADING_STAGES.STAGE_2
+      : loadingStage === 1
+        ? SMART_LOADING_STAGES.STAGE_1
+        : null;
 
   return {
     isAuthenticated,
@@ -354,9 +454,17 @@ export function useCustomerAiChat() {
     welcomeLoading,
     sending,
     error,
+    infoNotice,
     lastFailedText,
+    activePreamble,
+    loadingStageMessage,
+    streamingReply,
+    restoredDraft,
     sendMessage,
     retryLastMessage,
+    cancelSending,
+    clearRestoredDraft,
+    dismissNotice,
     resetConversation,
   };
 }

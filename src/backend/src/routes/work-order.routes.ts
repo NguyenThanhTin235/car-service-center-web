@@ -59,6 +59,9 @@ router.get('/', authorize('SA', 'ADMIN', 'DESK STAFF'), getWorkOrders);
 // Tạo phiếu công việc từ phiếu tiếp nhận
 router.post('/', authorize('SA', 'ADMIN'), createWorkOrder);
 
+// LÊN KẾ HOẠCH CÔNG VIỆC TÍCH HỢP AI LLM & TELEMETRY (UC-34) — đặt trước /:id để /ai-metrics không bị match nhầm
+router.use('/', aiJobRoutes);
+
 // Lấy chi tiết phiếu công việc (Cả SA và Desk Staff đều được xem)
 router.get('/:id', authorize('SA', 'DESK STAFF', 'MANAGER', 'ADMIN'), getWorkOrderById);
 
@@ -114,8 +117,5 @@ router.post('/:id/close', authorize('SA', 'ADMIN'), closeWorkOrder);
 
 // TẢI FILE PDF BIÊN BẢN BÀN GIAO XE
 router.get('/:id/handover-pdf', authorize('SA', 'ADMIN', 'DESK STAFF', 'CUSTOMER'), getHandoverPdf);
-
-// LÊN KẾ HOẠCH CÔNG VIỆC TÍCH HỢP AI LLM (UC-34)
-router.use('/', aiJobRoutes);
 
 export default router;

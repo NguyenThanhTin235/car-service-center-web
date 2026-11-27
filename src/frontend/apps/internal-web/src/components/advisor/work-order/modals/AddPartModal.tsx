@@ -23,7 +23,18 @@ interface AddPartModalProps {
   onSuccess: () => void;
 }
 
-const aiPartSuggestionCache = new Map<string, AIPartSuggestionData>();
+const PART_SUGGESTION_CACHE_TTL_MS = 45_000;
+const aiPartSuggestionCache = new Map<string, { data: AIPartSuggestionData; expiresAt: number }>();
+
+function getFreshCachedPartSuggestion(key: string): AIPartSuggestionData | null {
+  const entry = aiPartSuggestionCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    aiPartSuggestionCache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
 
 export default function AddPartModal({
   isOpen,
@@ -128,7 +139,7 @@ export default function AddPartModal({
       setPlannedQuantity(1);
       setUnitPrice(0);
       if (initialJobId) {
-        const cached = aiPartSuggestionCache.get(`${workOrder.id}:${initialJobId}`);
+        const cached = getFreshCachedPartSuggestion(`${workOrder.id}:${initialJobId}`);
         if (cached) setAiData(cached);
       }
     }
@@ -171,7 +182,7 @@ export default function AddPartModal({
 
     const cacheKey = `${workOrder.id}:${jId}`;
     if (!refresh) {
-      const cached = aiPartSuggestionCache.get(cacheKey);
+      const cached = getFreshCachedPartSuggestion(cacheKey);
       if (cached) {
         setAiData(cached);
         setAiExpanded(true);
@@ -184,7 +195,10 @@ export default function AddPartModal({
       setAiExpanded(true);
       const res = await getAIPartSuggestions(workOrder.id, jId, refresh);
       if (res.success && res.data) {
-        aiPartSuggestionCache.set(cacheKey, res.data);
+        aiPartSuggestionCache.set(cacheKey, {
+          data: res.data,
+          expiresAt: Date.now() + PART_SUGGESTION_CACHE_TTL_MS,
+        });
         setAiData(res.data);
       } else {
         toast.error(res.message || 'Không thể tạo gợi ý phụ tùng từ AI');
@@ -257,6 +271,7 @@ export default function AddPartModal({
           planned_quantity: plannedQuantity,
           unit_price: unitPrice,
         });
+        aiPartSuggestionCache.delete(`${workOrder.id}:${selectedJobId}`);
         toast.success('Cập nhật phụ tùng thành công');
       } else {
         await addJobPart(workOrder.id, selectedJobId, {
@@ -264,6 +279,7 @@ export default function AddPartModal({
           planned_quantity: plannedQuantity,
           unit_price: unitPrice,
         });
+        aiPartSuggestionCache.delete(`${workOrder.id}:${selectedJobId}`);
         toast.success('Khai báo phụ tùng vào công việc thành công');
       }
       onSuccess();

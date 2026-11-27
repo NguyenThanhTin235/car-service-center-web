@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import ChatMessageBubble from './ChatMessageBubble';
+import PendingAssistantBubble from './PendingAssistantBubble';
 import { useCustomerAiChat } from './useCustomerAiChat';
 import {
   savePendingBookingIntent,
@@ -21,20 +22,47 @@ export default function CustomerAiChatWidget() {
     welcomeLoading,
     sending,
     error,
+    infoNotice,
+    activePreamble,
+    loadingStageMessage,
+    streamingReply,
+    restoredDraft,
     sendMessage,
     retryLastMessage,
+    cancelSending,
+    clearRestoredDraft,
+    dismissNotice,
     resetConversation,
   } = useCustomerAiChat();
 
   const [inputValue, setInputValue] = useState('');
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (restoredDraft !== null) {
+      setInputValue(restoredDraft);
+      clearRestoredDraft();
+      inputRef.current?.focus();
+    }
+  }, [restoredDraft, clearRestoredDraft]);
 
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [isOpen, messages, sending, error]);
+  }, [isOpen, messages.length, sending, error, infoNotice]);
+
+  useEffect(() => {
+    if (!isOpen || !streamingReply) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distanceFromBottom < 120) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }
+  }, [isOpen, streamingReply]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -68,7 +96,8 @@ export default function CustomerAiChatWidget() {
   const handleTriggerAction = (action: StoredChatActionItem) => {
     if (action.type === 'CALL_HOTLINE') {
       if (typeof window !== 'undefined') {
-        window.location.href = action.target || 'tel:19006868';
+        const safeTel = /^tel:[0-9+]+$/.test(action.target || '') ? action.target : 'tel:19006868';
+        window.location.href = safeTel;
       }
       return;
     }
@@ -138,7 +167,11 @@ export default function CustomerAiChatWidget() {
     }
 
     if (action.type === 'NAVIGATE') {
-      const target = action.target || '/home';
+      const rawTarget = action.target || '/home';
+      const target =
+        rawTarget.startsWith('/') && !rawTarget.startsWith('//') && !rawTarget.includes('..')
+          ? rawTarget
+          : '/home';
       const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
       if (isMobile || target.startsWith('/login')) {
         setIsOpen(false);
@@ -222,7 +255,10 @@ export default function CustomerAiChatWidget() {
           </header>
 
           {/* Messages Body (4-State UI) */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-canvas/40">
+          <div
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-canvas/40"
+          >
             {/* State 1: Welcome Loading Skeleton */}
             {welcomeLoading && messages.length === 0 && (
               <div className="space-y-3 animate-pulse" data-testid="ai-chat-welcome-skeleton">
@@ -246,20 +282,31 @@ export default function CustomerAiChatWidget() {
               />
             ))}
 
-            {/* State 3: Loading / Thinking Indicator */}
+            {/* State 3: Immediate Feedback, Progressive Preamble & Streaming Reply */}
             {sending && (
-              <div className="flex items-start gap-2" data-testid="ai-chat-loading">
-                <div className="w-7 h-7 rounded-full bg-accent-soft text-accent flex items-center justify-center shrink-0 border border-accent/15">
-                  <span className="material-symbols-outlined text-[16px]">smart_toy</span>
-                </div>
-                <div className="rounded-2xl rounded-tl-sm bg-surface-subtle border border-hairline px-3.5 py-2.5 text-xs text-ink-secondary flex items-center gap-2">
-                  <span className="inline-flex gap-1" aria-hidden="true">
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce [animation-delay:120ms]" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce [animation-delay:240ms]" />
-                  </span>
-                  <span>Em đang kiểm tra hồ sơ kỹ thuật &amp; bảng giá tại xưởng...</span>
-                </div>
+              <PendingAssistantBubble
+                preamble={activePreamble || 'Dạ, mình hỗ trợ bạn ngay nhé!'}
+                stageMessage={loadingStageMessage}
+                streamingReply={streamingReply}
+              />
+            )}
+
+            {/* Cancelled / Info Notice Banner */}
+            {infoNotice && !error && (
+              <div
+                role="status"
+                data-testid="ai-chat-notice"
+                className="rounded-2xl bg-surface-subtle border border-hairline px-3.5 py-2.5 text-xs text-ink-secondary flex items-center justify-between gap-2"
+              >
+                <span className="leading-relaxed">{infoNotice}</span>
+                <button
+                  type="button"
+                  onClick={dismissNotice}
+                  aria-label="Ẩn thông báo"
+                  className="min-w-[36px] min-h-[36px] rounded-lg hover:bg-surface-muted text-ink-muted flex items-center justify-center cursor-pointer shrink-0"
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
               </div>
             )}
 
@@ -295,22 +342,38 @@ export default function CustomerAiChatWidget() {
               ref={inputRef}
               type="text"
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                if (infoNotice) dismissNotice();
+              }}
               maxLength={1000}
               disabled={sending}
               data-testid="ai-chat-input"
               placeholder="Nhập câu hỏi (VD: phanh kêu, xe xong chưa)..."
               className="flex-1 min-h-[44px] px-3.5 py-2 rounded-xl bg-surface-subtle border border-hairline text-sm text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent"
             />
-            <button
-              type="submit"
-              disabled={!inputValue.trim() || sending}
-              aria-label="Gửi tin nhắn"
-              data-testid="ai-chat-send"
-              className="min-w-[44px] min-h-[44px] rounded-xl bg-accent hover:bg-accent-hover disabled:bg-surface-muted disabled:text-ink-muted text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
-            >
-              <span className="material-symbols-outlined text-[20px]">send</span>
-            </button>
+            {sending ? (
+              <button
+                type="button"
+                onClick={cancelSending}
+                aria-label="Dừng phản hồi"
+                title="Dừng phản hồi"
+                data-testid="ai-chat-cancel"
+                className="min-w-[44px] min-h-[44px] rounded-xl bg-surface-muted hover:bg-status-danger-soft hover:text-status-danger text-ink-primary border border-hairline flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              >
+                <span className="material-symbols-outlined text-[20px]">stop_circle</span>
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!inputValue.trim()}
+                aria-label="Gửi tin nhắn"
+                data-testid="ai-chat-send"
+                className="min-w-[44px] min-h-[44px] rounded-xl bg-accent hover:bg-accent-hover disabled:bg-surface-muted disabled:text-ink-muted text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              >
+                <span className="material-symbols-outlined text-[20px]">send</span>
+              </button>
+            )}
           </form>
         </section>
       )}

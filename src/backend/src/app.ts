@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
+import crypto from 'node:crypto';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -32,7 +33,21 @@ import notificationRoutes from './routes/notification.routes';
 import aiChatRoutes from './routes/ai-chat.routes';
 
 const app = express();
-app.set('trust proxy', true);
+const trustProxyHops =
+  process.env.TRUST_PROXY_HOPS !== undefined ? Number(process.env.TRUST_PROXY_HOPS) : 1;
+app.set('trust proxy', Number.isFinite(trustProxyHops) ? trustProxyHops : 1);
+
+// Request correlation ID for observability across backend & AI workflows
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const incomingId = req.headers['x-request-id'];
+  const cleanId =
+    typeof incomingId === 'string' && /^[a-zA-Z0-9\-_]{1,64}$/.test(incomingId.trim())
+      ? incomingId.trim()
+      : crypto.randomUUID();
+  (req as Request & { requestId?: string }).requestId = cleanId;
+  res.setHeader('X-Request-Id', cleanId);
+  next();
+});
 
 // Middlewares
 app.use(cors({ 

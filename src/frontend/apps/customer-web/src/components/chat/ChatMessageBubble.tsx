@@ -16,7 +16,7 @@ interface ChatMessageBubbleProps {
   disabled?: boolean;
 }
 
-function renderInlineSpans(spans: MarkdownInlineSpan[]) {
+export function renderInlineSpans(spans: MarkdownInlineSpan[]) {
   return spans.map((span, idx) => {
     if (span.type === 'bold') {
       const hasMonetaryOrCode = /[0-9].*[₫]|WO-|QT-|INV-|[0-9]{2}[A-Z]/i.test(span.value);
@@ -33,8 +33,40 @@ function renderInlineSpans(spans: MarkdownInlineSpan[]) {
         </strong>
       );
     }
+    if (span.type === 'code') {
+      return (
+        <span
+          key={idx}
+          className="font-mono font-semibold tabular-nums text-ink-primary"
+        >
+          {span.value}
+        </span>
+      );
+    }
     return <React.Fragment key={idx}>{span.value}</React.Fragment>;
   });
+}
+
+export function MarkdownMessageBody({ content }: { content: string }) {
+  const parsedLines = parseSafeMarkdownLines(content);
+  return (
+    <div className="text-sm leading-relaxed space-y-1.5 break-words">
+      {parsedLines.map((line, lineIdx) => {
+        if (line.kind === 'spacer') {
+          return <div key={lineIdx} className="h-1" />;
+        }
+        if (line.kind === 'bullet') {
+          return (
+            <div key={lineIdx} className="flex items-start gap-2 pl-0.5">
+              <span className="text-accent font-bold mt-0.5">•</span>
+              <span className="flex-1">{renderInlineSpans(line.spans)}</span>
+            </div>
+          );
+        }
+        return <p key={lineIdx}>{renderInlineSpans(line.spans)}</p>;
+      })}
+    </div>
+  );
 }
 
 export default function ChatMessageBubble({
@@ -45,7 +77,6 @@ export default function ChatMessageBubble({
   disabled = false,
 }: ChatMessageBubbleProps) {
   const isUser = message.role === 'user';
-  const parsedLines = parseSafeMarkdownLines(message.content);
 
   if (isUser) {
     return (
@@ -77,22 +108,7 @@ export default function ChatMessageBubble({
         </div>
 
         <div className="flex-1 min-w-0 rounded-2xl rounded-tl-sm bg-surface-subtle border border-hairline px-3.5 py-2.5 text-ink-primary">
-          <div className="text-sm leading-relaxed space-y-1.5 break-words">
-            {parsedLines.map((line, lineIdx) => {
-              if (line.kind === 'spacer') {
-                return <div key={lineIdx} className="h-1" />;
-              }
-              if (line.kind === 'bullet') {
-                return (
-                  <div key={lineIdx} className="flex items-start gap-2 pl-0.5">
-                    <span className="text-accent font-bold mt-0.5">•</span>
-                    <span className="flex-1">{renderInlineSpans(line.spans)}</span>
-                  </div>
-                );
-              }
-              return <p key={lineIdx}>{renderInlineSpans(line.spans)}</p>;
-            })}
-          </div>
+          <MarkdownMessageBody content={message.content} />
 
           {message.isFallback && (
             <p className="mt-2 pt-1.5 border-t border-hairline text-[11px] text-ink-muted flex items-center gap-1">

@@ -3,6 +3,9 @@ import Redis from 'ioredis';
 // In-memory fallback cache when Redis is disconnected or unavailable (bounded FIFO)
 const MAX_MEMORY_CACHE_ENTRIES = 5000;
 const memoryCache = new Map<string, { value: string; expiresAt: number }>();
+// Isolated rate-limit fallback store so high-cardinality IP/rate-limit keys never evict catalog/auth caches
+const MAX_RATE_LIMIT_MEMORY_ENTRIES = 5000;
+const rateLimitMemory = new Map<string, { count: number; expiresAt: number }>();
 
 const isMemoryExpired = (entry: { value: string; expiresAt: number }): boolean => {
   return Date.now() > entry.expiresAt;
@@ -171,6 +174,50 @@ export const deleteCacheByPrefix = async (prefix: string): Promise<void> => {
       // Ignore scan/del error
     }
   }
+};
+
+/**
+ * Atomic fixed-window counter increment using Redis MULTI (INCR + TTL),
+ * falling back to synchronous in-memory Map when Redis is unavailable.
+ */
+export const incrRateLimitWindow = async (
+  key: string,
+  windowSeconds: number
+): Promise<{ count: number; ttlSeconds: number }> => {
+  if (isRedisReady || redisClient.status === 'ready') {
+    try {
+      const results = await redisClient.multi().incr(key).ttl(key).exec();
+      const count = Number(results?.[0]?.[1] ?? 1);
+      let ttl = Number(results?.[1]?.[1] ?? -1);
+      if (ttl < 0) {
+        await redisClient.expire(key, windowSeconds);
+        ttl = windowSeconds;
+      }
+      return { count, ttlSeconds: Math.max(1, ttl) };
+    } catch (err) {
+      console.warn(`[Redis] incrRateLimitWindow failed for ${key}, using memory:`, (err as Error).message);
+    }
+  }
+
+  const now = Date.now();
+  const existing = rateLimitMemory.get(key);
+  let entry: { count: number; expiresAt: number };
+
+  if (existing && existing.expiresAt > now) {
+    entry = { count: existing.count + 1, expiresAt: existing.expiresAt };
+  } else {
+    if (!existing && rateLimitMemory.size >= MAX_RATE_LIMIT_MEMORY_ENTRIES) {
+      const oldestKey = rateLimitMemory.keys().next().value;
+      if (oldestKey !== undefined) rateLimitMemory.delete(oldestKey);
+    }
+    entry = { count: 1, expiresAt: now + windowSeconds * 1000 };
+  }
+
+  rateLimitMemory.set(key, entry);
+  return {
+    count: entry.count,
+    ttlSeconds: Math.max(1, Math.ceil((entry.expiresAt - now) / 1000)),
+  };
 };
 
 export default redisClient;

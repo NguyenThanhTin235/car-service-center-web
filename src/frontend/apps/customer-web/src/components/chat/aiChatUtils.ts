@@ -49,7 +49,7 @@ export interface StoredChatMessage {
 }
 
 export interface MarkdownInlineSpan {
-  type: 'text' | 'bold';
+  type: 'text' | 'bold' | 'code';
   value: string;
 }
 
@@ -63,13 +63,19 @@ export function safeParseChatHistory(raw: string | null): StoredChatMessage[] {
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (item): item is StoredChatMessage =>
-        Boolean(item) &&
-        typeof item.id === 'string' &&
-        (item.role === 'user' || item.role === 'assistant') &&
-        typeof item.content === 'string'
-    );
+    return parsed
+      .filter(
+        (item): item is StoredChatMessage =>
+          Boolean(item) &&
+          typeof item.id === 'string' &&
+          (item.role === 'user' || item.role === 'assistant') &&
+          typeof item.content === 'string'
+      )
+      .slice(-30)
+      .map((item) => ({
+        ...item,
+        content: item.content.slice(0, 2000),
+      }));
   } catch {
     return [];
   }
@@ -144,7 +150,7 @@ export function consumePendingBookingIntent(
 
 export function parseInlineBoldSpans(text: string): MarkdownInlineSpan[] {
   const spans: MarkdownInlineSpan[] = [];
-  const regex = /\*\*(.+?)\*\*/g;
+  const regex = /\*\*(.+?)\*\*|`([^`]+)`/g;
   let lastIdx = 0;
   let match: RegExpExecArray | null;
 
@@ -152,7 +158,11 @@ export function parseInlineBoldSpans(text: string): MarkdownInlineSpan[] {
     if (match.index > lastIdx) {
       spans.push({ type: 'text', value: text.slice(lastIdx, match.index) });
     }
-    spans.push({ type: 'bold', value: match[1] });
+    if (match[1] !== undefined) {
+      spans.push({ type: 'bold', value: match[1] });
+    } else if (match[2] !== undefined) {
+      spans.push({ type: 'code', value: match[2] });
+    }
     lastIdx = match.index + match[0].length;
   }
 
@@ -194,4 +204,138 @@ export function isSafeRedirectPath(path: string | null | undefined): boolean {
     return false;
   }
   return true;
+}
+
+const VIET_ACCENT_REGEX = /[\u0300-\u036f]/g;
+
+/** Strip Vietnamese diacritics for lightweight intent matching on the client. */
+export function stripChatAccents(text: string): string {
+  return String(text || '')
+    .normalize('NFD')
+    .replace(VIET_ACCENT_REGEX, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase();
+}
+
+export interface PreambleOptions {
+  userMessage: string;
+  turnCount: number;
+  lastPreamble?: string | null;
+}
+
+const FIRST_TURN_PREAMBLES = {
+  pricing: 'Dạ, để mình kiểm tra bảng giá cho bạn nhé!',
+  booking: 'Dạ, mình hỗ trợ bạn kiểm tra lịch hẹn ngay nhé!',
+  tracking: 'Dạ, để mình kiểm tra thông tin cho bạn nhé!',
+  technical: 'Dạ, mình hỗ trợ bạn ngay nhé!',
+  general: 'Dạ, mình hỗ trợ bạn ngay nhé!',
+} as const;
+
+const FOLLOWUP_PREAMBLES: Record<keyof typeof FIRST_TURN_PREAMBLES, readonly string[]> = {
+  pricing: [
+    'Mình đang tra cứu chi phí và gói dịch vụ phù hợp...',
+    'Để mình kiểm tra mức giá mới nhất tại xưởng cho bạn nhé!',
+  ],
+  booking: [
+    'Mình đang xem khung giờ tiếp nhận phù hợp cho bạn...',
+    'Để mình kiểm tra lịch trống tại xưởng cho bạn nhé!',
+  ],
+  tracking: [
+    'Mình đang kiểm tra thông tin và tiến độ xe cho bạn...',
+    'Để mình đối chiếu trạng thái hồ sơ mới nhất nhé!',
+  ],
+  technical: [
+    'Mình đang phân tích tình trạng kỹ thuật bạn mô tả...',
+    'Mình đang tìm kiếm thông tin phù hợp cho hạng mục này...',
+  ],
+  general: [
+    'Mình đang tìm kiếm thông tin phù hợp...',
+    'Mình đang phân tích yêu cầu của bạn...',
+    'Để mình kiểm tra chi tiết cho bạn nhé!',
+  ],
+};
+
+function detectPreambleIntent(normalized: string): keyof typeof FIRST_TURN_PREAMBLES {
+  if (/(gia|bao nhieu|chi phi|bang gia|khuyen mai|phi)/.test(normalized)) return 'pricing';
+  if (/(dat lich|lich hen|gio mo cua|khung gio|dat cho)/.test(normalized)) return 'booking';
+  if (/(tien do|xong chua|bien so|hoa don|thanh toan|xe cua|lich su|bao hanh)/.test(normalized)) {
+    return 'tracking';
+  }
+  if (/(keu|rung|phanh|ac quy|dieu hoa|lop|dau|nhot|loi|hu|nong|khoi|den bao|bao duong)/.test(normalized)) {
+    return 'technical';
+  }
+  return 'general';
+}
+
+/**
+ * Select a natural, context-aware opening preamble without hitting any AI API.
+ * Turn 0 uses a warm welcome opening; follow-up turns avoid repeating greetings or consecutive lines.
+ */
+export function selectContextualPreamble(options: PreambleOptions): string {
+  const normalized = stripChatAccents(options.userMessage);
+  const category = detectPreambleIntent(normalized);
+
+  if (options.turnCount <= 0) {
+    return FIRST_TURN_PREAMBLES[category];
+  }
+
+  const candidates = FOLLOWUP_PREAMBLES[category];
+  const preferred = candidates[options.turnCount % candidates.length];
+  if (preferred !== options.lastPreamble) {
+    return preferred;
+  }
+  return candidates[(options.turnCount + 1) % candidates.length] || preferred;
+}
+
+export const SMART_LOADING_STAGES = {
+  STAGE_1: 'Mình đang tổng hợp thông tin chi tiết cho bạn...',
+  STAGE_2: 'Hệ thống đang xử lý dữ liệu nhiều hơn một chút, bạn chờ thêm giây lát nhé!',
+} as const;
+
+export interface ParsedSseEvent {
+  event: string;
+  data: unknown;
+}
+
+/**
+ * Incrementally parse complete `event:` / `data:` SSE frames from a streaming text buffer.
+ */
+export function parseSseChunkBuffer(buffer: string): {
+  events: ParsedSseEvent[];
+  rest: string;
+} {
+  const normalized = buffer.replace(/\r\n/g, '\n');
+  const frames = normalized.split('\n\n');
+  const rest = frames.pop() ?? '';
+  const events: ParsedSseEvent[] = [];
+
+  for (const frame of frames) {
+    const trimmed = frame.trim();
+    if (!trimmed) continue;
+
+    let eventName = 'message';
+    const dataLines: string[] = [];
+
+    for (const line of frame.split('\n')) {
+      if (line.startsWith(':')) continue; // SSE comment/heartbeat
+      if (line.startsWith('event:')) {
+        eventName = line.slice(6).trim() || 'message';
+      } else if (line.startsWith('data:')) {
+        dataLines.push(line.slice(5).trimStart());
+      }
+    }
+
+    if (dataLines.length === 0) continue;
+    const rawData = dataLines.join('\n');
+    let parsedData: unknown = rawData;
+    try {
+      parsedData = JSON.parse(rawData);
+    } catch {
+      parsedData = rawData;
+    }
+
+    events.push({ event: eventName, data: parsedData });
+  }
+
+  return { events, rest };
 }

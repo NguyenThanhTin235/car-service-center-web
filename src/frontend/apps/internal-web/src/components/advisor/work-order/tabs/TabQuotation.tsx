@@ -618,12 +618,12 @@ export default function TabQuotation({
           <table className="w-full text-left text-sm border-collapse">
             <thead>
               <tr className="border-b border-slate-200 text-xs text-slate-500 font-bold tracking-wide bg-slate-50">
-                <th className="py-3 px-4 w-14 text-center">STT</th>
+                <th className="py-3 px-4 w-14 text-center whitespace-nowrap">STT</th>
                 <th className="py-3 px-4">Hạng mục / Công việc / Phụ tùng</th>
-                <th className="py-3 px-4 w-36">Phân loại</th>
-                <th className="py-3.5 px-4 w-16 text-center">SL</th>
-                <th className="py-3 px-4 w-36 text-right hidden md:table-cell">Đơn giá khoán</th>
-                <th className="py-3 px-4 w-40 text-right">Thành tiền</th>
+                <th className="py-3 px-4 w-36 whitespace-nowrap">Phân loại</th>
+                <th className="py-3.5 px-4 w-16 text-center whitespace-nowrap">SL</th>
+                <th className="py-3 px-4 w-36 text-right whitespace-nowrap hidden md:table-cell">Đơn giá khoán</th>
+                <th className="py-3 px-4 w-40 text-right whitespace-nowrap">Thành tiền</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/40">
@@ -687,9 +687,9 @@ export default function TabQuotation({
                               </div>
                             )}
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="py-3 px-4 whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 border ${
                                 isLabour
                                   ? 'bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800'
                                   : isPart
@@ -699,7 +699,7 @@ export default function TabQuotation({
                                   : 'bg-slate-50 text-slate-800 border-slate-200/80 dark:bg-slate-900/50 dark:text-slate-300 dark:border-slate-700'
                               }`}
                             >
-                              <span className="material-symbols-outlined text-[14px]">
+                              <span className="material-symbols-outlined text-[14px] shrink-0 leading-none">
                                 {isLabour ? 'engineering' : isPart ? 'inventory_2' : isPackage ? 'package_2' : 'toll'}
                               </span>
                               {isLabour ? 'Nhân công' : isPart ? 'Phụ tùng' : isPackage ? 'Trọn gói' : 'Phụ phí'}

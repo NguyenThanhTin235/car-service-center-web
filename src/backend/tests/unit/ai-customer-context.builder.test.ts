@@ -93,6 +93,10 @@ describe('AiCustomerContextBuilder', () => {
       expect(first.garageInfo.vatPolicy).toContain('0% VAT');
       expect(first.garageInfo.bookingSlots.morning).toContain('08:00');
       expect(first.garageInfo.bookingSlots.afternoon).toContain('16:00');
+      expect(first.garageInfo.processSteps).toHaveLength(8);
+      expect(first.garageInfo.processSteps[0]).toContain('Tiếp nhận - Kiểm tra xe');
+      expect(first.garageInfo.processSteps[3]).toContain('Phê duyệt trực tuyến');
+      expect(first.garageInfo.processSteps[7]).toContain('Bàn giao xe');
       expect(first.categories[0].services.map((s) => s.pricingType)).toEqual([
         'VEHICLE_SIZE',
         'FIXED',
