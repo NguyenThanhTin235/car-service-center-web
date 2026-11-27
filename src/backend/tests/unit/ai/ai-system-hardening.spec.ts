@@ -429,7 +429,7 @@ describe('AI System Hardening — NLP, RAG Quality, Gateway Resilience, Security
 
   describe('6. Gemini Failover Gateway, Circuit Breaker & Telemetry', () => {
     it('fails fast on 400 non-retryable and skips remaining keys on 404 model not found', async () => {
-      process.env.GEMINI_API_KEYS = 'key_one_secret_123456,key_two_secret_654321';
+      process.env.GEMINI_API_KEYS = 'dummy-1,dummy-2';
       let calls = 0;
 
       await expect(
@@ -468,7 +468,7 @@ describe('AI System Hardening — NLP, RAG Quality, Gateway Resilience, Security
     });
 
     it('opens circuit breaker after 6 consecutive failures and masks key secrets', async () => {
-      process.env.GEMINI_API_KEYS = 'AIzaSyTESTKEY1234567890';
+      process.env.GEMINI_API_KEYS = 'dummy-1';
       for (let i = 0; i < 6; i++) {
         await expect(
           executeWithGeminiFailover(async () => {
