@@ -461,8 +461,14 @@ export class InvoiceService {
       // 2. Tính toán các dòng hóa đơn
       const calculation = buildInvoiceLinesFromQuotations(wo.quotations);
 
-      // 3. Sinh số hóa đơn
+      // 3. Sinh số hóa đơn & gộp ghi chú đối soát hoàn kho (nếu có)
       const invoiceNumber = await this.generateInvoiceNumber(tx);
+      const noteParts: string[] = [];
+      if (notes?.trim()) noteParts.push(notes.trim());
+      if (calculation.reconciliationNotes.length > 0) {
+        noteParts.push(`[Đối soát vật tư]\n${calculation.reconciliationNotes.join('\n')}`);
+      }
+      const combinedNotes = noteParts.length > 0 ? noteParts.join('\n\n') : null;
 
       // 4. Tạo bản ghi hóa đơn và các dòng hóa đơn
       const invoice = await tx.invoice.create({
@@ -475,7 +481,7 @@ export class InvoiceService {
           tax_amount: 0,
           total_amount: calculation.totalAmount,
           amount_due: calculation.amountDue,
-          notes: notes?.trim() || null,
+          notes: combinedNotes,
           created_by_id: userId,
           lines: {
             create: calculation.lines.map((l) => ({

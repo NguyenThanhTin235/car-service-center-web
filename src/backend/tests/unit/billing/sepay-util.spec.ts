@@ -110,6 +110,7 @@ describe('Unit Test - SePay Payment Gateway Utility (SPEC-SEPAY)', () => {
   it('SEPAY-05: extractInvoiceNumberFromContent() trích xuất chính xác mã INV', () => {
     expect(extractInvoiceNumberFromContent('Thanh toan INV-202611-0001 tien sua xe')).toBe('INV-202611-0001');
     expect(extractInvoiceNumberFromContent('CK INV-202611-002')).toBe('INV-202611-002');
+    expect(extractInvoiceNumberFromContent('MBVCB.17250106494.723870.INVQR5K02.CT')).toBe('INVQR5K02');
     expect(extractInvoiceNumberFromContent('No invoice here')).toBeNull();
     expect(extractInvoiceNumberFromContent('')).toBeNull();
     expect(extractInvoiceNumberFromContent(undefined)).toBeNull();

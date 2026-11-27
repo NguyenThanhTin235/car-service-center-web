@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { useAppSelector } from '@/store';
+import { useAppDispatch, useAppSelector } from '@/store';
+import { createAppointment, fetchAppointments } from '@/store/slices/appointmentSlice';
 import {
   AiChatHistoryItem,
   AiChatRequestError,
@@ -19,6 +20,7 @@ import {
   safeParseChatHistory,
   selectContextualPreamble,
   SMART_LOADING_STAGES,
+  StoredChatActionItem,
   StoredChatMessage,
 } from './aiChatUtils';
 
@@ -72,6 +74,7 @@ function makeWelcomeMessage(
 
 export function useCustomerAiChat() {
   const pathname = usePathname() || '/home';
+  const dispatch = useAppDispatch();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const activeUserId = isAuthenticated && user?.id ? Number(user.id) : null;
 
@@ -86,6 +89,8 @@ export function useCustomerAiChat() {
   const [loadingStage, setLoadingStage] = useState<0 | 1 | 2>(0);
   const [streamingReply, setStreamingReply] = useState('');
   const [restoredDraft, setRestoredDraft] = useState<string | null>(null);
+  const [bookingSubmittingMsgId, setBookingSubmittingMsgId] = useState<string | null>(null);
+  const [bookingErrors, setBookingErrors] = useState<Record<string, string>>({});
 
   const prevUserIdRef = useRef<number | null>(null);
   const hydratedScopeRef = useRef<string | null>(null);
@@ -418,6 +423,109 @@ export function useCustomerAiChat() {
     setInfoNotice(null);
   }, []);
 
+  const confirmBookingInChat = useCallback(
+    async (messageId: string, action: StoredChatActionItem) => {
+      if (!activeUserId) {
+        setBookingErrors((prev) => ({
+          ...prev,
+          [messageId]: 'Anh/Chị vui lòng đăng nhập để xác nhận đặt lịch hẹn.',
+        }));
+        return;
+      }
+
+      const payload = action.payload;
+      if (
+        !payload?.preselectedVehicleId ||
+        !payload.preferredDate ||
+        !payload.preferredTime
+      ) {
+        setBookingErrors((prev) => ({
+          ...prev,
+          [messageId]: 'Thông tin đặt lịch chưa đầy đủ. Anh/Chị vui lòng chọn "Chỉnh sửa trên biểu mẫu".',
+        }));
+        return;
+      }
+
+      if (bookingSubmittingMsgId) return;
+
+      setBookingSubmittingMsgId(messageId);
+      setBookingErrors((prev) => {
+        if (!prev[messageId]) return prev;
+        const next = { ...prev };
+        delete next[messageId];
+        return next;
+      });
+
+      try {
+        const created = await dispatch(
+          createAppointment({
+            customer_id: activeUserId,
+            vehicle_id: payload.preselectedVehicleId,
+            scheduled_date: payload.preferredDate,
+            scheduled_time: payload.preferredTime,
+            service_ids: payload.preselectedServiceIds || [],
+            notes: payload.notes || '',
+            is_warranty: false,
+          })
+        ).unwrap();
+
+        void dispatch(fetchAppointments({ customer_id: activeUserId }));
+
+        const createdId = Number(created?.id || 0);
+        const dateParts = payload.preferredDate.split('-');
+        const displayDate =
+          dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : payload.preferredDate;
+
+        const confirmBotMsg: StoredChatMessage = {
+          id: `bot-booking-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          role: 'assistant',
+          content: `Đã đặt lịch hẹn **#${createdId || 'MỚI'}** thành công vào lúc **${payload.preferredTime}** ngày **${displayDate}**${payload.vehicleLabel ? ` cho xe **${payload.vehicleLabel}**` : ''}. Cố vấn dịch vụ sẽ sớm xác nhận lịch hẹn của Anh/Chị ạ.`,
+          createdAt: new Date().toISOString(),
+          actions: [
+            {
+              type: 'NAVIGATE',
+              label: 'Xem lịch hẹn của tôi',
+              icon: 'calendar_today',
+              target: '/customer/profile?tab=appointments',
+            },
+          ],
+        };
+
+        setMessages((prev) => {
+          const updated = [
+            ...prev.map((m) =>
+              m.id === messageId
+                ? {
+                    ...m,
+                    bookingResult: {
+                      appointmentId: createdId,
+                      scheduledDate: payload.preferredDate!,
+                      scheduledTime: payload.preferredTime!,
+                    },
+                  }
+                : m
+            ),
+            confirmBotMsg,
+          ];
+          persistMessages(activeUserId, updated);
+          return updated;
+        });
+      } catch (err: unknown) {
+        const msg =
+          typeof err === 'string' && err.trim()
+            ? err.trim()
+            : 'Không thể tạo lịch hẹn. Anh/Chị vui lòng thử lại hoặc dùng biểu mẫu đặt lịch.';
+        setBookingErrors((prev) => ({
+          ...prev,
+          [messageId]: msg,
+        }));
+      } finally {
+        setBookingSubmittingMsgId(null);
+      }
+    },
+    [activeUserId, bookingSubmittingMsgId, dispatch, persistMessages]
+  );
+
   const resetConversation = useCallback(() => {
     abortControllerRef.current?.abort();
     clearPendingTimers();
@@ -460,11 +568,14 @@ export function useCustomerAiChat() {
     loadingStageMessage,
     streamingReply,
     restoredDraft,
+    bookingSubmittingMsgId,
+    bookingErrors,
     sendMessage,
     retryLastMessage,
     cancelSending,
     clearRestoredDraft,
     dismissNotice,
     resetConversation,
+    confirmBookingInChat,
   };
 }

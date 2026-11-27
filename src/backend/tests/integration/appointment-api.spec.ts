@@ -278,7 +278,7 @@ describe('Integration API - Appointment Lifecycle (SPEC-APPT / UC-11, UC-12, UC-
         .set('Authorization', `Bearer ${customerToken}`)
         .send({
           vehicle_id: 201,
-          scheduled_date: '2026-11-15T00:00:00.000Z',
+          scheduled_date: '2026-12-01T00:00:00.000Z',
           scheduled_time: '20:30', // Ngoài giờ làm việc
         });
 
@@ -304,7 +304,7 @@ describe('Integration API - Appointment Lifecycle (SPEC-APPT / UC-11, UC-12, UC-
         .set('Authorization', `Bearer ${customerToken}`)
         .send({
           vehicle_id: 201,
-          scheduled_date: '2026-11-15T00:00:00.000Z',
+          scheduled_date: '2026-12-01T00:00:00.000Z',
           scheduled_time: '10:00',
         });
 

@@ -28,6 +28,7 @@ export const VALID_AI_CHAT_INTENTS = new Set<AiChatIntent>([
 export const VALID_AI_CHAT_ACTION_TYPES = new Set<AiChatActionType>([
   'NAVIGATE',
   'OPEN_BOOKING_MODAL',
+  'CONFIRM_BOOKING',
   'VIEW_QUOTATION',
   'VIEW_INVOICE',
   'CALL_HOTLINE',
@@ -75,6 +76,8 @@ const ACTION_TYPE_ALIASES: Record<string, AiChatActionType> = {
   OPEN_BOOKING: 'OPEN_BOOKING_MODAL',
   BOOKING: 'OPEN_BOOKING_MODAL',
   BOOKING_MODAL: 'OPEN_BOOKING_MODAL',
+  CONFIRM_APPOINTMENT: 'CONFIRM_BOOKING',
+  BOOK_APPOINTMENT: 'CONFIRM_BOOKING',
   QUOTATION: 'VIEW_QUOTATION',
   INVOICE: 'VIEW_INVOICE',
   HOTLINE: 'CALL_HOTLINE',
@@ -173,6 +176,10 @@ export function isSafeActionTarget(type: AiChatActionType, target: string): bool
 
   if (type === 'OPEN_BOOKING_MODAL') {
     return clean === 'modal:booking' || matchesRoutePrefix(clean, '/customer/profile');
+  }
+
+  if (type === 'CONFIRM_BOOKING') {
+    return clean === 'action:confirm-booking' || clean === 'modal:booking';
   }
 
   if (type === 'VIEW_QUOTATION') {
@@ -274,9 +281,9 @@ function normalizeActionPayload(
   rawPayload: unknown,
   authMode: AiChatAuthMode,
   guardCtx?: ValidationGuardrailContext
-): { payload?: AiChatActionPayload; hadStrippedIds: boolean } {
+): { payload?: AiChatActionPayload; hadStrippedIds: boolean; wasWarrantyRequested: boolean } {
   if (!rawPayload || typeof rawPayload !== 'object') {
-    return { payload: undefined, hadStrippedIds: false };
+    return { payload: undefined, hadStrippedIds: false, wasWarrantyRequested: false };
   }
   const p = rawPayload as Record<string, unknown>;
   let hadStrippedIds = false;
@@ -365,6 +372,7 @@ function normalizeActionPayload(
   const preferredTimeRaw = p.preferredTime ?? p.preferred_time;
   const notesRaw = p.notes ?? p.complaint ?? p.symptom;
   const isWarrantyRaw = p.isWarranty ?? p.is_warranty;
+  const wasWarrantyRequested = isWarrantyRaw === true || String(isWarrantyRaw).toLowerCase() === 'true';
 
   const normalized: AiChatActionPayload = {};
   if (preselectedVehicleId !== null) normalized.preselectedVehicleId = preselectedVehicleId;
@@ -380,8 +388,8 @@ function normalizeActionPayload(
   if (typeof notesRaw === 'string' && notesRaw.trim()) {
     normalized.notes = notesRaw.trim().slice(0, 500);
   }
-  if (typeof isWarrantyRaw === 'boolean') {
-    normalized.isWarranty = isWarrantyRaw;
+  if (isWarrantyRaw !== undefined) {
+    normalized.isWarranty = false;
   }
   if (workOrderId !== null) normalized.workOrderId = workOrderId;
   if (quotationId !== null) normalized.quotationId = quotationId;
@@ -390,6 +398,142 @@ function normalizeActionPayload(
   return {
     payload: Object.keys(normalized).length > 0 ? normalized : undefined,
     hadStrippedIds,
+    wasWarrantyRequested,
+  };
+}
+
+function isSundayDateStr(dateStr: string): boolean {
+  const d = new Date(`${dateStr}T00:00:00.000Z`);
+  return Number.isNaN(d.getTime()) || d.getUTCDay() === 0;
+}
+
+function isValidOfficeTimeStr(timeStr: string): boolean {
+  const m = timeStr.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!m) return false;
+  const hour = Number(m[1]);
+  const minute = Number(m[2]);
+  return hour >= 8 && (hour < 17 || (hour === 17 && minute === 0));
+}
+
+function isFutureVnDateTime(dateStr: string, timeStr: string): boolean {
+  const dt = new Date(`${dateStr}T${timeStr}:00+07:00`);
+  return !Number.isNaN(dt.getTime()) && dt.getTime() > Date.now();
+}
+
+function validateAndEnrichConfirmBookingAction(
+  baseAction: AiChatActionItem,
+  authMode: AiChatAuthMode,
+  guardCtx?: ValidationGuardrailContext
+): AiChatActionItem {
+  const payload: AiChatActionPayload = baseAction.payload ? { ...baseAction.payload, isWarranty: false } : { isWarranty: false };
+  const ctx = guardCtx?.customerContext;
+
+  const downgrade = (): AiChatActionItem => {
+    guardCtx?.onIntervention?.('confirm_booking_downgraded_to_modal');
+    const downgradedPayload = { ...payload };
+    if (
+      downgradedPayload.preferredDate &&
+      (isSundayDateStr(downgradedPayload.preferredDate) ||
+        new Date(`${downgradedPayload.preferredDate}T23:59:59+07:00`).getTime() < Date.now())
+    ) {
+      delete downgradedPayload.preferredDate;
+    }
+    return {
+      type: 'OPEN_BOOKING_MODAL',
+      label: 'Đặt lịch trên biểu mẫu',
+      icon: 'calendar_month',
+      target: 'modal:booking',
+      ...(Object.keys(downgradedPayload).length > 0 ? { payload: downgradedPayload } : {}),
+    };
+  };
+
+  if (authMode !== 'CUSTOMER' || !ctx || !Array.isArray(ctx.vehicles) || ctx.vehicles.length === 0) {
+    return downgrade();
+  }
+
+  if (!payload.preselectedVehicleId && ctx.vehicles.length === 1) {
+    payload.preselectedVehicleId = ctx.vehicles[0].id;
+  }
+
+  const ownedVehicle = ctx.vehicles.find((v) => v.id === payload.preselectedVehicleId);
+  if (!ownedVehicle) {
+    return downgrade();
+  }
+
+  const hasServiceOrNotes =
+    (Array.isArray(payload.preselectedServiceIds) && payload.preselectedServiceIds.length > 0) ||
+    Boolean(payload.notes && payload.notes.trim().length > 0);
+  if (!hasServiceOrNotes) {
+    return downgrade();
+  }
+
+  if (
+    !payload.preferredDate ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(payload.preferredDate) ||
+    isSundayDateStr(payload.preferredDate)
+  ) {
+    return downgrade();
+  }
+
+  if (!payload.preferredTime || !isValidOfficeTimeStr(payload.preferredTime)) {
+    return downgrade();
+  }
+
+  if (!isFutureVnDateTime(payload.preferredDate, payload.preferredTime)) {
+    return downgrade();
+  }
+
+  const hasConflict = (ctx.upcomingAppointments || []).some((apt) => {
+    const activeStatuses = ['REQUESTED', 'CONFIRMED', 'RESCHEDULED', 'ARRIVED'];
+    if (!activeStatuses.includes(String(apt.status || '').toUpperCase())) return false;
+    if (String(apt.scheduledDate || '').slice(0, 10) !== payload.preferredDate) return false;
+    return apt.vehicle?.licensePlate === ownedVehicle.licensePlate;
+  });
+  if (hasConflict) {
+    return downgrade();
+  }
+
+  // Enrich server-verified summary fields for the InChatBookingCard
+  payload.vehicleLabel = `${ownedVehicle.licensePlate} (${ownedVehicle.make} ${ownedVehicle.model})`.trim();
+
+  if (guardCtx?.catalog && payload.preselectedServiceIds && payload.preselectedServiceIds.length > 0) {
+    const allSvcs = guardCtx.catalog.categories.flatMap((c) => c.services);
+    const matchedSvcs = payload.preselectedServiceIds
+      .map((id) => allSvcs.find((s) => s.id === id))
+      .filter((s): s is CatalogServiceItem => Boolean(s));
+
+    if (matchedSvcs.length > 0) {
+      payload.serviceNames = matchedSvcs.map((s) => s.name);
+      let total = 0;
+      let canEstimateExact = true;
+      for (const svc of matchedSvcs) {
+        if (svc.pricingType === 'FIXED' && svc.fixedPrice !== null) {
+          total += svc.fixedPrice;
+        } else if (svc.pricingType === 'VEHICLE_SIZE') {
+          const sizeMatch = svc.sizePrices.find(
+            (sp) => sp.vehicleSize.toUpperCase() === String(ownedVehicle.vehicleSize || '').toUpperCase()
+          );
+          if (sizeMatch) {
+            total += sizeMatch.price;
+          } else {
+            canEstimateExact = false;
+            break;
+          }
+        } else {
+          canEstimateExact = false;
+          break;
+        }
+      }
+      payload.estimatedTotal = canEstimateExact ? total : null;
+    }
+  }
+
+  return {
+    type: 'CONFIRM_BOOKING',
+    label: baseAction.label || 'Xác nhận đặt lịch',
+    icon: baseAction.icon || 'event_available',
+    target: 'action:confirm-booking',
+    payload,
   };
 }
 
@@ -397,6 +541,8 @@ function defaultTargetForType(type: AiChatActionType): string {
   switch (type) {
     case 'OPEN_BOOKING_MODAL':
       return 'modal:booking';
+    case 'CONFIRM_BOOKING':
+      return 'action:confirm-booking';
     case 'VIEW_QUOTATION':
       return 'modal:quotation';
     case 'VIEW_INVOICE':
@@ -474,14 +620,62 @@ export class AiCustomerValidatorService {
             ? a.icon.trim()
             : 'arrow_forward';
 
-        const { payload } = normalizeActionPayload(a.payload, authMode, guardCtx);
-        actions.push({
-          type: normalizedType,
-          label,
-          icon,
-          target,
-          ...(payload ? { payload } : {}),
-        });
+        const { payload, wasWarrantyRequested } = normalizeActionPayload(a.payload, authMode, guardCtx);
+
+        if (
+          (normalizedType === 'OPEN_BOOKING_MODAL' || normalizedType === 'CONFIRM_BOOKING') &&
+          (wasWarrantyRequested || intent === 'WARRANTY_INQUIRY')
+        ) {
+          guardCtx?.onIntervention?.('warranty_booking_blocked_redirected');
+          actions.push({
+            type: 'NAVIGATE',
+            label: 'Tra cứu bảo hành',
+            icon: 'verified_user',
+            target: '/customer/profile?tab=warranty',
+          });
+          if (actions.length >= 3) break;
+          continue;
+        }
+
+        if (
+          (normalizedType === 'OPEN_BOOKING_MODAL' || normalizedType === 'CONFIRM_BOOKING') &&
+          authMode === 'CUSTOMER' &&
+          guardCtx?.customerContext &&
+          guardCtx.customerContext.vehicles.length === 0
+        ) {
+          guardCtx?.onIntervention?.('zero_vehicle_redirected_to_vehicles');
+          actions.push({
+            type: 'NAVIGATE',
+            label: 'Thêm phương tiện mới',
+            icon: 'directions_car',
+            target: '/customer/profile?tab=vehicles',
+          });
+          if (actions.length >= 3) break;
+          continue;
+        }
+
+        if (normalizedType === 'CONFIRM_BOOKING') {
+          const validatedBooking = validateAndEnrichConfirmBookingAction(
+            {
+              type: normalizedType,
+              label,
+              icon,
+              target,
+              ...(payload ? { payload } : {}),
+            },
+            authMode,
+            guardCtx
+          );
+          actions.push(validatedBooking);
+        } else {
+          actions.push({
+            type: normalizedType,
+            label,
+            icon,
+            target,
+            ...(payload ? { payload } : {}),
+          });
+        }
 
         if (actions.length >= 3) break;
       }
@@ -712,20 +906,21 @@ export class AiCustomerValidatorService {
           : `Xe **${recentWo.vehicle.licensePlate}** vừa hoàn tất phiếu **${recentWo.woNumber}** ngày ${recentWo.completedAt}.`;
 
         return {
-          reply: `${detail}\n\nAnh/Chị mang xe qua xưởng để kỹ thuật viên kiểm tra lại miễn phí công kiểm tra theo chính sách bảo hành nhé.`,
+          reply: `${detail}\n\nTrợ lý AI chưa hỗ trợ đặt lịch bảo hành trực tiếp. Anh/Chị vui lòng kiểm tra chi tiết tại mục **Bảo hành** trên hồ sơ hoặc gọi **Hotline 1900 6868** để Cố vấn dịch vụ đối soát hạng mục bảo hành nhé.`,
           intent: 'WARRANTY_INQUIRY',
-          suggested_questions: ['Đặt lịch kiểm tra bảo hành', 'Gọi cố vấn dịch vụ'],
+          suggested_questions: ['Gọi cố vấn dịch vụ', 'Bảng giá bảo dưỡng định kỳ'],
           actions: [
             {
-              type: 'OPEN_BOOKING_MODAL',
-              label: 'Đặt lịch kiểm tra bảo hành',
-              icon: 'calendar_month',
-              target: 'modal:booking',
-              payload: {
-                preselectedVehicleId: topWarranty?.vehicleId ?? recentWo?.vehicle.id ?? null,
-                isWarranty: true,
-                notes: 'Kiểm tra lại hạng mục bảo hành sau khi nhận xe',
-              },
+              type: 'NAVIGATE',
+              label: 'Tra cứu bảo hành',
+              icon: 'verified_user',
+              target: '/customer/profile?tab=warranty',
+            },
+            {
+              type: 'CALL_HOTLINE',
+              label: 'Gọi Hotline 1900 6868',
+              icon: 'call',
+              target: 'tel:19006868',
             },
           ],
         };
@@ -734,6 +929,22 @@ export class AiCustomerValidatorService {
 
     // Tier 3: Booking Schedule & Ranked Service Catalog Lookup (Stopword-immune)
     if (asksBooking) {
+      if (authMode === 'CUSTOMER' && customerContext && customerContext.vehicles.length === 0) {
+        return {
+          reply:
+            'Tài khoản của Anh/Chị hiện chưa có phương tiện nào trong hồ sơ. Vui lòng thêm xe mới vào hồ sơ trước khi đặt lịch hẹn nhé.',
+          intent: 'BOOKING_REQUEST',
+          suggested_questions: ['Giờ làm việc của xưởng?', 'Bảng giá bảo dưỡng định kỳ'],
+          actions: [
+            {
+              type: 'NAVIGATE',
+              label: 'Thêm phương tiện mới',
+              icon: 'directions_car',
+              target: '/customer/profile?tab=vehicles',
+            },
+          ],
+        };
+      }
       return {
         reply: `Xưởng **${catalog.garageInfo.name}** tiếp nhận xe từ **${catalog.garageInfo.workingDays}** (**08:00 - 18:00**). Các khung giờ đặt lịch hẹn trực tuyến gồm:\n- **Ca sáng:** ${catalog.garageInfo.bookingSlots.morning.join(', ')}\n- **Ca chiều:** ${catalog.garageInfo.bookingSlots.afternoon.join(', ')}\n\nMọi dịch vụ đều áp dụng **${catalog.garageInfo.vatPolicy}**. Anh/Chị có thể bấm nút bên dưới để chọn khung giờ phù hợp ạ.`,
         intent: 'BOOKING_REQUEST',

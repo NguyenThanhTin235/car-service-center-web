@@ -27,12 +27,15 @@ export default function CustomerAiChatWidget() {
     loadingStageMessage,
     streamingReply,
     restoredDraft,
+    bookingSubmittingMsgId,
+    bookingErrors,
     sendMessage,
     retryLastMessage,
     cancelSending,
     clearRestoredDraft,
     dismissNotice,
     resetConversation,
+    confirmBookingInChat,
   } = useCustomerAiChat();
 
   const [inputValue, setInputValue] = useState('');
@@ -278,6 +281,9 @@ export default function CustomerAiChatWidget() {
                 isLatestAssistant={msg.id === latestAssistantId}
                 onSelectQuestion={(q) => sendMessage(q)}
                 onTriggerAction={handleTriggerAction}
+                onConfirmBooking={confirmBookingInChat}
+                isBookingSubmitting={bookingSubmittingMsgId === msg.id}
+                bookingError={bookingErrors[msg.id] || null}
                 disabled={sending}
               />
             ))}

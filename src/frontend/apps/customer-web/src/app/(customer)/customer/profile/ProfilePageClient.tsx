@@ -598,6 +598,9 @@ export default function ProfilePageClient({ defaultTab }: { defaultTab?: TabKey 
       targetDate = new Date();
       setVehicleToast({ message: 'Không thể đặt lịch cho ngày trong quá khứ.', type: 'error' });
     }
+    if (targetDate.getDay() === 0) {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
 
     const firstValidSlot = ALL_BOOKING_SLOTS.find((slot) => !isBookingSlotInPast(targetDate, slot));
     if (firstValidSlot) {
@@ -606,6 +609,9 @@ export default function ProfilePageClient({ defaultTab }: { defaultTab?: TabKey 
     } else {
       const tomorrow = new Date(targetDate);
       tomorrow.setDate(tomorrow.getDate() + 1);
+      if (tomorrow.getDay() === 0) {
+        tomorrow.setDate(tomorrow.getDate() + 1);
+      }
       setBookingDate(tomorrow);
       setBookingTime('08:00');
     }
@@ -627,6 +633,9 @@ export default function ProfilePageClient({ defaultTab }: { defaultTab?: TabKey 
       if (!isNaN(parsed.getTime()) && parsed >= todayStart) {
         targetDate = parsed;
       }
+    }
+    if (targetDate.getDay() === 0) {
+      targetDate.setDate(targetDate.getDate() + 1);
     }
 
     let targetTime =
@@ -1269,15 +1278,19 @@ export default function ProfilePageClient({ defaultTab }: { defaultTab?: TabKey 
 
                     {/* 35 Calendar Cells */}
                     <div className="grid grid-cols-7 divide-x divide-y divide-slate-100 bg-white">
-                      {calendarDays.map((cell, idx) => (
+                      {calendarDays.map((cell, idx) => {
+                        const isSunday = cell.date.getDay() === 0;
+                        const isClosedOrPast = cell.isPast || isSunday;
+                        return (
                         <div
                           key={idx}
                           onClick={() => {
-                            if (!cell.isPast) {
+                            if (!isClosedOrPast) {
                               handleOpen3StepBooking(cell.date);
                             }
                           }}
-                          className={`min-h-[110px] p-2 flex flex-col justify-between transition-colors ${cell.isPast
+                          title={isSunday ? 'Xưởng nghỉ Chủ nhật' : undefined}
+                          className={`min-h-[110px] p-2 flex flex-col justify-between transition-colors ${isClosedOrPast
                               ? `bg-slate-50/70 text-slate-400 ${cell.appointments.length === 0 ? 'cursor-not-allowed' : 'cursor-default'}`
                               : `cursor-pointer group ${!cell.isCurrentMonth
                                   ? 'bg-slate-50/50 text-slate-300'
@@ -1292,14 +1305,16 @@ export default function ProfilePageClient({ defaultTab }: { defaultTab?: TabKey 
                             <span
                               className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${cell.isToday
                                   ? 'bg-blue-600 text-white shadow-sm font-bold'
-                                  : cell.isPast || !cell.isCurrentMonth
-                                    ? 'text-slate-400'
+                                  : isClosedOrPast || !cell.isCurrentMonth
+                                    ? isSunday && cell.isCurrentMonth ? 'text-red-400' : 'text-slate-400'
                                     : 'text-slate-800'
                                 }`}
                             >
                               {cell.dateNum}
                             </span>
-                            {cell.isCurrentMonth && !cell.isPast && (
+                            {isSunday && cell.isCurrentMonth ? (
+                              <span className="text-[10px] text-red-400 font-medium">Nghỉ</span>
+                            ) : cell.isCurrentMonth && !cell.isPast && (
                               <span className="opacity-0 group-hover:opacity-100 text-[10px] text-blue-600 font-semibold transition-opacity">
                                 + Đặt lịch
                               </span>
@@ -1332,7 +1347,8 @@ export default function ProfilePageClient({ defaultTab }: { defaultTab?: TabKey 
                             ))}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

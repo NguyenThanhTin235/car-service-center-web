@@ -76,6 +76,9 @@ export default function AddPartModal({
   const [selectedItem, setSelectedItem] = useState<AvailableInventoryItem | null>(null);
   const [plannedQuantity, setPlannedQuantity] = useState<number>(1);
   const [unitPrice, setUnitPrice] = useState<number>(0);
+  const [selectedParts, setSelectedParts] = useState<
+    Array<{ item: AvailableInventoryItem; plannedQuantity: number; unitPrice: number }>
+  >([]);
   const [submitting, setSubmitting] = useState(false);
 
   const currentSelectedJob = useMemo(() => {
@@ -135,6 +138,7 @@ export default function AddPartModal({
       const initialJobId = preselectedJobId || (availableJobs.length > 0 ? availableJobs[0].id : null);
       setSelectedJobId(initialJobId);
       setSelectedItem(null);
+      setSelectedParts([]);
       setSearchTerm('');
       setPlannedQuantity(1);
       setUnitPrice(0);
@@ -171,8 +175,33 @@ export default function AddPartModal({
   }, [searchTerm, isOpen, editingPart]);
 
   const handleSelectItem = (item: AvailableInventoryItem) => {
-    setSelectedItem(item);
-    setUnitPrice(item.sellingPrice || 0);
+    setSelectedParts((prev) => {
+      const exists = prev.some((p) => p.item.id === item.id);
+      if (exists) {
+        return prev.filter((p) => p.item.id !== item.id);
+      }
+      return [
+        ...prev,
+        {
+          item,
+          plannedQuantity: 1,
+          unitPrice: item.sellingPrice || 0,
+        },
+      ];
+    });
+  };
+
+  const handleUpdateSelectedPart = (
+    itemId: number,
+    patch: Partial<{ plannedQuantity: number; unitPrice: number }>
+  ) => {
+    setSelectedParts((prev) =>
+      prev.map((p) => (p.item.id === itemId ? { ...p, ...patch } : p))
+    );
+  };
+
+  const handleRemoveSelectedPart = (itemId: number) => {
+    setSelectedParts((prev) => prev.filter((p) => p.item.id !== itemId));
   };
 
   // Fetch AI Part Suggestions for the selected job (hỗ trợ refresh cache)
@@ -211,25 +240,38 @@ export default function AddPartModal({
     }
   };
 
-  // Apply an AI Suggestion to the current form
-  const handleApplyAiSuggestion = (suggestion: AIPartSuggestion) => {
-    const itemToSelect: AvailableInventoryItem = {
-      id: suggestion.item_id,
-      sku: suggestion.sku,
-      name: suggestion.part_name,
-      sellingPrice: Number(suggestion.unit_price) || 0,
-      onHand: suggestion.on_hand,
-      isActive: true,
-      uom: suggestion.uom ? { id: 0, name: suggestion.uom } : undefined,
-      brand: suggestion.brand_name ? { id: 0, name: suggestion.brand_name } : undefined,
-      partCategory: suggestion.category_name
-        ? { id: 0, code: '', name: suggestion.category_name, itemType: 'PART' }
-        : undefined,
-    };
+  const buildItemFromSuggestion = (suggestion: AIPartSuggestion): AvailableInventoryItem => ({
+    id: suggestion.item_id,
+    sku: suggestion.sku,
+    name: suggestion.part_name,
+    sellingPrice: Number(suggestion.unit_price) || 0,
+    onHand: suggestion.on_hand,
+    isActive: true,
+    uom: suggestion.uom ? { id: 0, name: suggestion.uom } : undefined,
+    brand: suggestion.brand_name ? { id: 0, name: suggestion.brand_name } : undefined,
+    partCategory: suggestion.category_name
+      ? { id: 0, code: '', name: suggestion.category_name, itemType: 'PART' }
+      : undefined,
+  });
 
-    setSelectedItem(itemToSelect);
-    setPlannedQuantity(suggestion.suggested_quantity);
-    setUnitPrice(Number(suggestion.unit_price) || 0);
+  // Apply/toggle an AI Suggestion in the multi-part selection list
+  const handleApplyAiSuggestion = (suggestion: AIPartSuggestion) => {
+    const itemToSelect = buildItemFromSuggestion(suggestion);
+    const alreadySelected = selectedParts.some((p) => p.item.id === itemToSelect.id);
+
+    setSelectedParts((prev) => {
+      if (prev.some((p) => p.item.id === itemToSelect.id)) {
+        return prev.filter((p) => p.item.id !== itemToSelect.id);
+      }
+      return [
+        ...prev,
+        {
+          item: itemToSelect,
+          plannedQuantity: suggestion.suggested_quantity || 1,
+          unitPrice: Number(suggestion.unit_price) || 0,
+        },
+      ];
+    });
 
     // Ensure it's in the inventoryItems list for consistent display
     setInventoryItems((prev) => {
@@ -237,12 +279,47 @@ export default function AddPartModal({
       return [itemToSelect, ...prev];
     });
 
-    toast.success(`Đã áp dụng: ${suggestion.part_name} (${suggestion.suggested_quantity} ${suggestion.uom || ''})`);
+    if (!alreadySelected) {
+      toast.success(`Đã thêm vào danh sách: ${suggestion.part_name} (${suggestion.suggested_quantity} ${suggestion.uom || ''})`);
+    }
+  };
+
+  // Apply all AI suggestions at once
+  const handleApplyAllAiSuggestions = () => {
+    if (!aiData?.suggestions?.length) return;
+    const newItems: AvailableInventoryItem[] = [];
+    setSelectedParts((prev) => {
+      const next = [...prev];
+      for (const sug of aiData.suggestions) {
+        const item = buildItemFromSuggestion(sug);
+        newItems.push(item);
+        if (!next.some((p) => p.item.id === item.id)) {
+          next.push({
+            item,
+            plannedQuantity: sug.suggested_quantity || 1,
+            unitPrice: Number(sug.unit_price) || 0,
+          });
+        }
+      }
+      return next;
+    });
+    setInventoryItems((prev) => {
+      const existingIds = new Set(prev.map((it) => it.id));
+      const missing = newItems.filter((it) => !existingIds.has(it.id));
+      return missing.length > 0 ? [...missing, ...prev] : prev;
+    });
+    toast.success(`Đã chọn toàn bộ ${aiData.suggestions.length} phụ tùng AI đề xuất`);
   };
 
   const totalAmount = useMemo(() => {
-    return Math.max(0, plannedQuantity * unitPrice);
-  }, [plannedQuantity, unitPrice]);
+    if (editingPart) {
+      return Math.max(0, plannedQuantity * unitPrice);
+    }
+    return selectedParts.reduce(
+      (sum, p) => sum + Math.max(0, p.plannedQuantity * p.unitPrice),
+      0
+    );
+  }, [editingPart, plannedQuantity, unitPrice, selectedParts]);
 
   const isStockShortage = useMemo(() => {
     if (!selectedItem) return false;
@@ -255,37 +332,79 @@ export default function AddPartModal({
       toast.error('Vui lòng chọn công việc thực hiện');
       return;
     }
-    if (!editingPart && !selectedItem) {
-      toast.error('Vui lòng chọn phụ tùng từ danh mục kho');
-      return;
-    }
-    if (plannedQuantity <= 0) {
-      toast.error('Số lượng dự kiến phải lớn hơn 0');
-      return;
-    }
 
-    try {
-      setSubmitting(true);
-      if (editingPart) {
+    if (editingPart) {
+      if (plannedQuantity <= 0) {
+        toast.error('Số lượng dự kiến phải lớn hơn 0');
+        return;
+      }
+      try {
+        setSubmitting(true);
         await updateJobPart(workOrder.id, selectedJobId, editingPart.id, {
           planned_quantity: plannedQuantity,
           unit_price: unitPrice,
         });
         aiPartSuggestionCache.delete(`${workOrder.id}:${selectedJobId}`);
         toast.success('Cập nhật phụ tùng thành công');
-      } else {
-        await addJobPart(workOrder.id, selectedJobId, {
-          item_id: selectedItem!.id,
-          planned_quantity: plannedQuantity,
-          unit_price: unitPrice,
-        });
-        aiPartSuggestionCache.delete(`${workOrder.id}:${selectedJobId}`);
-        toast.success('Khai báo phụ tùng vào công việc thành công');
+        onSuccess();
+        onClose();
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || err.message || 'Lỗi khi lưu phụ tùng');
+      } finally {
+        setSubmitting(false);
       }
-      onSuccess();
-      onClose();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || 'Lỗi khi lưu phụ tùng');
+      return;
+    }
+
+    if (selectedParts.length === 0) {
+      toast.error('Vui lòng chọn ít nhất một phụ tùng từ danh mục kho');
+      return;
+    }
+    const invalidQty = selectedParts.find((p) => p.plannedQuantity <= 0);
+    if (invalidQty) {
+      toast.error(`Số lượng dự kiến của "${invalidQty.item.name}" phải lớn hơn 0`);
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      let successCount = 0;
+      const failedParts: typeof selectedParts = [];
+      let lastErrorMsg = '';
+
+      for (const part of selectedParts) {
+        try {
+          await addJobPart(workOrder.id, selectedJobId, {
+            item_id: part.item.id,
+            planned_quantity: part.plannedQuantity,
+            unit_price: part.unitPrice,
+          });
+          successCount++;
+        } catch (err: any) {
+          failedParts.push(part);
+          lastErrorMsg = err.response?.data?.message || err.message || 'Lỗi khi thêm phụ tùng';
+        }
+      }
+
+      aiPartSuggestionCache.delete(`${workOrder.id}:${selectedJobId}`);
+
+      if (failedParts.length === 0) {
+        toast.success(
+          successCount > 1
+            ? `Đã khai báo ${successCount} phụ tùng vào công việc thành công`
+            : 'Khai báo phụ tùng vào công việc thành công'
+        );
+        onSuccess();
+        onClose();
+      } else {
+        setSelectedParts(failedParts);
+        if (successCount > 0) {
+          onSuccess();
+          toast.error(`Đã thêm ${successCount} phụ tùng, ${failedParts.length} phụ tùng lỗi: ${lastErrorMsg}`);
+        } else {
+          toast.error(lastErrorMsg || 'Lỗi khi lưu phụ tùng');
+        }
+      }
     } finally {
       setSubmitting(false);
     }
@@ -483,6 +602,16 @@ export default function AddPartModal({
 
                   {aiData && (
                     <>
+                      {aiData.suggestions.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={handleApplyAllAiSuggestions}
+                          className="px-2.5 py-1.5 rounded-lg bg-primary text-on-primary hover:bg-primary/90 text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">done_all</span>
+                          Áp dụng tất cả ({aiData.suggestions.length})
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleFetchAiSuggestions(selectedJobId, true)}
@@ -546,7 +675,7 @@ export default function AddPartModal({
                   ) : (
                     <div className="space-y-2 max-h-56 overflow-y-auto pr-1 styled-scrollbar">
                       {aiData.suggestions.map((sug, idx) => {
-                        const isChosen = selectedItem?.id === sug.item_id;
+                        const isChosen = selectedParts.some((p) => p.item.id === sug.item_id);
                         return (
                           <div
                             key={`${sug.item_id}-${idx}`}
@@ -659,7 +788,7 @@ export default function AddPartModal({
                   </div>
                 ) : (
                   inventoryItems.map((item) => {
-                    const isSelected = selectedItem?.id === item.id;
+                    const isSelected = selectedParts.some((p) => p.item.id === item.id);
                     return (
                       <div
                         key={item.id}
@@ -732,73 +861,192 @@ export default function AddPartModal({
             </div>
           )}
 
-          {/* Quantities & Pricing Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Planned Quantity */}
-            <div>
-              <label className="block text-label-medium font-semibold text-on-surface mb-1.5">
-                Số lượng dự kiến <span className="text-error">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0.01"
-                  step="any"
-                  value={plannedQuantity}
-                  onChange={(e) => setPlannedQuantity(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-body-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  placeholder="VD: 1, 4, 0.5..."
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-body-small text-on-surface-variant">
-                  {selectedItem?.uom?.name || 'Cái'}
-                </span>
-              </div>
-            </div>
+          {/* Quantities & Pricing */}
+          {editingPart ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Planned Quantity */}
+                <div>
+                  <label className="block text-label-medium font-semibold text-on-surface mb-1.5">
+                    Số lượng dự kiến <span className="text-error">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="any"
+                      value={plannedQuantity}
+                      onChange={(e) => setPlannedQuantity(parseFloat(e.target.value) || 0)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-body-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      placeholder="VD: 1, 4, 0.5..."
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-body-small text-on-surface-variant">
+                      {selectedItem?.uom?.name || 'Cái'}
+                    </span>
+                  </div>
+                </div>
 
-            {/* Unit Price */}
-            <div>
-              <label className="block text-label-medium font-semibold text-on-surface mb-1.5">
-                Đơn giá dự kiến (VNĐ)
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  step="1000"
-                  value={unitPrice}
-                  onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-body-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  placeholder="0"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-body-small text-on-surface-variant">
-                  đ
-                </span>
+                {/* Unit Price */}
+                <div>
+                  <label className="block text-label-medium font-semibold text-on-surface mb-1.5">
+                    Đơn giá dự kiến (VNĐ)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      value={unitPrice}
+                      onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-body-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      placeholder="0"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-body-small text-on-surface-variant">
+                      đ
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* Stock Alert Warning Banner */}
-          {selectedItem && isStockShortage && (
-            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
-              <span className="material-symbols-outlined text-[20px] text-amber-600 shrink-0 mt-0.5">
-                warning
-              </span>
-              <div className="text-body-small">
-                <p className="font-semibold">Cảnh báo thiếu hụt kho:</p>
-                <p>
-                  Số lượng dự kiến vượt quá số lượng tồn thực tế (Tồn: {selectedItem.onHand}, Cần: {plannedQuantity}). Cần
-                  thông báo bộ phận kho chuẩn bị hoặc nhập thêm hàng.
-                </p>
+              {selectedItem && isStockShortage && (
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-[20px] text-amber-600 shrink-0 mt-0.5">
+                    warning
+                  </span>
+                  <div className="text-body-small">
+                    <p className="font-semibold">Cảnh báo thiếu hụt kho:</p>
+                    <p>
+                      Số lượng dự kiến vượt quá số lượng tồn thực tế (Tồn: {selectedItem.onHand}, Cần: {plannedQuantity}). Cần
+                      thông báo bộ phận kho chuẩn bị hoặc nhập thêm hàng.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-label-medium font-semibold text-on-surface">
+                  Danh sách phụ tùng sẽ khai báo ({selectedParts.length})
+                </label>
+                {selectedParts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedParts([])}
+                    className="text-xs font-semibold text-rose-600 hover:underline cursor-pointer"
+                  >
+                    Xóa tất cả
+                  </button>
+                )}
               </div>
+
+              {selectedParts.length === 0 ? (
+                <div className="p-4 rounded-xl border border-dashed border-outline-variant text-center text-body-small text-on-surface-variant">
+                  Chọn một hoặc nhiều phụ tùng từ danh sách kho hoặc từ gợi ý AI ở trên.
+                </div>
+              ) : (
+                <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1 styled-scrollbar">
+                  {selectedParts.map((part) => {
+                    const shortage = part.item.onHand < part.plannedQuantity;
+                    const lineTotal = Math.max(0, part.plannedQuantity * part.unitPrice);
+                    return (
+                      <div
+                        key={part.item.id}
+                        className="p-3 rounded-xl border border-outline-variant bg-surface-container-low space-y-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0 flex items-center gap-2 flex-wrap">
+                            <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                              {part.item.sku}
+                            </span>
+                            <span className="font-semibold text-sm text-on-surface truncate">
+                              {part.item.name}
+                            </span>
+                            <span
+                              className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${
+                                shortage
+                                  ? 'bg-amber-500/15 text-amber-700'
+                                  : 'bg-emerald-500/10 text-emerald-700'
+                              }`}
+                            >
+                              Tồn: {part.item.onHand}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSelectedPart(part.item.id)}
+                            aria-label={`Bỏ chọn ${part.item.name}`}
+                            className="w-7 h-7 rounded-lg hover:bg-rose-500/10 text-on-surface-variant hover:text-rose-600 flex items-center justify-center shrink-0 cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">close</span>
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 items-center">
+                          <div>
+                            <span className="text-[11px] text-on-surface-variant block mb-0.5">
+                              Số lượng ({part.item.uom?.name || 'Cái'})
+                            </span>
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="any"
+                              value={part.plannedQuantity}
+                              onChange={(e) =>
+                                handleUpdateSelectedPart(part.item.id, {
+                                  plannedQuantity: parseFloat(e.target.value) || 0,
+                                })
+                              }
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm font-mono tabular-nums focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[11px] text-on-surface-variant block mb-0.5">
+                              Đơn giá (VNĐ)
+                            </span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1000"
+                              value={part.unitPrice}
+                              onChange={(e) =>
+                                handleUpdateSelectedPart(part.item.id, {
+                                  unitPrice: parseFloat(e.target.value) || 0,
+                                })
+                              }
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm font-mono tabular-nums focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div className="col-span-2 sm:col-span-1 text-right">
+                            <span className="text-[11px] text-on-surface-variant block mb-0.5">Thành tiền</span>
+                            <span className="text-sm font-bold text-primary font-mono tabular-nums">
+                              {lineTotal.toLocaleString('vi-VN')} đ
+                            </span>
+                          </div>
+                        </div>
+
+                        {shortage && (
+                          <p className="text-[11px] text-amber-700 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">warning</span>
+                            Số lượng dự kiến ({part.plannedQuantity}) vượt tồn kho ({part.item.onHand}).
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
           {/* Real-time Calculation Summary */}
           <div className="p-4 rounded-xl bg-surface-container border border-outline-variant/60 flex items-center justify-between">
             <span className="text-body-medium font-medium text-on-surface-variant">
-              Thành tiền dự kiến:
+              {editingPart
+                ? 'Thành tiền dự kiến:'
+                : `Tổng thành tiền dự kiến (${selectedParts.length} phụ tùng):`}
             </span>
-            <span className="text-title-medium font-bold text-primary">
+            <span className="text-title-medium font-bold text-primary font-mono tabular-nums">
               {totalAmount.toLocaleString('vi-VN')} VNĐ
             </span>
           </div>
@@ -817,13 +1065,17 @@ export default function AddPartModal({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={submitting || (!editingPart && !selectedItem) || !selectedJobId}
+            disabled={submitting || (!editingPart && selectedParts.length === 0) || !selectedJobId}
             className="px-5 py-2.5 rounded-xl bg-primary text-on-primary hover:bg-primary/90 font-semibold text-body-medium shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
           >
             {submitting && (
               <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
             )}
-            {editingPart ? 'Lưu thay đổi' : 'Khai báo phụ tùng'}
+            {editingPart
+              ? 'Lưu thay đổi'
+              : selectedParts.length > 1
+                ? `Khai báo ${selectedParts.length} phụ tùng`
+                : 'Khai báo phụ tùng'}
           </button>
         </div>
       </div>

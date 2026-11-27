@@ -25,17 +25,32 @@ export interface StoredChatActionPayload {
   preferredTime?: string | null;
   notes?: string | null;
   isWarranty?: boolean;
+  vehicleLabel?: string | null;
+  serviceNames?: string[];
+  estimatedTotal?: number | null;
   workOrderId?: number | null;
   quotationId?: number | null;
   invoiceId?: number | null;
 }
 
 export interface StoredChatActionItem {
-  type: 'NAVIGATE' | 'OPEN_BOOKING_MODAL' | 'VIEW_QUOTATION' | 'VIEW_INVOICE' | 'CALL_HOTLINE';
+  type:
+    | 'NAVIGATE'
+    | 'OPEN_BOOKING_MODAL'
+    | 'CONFIRM_BOOKING'
+    | 'VIEW_QUOTATION'
+    | 'VIEW_INVOICE'
+    | 'CALL_HOTLINE';
   label: string;
   icon: string;
   target: string;
   payload?: StoredChatActionPayload;
+}
+
+export interface StoredChatBookingResult {
+  appointmentId: number;
+  scheduledDate: string;
+  scheduledTime: string;
 }
 
 export interface StoredChatMessage {
@@ -46,6 +61,7 @@ export interface StoredChatMessage {
   isFallback?: boolean;
   suggestedQuestions?: string[];
   actions?: StoredChatActionItem[];
+  bookingResult?: StoredChatBookingResult;
 }
 
 export interface MarkdownInlineSpan {

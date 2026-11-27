@@ -19,6 +19,7 @@ export type AiChatIntent =
 export type AiChatActionType =
   | 'NAVIGATE'
   | 'OPEN_BOOKING_MODAL'
+  | 'CONFIRM_BOOKING'
   | 'VIEW_QUOTATION'
   | 'VIEW_INVOICE'
   | 'CALL_HOTLINE';
@@ -30,6 +31,9 @@ export interface AiChatActionPayload {
   preferredTime?: string | null;
   notes?: string | null;
   isWarranty?: boolean;
+  vehicleLabel?: string | null;
+  serviceNames?: string[];
+  estimatedTotal?: number | null;
   workOrderId?: number | null;
   quotationId?: number | null;
   invoiceId?: number | null;

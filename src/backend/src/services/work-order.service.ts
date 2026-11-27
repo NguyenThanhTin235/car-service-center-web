@@ -2624,14 +2624,18 @@ export class WorkOrderService {
       jobName?: string;
       woNumber?: string;
       userId?: number;
+      customerId?: number;
+      woId?: number;
       partsUsage?: Array<{ jobPartId: number; usedQuantity: number }>;
     }
   ) {
     const parts = await tx.jobPart.findMany({
       where: { job_id: jobId },
-      include: { item: true },
+      include: { item: { include: { part_category: true } } },
     });
     if (parts.length === 0) return;
+
+    const returnedSummary: Array<{ name: string; returnedQty: number; reductionAmount: number }> = [];
 
     for (const part of parts) {
       if (jobStatus === 'COMPLETED' || jobStatus === 'PASSED') {
@@ -2726,6 +2730,15 @@ export class WorkOrderService {
             }
           }
         }
+        if (returnedQty > 0) {
+          const partLabel =
+            part.item?.part_category?.name || part.item?.sku || `Phụ tùng #${part.item_id}`;
+          returnedSummary.push({
+            name: partLabel,
+            returnedQty,
+            reductionAmount: Math.round(returnedQty * (Number(part.unit_price) || 0)),
+          });
+        }
       } else if (jobStatus === 'IN_PROGRESS' || jobStatus === 'REWORK') {
         if (part.status !== 'USED' && part.status !== 'ISSUED') {
           await this.issueJobPartWithStock(
@@ -2748,6 +2761,24 @@ export class WorkOrderService {
           },
         });
       }
+    }
+
+    if (returnedSummary.length > 0 && meta?.customerId && tx.notification) {
+      const totalReduction = returnedSummary.reduce((sum, item) => sum + item.reductionAmount, 0);
+      const partNames = returnedSummary.map((r) => `${r.name} (SL hoàn: ${r.returnedQty})`).join(', ');
+      const reductionText =
+        totalReduction > 0
+          ? ` Chi phí hóa đơn thực tế sẽ được giảm trừ ${totalReduction.toLocaleString('vi-VN')} đ so với báo giá ban đầu.`
+          : ' Chi phí hóa đơn thực tế sẽ được điều chỉnh giảm tương ứng.';
+      await tx.notification.create({
+        data: {
+          user_id: meta.customerId,
+          type: 'INFO',
+          title: 'Hoàn trả phụ tùng thừa về kho',
+          message: `Công việc "${meta.jobName || `Job #${jobId}`}" (${meta.woNumber || ''}) đã hoàn tất và hoàn kho: ${partNames}.${reductionText}`,
+          link: meta.woId ? `/customer/tracking?woId=${meta.woId}` : '/customer/tracking',
+        },
+      });
     }
   }
 
@@ -2892,6 +2923,8 @@ export class WorkOrderService {
         jobName: job.name,
         woNumber: wo.wo_number,
         userId: wo.advisor_id || 1,
+        customerId: wo.customer_id,
+        woId: wo.id,
         partsUsage,
       });
 

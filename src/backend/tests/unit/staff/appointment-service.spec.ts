@@ -332,7 +332,7 @@ describe('AppointmentService - Desk-Staff Unit Tests', () => {
       prismaMock.appointment.update.mockResolvedValue({
         id: 15,
         status: 'RESCHEDULED',
-        scheduled_date: new Date('2026-12-06T00:00:00.000Z'),
+        scheduled_date: new Date('2026-12-07T00:00:00.000Z'),
         scheduled_time: new Date('1970-01-01T11:00:00.000Z'),
         customer: { full_name: 'Tran B', email: 'b@example.com' },
         vehicle: { license_plate: '51A-111.11', make: 'Mazda', model: 'CX-5' },
@@ -340,7 +340,7 @@ describe('AppointmentService - Desk-Staff Unit Tests', () => {
 
       const staffRescheduled = await service.updateAppointment(
         15,
-        { scheduled_date: '2026-12-06', scheduled_time: '11:00' },
+        { scheduled_date: '2026-12-07', scheduled_time: '11:00' },
         undefined,
         true
       );

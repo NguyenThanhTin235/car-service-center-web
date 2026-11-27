@@ -116,7 +116,11 @@ export default function CustomerBookingModal({
     initialServiceIds && initialServiceIds.length > 0 ? initialServiceIds : []
   );
   const [bookingNotes, setBookingNotes] = useState(initialNotes || '');
-  const [bookingDate, setBookingDate] = useState<Date>(initialDate);
+  const [bookingDate, setBookingDate] = useState<Date>(() => {
+    const d = new Date(initialDate);
+    if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+    return d;
+  });
   const [bookingTime, setBookingTime] = useState<string>(initialTime);
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
   const [isWarranty, setIsWarranty] = useState<boolean>(initialIsWarranty);
@@ -174,7 +178,9 @@ export default function CustomerBookingModal({
 
   useEffect(() => {
     if (initialDate) {
-      setBookingDate(initialDate);
+      const d = new Date(initialDate);
+      if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+      setBookingDate(d);
     }
   }, [initialDate]);
 
@@ -232,6 +238,10 @@ export default function CustomerBookingModal({
     }
     if (!bookingDate || !bookingTime) {
       onToast({ message: 'Vui lòng chọn ngày và giờ hẹn.', type: 'error' });
+      return;
+    }
+    if (bookingDate.getDay() === 0) {
+      onToast({ message: 'Xưởng nghỉ Chủ nhật, vui lòng chọn ngày từ Thứ 2 đến Thứ 7.', type: 'error' });
       return;
     }
 
@@ -731,14 +741,21 @@ export default function CustomerBookingModal({
                     const cellDate = new Date(year, month, dayNum);
                     const cellDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
                     const isPastDay = cellDate < todayStart;
-                    const isDuplicateDay = !isPastDay && hasVehicleAppointmentOnDate(bookingVehicleId, cellDateStr);
+                    const isSunday = cellDate.getDay() === 0;
+                    const isDuplicateDay = !isPastDay && !isSunday && hasVehicleAppointmentOnDate(bookingVehicleId, cellDateStr);
                     const isSelectedDay = bookingDate.getDate() === dayNum;
                     return (
                       <button
                         key={dayNum}
                         type="button"
-                        disabled={isPastDay || isDuplicateDay}
-                        title={isDuplicateDay ? 'Xe này đã có lịch hẹn trong ngày này' : undefined}
+                        disabled={isPastDay || isSunday || isDuplicateDay}
+                        title={
+                          isSunday
+                            ? 'Xưởng nghỉ Chủ nhật'
+                            : isDuplicateDay
+                              ? 'Xe này đã có lịch hẹn trong ngày này'
+                              : undefined
+                        }
                         onClick={() => {
                           const newD = new Date(year, month, dayNum);
                           setBookingDate(newD);
@@ -750,7 +767,7 @@ export default function CustomerBookingModal({
                           }
                         }}
                         className={`h-7 rounded-lg font-medium font-mono tabular-nums text-xs flex items-center justify-center transition-all ${
-                          isPastDay
+                          isPastDay || isSunday
                             ? 'text-slate-300 cursor-not-allowed line-through'
                             : isDuplicateDay
                               ? 'bg-amber-50 text-amber-500 border border-amber-200 cursor-not-allowed'
