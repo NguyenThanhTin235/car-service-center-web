@@ -73,7 +73,11 @@ export default function CreateAppointmentModal({
   const [customerId, setCustomerId] = useState<string>('');
   const [customerSearch, setCustomerSearch] = useState<string>('');
   const [vehicleId, setVehicleId] = useState<string>('');
-  const [bookingDate, setBookingDate] = useState<Date>(() => (selectedDate ? new Date(selectedDate) : new Date()));
+  const [bookingDate, setBookingDate] = useState<Date>(() => {
+    const d = selectedDate ? new Date(selectedDate) : new Date();
+    if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+    return d;
+  });
   const [bookingTime, setBookingTime] = useState<string>(selectedTime || '08:00');
   const [notes, setNotes] = useState<string>('');
   const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
@@ -227,6 +231,10 @@ export default function CreateAppointmentModal({
   const handleSubmit = async () => {
     if (!bookingDate || !bookingTime) {
       setError('Vui lòng chọn ngày và khung giờ tiếp nhận.');
+      return;
+    }
+    if (bookingDate.getDay() === 0) {
+      setError('Xưởng nghỉ Chủ nhật, không thể đặt lịch hẹn vào ngày này.');
       return;
     }
 
@@ -880,12 +888,14 @@ export default function CreateAppointmentModal({
                         const todayStart = new Date();
                         todayStart.setHours(0, 0, 0, 0);
                         const isPastDay = cellDate < todayStart;
+                        const isSunday = cellDate.getDay() === 0;
                         const isSelectedDay = bookingDate.getDate() === dayNum;
                         return (
                           <button
                             key={dayNum}
                             type="button"
-                            disabled={isPastDay}
+                            disabled={isPastDay || isSunday}
+                            title={isSunday ? 'Xưởng nghỉ Chủ nhật' : undefined}
                             onClick={() => {
                               const newD = new Date(year, month, dayNum);
                               setBookingDate(newD);
@@ -895,7 +905,7 @@ export default function CreateAppointmentModal({
                               }
                             }}
                             className={`h-7 rounded-lg font-medium font-mono tabular-nums text-xs flex items-center justify-center transition-all ${
-                              isPastDay
+                              isPastDay || isSunday
                                 ? 'text-slate-300 cursor-not-allowed line-through'
                                 : isSelectedDay
                                   ? 'bg-blue-600 text-white font-bold shadow-sm cursor-pointer'

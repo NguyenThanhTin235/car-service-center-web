@@ -338,7 +338,7 @@ test.describe('Customer AI Support Chatbot — Mobile 390px, 4-State UI, Fallbac
     expect(pageErrors).toEqual([]);
   });
 
-  test('Fallback Indicator: displays "Phản hồi nhanh từ dữ liệu trực tiếp của xưởng" badge when is_fallback is true', async ({
+  test('Fallback Seamless Reply: renders fallback reply cleanly without internal fallback footer tag when is_fallback is true', async ({
     page,
   }) => {
     const pageErrors = attachPageErrorGuard(page);
@@ -373,10 +373,10 @@ test.describe('Customer AI Support Chatbot — Mobile 390px, 4-State UI, Fallbac
     await page.getByTestId('ai-chat-input').fill('thay dau bao nhieu tien');
     await page.getByTestId('ai-chat-send').click();
 
+    await expect(panel.locator('strong', { hasText: '950.000 ₫' })).toBeVisible();
     await expect(
       panel.getByText('Phản hồi nhanh từ dữ liệu trực tiếp của xưởng')
-    ).toBeVisible();
-    await expect(panel.locator('strong', { hasText: '950.000 ₫' })).toBeVisible();
+    ).toHaveCount(0);
     expect(pageErrors).toEqual([]);
   });
 

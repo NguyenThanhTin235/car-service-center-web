@@ -36,6 +36,10 @@ export default function RescheduleModal({ appointment, onClose }: RescheduleModa
     }
 
     const selectedDateTime = new Date(`${date}T${time}`);
+    if (selectedDateTime.getDay() === 0) {
+      setError('Xưởng nghỉ Chủ nhật, không thể dời lịch sang ngày này');
+      return;
+    }
     if (selectedDateTime < new Date()) {
       setError('Không thể dời lịch sang thời gian trong quá khứ');
       return;

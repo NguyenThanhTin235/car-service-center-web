@@ -225,6 +225,6 @@ export function verifySepayIpnSecretKey(
  */
 export function extractInvoiceNumberFromContent(content?: string): string | null {
   if (!content) return null;
-  const match = content.match(/INV(?:[-_][A-Za-z0-9]+)+|\bINV\d{4,}\b/i);
+  const match = content.match(/INV(?:[-_][A-Za-z0-9]+)+|\bINV(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{4,}\b/i);
   return match ? match[0].toUpperCase() : null;
 }

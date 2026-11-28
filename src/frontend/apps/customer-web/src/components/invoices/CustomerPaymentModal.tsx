@@ -266,9 +266,16 @@ export default function CustomerPaymentModal({
                           className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-surface-container rounded-lg text-on-surface-variant cursor-pointer"
                           title="Sao chép số tài khoản"
                         >
-                          <span className="material-symbols-outlined text-[14px]">
-                            {copiedField === 'acc' ? 'check' : 'content_copy'}
-                          </span>
+                          {copiedField === 'acc' ? (
+                            <svg className="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M20 6 9 17l-5-5" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                              <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                            </svg>
+                          )}
                         </button>
                       </div>
                     </div>
@@ -292,9 +299,16 @@ export default function CustomerPaymentModal({
                           className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-amber-100 rounded-lg text-amber-800 cursor-pointer"
                           title="Sao chép nội dung"
                         >
-                          <span className="material-symbols-outlined text-[16px]">
-                            {copiedField === 'content' ? 'check' : 'content_copy'}
-                          </span>
+                          {copiedField === 'content' ? (
+                            <svg className="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M20 6 9 17l-5-5" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                              <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                            </svg>
+                          )}
                         </button>
                       </div>
                     </div>

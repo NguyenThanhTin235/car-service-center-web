@@ -347,12 +347,20 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
                             <button
                               type="button"
                               onClick={() => copyToClipboard(sepayData.bankInfo!.accountNumber, 'acc')}
+                              aria-label="Sao chép số tài khoản"
                               className="w-8 h-8 flex items-center justify-center hover:bg-slate-200/80 rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer transition-colors shrink-0"
                               title="Sao chép số tài khoản"
                             >
-                              <span className="material-symbols-outlined text-[14px]">
-                                {copiedField === 'acc' ? 'check' : 'content_copy'}
-                              </span>
+                              {copiedField === 'acc' ? (
+                                <svg className="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M20 6 9 17l-5-5" />
+                                </svg>
+                              ) : (
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                                </svg>
+                              )}
                             </button>
                           </div>
                         </div>
@@ -372,12 +380,20 @@ export default function PaymentModal({ isOpen, onClose, invoice, onSuccess }: Pr
                             <button
                               type="button"
                               onClick={() => copyToClipboard(sepayData.bankInfo!.transferContent, 'memo')}
+                              aria-label="Sao chép nội dung chuyển khoản"
                               className="w-8 h-8 flex items-center justify-center hover:bg-amber-100 rounded-lg text-amber-900 cursor-pointer transition-colors shrink-0"
                               title="Sao chép nội dung chuyển khoản"
                             >
-                              <span className="material-symbols-outlined text-[14px]">
-                                {copiedField === 'memo' ? 'check' : 'content_copy'}
-                              </span>
+                              {copiedField === 'memo' ? (
+                                <svg className="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M20 6 9 17l-5-5" />
+                                </svg>
+                              ) : (
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                                </svg>
+                              )}
                             </button>
                           </div>
                         </div>

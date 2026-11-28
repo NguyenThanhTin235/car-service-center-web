@@ -1,11 +1,15 @@
 import { Router } from 'express';
-import { optionalAuthenticate } from '../middlewares/auth.middleware';
-import { aiChatRateLimiter } from '../middlewares/ai-chat-rate-limit.middleware';
-import { getWelcome, postMessage } from '../controllers/ai-chat.controller';
+import { authenticate, authorize, optionalAuthenticate } from '../middlewares/auth.middleware';
+import {
+  aiChatRateLimiter,
+  aiWelcomeRateLimiter,
+} from '../middlewares/ai-chat-rate-limit.middleware';
+import { getMetrics, getWelcome, postMessage } from '../controllers/ai-chat.controller';
 
 const router = Router();
 
-router.get('/welcome', optionalAuthenticate, getWelcome);
+router.get('/welcome', optionalAuthenticate, aiWelcomeRateLimiter, getWelcome);
 router.post('/message', optionalAuthenticate, aiChatRateLimiter, postMessage);
+router.get('/metrics', authenticate, authorize('ADMIN', 'MANAGER'), getMetrics);
 
 export default router;

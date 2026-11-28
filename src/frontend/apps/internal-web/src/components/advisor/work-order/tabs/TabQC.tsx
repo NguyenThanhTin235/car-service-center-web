@@ -294,7 +294,7 @@ export default function TabQC({
         } else {
           toast(
             `Đã ghi nhận ${res.data?.failCount} hạng mục lỗi. Hệ thống đã tự động tạo Job sửa lại (Rework).`,
-            { icon: '⚠️', duration: 4000 }
+            { duration: 4000 }
           );
         }
         await Promise.all([fetchQcData(true), refetchWO()]);
@@ -340,7 +340,7 @@ export default function TabQC({
         } else {
           toast(
             `Đã lưu kết quả KCS (${res.data.overallPassCount} đạt, ${res.data.totalFailCount} lỗi). Hệ thống đã tự động tạo Job sửa lại (Rework).`,
-            { icon: '⚠️', duration: 4500 }
+            { duration: 4500 }
           );
         }
         await Promise.all([fetchQcData(true), refetchWO()]);

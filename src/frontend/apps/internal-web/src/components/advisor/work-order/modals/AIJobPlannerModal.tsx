@@ -246,7 +246,7 @@ export default function AIJobPlannerModal({
           service_name: svc.service_name,
           category_type: svc.category_type,
           finding_id: svc.finding_id,
-          pricing_type: svc.category_type === 'OTHER' ? 'FIXED' : 'LABOUR_PARTS',
+          pricing_type: svc.is_existing_service ? undefined : 'LABOUR_PARTS',
           jobs: selectedJobs.map((j) => ({
             name: j.name,
             description: j.description,

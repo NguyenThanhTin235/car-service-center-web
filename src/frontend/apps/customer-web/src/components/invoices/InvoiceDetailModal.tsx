@@ -149,15 +149,25 @@ export default function InvoiceDetailModal({
                         </td>
                       </tr>
                     ) : (
-                      selectedInvoice.lines.map((item) => (
-                        <tr key={item.id}>
+                      selectedInvoice.lines.map((item) => {
+                        const isReturnedPart =
+                          (item.lineType === 'PART' || item.lineType === 'MATERIAL') && item.quantity === 0;
+                        return (
+                        <tr key={item.id} className={isReturnedPart ? 'bg-emerald-50/40' : undefined}>
                           <td className="py-2.5 px-3">
-                            <span className="font-semibold text-on-surface block">
+                            <span className={`font-semibold block ${isReturnedPart ? 'text-on-surface-variant line-through' : 'text-on-surface'}`}>
                               {item.description}
                             </span>
-                            <span className="text-[10px] text-outline">
-                              Loại: {item.lineType === 'PART' ? 'Phụ tùng' : item.lineType === 'LABOUR' ? 'Công thợ' : 'Dịch vụ'}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                              <span className="text-[10px] text-outline">
+                                Loại: {item.lineType === 'PART' ? 'Phụ tùng' : item.lineType === 'LABOUR' ? 'Công thợ' : 'Dịch vụ'}
+                              </span>
+                              {isReturnedPart && (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-semibold">
+                                  Hoàn kho — Không tính phí
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-2.5 px-3 text-center font-mono">
                             {item.quantity}
@@ -165,11 +175,12 @@ export default function InvoiceDetailModal({
                           <td className="py-2.5 px-3 text-right font-mono">
                             {item.unitPrice.toLocaleString()}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-bold font-mono text-on-surface">
+                          <td className={`py-2.5 px-3 text-right font-bold font-mono ${isReturnedPart ? 'text-emerald-700' : 'text-on-surface'}`}>
                             {item.amount.toLocaleString()}
                           </td>
                         </tr>
-                      ))
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

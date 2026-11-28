@@ -1091,8 +1091,8 @@ describe('QA Security & Guardrails Adversarial Suite — AutoCare Pro AI Concier
       expect(warrantyRes.intent).toBe('WARRANTY_INQUIRY');
       expect(warrantyRes.reply).toContain('6 tháng');
       expect(warrantyRes.actions[0]).toMatchObject({
-        type: 'OPEN_BOOKING_MODAL',
-        payload: { preselectedVehicleId: 201, isWarranty: true },
+        type: 'NAVIGATE',
+        target: '/customer/profile?tab=warranty',
       });
     });
 

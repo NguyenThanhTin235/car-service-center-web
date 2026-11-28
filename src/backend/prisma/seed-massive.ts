@@ -1890,6 +1890,76 @@ async function main() {
       woIndex++;
     }
   }
+
+  // ---- 2 HÓA ĐƠN TEST THANH TOÁN QR 5.000đ (ISSUED - CHỜ THANH TOÁN) ----
+  const qrTestAdv = advisors[0] || staffs[0];
+  for (let qIdx = 0; qIdx < 2; qIdx++) {
+    const cust = customers[qIdx] || customers[0];
+    const veh = vehicles.find((v) => v.customer_id === cust.id) || vehicles[0];
+    const qrWo = await prisma.workOrder.create({
+      data: {
+        wo_number: `WO-QR-5K-${qIdx + 1}`,
+        customer_id: cust.id,
+        vehicle_id: veh.id,
+        advisor_id: qrTestAdv.id,
+        source_type: WorkOrderStatus ? WorkOrderSourceType.WALK_IN : WorkOrderSourceType.WALK_IN,
+        status: WorkOrderStatus.BILLING_REQUESTED,
+        created_by_id: qrTestAdv.id,
+      },
+    });
+    const qrWos = await prisma.woService.create({
+      data: {
+        work_order_id: qrWo.id,
+        service_id: services[0].id,
+        name: `Kiểm tra nhanh & test thanh toán QR #${qIdx + 1}`,
+        pricing_type: serviceData[0].pricingType,
+        status: ServiceStatus.COMPLETED,
+        sort_order: 1,
+      },
+    });
+    await prisma.quotation.create({
+      data: {
+        work_order_id: qrWo.id,
+        quotation_number: `QUO-QR-5K-${qIdx + 1}`,
+        status: QuotationStatus.APPROVED,
+        subtotal: 5000,
+        tax_amount: 0,
+        grand_total: 5000,
+        created_by_id: qrTestAdv.id,
+        approved_at: new Date(),
+      },
+    });
+    await prisma.invoice.create({
+      data: {
+        work_order_id: qrWo.id,
+        invoice_number: `INV-QR-5K-0${qIdx + 1}`,
+        status: InvoiceStatus.ISSUED,
+        subtotal: 5000,
+        tax_amount: 0,
+        total_amount: 5000,
+        amount_due: 5000,
+        issued_at: new Date(),
+        notes: 'Hóa đơn 5.000đ dùng để test thanh toán SePay VietQR',
+        created_by_id: qrTestAdv.id,
+        lines: {
+          create: [
+            {
+              line_type: LineType.PACKAGE,
+              wo_service_id: qrWos.id,
+              description: `Dịch vụ test thanh toán QR (${cust.full_name})`,
+              quantity: 1,
+              unit_price: 5000,
+              amount: 5000,
+              sort_order: 1,
+            },
+          ],
+        },
+      },
+    });
+    woIndex++;
+    totalInv++;
+  }
+
   console.log(`   ✅ ${woIndex} WorkOrders`);
   console.log(`   ✅ ${totalJobs} Jobs + Labours + Parts`);
   console.log(`   ✅ ${totalQuo} Quotations`);

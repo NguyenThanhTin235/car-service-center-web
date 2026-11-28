@@ -9,9 +9,11 @@ import {
   getUserOpenKey,
   isSafeRedirectPath,
   parseSafeMarkdownLines,
+  parseSseChunkBuffer,
   PENDING_BOOKING_INTENT_KEY,
   promoteGuestSessionToUser,
   savePendingBookingIntent,
+  selectContextualPreamble,
   type StorageLike,
   type StoredChatMessage,
 } from '../../src/components/chat/aiChatUtils.ts';
@@ -132,8 +134,8 @@ describe('Customer AI Chat Pure Logic — Unit Tests', () => {
   });
 
   describe('parseSafeMarkdownLines & isSafeRedirectPath', () => {
-    it('parses bold segments and bullet lists cleanly without HTML injection', () => {
-      const parsed = parseSafeMarkdownLines('Tổng tiền: **2.750.000 ₫**\n- Kiểm tra phanh\n\nHẹn gặp Anh/Chị');
+    it('parses bold segments, inline backtick spans, and bullet lists cleanly without raw backticks or HTML injection', () => {
+      const parsed = parseSafeMarkdownLines('Tổng tiền: **2.750.000 ₫**\n- Giờ làm việc `08:00 – 18:00`\n\nHẹn gặp Anh/Chị');
       assert.equal(parsed.length, 4);
       assert.equal(parsed[0].kind, 'paragraph');
       assert.deepEqual(parsed[0].spans, [
@@ -141,6 +143,10 @@ describe('Customer AI Chat Pure Logic — Unit Tests', () => {
         { type: 'bold', value: '2.750.000 ₫' },
       ]);
       assert.equal(parsed[1].kind, 'bullet');
+      assert.deepEqual(parsed[1].spans, [
+        { type: 'text', value: 'Giờ làm việc ' },
+        { type: 'code', value: '08:00 – 18:00' },
+      ]);
       assert.equal(parsed[2].kind, 'spacer');
       assert.equal(parsed[3].kind, 'paragraph');
     });
@@ -152,6 +158,49 @@ describe('Customer AI Chat Pure Logic — Unit Tests', () => {
       assert.equal(isSafeRedirectPath('https://evil.com/phish'), false);
       assert.equal(isSafeRedirectPath('javascript:alert(1)'), false);
       assert.equal(isSafeRedirectPath('/home'), false);
+    });
+  });
+
+  describe('selectContextualPreamble & parseSseChunkBuffer', () => {
+    it('returns warm first-turn greeting and avoids repeating greeting or same line on follow-ups', () => {
+      const turn0 = selectContextualPreamble({
+        userMessage: 'Bảng giá thay dầu động cơ bao nhiêu?',
+        turnCount: 0,
+      });
+      assert.ok(turn0.startsWith('Dạ'));
+      assert.ok(turn0.includes('giá'));
+
+      const turn1 = selectContextualPreamble({
+        userMessage: 'Giá bảo dưỡng phanh thì sao?',
+        turnCount: 1,
+        lastPreamble: turn0,
+      });
+      assert.ok(!turn1.startsWith('Dạ,'));
+      assert.notEqual(turn1, turn0);
+
+      const turn2 = selectContextualPreamble({
+        userMessage: 'Còn lọc gió điều hòa?',
+        turnCount: 2,
+        lastPreamble: turn1,
+      });
+      assert.notEqual(turn2, turn1);
+    });
+
+    it('parses fragmented SSE frames including multi-chunk rest buffers cleanly', () => {
+      const firstPass = parseSseChunkBuffer(
+        'event: ack\ndata: {"phase":"thinking"}\n\nevent: delta\ndata: {"reply":"Dạ'
+      );
+      assert.equal(firstPass.events.length, 1);
+      assert.equal(firstPass.events[0].event, 'ack');
+
+      const secondPass = parseSseChunkBuffer(
+        `${firstPass.rest}, mình hỗ trợ"}\n\nevent: done\ndata: {"success":true}\n\n`
+      );
+      assert.equal(secondPass.events.length, 2);
+      assert.equal(secondPass.events[0].event, 'delta');
+      assert.deepEqual(secondPass.events[0].data, { reply: 'Dạ, mình hỗ trợ' });
+      assert.equal(secondPass.events[1].event, 'done');
+      assert.equal(secondPass.rest, '');
     });
   });
 });

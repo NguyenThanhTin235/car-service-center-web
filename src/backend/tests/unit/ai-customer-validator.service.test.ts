@@ -248,4 +248,40 @@ describe('AiCustomerPromptBuilder & AiCustomerValidatorService', () => {
     expect(sanitized.reply).not.toContain('Medium');
     expect(sanitized.reply).not.toContain('IN_PROGRESS');
   });
+
+  it('returns complete 8-step reception & handover workflow matching customer-web on process queries', () => {
+    const processRes = validator.buildDeterministicFallback({
+      message: 'quy trinh tiep nhan va ban giao xe gom may buoc?',
+      authMode: 'GUEST',
+      catalog: SAMPLE_CATALOG,
+      customerContext: null,
+    });
+
+    expect(processRes.intent).toBe('GENERAL_SUPPORT');
+    expect(processRes.reply).toContain('8 bước');
+    expect(processRes.reply).toContain('1. Tiếp nhận - Kiểm tra xe:');
+    expect(processRes.reply).toContain('2. Lên kế hoạch công việc:');
+    expect(processRes.reply).toContain('3. Lập báo giá chi tiết:');
+    expect(processRes.reply).toContain('4. Phê duyệt trực tuyến:');
+    expect(processRes.reply).toContain('5. Thi công:');
+    expect(processRes.reply).toContain('6. Kiểm định chất lượng:');
+    expect(processRes.reply).toContain('7. Thanh toán trực tuyến:');
+    expect(processRes.reply).toContain('8. Bàn giao xe:');
+  });
+
+  it('returns exact website hours (Thứ 2 – Thứ 7: 08:00 – 18:00, Nghỉ Chủ nhật) on contact/hours fallback', () => {
+    const contactRes = validator.buildDeterministicFallback({
+      message: 'dia chi va gio lam viec cua xuong',
+      authMode: 'GUEST',
+      catalog: SAMPLE_CATALOG,
+      customerContext: null,
+    });
+
+    expect(contactRes.reply).toContain('Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh');
+    expect(contactRes.reply).toContain('1900 6868');
+    expect(contactRes.reply).toContain('08:00 – 18:00');
+    expect(contactRes.reply).toContain('Thứ 2 - Thứ 7');
+    expect(contactRes.reply).toContain('Nghỉ Chủ nhật');
+    expect(contactRes.reply).not.toContain('hàng ngày');
+  });
 });

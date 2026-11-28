@@ -236,5 +236,33 @@ describe('Integration API — AI Customer Chat Routes (/api/v1/ai-chat)', () => 
       });
       expect(res.body.data.reply).toContain('650.000');
     });
+
+    it('streams SSE ack -> delta -> done events when Accept includes text/event-stream', async () => {
+      aiClientMock.executeWithGeminiFailover.mockImplementation(async (operation: any) => {
+        const fakeAi = {
+          models: {
+            generateContentStream: async () =>
+              (async function* () {
+                yield { text: '{"reply": "Dạ, phanh kêu có thể ' };
+                yield { text: 'do mòn má phanh ạ.", "intent": "SYMPTOM_DIAGNOSIS", "suggested_questions": ["Đặt lịch"], "actions": []}' };
+              })(),
+          },
+        };
+        return operation(fakeAi, 0, 'gemini-3.5-flash-lite');
+      });
+
+      const res = await request(app)
+        .post('/api/v1/ai-chat/message')
+        .set('Accept', 'text/event-stream, application/json')
+        .send({ message: 'xe bị kêu phanh' });
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('text/event-stream');
+      expect(res.text).toContain('event: ack');
+      expect(res.text).toContain('event: delta');
+      expect(res.text).toContain('Dạ, phanh kêu có thể');
+      expect(res.text).toContain('event: done');
+      expect(res.text).toContain('"success":true');
+    });
   });
 });

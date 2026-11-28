@@ -85,15 +85,25 @@ export function buildInvoiceLinesFromQuotations(approvedQuotations: any[]): Buil
     if ((ql.line_type === 'PART' || ql.line_type === 'MATERIAL') && ql.job_part) {
       const issued = Number(ql.job_part.issued_quantity) || 0;
       const returned = Number(ql.job_part.returned_quantity) || 0;
-      const used = Math.max(0, issued - returned);
+      const isFullyReturned = ql.job_part.status === 'RETURNED' || (returned > 0 && issued === 0);
 
-      // Nếu đã có ghi nhận xuất kho thực tế (issued > 0), tính theo số lượng thực dùng
-      if (issued > 0 && used !== plannedQuantity) {
-        finalQuantity = used;
+      if (isFullyReturned) {
+        finalQuantity = 0;
         isAdjusted = true;
         reconciliationNotes.push(
-          `Hạng mục "${ql.description}": Số lượng thực dùng là ${used} (dự kiến ${plannedQuantity}, xuất ${issued}, hoàn ${returned})`
+          `Hạng mục "${ql.description}": Đã hoàn trả toàn bộ về kho (hoàn ${returned || plannedQuantity}, dự kiến ${plannedQuantity}) — Không tính phí`
         );
+      } else {
+        const used = Math.max(0, issued - returned);
+
+        // Nếu đã có ghi nhận xuất kho thực tế (issued > 0), tính theo số lượng thực dùng
+        if (issued > 0 && used !== plannedQuantity) {
+          finalQuantity = used;
+          isAdjusted = true;
+          reconciliationNotes.push(
+            `Hạng mục "${ql.description}": Số lượng thực dùng là ${used} (dự kiến ${plannedQuantity}, xuất ${issued}, hoàn ${returned})`
+          );
+        }
       }
     }
 

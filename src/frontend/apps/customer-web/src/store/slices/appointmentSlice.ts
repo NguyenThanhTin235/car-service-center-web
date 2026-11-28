@@ -110,6 +110,14 @@ const appointmentSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
+      .addCase(createAppointment.fulfilled, (state, action) => {
+        if (action.payload) {
+          state.appointments = [
+            action.payload,
+            ...state.appointments.filter((a) => a.id !== action.payload.id),
+          ];
+        }
+      })
       // Reschedule
       .addCase(rescheduleAppointment.fulfilled, (state, action) => {
         const index = state.appointments.findIndex(a => a.id === action.payload.id);

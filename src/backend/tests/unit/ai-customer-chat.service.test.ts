@@ -6,7 +6,10 @@ const aiClientMock = vi.hoisted(() => ({
 
 vi.mock('../../src/utils/ai-client.util', () => aiClientMock);
 
-import { AiCustomerChatService } from '../../src/services/ai-chat/ai-customer-chat.service';
+import {
+  AiCustomerChatService,
+  extractPartialJsonReply,
+} from '../../src/services/ai-chat/ai-customer-chat.service';
 import { GARAGE_STATIC_INFO } from '../../src/services/ai-chat/ai-customer-context.builder';
 import { CatalogContext, CustomerPrivateContext } from '../../src/services/ai-chat/ai-customer-chat.types';
 
@@ -245,6 +248,58 @@ describe('AiCustomerChatService', () => {
         type: 'VIEW_QUOTATION',
         payload: { workOrderId: 88, quotationId: 305 },
       });
+    });
+  });
+
+  describe('extractPartialJsonReply & streamMessage', () => {
+    it('extracts partial escaped JSON reply safely across chunk boundaries', () => {
+      expect(extractPartialJsonReply('{"intent":')).toBeNull();
+      expect(extractPartialJsonReply('{"reply": "Dạ, xe đang \\')).toEqual({
+        text: 'Dạ, xe đang ',
+        isComplete: false,
+      });
+      expect(extractPartialJsonReply('{"reply": "Dòng 1\\nDòng 2 \\u003C\\u00')).toEqual({
+        text: 'Dòng 1\nDòng 2 <',
+        isComplete: false,
+      });
+      expect(
+        extractPartialJsonReply('{"reply": "Giá **650.000 ₫**", "intent": "CATALOG_PRICING"}')
+      ).toEqual({
+        text: 'Giá **650.000 ₫**',
+        isComplete: true,
+      });
+    });
+
+    it('streams incremental deltas via onDelta and validates finalized response', async () => {
+      aiClientMock.executeWithGeminiFailover.mockImplementation(async (operation: any) => {
+        const fakeAi = {
+          models: {
+            generateContentStream: async () =>
+              (async function* () {
+                yield { text: '```json\n{"reply": "Dạ, ' };
+                yield { text: 'kiểm tra phanh \\"650.000 ₫\\"", ' };
+                yield {
+                  text: '"intent": "CATALOG_PRICING", "suggested_questions": ["Đặt lịch"], "actions": []}\n```',
+                  usageMetadata: { promptTokenCount: 120, candidatesTokenCount: 30 },
+                };
+              })(),
+          },
+        };
+        return operation(fakeAi, 0, 'gemini-3.5-flash-lite');
+      });
+
+      const deltas: string[] = [];
+      const res = await service.streamMessage(
+        { message: 'kiểm tra phanh', history: [] },
+        { onDelta: (partial) => deltas.push(partial) }
+      );
+
+      expect(deltas).toEqual([
+        'Dạ, ',
+        'Dạ, kiểm tra phanh "650.000 ₫"',
+      ]);
+      expect(res.reply).toContain('650.000 ₫');
+      expect(res.is_fallback).toBe(false);
     });
   });
 });

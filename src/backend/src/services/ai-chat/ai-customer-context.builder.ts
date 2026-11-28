@@ -7,7 +7,7 @@ import {
   QuotationSummary,
 } from './ai-customer-chat.types';
 
-export const CATALOG_CACHE_KEY = 'ai_chat:catalog_context:v1';
+export const CATALOG_CACHE_KEY = 'catalog:ai_chat:context:v3';
 export const CATALOG_CACHE_TTL_SECONDS = 300;
 
 export const GARAGE_STATIC_INFO: CatalogContext['garageInfo'] = {
@@ -15,21 +15,22 @@ export const GARAGE_STATIC_INFO: CatalogContext['garageInfo'] = {
   address: 'Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh',
   hotline: '1900 6868',
   workingDays: 'Thứ 2 - Thứ 7 (Nghỉ Chủ nhật)',
-  workingHours: '07:30 - 17:30 (Tổng đài 08:00 - 18:00)',
+  workingHours:
+    '08:00 - 18:00 (Thứ 2 - Thứ 7, Nghỉ Chủ nhật — áp dụng cho cả Giờ tiếp nhận xe tại xưởng và Tổng đài cố vấn 1900 6868)',
   bookingSlots: {
     morning: ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30'],
     afternoon: ['13:30', '14:00', '14:30', '15:00', '16:00'],
   },
   vatPolicy: 'Chính sách miễn thuế GTGT (0% VAT)',
   processSteps: [
-    '1. Đặt lịch & Tiếp nhận xe',
-    '2. Đồng kiểm ngoại thất & ODO cùng khách hàng',
-    '3. Chẩn đoán kỹ thuật 48 hạng mục',
-    '4. Lập báo giá minh bạch (0% VAT) chờ khách duyệt',
-    '5. Thi công sửa chữa bởi kỹ thuật viên chuyên trách',
-    '6. Kiểm định chất lượng KCS (QC) trước bàn giao',
-    '7. Thanh toán tiện lợi qua VietQR SePay hoặc tiền mặt/thẻ',
-    '8. Bàn giao xe & Kích hoạt bảo hành điện tử',
+    '1. Tiếp nhận - Kiểm tra xe: Cố vấn dịch vụ ghi nhận tình trạng ngoại thất, số km ODO và lưu ảnh hiện trạng ngay lúc nhận xe.',
+    '2. Lên kế hoạch công việc: Khảo sát hạng mục cần xử lý, dự kiến thời gian, phân bổ khoang sửa chữa và nguồn phụ tùng.',
+    '3. Lập báo giá chi tiết: Tách bạch tiền công kỹ thuật và từng mã phụ tùng kèm đơn giá rõ ràng (0% VAT) trước khi tiến hành sửa chữa.',
+    '4. Phê duyệt trực tuyến: Chủ xe xem báo giá, đặt câu hỏi hoặc nhấn xác nhận phê duyệt ngay trên điện thoại.',
+    '5. Thi công: Kỹ thuật viên thực hiện theo đúng hạng mục đã duyệt và cập nhật trạng thái trực tiếp qua cổng khách hàng.',
+    '6. Kiểm định chất lượng: Đội ngũ kiểm tra xuất xưởng (KCS) nghiệm thu từng đầu việc an toàn trước khi hoàn tất sửa chữa.',
+    '7. Thanh toán trực tuyến: Quét mã QR SePay đối soát tự động hoặc thanh toán tại quầy, xuất hóa đơn PDF chuẩn mực.',
+    '8. Bàn giao xe: Bàn giao xe cho chủ xe, lưu lịch sử bảo dưỡng điện tử và ghi nhận mốc chăm sóc kỳ tiếp theo.',
   ],
 };
 
@@ -85,72 +86,101 @@ function formatTimeOnly(val: Date | string | null | undefined): string {
   return str.slice(0, 5);
 }
 
+let inFlightCatalogPromise: Promise<CatalogContext> | null = null;
+const inFlightPrivateCtxMap = new Map<number, Promise<CustomerPrivateContext | null>>();
+
 export class AiCustomerContextBuilder {
   /**
-   * Retrieve public active service catalog and garage info with 5-minute TTL caching.
+   * Retrieve public active service catalog and garage info with 5-minute TTL caching + singleflight.
    */
   async getCatalogContext(): Promise<CatalogContext> {
     try {
       const cached = await getCache(CATALOG_CACHE_KEY);
       if (cached) {
-        return JSON.parse(cached) as CatalogContext;
+        const parsed = JSON.parse(cached) as CatalogContext;
+        return { ...parsed, garageInfo: GARAGE_STATIC_INFO };
       }
     } catch (err) {
       console.warn('[AiCustomerContextBuilder] Cache read failed:', (err as Error).message);
     }
 
-    const categoriesRaw = await prisma.serviceCategory.findMany({
-      where: { is_active: true },
-      orderBy: { sort_order: 'asc' },
-      include: {
-        services: {
-          where: { is_active: true },
-          orderBy: { id: 'asc' },
-          include: {
-            size_prices: true,
-          },
-        },
-      },
-    });
-
-    const categories = (categoriesRaw || []).map((cat: any) => ({
-      id: cat.id,
-      name: cat.name,
-      description: cat.description ?? null,
-      services: (cat.services || []).map((svc: any) => ({
-        id: svc.id,
-        name: svc.name,
-        categoryName: cat.name,
-        description: svc.description ?? null,
-        pricingType: svc.pricing_type,
-        fixedPrice: svc.fixed_price !== null && svc.fixed_price !== undefined ? Number(svc.fixed_price) : null,
-        sizePrices: (svc.size_prices || []).map((sp: any) => ({
-          vehicleSize: sp.vehicle_size,
-          price: Number(sp.price),
-        })),
-        warrantyMonths: Number(svc.warranty_months || 0),
-      })),
-    }));
-
-    const catalog: CatalogContext = {
-      garageInfo: GARAGE_STATIC_INFO,
-      categories,
-    };
-
-    try {
-      await setCache(CATALOG_CACHE_KEY, JSON.stringify(catalog), CATALOG_CACHE_TTL_SECONDS);
-    } catch (err) {
-      console.warn('[AiCustomerContextBuilder] Cache write failed:', (err as Error).message);
+    if (inFlightCatalogPromise) {
+      return inFlightCatalogPromise;
     }
 
-    return catalog;
+    inFlightCatalogPromise = (async () => {
+      const categoriesRaw = await prisma.serviceCategory.findMany({
+        where: { is_active: true },
+        orderBy: { sort_order: 'asc' },
+        include: {
+          services: {
+            where: { is_active: true },
+            orderBy: { id: 'asc' },
+            include: {
+              size_prices: true,
+            },
+          },
+        },
+      });
+
+      const categories = (categoriesRaw || []).map((cat: any) => ({
+        id: cat.id,
+        name: cat.name,
+        description: cat.description ?? null,
+        services: (cat.services || []).map((svc: any) => ({
+          id: svc.id,
+          name: svc.name,
+          categoryName: cat.name,
+          description: svc.description ?? null,
+          pricingType: svc.pricing_type,
+          fixedPrice: svc.fixed_price !== null && svc.fixed_price !== undefined ? Number(svc.fixed_price) : null,
+          sizePrices: (svc.size_prices || []).map((sp: any) => ({
+            vehicleSize: sp.vehicle_size,
+            price: Number(sp.price),
+          })),
+          warrantyMonths: Number(svc.warranty_months || 0),
+        })),
+      }));
+
+      const catalog: CatalogContext = {
+        garageInfo: GARAGE_STATIC_INFO,
+        categories,
+      };
+
+      try {
+        await setCache(CATALOG_CACHE_KEY, JSON.stringify(catalog), CATALOG_CACHE_TTL_SECONDS);
+      } catch (err) {
+        console.warn('[AiCustomerContextBuilder] Cache write failed:', (err as Error).message);
+      }
+
+      return catalog;
+    })().finally(() => {
+      inFlightCatalogPromise = null;
+    });
+
+    return inFlightCatalogPromise;
   }
 
   /**
-   * Retrieve private customer context strictly scoped by authenticatedUserId from JWT.
+   * Retrieve private customer context strictly scoped by authenticatedUserId from JWT + singleflight.
    * Never exposes internal DRAFT quotations, DRAFT/CANCELLED invoices, or internal-only findings.
    */
   async getCustomerPrivateContext(authenticatedUserId: number): Promise<CustomerPrivateContext | null> {
+    const existing = inFlightPrivateCtxMap.get(authenticatedUserId);
+    if (existing) {
+      return existing;
+    }
+
+    const loadPromise = this._loadCustomerPrivateContext(authenticatedUserId).finally(() => {
+      inFlightPrivateCtxMap.delete(authenticatedUserId);
+    });
+    inFlightPrivateCtxMap.set(authenticatedUserId, loadPromise);
+    return loadPromise;
+  }
+
+  private async _loadCustomerPrivateContext(
+    authenticatedUserId: number
+  ): Promise<CustomerPrivateContext | null> {
     const [customer, vehiclesRaw, appointmentsRaw, activeWorkOrdersRaw, completedWorkOrdersRaw] =
       await Promise.all([
         prisma.user.findUnique({
@@ -275,7 +305,7 @@ export class AiCustomerContextBuilder {
             status: { in: ['RELEASED', 'CLOSED'] },
           },
           orderBy: { updated_at: 'desc' },
-          take: 3,
+          take: 15,
           include: {
             vehicle: {
               select: { id: true, license_plate: true, make: true, model: true },
@@ -424,7 +454,7 @@ export class AiCustomerContextBuilder {
     const now = new Date();
     const warrantyRecords: DerivedWarrantyRecord[] = [];
     const claimedParentWoIds = new Set<number>(
-      (completedWorkOrdersRaw || [])
+      [...(completedWorkOrdersRaw || []), ...(activeWorkOrdersRaw || [])]
         .filter((wo: any) => wo.order_type === 'WARRANTY' && wo.parent_work_order_id != null)
         .map((wo: any) => Number(wo.parent_work_order_id))
     );
@@ -530,7 +560,7 @@ export class AiCustomerContextBuilder {
       vehicles,
       upcomingAppointments,
       activeWorkOrders,
-      recentCompletedOrders,
+      recentCompletedOrders: recentCompletedOrders.slice(0, 3),
       warrantyRecords,
     };
   }

@@ -145,6 +145,50 @@ describe('Unit Test - Invoice Builder & Quotation Reconciliation (SPEC-INV / UC-
     expect(result.reconciliationNotes[0]).toContain('Số lượng thực dùng là 2');
   });
 
+  it('INV-BLD-03B: Khi hoàn trả toàn bộ phụ tùng về kho (status RETURNED, issued=0), hóa đơn giảm về 0đ', () => {
+    const mockQuotes = [
+      {
+        id: 1,
+        quotation_number: 'QUO-WO03B-01',
+        status: 'APPROVED',
+        discount_amount: 0,
+        lines: [
+          {
+            id: 302,
+            line_type: 'PART',
+            description: 'Lọc gió động cơ',
+            quantity: 2,
+            snapshot_unit_price: 250000,
+            job_part: {
+              status: 'RETURNED',
+              planned_quantity: 2,
+              issued_quantity: 0,
+              returned_quantity: 2,
+            },
+          },
+          {
+            id: 303,
+            line_type: 'LABOUR',
+            description: 'Công kiểm tra động cơ',
+            quantity: 1,
+            snapshot_unit_price: 300000,
+          },
+        ],
+      },
+    ];
+
+    const result = buildInvoiceLinesFromQuotations(mockQuotes);
+
+    expect(result.lines).toHaveLength(2);
+    expect(result.lines[0].quantity).toBe(0);
+    expect(result.lines[0].amount).toBe(0);
+    expect(result.lines[0].isAdjustedFromQuotation).toBe(true);
+    expect(result.subtotal).toBe(300000);
+    expect(result.totalAmount).toBe(300000);
+    expect(result.reconciliationNotes.length).toBe(1);
+    expect(result.reconciliationNotes[0]).toContain('Đã hoàn trả toàn bộ về kho');
+  });
+
   it('INV-BLD-04: Đảm bảo chiết khấu mặc định không vượt quá tổng tiền Subtotal', () => {
     const mockQuotes = [
       {

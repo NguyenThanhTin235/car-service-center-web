@@ -173,6 +173,9 @@ export class AppointmentService {
       ? data.scheduled_date.substring(0, 10)
       : new Date(data.scheduled_date).toISOString().substring(0, 10);
     const startOfDay = new Date(`${rawDateStr}T00:00:00.000Z`);
+    if (startOfDay.getUTCDay() === 0) {
+      throw new Error('Xưởng nghỉ Chủ nhật, không thể đặt lịch hẹn vào ngày này. Vui lòng chọn từ Thứ 2 đến Thứ 7.');
+    }
     const endOfDay = new Date(`${rawDateStr}T23:59:59.999Z`);
 
     const existingAppointment = await prisma.appointment.findFirst({
@@ -396,6 +399,9 @@ export class AppointmentService {
           ? data.scheduled_date.substring(0, 10)
           : new Date(data.scheduled_date).toISOString().substring(0, 10);
         const reqDate = new Date(`${rawDateStr}T00:00:00.000Z`);
+        if (reqDate.getUTCDay() === 0) {
+          throw new Error('Xưởng nghỉ Chủ nhật, không thể dời lịch hẹn vào ngày này. Vui lòng chọn từ Thứ 2 đến Thứ 7.');
+        }
         
         // Validate duplicate for reschedule
         const startOfDay = new Date(reqDate);

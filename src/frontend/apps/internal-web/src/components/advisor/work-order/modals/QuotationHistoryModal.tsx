@@ -410,7 +410,7 @@ export default function QuotationHistoryModal({
                             <tr>
                               <th className="py-2 px-3 w-10 text-center">#</th>
                               <th className="py-2 px-3">Hạng mục / Phụ tùng / Tiền công</th>
-                              <th className="py-2 px-3 w-24">Loại</th>
+                              <th className="py-2 px-3 w-24 whitespace-nowrap">Loại</th>
                               <th className="py-2 px-3 w-20 text-center">SL</th>
                               <th className="py-2 px-3 w-28 text-right hidden md:table-cell">Đơn giá</th>
                               <th className="py-2 px-3 w-32 text-right">Thành tiền</th>
@@ -426,8 +426,8 @@ export default function QuotationHistoryModal({
                                     <div className="text-[11px] text-primary">{line.woServiceName}</div>
                                   )}
                                 </td>
-                                <td className="py-2 px-3">
-                                  <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-surface-container text-on-surface-variant">
+                                <td className="py-2 px-3 whitespace-nowrap">
+                                  <span className="inline-block whitespace-nowrap px-1.5 py-0.5 rounded text-[11px] font-bold bg-surface-container text-on-surface-variant">
                                     {line.lineType === 'PACKAGE'
                                       ? 'Trọn gói'
                                       : line.lineType === 'LABOUR'
